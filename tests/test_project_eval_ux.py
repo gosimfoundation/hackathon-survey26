@@ -39,14 +39,14 @@ def evaluate(s, rev, confirm=False):
                  role='authenticated', user=s['user'])[0][0]
 
 
-def fail(s, batch, kind, code):
+def fail(s, batch, kind, code, stage=None):
     """A trusted executor or engine job reports failure for the batch's first run."""
     uri = s['uri']
     run = query(uri, 'select id from public.observer_runs where batch_id=%s', (batch,))[0][0]
     job, nonce = uuid.uuid4(), secrets.token_urlsafe(32)
     rpc(uri, 'observer_enqueue_job', job, kind, run, None, ORG, nonce, 'encrypted job payload', 'encrypted nonce')
     rpc(uri, 'observer_claim_job', job, nonce, '404', '1', '303', '101', 'a'*40)
-    rpc(uri, 'observer_finish_job', job, '404', '1', {'diagnostics': {'stage': kind, 'code': code, 'log': ''}},
+    rpc(uri, 'observer_finish_job', job, '404', '1', {'diagnostics': {'stage': stage or kind, 'code': code, 'log': ''}},
         kind + '_job_failed')
 
 
@@ -184,3 +184,18 @@ def test_migration_refunds_earlier_platform_failures_only():
         assert [query(uri, 'select quota_refunded from public.observer_batches where id=%s', (b,))[0][0] for b in batches] == [True, False]
     finally:
         server.cleanup()
+
+
+def test_colocated_public_runs_and_their_participant_failures(team):
+    s = team; uri = s['uri']
+    batch = evaluate(s, revision(s))
+    run = query(uri, 'select id from public.observer_runs where batch_id=%s', (batch,))[0][0]
+    assert rpc(uri, 'observer_run_colocated', run) is False
+    query(uri, 'update public.observer_phase_settings set colocated=true where phase_id=%s', (s['phase'],))
+    assert rpc(uri, 'observer_run_colocated', run) is True
+    for role in ('authenticated', 'anon'):
+        with pytest.raises(psycopg.Error, match='permission denied'):
+            rpc(uri, 'observer_run_colocated', run, role=role, user=s['user'])
+    # The participant container crashed inside the engine job: it still counts.
+    fail(s, batch, 'engine', 'project_operation_failed', stage='execute')
+    assert batch_state(s, batch) == ('failed', False)

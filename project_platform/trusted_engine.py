@@ -102,14 +102,55 @@ class RemoteProvider:
                           deadline=deadline,interval=0.02)
 
 
+class ColocatedProvider:
+    """The participant runs in a Docker container on this machine.
+
+    Steps go straight to its stdin instead of through the session database, so
+    a public scenario runs at local speed. The protocol is unchanged: one
+    observation at a time, the next only after the answer. The session is still
+    opened and closed so model proxy quotas, status and scoring work as before.
+    """
+
+    def __init__(self, transport, client: SessionClient, participant: SessionClient, *, startup_seconds: float = 900):
+        self.transport, self.client, self.participant = transport, client, participant
+        self.startup_seconds = startup_seconds
+        self.server_deadline: float | None = None
+        self.initialization_error: Exception | None = None
+
+    def publish_initial(self, publication):
+        try:
+            startup = time.monotonic()+self.startup_seconds
+            self.client.call("initialize", publication={"transport_format": COLOCATED_FORMAT}, deadline=startup)
+            self.transport.publish_initial(publication)
+            self.participant.call("ready", deadline=startup)
+            deadline_at = self.client.call("begin", deadline=startup)
+            server_time = datetime.fromisoformat(deadline_at.replace("Z","+00:00"))
+            self.server_deadline=time.monotonic()+max(0,(server_time-datetime.now(timezone.utc)).total_seconds())
+        except Exception as error:
+            self.initialization_error = error
+            raise
+
+    def flush(self):
+        pass
+
+    def __call__(self, snapshot, deadline_monotonic):
+        return self.transport(snapshot, min(deadline_monotonic, self.server_deadline or deadline_monotonic))
+
+
+COLOCATED_FORMAT = "observer-colocated-v1"
+
+
 def run_session(scenario: Path, output: Path, client: SessionClient, *, wallclock_seconds: float | None = None,
-                instance_record: dict | None = None):
+                instance_record: dict | None = None, provider=None):
     workflow=ChallengeWorkflow(scenario)
     evaluation = None if instance_record is None else {
         "instance_commitment": instance_record["instance_digest"], "calibration_version": PANEL_VERSION,
         "score_formula": "10000 * (raw_score - wait_score) / (reference_panel_mean - wait_score)",
     }
-    provider=RemoteProvider(workflow,client,evaluation=evaluation)
+    if provider is None:
+        provider=RemoteProvider(workflow,client,evaluation=evaluation)
+    elif instance_record is not None:
+        raise ValueError("private instances never run next to the participant")
     result=workflow.run(provider,wallclock_seconds=wallclock_seconds)
     if provider.initialization_error is not None:
         # A failed startup has no scored trace. Preserve the safe transport code

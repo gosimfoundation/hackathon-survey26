@@ -17,7 +17,7 @@ from .preparation import prepare_project
 from .session import SessionClient
 from .scenario_job import prepare_bounded
 from .scenario_instances import InstanceError
-from .trusted_engine import result_summary, run_session
+from .trusted_engine import ColocatedProvider, result_summary, run_session
 
 
 def execute_job(payload: dict, root: Path, http: Http) -> dict:
@@ -52,11 +52,46 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
               'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),(payload['run_credential'],))}}
 
 
+def _participant_runtime(payload: dict, participant: dict, root: Path, http: Http):
+    files = download_project(http, payload["archive_url"])
+    if project_digest(files) != participant["source_digest"]:
+        raise JobError("project_digest_mismatch")
+    manifest = ProjectManifest.parse(participant["manifest"])
+    workspace = root / "project"
+    extract_project(files, workspace)
+    environment = {
+        "OBSERVER_API_URL": payload["session_url"], "OBSERVER_RUN_TOKEN": participant["run_credential"],
+        "OBSERVER_RUN_ID": payload["run_id"],
+        "OPENAI_BASE_URL": participant["model_base_url"], "OPENAI_API_KEY": participant["run_credential"],
+    }
+    return DockerWorkspace(workspace, manifest, manifest.image), environment
+
+
 def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=None) -> dict:
     files = download_project(http, payload["scenario_url"], payload["scenario_digest"])
     scenario, output = root / "scenario", root / "result"
     extract_project(files, scenario)
     client = SessionClient(payload["session_url"], payload["run_credential"])
+    participant = payload.get("colocated")
+    if participant is not None:
+        # Public scenarios only: the scheduler never colocates a private instance.
+        if payload.get("instance") is not None:
+            raise JobError("colocated_private_instance")
+        runtime, environment = _participant_runtime(payload, participant, root, http)
+        secrets = (payload["run_credential"], participant["run_credential"])
+        try:
+            runtime.pull()
+            runtime.build()
+            transport = runtime.start(environment)
+            provider = ColocatedProvider(transport, client, SessionClient(payload["session_url"], participant["run_credential"]))
+            result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],
+                                        provider=provider)
+        except Exception as error:
+            raise ProjectJobFailure({'stage':'execute','code':safe_code(error),
+                'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),secrets)}) from None
+        finally:
+            runtime.close()
+        return _publish_result(payload, client, output, result, digest, http, repository_credentials)
     record = None
     if payload.get("instance") is not None:
         instance = payload["instance"]
@@ -75,6 +110,10 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         client.call("record_instance", record=record)
     result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],
                                 instance_record=record)
+    return _publish_result(payload, client, output, result, digest, http, repository_credentials)
+
+
+def _publish_result(payload, client, output, result, digest, http, repository_credentials) -> dict:
     archive = pack_results(output)
     if payload['artifact_upload'] == {'kind': 'github'}:
         path = store_private_artifact(read_project_zip(archive), payload['run_id'], 'results', repository_credentials)

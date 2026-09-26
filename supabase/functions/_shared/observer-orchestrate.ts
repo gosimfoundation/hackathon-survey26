@@ -34,6 +34,10 @@ export async function scheduleRuns(deps: RunScheduler) {
       // opening a capability; a GitHub failure cannot leave a half-started run.
       await deps.ensureRepository(run.user_id);
       const instance = await deps.rpc("observer_instance_input", { p_run: run.id });
+      // Public scenarios run the participant container inside the engine job:
+      // the same step-by-step protocol, without a database round trip per step.
+      const colocated = run.mode === "project" && !instance &&
+        await deps.rpc("observer_run_colocated", { p_run: run.id }) === true;
       const participant = randomCapability(), engine = randomCapability();
       const jobs = [];
       const encodeJob = async (kind: string, input: Record<string, unknown>) => {
@@ -56,9 +60,20 @@ export async function scheduleRuns(deps: RunScheduler) {
           runtime_seconds: run.runtime_seconds,
           artifact_upload: { kind: "github" },
           ...(instance ? { instance } : {}),
+          ...(colocated
+            ? {
+              archive_ref: run.archive_ref,
+              colocated: {
+                run_credential: "obs_" + run.id + "." + participant,
+                model_base_url: api + "observer-model/v1",
+                source_digest: run.materialized_digest,
+                manifest: run.manifest,
+              },
+            }
+            : {}),
         }),
       );
-      if (run.mode === "project") {
+      if (run.mode === "project" && !colocated) {
         jobs.push(
           await encodeJob("execute", {
             run_id: run.id,

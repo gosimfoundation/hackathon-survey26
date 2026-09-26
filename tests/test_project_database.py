@@ -316,3 +316,4 @@ def test_poll_does_not_wait_for_a_session_row_lock(setup):
     assert polled["sequence"] == state["sequence"] and state["answered"] is False
     with pytest.raises(psycopg.Error, match="invalid_or_expired_capability"):
         rpc(setup["uri"], "observer_poll", run, "wrong-token-" + "x" * 40)
+
