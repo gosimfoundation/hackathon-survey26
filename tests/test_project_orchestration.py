@@ -84,6 +84,25 @@ def test_cloud_admission_requires_both_jobs_and_has_no_local_credential(queued):
     assert rpc(uri, 'observer_local_access', s['run'], s['user']) is None
 
 
+def test_colocated_cloud_run_is_admitted_with_one_engine_job(queued):
+    s = queued; uri = s['uri']
+    rev = rpc(uri, 'observer_create_project', 'Cloud', 'repository', 'https://github.com/example/project',
+              role='authenticated', user=s['user'])
+    query(uri, """update public.observer_revisions set status='reviewable',source_digest=%s,approval_digest=%s,
+        manifest=%s,public_test='{"passed":true}' where id=%s""",
+          ('c'*64, 'd'*64, Jsonb({'image':'python@sha256:'+'e'*64}), rev))
+    rpc(uri, 'observer_approve_revision', rev, 'd'*64, role='authenticated', user=s['user'])
+    query(uri, "update public.observer_batches set mode='project',revision_id=%s where id=%s", (rev, s['batch']))
+    query(uri, 'insert into private.observer_materializations values(%s,%s,%s)',
+          (rev, 'github:AGENTIC-OBSERVER26-runner-1/participant-' + s['user'].hex + '@' + 'f'*40, 'a'*64))
+    query(uri, 'update public.observer_phase_settings set colocated=true where phase_id=%s', (s['phase'],))
+    reserved = reserve(s)
+    with pytest.raises(psycopg.Error, match='invalid_run_jobs'):
+        schedule(s, reserved['lease'], [job('engine'), job('execute')], local=None)
+    schedule(s, reserved['lease'], [job('engine')], local=None)
+    assert query(uri, 'select kind from private.observer_jobs where run_id=%s', (s['run'],)) == [('engine',)]
+
+
 def test_expired_lease_cannot_open_session_and_fifth_crash_releases_queue(queued):
     s = queued; first = reserve(s)
     query(s['uri'], "update private.observer_run_leases set expires_at=now()-interval '1 second' where run_id=%s", (s['run'],))
