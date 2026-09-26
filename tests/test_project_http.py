@@ -809,7 +809,7 @@ for line in sys.stdin:
         commit=result_path.rsplit('@',1)[1]
         archive=subprocess.run(['git','--git-dir',str(remote),'archive','--format=zip',commit],capture_output=True,check=True).stdout
         artifacts=read_project_zip(archive)
-        assert {f.path for f in artifacts}=={'decisions.csv','workflow_result.json'}
+        assert {f.path for f in artifacts}=={'decisions.csv','workflow_result.json'}|({'agent.log'} if colocated else set())
     else:
         assert len(uploads)==1
         artifacts=read_project_zip(uploads[0])

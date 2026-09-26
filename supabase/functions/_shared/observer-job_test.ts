@@ -339,6 +339,8 @@ Deno.test("a colocated engine job carries only the execute job's own fields", ()
       { instance: { seed: "f".repeat(64) } },
     ]
   ) assertThrows(() => validateJobPayload({ ...engine, ...change }, expected, job), ProxyError);
+});
+
 Deno.test("only the claimed executor stores a log, for the run in its own encrypted input", async () => {
   const encrypted = await encryptCredential(JSON.stringify(payload), job, key);
   const stored: [string, string][] = [];

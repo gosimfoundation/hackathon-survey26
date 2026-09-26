@@ -112,6 +112,12 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
                 'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),secrets)}) from None
         finally:
             runtime.close()
+        # No separate execute job here: the team's own log goes straight into
+        # its private result, next to decisions.csv.
+        text = agent_log(runtime.build_log, runtime.transport.log if runtime.transport else '', secrets,
+                         truncated=bool(runtime.transport and runtime.transport.log_truncated))
+        if text:
+            (output / "agent.log").write_text(text)
         return _publish_result(payload, client, output, result, digest, http, repository_credentials)
     record = None
     if payload.get("instance") is not None:
