@@ -797,9 +797,12 @@ for line in sys.stdin:
         broker.shutdown();broker.server_close()
     assert len(receipts)==(1 if colocated else 2)
     assert all(not value["error"] for value in receipts.values()),receipts
-    assert list(agent_logs)==[ids['execute']] and 'agent booted with [REDACTED]' in agent_logs[ids['execute']]
-    assert s['participant'] not in agent_logs[ids['execute']]
-    assert '_agent_log' not in receipts[ids['execute']]['result']
+    if colocated:
+        assert not agent_logs  # the engine job writes agent.log into the result itself
+    else:
+        assert list(agent_logs)==[ids['execute']] and 'agent booted with [REDACTED]' in agent_logs[ids['execute']]
+        assert s['participant'] not in agent_logs[ids['execute']]
+        assert '_agent_log' not in receipts[ids['execute']]['result']
     assert {path for path,auth in requests}=={"/project","/scenario"}
     assert all(auth is None for path,auth in requests)
     if storage_kind=='github':
@@ -810,6 +813,9 @@ for line in sys.stdin:
         archive=subprocess.run(['git','--git-dir',str(remote),'archive','--format=zip',commit],capture_output=True,check=True).stdout
         artifacts=read_project_zip(archive)
         assert {f.path for f in artifacts}=={'decisions.csv','workflow_result.json'}|({'agent.log'} if colocated else set())
+        if colocated:
+            log=next(f.data for f in artifacts if f.path=='agent.log').decode()
+            assert 'agent booted with [REDACTED]' in log and s['participant'] not in log
     else:
         assert len(uploads)==1
         artifacts=read_project_zip(uploads[0])
