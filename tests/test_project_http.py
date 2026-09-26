@@ -649,8 +649,8 @@ for line in sys.stdin:
 
 
 @pytest.mark.skipif(not os.environ.get("OBSERVER_TEST_PYTHON_IMAGE"),reason="Explicit resolved container image required")
-@pytest.mark.parametrize('storage_kind,randomized',[('staging',False),('github',False),('github',True)])
-def test_workflow_jobs_download_run_and_upload_before_publishing_score(run_setup,tmp_path,monkeypatch,storage_kind,randomized):
+@pytest.mark.parametrize('storage_kind,randomized,colocated',[('staging',False,False),('github',False,False),('github',True,False),('github',False,True)])
+def test_workflow_jobs_download_run_and_upload_before_publishing_score(run_setup,tmp_path,monkeypatch,storage_kind,randomized,colocated):
     """Both production handlers, private downloads, actual Docker, Edge and scorer.
 
     GitHub OIDC signatures are covered by the TypeScript tests. This fixture uses
@@ -755,6 +755,12 @@ for line in sys.stdin:
         "session_url":session_url,"run_credential":f"obs_{s['run']}.{s['engine']}","runtime_seconds":120,
         "artifact_upload":{"url":base+"/upload","path":result_path}}
     if storage_kind=='github':jobs[ids['engine']]['artifact_upload']={'kind':'github'}
+    if colocated:
+        # One engine job starts the participant container itself; no execute job.
+        execute=jobs.pop(ids['execute'])
+        jobs[ids['engine']]['archive_url']=execute['archive_url']
+        jobs[ids['engine']]['colocated']={key:execute[key] for key in ('manifest','model_base_url','source_digest')}
+        jobs[ids['engine']]['colocated']['run_credential']=execute['run_credential']
     if instance is not None:
         jobs[ids['engine']]['instance'] = instance
     # The runtime is already present by explicit digest. Avoid a remote registry
@@ -765,14 +771,14 @@ for line in sys.stdin:
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             futures=[]
-            for kind in ("engine","execute"):
+            for kind in (("engine",) if colocated else ("engine","execute")):
                 root=tmp_path/kind;root.mkdir()
                 client=JobClient(base+"/job",ids[kind],"n"*43,lambda:"test-job-identity",http=Http(local=True))
                 futures.append(pool.submit(run_claimed,kind,client,root))
             for future in futures:future.result(timeout=150)
     finally:
         broker.shutdown();broker.server_close()
-    assert len(receipts)==2
+    assert len(receipts)==(1 if colocated else 2)
     assert all(not value["error"] for value in receipts.values()),receipts
     assert {path for path,auth in requests}=={"/project","/scenario"}
     assert all(auth is None for path,auth in requests)

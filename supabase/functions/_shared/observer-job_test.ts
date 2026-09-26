@@ -308,3 +308,35 @@ Deno.test("private source ZIP signing is restricted to preparation and the immut
   await assertRejects(() => jobRequest(request(), deps), ProxyError);
   assertEquals(signed, 1);
 });
+
+Deno.test("a colocated engine job carries only the execute job's own fields", () => {
+  const expected: WorkflowIdentity = { ...identity, workflow: "observer-engine.yml" };
+  const engine = {
+    kind: "engine",
+    job_id: job,
+    run_id: payload.run_id,
+    run_credential: "obs_" + payload.run_id + "." + "e".repeat(43),
+    session_url: payload.session_url,
+    scenario_url: "https://private.test/scenario.zip",
+    scenario_digest: "a".repeat(64),
+    runtime_seconds: 120,
+    artifact_upload: { kind: "github" },
+    archive_url: payload.archive_url,
+    colocated: {
+      run_credential: payload.run_credential,
+      model_base_url: payload.model_base_url,
+      source_digest: payload.source_digest,
+      manifest: payload.manifest,
+    },
+  };
+  assertEquals(validateJobPayload(engine, expected, job), engine);
+  for (
+    const change of [
+      { colocated: { ...engine.colocated, run_credential: engine.run_credential } },
+      { colocated: { ...engine.colocated, extra: "x" } },
+      { colocated: { ...engine.colocated, manifest: { ...payload.manifest, image: "python:latest" } } },
+      { colocated: undefined },
+      { instance: { seed: "f".repeat(64) } },
+    ]
+  ) assertThrows(() => validateJobPayload({ ...engine, ...change }, expected, job), ProxyError);
+});

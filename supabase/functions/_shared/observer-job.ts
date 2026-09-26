@@ -66,6 +66,8 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "runtime_seconds",
       "artifact_upload",
       "instance",
+      "archive_url",
+      "colocated",
     ],
     prepare: [
       "kind",
@@ -109,11 +111,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     string("run_credential", new RegExp("^obs_" + run + "\\.[A-Za-z0-9_-]{40,100}$"));
     url("session_url");
   }
-  if (kind === "execute") {
-    url("archive_url");
-    url("model_base_url");
-    string("source_digest", hash);
-    const manifest = value.manifest as Record<string, unknown> | null;
+  const projectManifest = (manifest: Record<string, unknown> | null) => {
     if (
       !manifest || typeof manifest !== "object" || Array.isArray(manifest) ||
       manifest.schema_version !== "observer-project-v1" ||
@@ -124,6 +122,33 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     ) {
       throw new ProxyError(503, "invalid_job_payload");
     }
+  };
+  if (kind === "execute") {
+    url("archive_url");
+    url("model_base_url");
+    string("source_digest", hash);
+    projectManifest(value.manifest as Record<string, unknown> | null);
+  }
+  if (kind === "engine" && value.colocated !== undefined) {
+    // A public-scenario run whose participant container starts inside the
+    // engine job; it carries the execute job's fields under "colocated".
+    const run = string("run_id", uuid);
+    url("archive_url");
+    const colocated = value.colocated as Record<string, unknown> | null;
+    if (
+      !colocated || typeof colocated !== "object" || Array.isArray(colocated) || value.instance !== undefined ||
+      Object.keys(colocated).sort().join(",") !== "manifest,model_base_url,run_credential,source_digest" ||
+      typeof colocated.run_credential !== "string" ||
+      !new RegExp("^obs_" + run + "\\.[A-Za-z0-9_-]{40,100}$").test(colocated.run_credential) ||
+      colocated.run_credential === value.run_credential ||
+      typeof colocated.source_digest !== "string" || !hash.test(colocated.source_digest) ||
+      typeof colocated.model_base_url !== "string" || !colocated.model_base_url.startsWith("https://")
+    ) {
+      throw new ProxyError(503, "invalid_job_payload");
+    }
+    projectManifest(colocated.manifest as Record<string, unknown> | null);
+  } else if (kind === "engine" && value.archive_url !== undefined) {
+    throw new ProxyError(503, "invalid_job_payload");
   }
   if (kind === "engine") {
     url("scenario_url");
@@ -137,13 +162,15 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     validateArtifactUpload(value.artifact_upload, string("run_id", uuid), "result");
     if (value.instance !== undefined) {
       const instance = value.instance as Record<string, unknown>;
-      if (!instance || typeof instance !== "object" || Array.isArray(instance) ||
+      if (
+        !instance || typeof instance !== "object" || Array.isArray(instance) ||
         Object.keys(instance).sort().join(",") !== "bundle_digest,max_candidates,profile,profile_id,seed" ||
         typeof instance.seed !== "string" || !hash.test(instance.seed) ||
         typeof instance.profile_id !== "string" || !uuid.test(instance.profile_id) ||
         instance.bundle_digest !== value.scenario_digest || instance.max_candidates !== 32 ||
         !instance.profile || typeof instance.profile !== "object" || Array.isArray(instance.profile) ||
-        JSON.stringify(instance.profile).length > 65536) {
+        JSON.stringify(instance.profile).length > 65536
+      ) {
         throw new ProxyError(503, "invalid_job_payload");
       }
     }
