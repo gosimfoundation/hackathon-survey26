@@ -133,3 +133,93 @@ Deno.test("withdrawal uses the caller's team RPC and database refusals keep thei
     assertEquals(error.code, code === "other" ? "portal_request_failed" : code);
   }
 });
+
+Deno.test("result download adds the team's stored agent.log, or falls back to the original result", async () => {
+  const { singleFileZip, readZipEntry } = await import("./observer-zip.ts");
+  const run = "30000000-0000-4000-8000-000000000001";
+  const encode = (s: string) => new TextEncoder().encode(s);
+  const objects = new Map<string, Uint8Array>();
+  const signed: string[] = [];
+  const result = await singleFileZip("decisions.csv", encode("night,action\n"));
+  const client = (visible: boolean) =>
+    ({
+      from: (table: string) => {
+        assertEquals(table, "observer_runs");
+        const query = {
+          select: () => query,
+          eq: (_column: string, value: string) => {
+            assertEquals(value, run);
+            return query;
+          },
+          maybeSingle: () =>
+            Promise.resolve({
+              data: visible ? { result_path: "github:ORG/participant-x@" + "a".repeat(40) } : null,
+              error: null,
+            }),
+        };
+        return query;
+      },
+      storage: {
+        from: (bucket: string) => {
+          assertEquals(bucket, "observer-staging");
+          return {
+            download: (path: string) =>
+              Promise.resolve(
+                objects.has(path)
+                  ? { data: new Blob([objects.get(path)! as Uint8Array<ArrayBuffer>]), error: null }
+                  : { data: null, error: { message: "Object not found" } },
+              ),
+            upload: (path: string, data: Uint8Array, options: Record<string, unknown>) => {
+              assertEquals(options, { contentType: "application/zip", upsert: true });
+              objects.set(path, data);
+              return Promise.resolve({ data: { path }, error: null });
+            },
+            createSignedUrl: (path: string, seconds: number) => {
+              assert(seconds <= 120);
+              signed.push(path);
+              return Promise.resolve({ data: { signedUrl: "https://storage.test/" + path }, error: null });
+            },
+          };
+        },
+      },
+    }) as unknown as SupabaseClient;
+  const download = (visible = true) =>
+    portalRequest(
+      new Request("https://portal.test", {
+        method: "POST",
+        body: JSON.stringify({ action: "download_result", run_id: run }),
+      }),
+      {
+        user: client(visible),
+        service: client(visible),
+        userId: user,
+        masterKey: master,
+        modelBases: [],
+        httpBases: [],
+        artifactDownload: (reference) => {
+          assert(reference.startsWith("github:"));
+          return Promise.resolve("https://codeload.github.com/result.zip");
+        },
+        fetchArchive: (url) => {
+          assertEquals(String(url), "https://codeload.github.com/result.zip");
+          return Promise.resolve(new Response(result as Uint8Array<ArrayBuffer>));
+        },
+      },
+    );
+  // Another team's run is invisible before any service storage read.
+  await assertRejects(() => download(false), ProxyError, "result_not_ready");
+  assertEquals(signed, []);
+  // No stored log (local session, older run): the original result is unchanged.
+  assertEquals(await download(), { url: "https://codeload.github.com/result.zip" });
+  objects.set(
+    "agent-logs/" + run + "/agent-log.zip",
+    await singleFileZip("agent.log", encode("[platform] project stderr\nhello\n")),
+  );
+  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
+  const combined = objects.get("agent-logs/" + run + "/observer-result.zip")!;
+  assertEquals(new TextDecoder().decode((await readZipEntry(combined, "agent.log", 1000))!).endsWith("hello\n"), true);
+  assertEquals(new TextDecoder().decode((await readZipEntry(combined, "decisions.csv", 1000))!), "night,action\n");
+  // A damaged stored log never blocks the trusted result.
+  objects.set("agent-logs/" + run + "/agent-log.zip", encode("damaged"));
+  assertEquals(await download(), { url: "https://codeload.github.com/result.zip" });
+});

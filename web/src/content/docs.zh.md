@@ -130,7 +130,7 @@ bonus      = program == band 时 base · {DARK: 0.25, BRIGHT: 0.15, BACKUP: 0.08
 
 本地运行时，下文的「平台」就是 `local_runner.py`。它和你的程序之间是一问一答的 JSON 对话：每个时隙，平台发来「现在的天况和候选天区」，你的程序回一句「拍这个」或「等待」。下面是每条消息的精确格式。（本页底部有可交互的协议消息演示。）
 
-平台在每个场景上启动一次你的入口脚本（用 `--agent` 指定），并在整个运行期间保持进程存活。消息通过标准输入输出传递，每行一个 JSON 对象；标准输出不要打印其他内容。标准错误记录在输出目录的 `agent.log` 里。每条消息都带 `protocol_version`、`message_type`，除 `initialize` 外还带 `decision_sequence`。
+平台在每个场景上启动一次你的入口脚本（用 `--agent` 指定），并在整个运行期间保持进程存活。消息通过标准输入输出传递，每行一个 JSON 对象；标准输出不要打印其他内容。标准错误记录在输出目录的 `agent.log` 里；云端评测时，队伍的私有结果 ZIP 同样包含 `agent.log`（构建输出与标准错误的最后 2 MB，平台凭据和网址已移除）。每条消息都带 `protocol_version`、`message_type`，除 `initialize` 外还带 `decision_sequence`。
 
 ### `initialize`（平台 → 智能体，一次，不需回复）
 

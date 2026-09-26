@@ -1,6 +1,7 @@
 """Trusted workflow HTTP transport; credentials stay in process memory."""
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -9,6 +10,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
+
+
+# A scrubbed participant log, base64 encoded in one bounded request.
+AGENT_LOG_MAX_BYTES = 2 * 1024 * 1024 + 65536
+AGENT_LOG_MAX_BODY = 3 * 1024 * 1024
 
 
 class JobError(RuntimeError):
@@ -54,12 +60,13 @@ class Http:
         except (urllib.error.URLError, TimeoutError, OSError):
             raise JobError("job_network_error") from None
 
-    def json(self, url: str, *, body: dict | None = None, bearer: str | None = None) -> dict:
+    def json(self, url: str, *, body: dict | None = None, bearer: str | None = None,
+             max_body: int = 1100000) -> dict:
         headers = {"Accept": "application/json"}
         data = None
         if body is not None:
             data = json.dumps(body, allow_nan=False, separators=(",", ":")).encode()
-            if len(data) > 1100000:
+            if len(data) > max_body:
                 raise JobError("job_request_too_large")
             headers["Content-Type"] = "application/json"
         if bearer is not None:
@@ -108,12 +115,12 @@ class JobClient:
             raise JobError("invalid_job_nonce")
         self.url, self.job_id, self.nonce, self.identity = url, job_id, nonce, identity
 
-    def _call(self, action: str, **fields):
+    def _call(self, action: str, *, max_body: int = 1100000, **fields):
         # Claim and receipt are backend-idempotent; retry exactly the same body.
         body = {"action": action, "job_id": self.job_id, **fields}
         for attempt in range(3):
             try:
-                response = self.http.json(self.url, body=body, bearer=self.identity())
+                response = self.http.json(self.url, body=body, bearer=self.identity(), max_body=max_body)
                 value = response.get("data")
                 if not isinstance(value, dict):
                     raise JobError("invalid_job_response")
@@ -131,6 +138,12 @@ class JobClient:
         # A fresh OIDC identity and short-lived token are obtained only when the
         # trusted preparation/scoring job needs to write its immutable artifact.
         return self._call("artifact_repository")
+
+    def agent_log(self, text: str) -> None:
+        # Sent before the receipt. The nonce lets the backend re-read this
+        # claimed job and bind the log to its own run, never a chosen run ID.
+        data = text.encode()[-AGENT_LOG_MAX_BYTES:]
+        self._call("agent_log", nonce=self.nonce, log=base64.b64encode(data).decode(), max_body=AGENT_LOG_MAX_BODY)
 
     def complete(self, result: dict, *, error: str = "") -> None:
         self._call("complete", result=result, error=error)

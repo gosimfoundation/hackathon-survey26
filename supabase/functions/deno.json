@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "test:observer": "deno test _shared/observer-model_test.ts _shared/observer-github_test.ts _shared/observer-job_test.ts _shared/observer-dispatch_test.ts _shared/observer-orchestrate_test.ts _shared/observer-prepare_test.ts _shared/observer-cleanup_test.ts _shared/observer-personal-model_test.ts _shared/observer-portal_test.ts _shared/observer-public-base_test.ts _shared/observer-session_test.ts",
-    "check:observer": "deno check observer-model/index.ts observer-session/index.ts observer-job/index.ts observer-dispatch/index.ts _shared/observer-model_test.ts _shared/observer-github_test.ts _shared/observer-job_test.ts _shared/observer-portal_test.ts _shared/observer-public-base_test.ts _shared/observer-session_test.ts observer-portal/index.ts",
+    "test:observer": "deno test _shared/observer-model_test.ts _shared/observer-github_test.ts _shared/observer-job_test.ts _shared/observer-dispatch_test.ts _shared/observer-orchestrate_test.ts _shared/observer-prepare_test.ts _shared/observer-cleanup_test.ts _shared/observer-personal-model_test.ts _shared/observer-portal_test.ts _shared/observer-public-base_test.ts _shared/observer-session_test.ts && deno test --allow-run=zip,unzip --allow-read --allow-write _shared/observer-zip_test.ts",
+    "check:observer": "deno check observer-model/index.ts observer-session/index.ts observer-job/index.ts observer-dispatch/index.ts _shared/observer-model_test.ts _shared/observer-github_test.ts _shared/observer-job_test.ts _shared/observer-portal_test.ts _shared/observer-public-base_test.ts _shared/observer-session_test.ts observer-portal/index.ts _shared/observer-zip_test.ts",
     "test": "deno test -A _shared",
     "check": "deno check score-results/index.ts leaderboard/index.ts _shared/scorer.ts _shared/metrics.ts",
     "fmt": "deno fmt",

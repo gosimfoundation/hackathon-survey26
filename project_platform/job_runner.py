@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .artifacts import download_project, pack_results, store_private_artifact, upload_artifact
 from .docker_runtime import DockerWorkspace
-from .diagnostics import ProjectJobFailure, private_log, safe_code
+from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
 from .manifest import ProjectManifest
@@ -18,6 +18,19 @@ from .session import SessionClient
 from .scenario_job import prepare_bounded
 from .scenario_instances import InstanceError
 from .trusted_engine import ColocatedProvider, result_summary, run_session
+
+# Carried from the execute handler to run_claimed only; never part of a receipt.
+AGENT_LOG_KEY = "_agent_log"
+
+
+def deliver_agent_log(client: JobClient, text: str | None) -> None:
+    """Best effort: a missing log must never change the run's outcome."""
+    if not text:
+        return
+    try:
+        client.agent_log(text)
+    except Exception:
+        pass
 
 
 def execute_job(payload: dict, root: Path, http: Http) -> dict:
@@ -36,20 +49,28 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         "OPENAI_BASE_URL": payload["model_base_url"], "OPENAI_API_KEY": payload["run_credential"],
     }
     runtime= DockerWorkspace(workspace, manifest, manifest.image)
+    secrets = (payload['run_credential'],)
+    def logs():
+        stderr = runtime.transport.log if runtime.transport else ''
+        return (private_log(runtime.build_log+'\n'+stderr, secrets),
+                agent_log(runtime.build_log, stderr, secrets,
+                          truncated=bool(runtime.transport and runtime.transport.log_truncated)))
     try:
         # The image is immutable; pull happens on the disposable execution host,
         # before any participant process. No installation/model master keys exist.
         runtime.pull()
         outcome = execute(runtime, client, environment)
     except Exception as error:
-        raise ProjectJobFailure({'stage':'execute','code':safe_code(error),
-            'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),
-                              (payload['run_credential'],))}) from None
+        runtime.close()
+        log, full = logs()
+        failure = ProjectJobFailure({'stage':'execute','code':safe_code(error),'log':log})
+        failure.agent_log = full
+        raise failure from None
     finally:
         runtime.close()
+    log, full = logs()
     return {"run_id": payload["run_id"], "status": outcome["status"],
-            'diagnostics':{'stage':'execute','code':'completed',
-              'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),(payload['run_credential'],))}}
+            'diagnostics':{'stage':'execute','code':'completed','log':log}, AGENT_LOG_KEY: full}
 
 
 def _participant_runtime(payload: dict, participant: dict, root: Path, http: Http):
@@ -147,8 +168,14 @@ def run_claimed(kind: str, client: JobClient, root: Path) -> None:
             except Exception:
                 pass
         diagnostics=error.diagnostics if isinstance(error,ProjectJobFailure) else {'stage':kind,'code':safe_code(error),'log':''}
+        if kind == "execute":
+            # Must precede the receipt: the job API binds the log to this run
+            # only while the job is still claimed.
+            deliver_agent_log(client, getattr(error, "agent_log", None))
         client.complete({'diagnostics':diagnostics}, error=kind + "_job_failed")
         raise JobError(kind + "_job_failed") from None
+    if kind == "execute":
+        deliver_agent_log(client, result.pop(AGENT_LOG_KEY, None))
     client.complete(result)
 
 

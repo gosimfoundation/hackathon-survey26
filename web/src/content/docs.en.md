@@ -130,7 +130,7 @@ Your agent runs on your own machine, in any language, with any dependencies, and
 
 When you run locally, “the platform” below is `local_runner.py`. It and your program hold a question-and-answer JSON conversation: each slot, the platform sends “here is the sky and the candidates” and your program answers “observe this one” or “wait”. Below is the exact shape of every message. (An interactive protocol-message explorer sits at the bottom of this page.)
 
-The platform starts your entry script (given with `--agent`) once per scenario and keeps the process alive for the whole run. Messages are one JSON object per line on standard input and output; print nothing else to standard output. Standard error is captured into `agent.log` in the output directory. Every message carries `protocol_version`, `message_type` and (except `initialize`) `decision_sequence`.
+The platform starts your entry script (given with `--agent`) once per scenario and keeps the process alive for the whole run. Messages are one JSON object per line on standard input and output; print nothing else to standard output. Standard error is captured into `agent.log` in the output directory; for a cloud evaluation the team's private result ZIP contains `agent.log` too (build output and the last 2 MB of standard error, with platform credentials and URLs removed). Every message carries `protocol_version`, `message_type` and (except `initialize`) `decision_sequence`.
 
 ### `initialize` (platform → agent, once, no reply)
 

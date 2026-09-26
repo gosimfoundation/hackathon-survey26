@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .manifest import ProjectError, ProjectManifest
-from .transport import ExecutionError, JsonlTransport
+from .transport import AGENT_LOG_BYTES, ExecutionError, JsonlTransport
 
 _RESOLVED_IMAGE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:-]*@sha256:[0-9a-f]{64}$")
 _RUNTIME_ENV = {"OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID",
@@ -133,7 +133,8 @@ class DockerWorkspace:
         command = self._command(name=self.name, environment=env)
         command += [self.image, "-c", "exec " + shlex.join(self.manifest.run)]
         secrets = tuple(value for key, value in run_environment.items() if key.endswith(("TOKEN", "KEY")))
-        self.transport = JsonlTransport(command, environment={**self.client_env, **env}, redactions=secrets)
+        self.transport = JsonlTransport(command, environment={**self.client_env, **env}, redactions=secrets,
+                                        log_limit=AGENT_LOG_BYTES)
         return self.transport
 
     def _remove(self, name: str) -> None:

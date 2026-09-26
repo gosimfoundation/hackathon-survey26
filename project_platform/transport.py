@@ -17,6 +17,8 @@ MAX_RESPONSE_BYTES = 512 * 1024
 MAX_REQUEST_BYTES = 16 * 1024 * 1024
 MAX_INITIALIZATION_BYTES = 128 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024
+# The participant's own stderr, kept for the private result download as agent.log.
+AGENT_LOG_BYTES = 2 * 1024 * 1024
 
 
 class ExecutionError(RuntimeError):
@@ -32,12 +34,15 @@ class JsonlTransport:
 
     def __init__(self, command: list[str], *, cwd: Path | None = None,
                  environment: Mapping[str, str] | None = None,
-                 redactions: tuple[str, ...] = (), initialization_seconds: float = 30):
+                 redactions: tuple[str, ...] = (), initialization_seconds: float = 30,
+                 log_limit: int = MAX_LOG_BYTES):
         self.command = command
         self.cwd = cwd
         self.environment = dict(environment) if environment is not None else None
         self.initialization_seconds = initialization_seconds
         self.redactions = tuple(value for value in redactions if value)
+        self.log_limit = log_limit
+        self.log_truncated = False
         self.process: subprocess.Popen | None = None
         self._buffer = bytearray()
         self._log = bytearray()
@@ -64,13 +69,17 @@ class JsonlTransport:
                 return
             with self._lock:
                 self._log.extend(chunk)
-                if len(self._log) > MAX_LOG_BYTES:
-                    del self._log[:-MAX_LOG_BYTES]
+                # Trim with slack, so a chatty project costs amortized O(1) per byte.
+                if len(self._log) > 2 * self.log_limit:
+                    del self._log[:-self.log_limit]
+                    self.log_truncated = True
 
     @property
     def log(self) -> str:
         with self._lock:
-            text = bytes(self._log).decode(errors="replace")
+            if len(self._log) > self.log_limit:
+                self.log_truncated = True
+            text = bytes(self._log[-self.log_limit:]).decode(errors="replace")
         for secret in self.redactions:
             text = text.replace(secret, "[REDACTED]")
         return text
