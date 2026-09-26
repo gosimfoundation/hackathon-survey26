@@ -390,3 +390,51 @@ def test_online_board_shows_same_batch_mean_and_keeps_private_artifacts_hidden(p
         expect(phase_row).to_contain_text('Complete project / Local-session CSV',timeout=15000)
         assert not errors,errors
         browser.close()
+
+
+def test_team_chooses_clears_and_is_locked_out_of_its_final_version(portal_site,run_setup):
+    from test_project_eval_ux import revision
+    s=run_setup;uri=s['uri'];password='local-browser-test-password-93'
+    query(uri,"update private.observer_site_mode set mode='competition',phase_id=%s",(s['phase'],))
+    query(uri,"update public.phases set counts_for_final=true,ends_at=now()+interval '1 day' where id=%s",(s['phase'],))
+    query(uri,'update auth.users set raw_user_meta_data=raw_user_meta_data || %s where id=%s',
+          (Jsonb({'password_hash':hashlib.sha256(password.encode()).hexdigest()}),s['user']))
+    query(uri,"update public.observer_runs set status='failed' where id=%s",(s['run'],))
+    query(uri,"update public.observer_batches set status='failed' where id=(select batch_id from public.observer_runs where id=%s)",(s['run'],))
+    first=revision(s);second=revision(s)
+    query(uri,"update public.observer_projects set title='Second agent' where id=(select project_id from public.observer_revisions where id=%s)",(second,))
+    with sync_playwright() as pw:
+        browser=pw.chromium.launch(channel=os.environ.get('OBSERVER_BROWSER_CHANNEL'))
+        context=browser.new_context(viewport={'width':1365,'height':950},locale='en-US')
+        page=context.new_page();script_errors=[];page.on('pageerror',lambda e:script_errors.append(str(e)))
+        page.on('dialog',lambda d:d.accept())
+        page.route('**/functions/v1/observer-portal',lambda route:route.fulfill(response=route.fetch(url=s['stack']['urls']['observer-portal'])))
+        page.goto(portal_site+'/register?mode=login&lang=en')
+        page.get_by_test_id('login-email').fill(f"{s['user']}@example.test")
+        page.get_by_test_id('login-password').fill(password)
+        page.get_by_test_id('login-submit').click()
+        expect(page).to_have_url(portal_site+'/dashboard',timeout=20000)
+        page.get_by_role('link',name='Participate',exact=True).click()
+        final=page.get_by_test_id('final-version')
+        expect(final).to_contain_text('No final version yet',timeout=15000)
+        expect(final).to_contain_text('Only that hidden score decides the final ranking')
+        final.locator(f'[data-final-revision-id="{second}"]').get_by_test_id('final-version-set').click()
+        expect(page.get_by_role('status').filter(has_text='Final version saved.')).to_be_visible(timeout=15000)
+        expect(final.get_by_test_id('final-version-current')).to_contain_text('Second agent')
+        expect(final.get_by_test_id('final-version-current')).to_contain_text('Chosen by your team')
+        expect(page.get_by_test_id('project-versions').locator(f'[data-revision-id="{second}"]').get_by_test_id('final-version-badge')).to_be_visible()
+        # A chosen version cannot be withdrawn; the button is not offered.
+        expect(page.get_by_test_id('project-versions').locator(f'[data-revision-id="{second}"]').get_by_test_id('project-withdraw')).to_have_count(0)
+        final.get_by_test_id('final-version-clear').click()
+        expect(page.get_by_role('status').filter(has_text='Choice cleared')).to_be_visible(timeout=15000)
+        expect(final).to_contain_text('No final version yet')
+        final.locator(f'[data-final-revision-id="{first}"]').get_by_test_id('final-version-set').click()
+        expect(final.get_by_test_id('final-version-current')).to_contain_text('Chosen by your team',timeout=15000)
+        query(uri,"update public.phases set ends_at=now()-interval '1 second' where id=%s",(s['phase'],))
+        page.get_by_role('button',name='Refresh',exact=True).click()
+        expect(final.get_by_test_id('final-version-locked')).to_be_visible(timeout=15000)
+        expect(final.get_by_test_id('final-version-set')).to_have_count(0)
+        expect(final.get_by_test_id('final-version-clear')).to_have_count(0)
+        assert query(uri,'select revision_id from private.observer_final_versions where team_id=%s',(s['team'],))==[(first,)]
+        context.close();browser.close()
+        assert not script_errors,script_errors

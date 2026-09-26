@@ -223,3 +223,68 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
   objects.set("agent-logs/" + run + "/agent-log.zip", encode("damaged"));
   assertEquals(await download(), { url: "https://codeload.github.com/result.zip" });
 });
+
+Deno.test("the final version is set or cleared through the caller's team RPC", async () => {
+  const phase = "30000000-0000-4000-8000-000000000001", revision = "30000000-0000-4000-8000-000000000002";
+  const c = clients({ revision_id: revision, source: "chosen" });
+  assertEquals(await portal({ action: "set_final_version", phase_id: phase, revision_id: revision }, c), {
+    final_version: { revision_id: revision, source: "chosen" },
+  });
+  await portal({ action: "set_final_version", phase_id: phase, revision_id: null }, c);
+  await portal({ action: "set_final_version", phase_id: phase }, c);
+  assertEquals(c.calls, [
+    { client: "user", name: "observer_set_final_version", args: { p_phase: phase, p_revision: revision } },
+    { client: "user", name: "observer_set_final_version", args: { p_phase: phase, p_revision: null } },
+    { client: "user", name: "observer_set_final_version", args: { p_phase: phase, p_revision: null } },
+  ]);
+  for (const fields of [{ phase_id: "x", revision_id: revision }, { phase_id: phase, revision_id: "x" }]) {
+    const refused = clients();
+    await assertRejects(() => portal({ action: "set_final_version", ...fields }, refused), ProxyError);
+    assertEquals(refused.calls.length, 0);
+  }
+  for (const code of ["final_version_locked", "final_phase_invalid", "revision_not_approved", "other"]) {
+    const refused = {
+      user: { rpc: () => Promise.resolve({ data: null, error: { message: code } }) } as unknown as SupabaseClient,
+      service: clients().service,
+    };
+    const error = await assertRejects(
+      () => portal({ action: "set_final_version", phase_id: phase, revision_id: revision }, { ...refused, calls: [] }),
+      ProxyError,
+    );
+    assertEquals(error.code, code === "other" ? "portal_request_failed" : code);
+  }
+});
+
+Deno.test("a result the participant cannot read (another team, or a sealed hidden run) is never signed", async () => {
+  const run = "30000000-0000-4000-8000-000000000003";
+  const signed: string[] = [];
+  const invisible = {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+    }),
+  } as unknown as SupabaseClient;
+  const service = {
+    storage: { from: () => ({ createSignedUrl: (path: string) => (signed.push(path), Promise.resolve({})) }) },
+  } as unknown as SupabaseClient;
+  const error = await assertRejects(
+    () =>
+      portalRequest(
+        new Request("https://portal.test", {
+          method: "POST",
+          body: JSON.stringify({ action: "download_result", run_id: run }),
+        }),
+        {
+          user: invisible,
+          service,
+          userId: user,
+          masterKey: master,
+          modelBases: [],
+          httpBases: [],
+          artifactDownload: (reference) => (signed.push(reference), Promise.resolve("https://x.test")),
+        },
+      ),
+    ProxyError,
+  );
+  assertEquals(error.code, "result_not_ready");
+  assertEquals(signed, []);
+});

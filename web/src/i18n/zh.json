@@ -1254,7 +1254,9 @@
     },
     "calibrated_score": "校准分",
     "raw_score": "原始分",
-    "calibration_note": "排名使用难度校准后的分数，各项得分展示校准前的原始值。"
+    "calibration_note": "排名使用难度校准后的分数，各项得分展示校准前的原始值。",
+    "public_board": "公开场景榜：各队在公开正式场景上的最高分评测。榜单实时更新，但不决定最终排名——线上赛结束后，每队的最终版本会在一个隐藏场景上评测一次，只按这个成绩排名。",
+    "final_board": "最终排名：线上赛结束后，每队最终版本在隐藏场景上评测一次的成绩。"
   },
   "cta": {
     "title": "下一次观测，由你和智能体决定",
@@ -2179,7 +2181,18 @@
       "flags": "标记",
       "code": "邀请码",
       "hidden": "已隐藏",
-      "locked": "已锁定"
+      "locked": "已锁定",
+      "final_title": "最终版本",
+      "final_help": "每队用于隐藏场景决赛评测的版本：本队的选择，否则为最高分评测的版本。中转模式的队伍在隐藏评测期间需要保持页面打开。",
+      "final_phase": "赛程",
+      "final_version": "版本",
+      "final_source": "来源",
+      "final_chosen": "本队选择",
+      "final_best": "最高分评测",
+      "final_score": "最高分",
+      "final_model": "模型密钥",
+      "final_locked": "已锁定",
+      "final_open": "可修改至"
     },
     "announcements": {
       "new": "新建公告",

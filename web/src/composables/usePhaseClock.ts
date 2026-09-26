@@ -18,7 +18,7 @@ let fetchedAt = 0
  */
 async function loadUpcoming(): Promise<ScheduledPhase[]> {
   const { data, error } = await supabase.from('phases')
-    .select('id,slug,name_en,name_zh,sort_order,starts_at,ends_at,is_active,observer_settings:observer_phase_settings(access_team_id)')
+    .select('id,slug,name_en,name_zh,sort_order,starts_at,ends_at,is_active,observer_settings:observer_phase_settings(access_team_id,sealed)')
     .eq('is_active', true).gt('starts_at', new Date().toISOString())
     .order('starts_at', { ascending: true }).limit(10)
   if (error) throw error

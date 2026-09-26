@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canWithdraw, countedEvaluations, recentDuplicate, visibleProjects, withdrawnCount } from '../src/lib/projectEvaluation.ts'
+import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../src/lib/projectEvaluation.ts'
 
 const batches = [
   { revision_id: 'a', phase_id: 'p', status: 'scored', quota_refunded: false },
@@ -44,4 +44,24 @@ test('a resubmission of the same project within minutes is recognized', () => {
   assert.ok(!recentDuplicate(projects, 'Agent', 'https://github.com/owner/repo', now + 20 * 60_000))
   assert.ok(recentDuplicate(projects, 'Zip', null, now))
   assert.ok(!recentDuplicate(projects, 'Agent', null, now))
+})
+
+test('the final version: chosen or default, changeable until the deadline', () => {
+  const base = { deadline: '2026-10-07T15:59:00Z', locked: false, chosen_by: null, chosen_at: null, best_batch_id: 'b1', best_revision_id: 'r1', best_score: 12 }
+  const defaulted = { ...base, phase_id: 'online', revision_id: 'r1', source: 'best' as const, chosen_revision_id: null }
+  const chosen = { ...base, phase_id: 'other', revision_id: 'r2', source: 'chosen' as const, chosen_revision_id: 'r2' }
+  const before = Date.parse('2026-10-06T00:00:00Z'), after = Date.parse('2026-10-07T16:00:00Z')
+  assert.equal(finalVersionFor([chosen, defaulted], 'online'), defaulted)
+  assert.equal(finalVersionFor([chosen, defaulted], 'missing'), chosen)
+  assert.equal(finalVersionFor(null, 'online'), null)
+  assert.equal(finalRole(defaulted, 'r1'), 'best')
+  assert.equal(finalRole(chosen, 'r2'), 'chosen')
+  assert.equal(finalRole(chosen, 'r1'), null)
+  assert.ok(canChooseFinal(defaulted, 'r1', before))
+  assert.ok(!canChooseFinal(chosen, 'r2', before))
+  assert.ok(canChooseFinal(chosen, 'r1', before))
+  assert.ok(!canChooseFinal(chosen, 'r1', after))
+  assert.ok(!canChooseFinal({ ...chosen, locked: true }, 'r1', before))
+  assert.ok(canClearFinal(chosen, before) && !canClearFinal(defaulted, before) && !canClearFinal(chosen, after))
+  assert.ok(!canChooseFinal(null, 'r1', before) && !canClearFinal(null, before))
 })

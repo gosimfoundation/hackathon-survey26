@@ -443,6 +443,43 @@ def test_real_portal_hashes_csv_bytes_and_result_download_is_team_scoped(run_set
     assert result_file.read_bytes()==pack_files((ProjectFile('decisions.csv',raw),))
 
 
+def test_real_portal_hides_sealed_final_results_until_published(run_setup):
+    s=run_setup;url=s['stack']['urls']['observer-portal'];uri=s['uri'];h=s['stack']['harness']
+    token=user_token(str(s['user']),f"{s['user']}@example.test")
+    result_path=f"{s['team']}/{s['run']}/result.zip"
+    result_file=h.storage_root/'observer-staging'/result_path;result_file.parent.mkdir(parents=True)
+    result_file.write_bytes(pack_files((ProjectFile('decisions.csv',b'night,action\n'),)))
+    query(uri,"update public.observer_runs set status='scored',score=10,result_path=%s,finished_at=now() where id=%s",
+          (result_path,s['run']))
+    query(uri,"update public.observer_phase_settings set sealed=true where phase_id=%s",(s['phase'],))
+    query(uri,"update public.phases set leaderboard_mode='hidden',counts_for_final=true where id=%s",(s['phase'],))
+    assert post(url,{'action':'download_result','run_id':str(s['run'])},token)==(404,{'error':'result_not_ready'})
+    assert post(url,{'action':'diagnostics','run_id':str(s['run'])},token)==(400,{'error':'diagnostics_not_found'})
+    status,listed=post(url,{'action':'list'},token);assert status==200,listed
+    assert not listed['data']['batches'] and all(p['phase_id']!=str(s['phase']) for p in listed['data']['phases'])
+    assert all(f['phase_id']!=str(s['phase']) for f in listed['data']['final_versions'])
+    query(uri,"update public.phases set leaderboard_mode='published' where id=%s",(s['phase'],))
+    status,response=post(url,{'action':'download_result','run_id':str(s['run'])},token)
+    assert status==200,response
+    status,listed=post(url,{'action':'list'},token)
+    assert [b['observer_runs'][0]['id'] for b in listed['data']['batches']]==[str(s['run'])]
+
+
+def test_real_portal_sets_and_lists_the_final_version(run_setup):
+    from test_project_eval_ux import revision
+    s=run_setup;url=s['stack']['urls']['observer-portal'];uri=s['uri']
+    token=user_token(str(s['user']),f"{s['user']}@example.test")
+    query(uri,"update public.phases set counts_for_final=true,ends_at=now()+interval '1 day' where id=%s",(s['phase'],))
+    rev=revision(s)
+    status,response=post(url,{'action':'set_final_version','phase_id':str(s['phase']),'revision_id':str(rev)},token)
+    assert status==200 and response['data']['final_version']['revision_id']==str(rev),response
+    status,listed=post(url,{'action':'list'},token)
+    mine=next(f for f in listed['data']['final_versions'] if f['phase_id']==str(s['phase']))
+    assert (mine['revision_id'],mine['source'],mine['locked'])==(str(rev),'chosen',False)
+    query(uri,"update public.phases set ends_at=now()-interval '1 second' where id=%s",(s['phase'],))
+    assert post(url,{'action':'set_final_version','phase_id':str(s['phase'])},token)==(400,{'error':'final_version_locked'})
+
+
 def test_local_cli_and_scoped_credential_export_exact_official_csv(run_setup,tmp_path):
     s=run_setup;uri=s['uri'];url=s['stack']['urls']['observer-session']
     # Retire the fixture's direct session. This journey starts through the real

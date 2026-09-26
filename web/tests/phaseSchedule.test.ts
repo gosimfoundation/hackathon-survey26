@@ -28,6 +28,14 @@ test('team-restricted test phases are never the public next stage', () => {
   assert.deepEqual(upcomingPublicPhases(rows, now).map(p => p.slug), ['online'])
 })
 
+test('the sealed hidden final phase is never shown as the next stage', () => {
+  const rows = [
+    row('final-hidden', '2026-10-07T15:59:00Z', { observer_settings: { access_team_id: null, sealed: true } }),
+    row('online', '2026-10-04T16:00:00Z', { observer_settings: [{ access_team_id: null, sealed: false }] }),
+  ]
+  assert.deepEqual(upcomingPublicPhases(rows, now).map(p => p.slug), ['online'])
+})
+
 test('time left reads in whole days, then hours', () => {
   assert.deepEqual(timeLeft('2026-10-04T16:00:00Z', now), { unit: 'days', n: 9 })
   assert.deepEqual(timeLeft('2026-09-26T12:00:00Z', now), { unit: 'day', n: 1 })

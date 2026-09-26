@@ -24,9 +24,9 @@ def test_personal_provider_configuration_keeps_https_boundaries():
 def test_activation_preserves_old_rows_and_refuses_existing_competition_results(setup):
     s=setup;uri=s['uri'];phase=uuid.uuid4()
     query(uri,"insert into public.phases(id,slug,name_en,name_zh,counts_for_final,daily_limit) values(%s,'online','Formal','正式赛',true,10)",(phase,))
-    formal=[uuid.uuid4(),uuid.uuid4()]
+    formal=[uuid.uuid4(),uuid.uuid4(),uuid.uuid4()]
     for scenario in formal:
-        query(uri,"insert into public.scenarios(id,slug,name,weather_public,forecasts_public,events_public) values(%s,%s,'Hidden',false,false,false)",(scenario,str(scenario)))
+        query(uri,"insert into public.scenarios(id,slug,name,weather_public,forecasts_public,events_public) values(%s,%s,'Public',true,true,true)",(scenario,str(scenario)))
         query(uri,'insert into public.phase_scenarios values(%s,%s)',(phase,scenario))
         query(uri,'insert into private.observer_scenario_bundles values(%s,%s,%s)',(scenario,str(scenario)+'/bundle.zip','a'*64))
     query(uri,'update public.scenarios set weather_public=true,forecasts_public=true,events_public=true where id=%s',(s['scenario'],))
@@ -58,3 +58,19 @@ def test_activation_preserves_old_rows_and_refuses_existing_competition_results(
         query(uri,statement)
     assert query(uri,'select score from public.submissions where id=%s',(old,))==[(21085.3,)]
     assert query(uri,'select projects_enabled,local_sessions_enabled from public.observer_phase_settings where phase_id=%s',(phase,))==[(False,False)]
+    query(uri,'delete from public.submissions where id=%s',(old,))
+    query(uri,'update public.observer_phase_settings set projects_enabled=true where phase_id=%s',(phase,))
+    # Public formal scenarios only: a private one, a missing one, calibration or a hidden final scenario are refused.
+    query(uri,'update public.scenarios set events_public=false where id=%s',(formal[0],))
+    with pytest.raises(psycopg.Error,match='Public competition bundles are not ready'):
+        query(uri,statement)
+    query(uri,'update public.scenarios set events_public=true where id=%s',(formal[0],))
+    with pytest.raises(psycopg.Error,match='Public competition bundles are not ready'):
+        query(uri,competition.activation_sql(str(phase),str(s['scenario']),3600,10,'test-model',2))
+    hidden=uuid.uuid4()
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh,counts_for_final) values(%s,%s,'Final','决赛',true)",(hidden,str(hidden)))
+    query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,sealed) values(%s,true,false,true)',(hidden,))
+    with pytest.raises(psycopg.Error,match='sealed_scenario_shared'):
+        query(uri,'insert into public.phase_scenarios values(%s,%s)',(hidden,formal[0]))
+    query(uri,statement)
+

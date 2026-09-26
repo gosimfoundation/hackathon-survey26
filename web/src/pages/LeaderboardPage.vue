@@ -4,7 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, loadLeaderboard, phaseCopy, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isPublicFormalBoard, loadLeaderboard, phaseCopy, type LeaderboardEntry, type Phase } from '../lib/data'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -86,6 +86,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
           <p class="mt-6"><button type="button" class="btn sm" :disabled="boardLoading" @click="loadBoard">↻ {{ t('leaderboard.refresh') }}</button></p>
         </div>
         <div class="min-w-0">
+          <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
+          <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
           <BoardScenarioTabs v-if="visible" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <p v-if="!visible" class="text2 py-12">{{ t('leaderboard.hidden') }}</p>
           <SkeletonRows v-else-if="boardLoading && !entries.length" :rows="8" :cols="6" :label="t('common.loading')" />

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Prepare existing hidden scenarios, then enable the agreed competition flow.
+"""Prepare the public formal scenarios, then enable the agreed competition flow.
+
+Organizer decision 2026-09-26: the 'online' phase evaluates on three public
+scenarios (eval-a, eval-b, eval-c), the same template for every team (no
+calibration, no per-team instance). The final ranking comes from one hidden
+scenario in a separate sealed phase ('final-hidden'), run by
+scripts/run-hidden-final.py after 'online' ends; this script only inspects it.
 
 No phase dates, legacy submissions, practice configuration or provider budget is
 changed. Activation requires the specified frontend revision to be live first.
@@ -43,9 +49,9 @@ def storage(path,data=None):
         raise RuntimeError('Scenario storage request failed: HTTP '+str(exc.code)) from None
 
 
-def activation_sql(phase_id,preview_id,runtime,daily,model):
+def activation_sql(phase_id,preview_id,runtime,daily,model,scenario_count=3):
     # Values come from existing DB metadata, never from a submitted project.
-    if not 10<=runtime<=18000 or not 1<=daily<=100:raise ValueError('Invalid existing phase limits')
+    if not 10<=runtime<=18000 or not 1<=daily<=100 or not 1<=int(scenario_count)<=10:raise ValueError('Invalid existing phase limits')
     return f"""
 begin;
 select pg_advisory_xact_lock(hashtext('observer-competition-activation'));
@@ -57,11 +63,20 @@ do $verify$ begin
   if (select count(*) from private.observer_installations where enabled)<>6
     or not exists(select 1 from private.observer_dispatch_config where enabled)
     then raise exception 'Runners or dispatcher are not ready';end if;
-  if (select count(*) from public.phase_scenarios where phase_id={q(phase_id)})<2
+  if (select count(*) from public.phase_scenarios where phase_id={q(phase_id)})<>{int(scenario_count)}
     or exists(select 1 from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id
       left join private.observer_scenario_bundles b on b.scenario_id=s.id
-      where ps.phase_id={q(phase_id)} and (b.scenario_id is null or s.weather_public or s.forecasts_public or s.events_public))
-    then raise exception 'Hidden competition bundles are not ready';end if;
+      where ps.phase_id={q(phase_id)} and (b.scenario_id is null or not s.is_active
+        or not (s.weather_public and s.forecasts_public and s.events_public)))
+    then raise exception 'Public competition bundles are not ready';end if;
+  -- Public formal scenarios: one template for every team, never a private instance.
+  if exists(select 1 from private.observer_scenario_calibration where phase_id={q(phase_id)})
+    then raise exception 'Competition phase still has calibration rows';end if;
+  -- A hidden final scenario is never evaluated in the public phase.
+  if exists(select 1 from public.phase_scenarios ps join public.phase_scenarios other on other.scenario_id=ps.scenario_id
+      join public.observer_phase_settings c on c.phase_id=other.phase_id
+      where ps.phase_id={q(phase_id)} and c.sealed)
+    then raise exception 'A hidden final scenario is linked to the competition phase';end if;
   if not exists(select 1 from public.scenarios s join private.observer_scenario_bundles b on b.scenario_id=s.id
     where s.id={q(preview_id)} and s.is_active and s.weather_public and s.forecasts_public and s.events_public)
     then raise exception 'Public preview is not ready';end if;
@@ -114,24 +129,49 @@ def prepare_bundle(scenario,required=FORMAL_FILES):
     return {'scenario':slug,'files':len(files),'verified':True}
 
 
+def inspect_final(slug):
+    """Read-only readiness of the sealed hidden final phase; never prints scenario contents."""
+    rows=deploy.query("select p.id,p.is_active,p.counts_for_final,p.leaderboard_mode,c.sealed,c.projects_enabled "+
+      "from public.phases p left join public.observer_phase_settings c on c.phase_id=p.id where p.slug="+q(slug))
+    if not rows:return {'phase':slug,'ready':False,'problems':['phase missing']}
+    p=rows[0];problems=[]
+    if not p['sealed']:problems.append('phase is not sealed')
+    if not p['counts_for_final']:problems.append('phase does not count for the final')
+    if not p['projects_enabled']:problems.append('projects are not enabled')
+    if p['leaderboard_mode']=='published':problems.append('results are already published')
+    scenarios=deploy.query("select s.slug,s.weather_public or s.forecasts_public or s.events_public as public,"+
+      "exists(select 1 from private.observer_scenario_bundles b where b.scenario_id=s.id) as bundle,"+
+      "(select count(*) from public.phase_scenarios o where o.scenario_id=s.id) as links "+
+      "from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id where ps.phase_id="+q(p['id'])+" order by s.slug")
+    if len(scenarios)!=1:problems.append(f'expected one hidden scenario, found {len(scenarios)}')
+    for s in scenarios:
+        if s['public']:problems.append(s['slug']+' has public weather, forecasts or events')
+        if not s['bundle']:problems.append(s['slug']+' has no evaluation bundle')
+        if int(s['links'])!=1:problems.append(s['slug']+' is linked to another phase')
+    return {'phase':slug,'scenarios':[s['slug'] for s in scenarios],'ready':not problems,'problems':problems}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--prepare',action='store_true');mode.add_argument('--activate',action='store_true')
     parser.add_argument('--revision',help='Exact published website commit; required for activation')
+    parser.add_argument('--scenarios',type=int,default=3,help='Expected number of public formal scenarios (default 3)')
+    parser.add_argument('--final-phase',default='final-hidden',help='Sealed hidden final phase to inspect')
     args=parser.parse_args()
     phases=deploy.query("select id,daily_limit from public.phases where slug='online' and is_active and counts_for_final")
     if len(phases)!=1:raise RuntimeError('Expected one existing competition phase')
     phase=phases[0]
     scenarios=deploy.query("select s.id,s.slug,s.global_wallclock_seconds,s.weather_public,s.forecasts_public,s.events_public "+
       "from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id where ps.phase_id="+q(phase['id'])+" order by s.slug")
-    if len(scenarios)!=2 or any(s[k] for s in scenarios for k in ('weather_public','forecasts_public','events_public')):
-        raise RuntimeError('Expected two existing private competition scenarios')
+    if len(scenarios)!=args.scenarios or not all(s[k] for s in scenarios for k in ('weather_public','forecasts_public','events_public')):
+        raise RuntimeError(f'Expected {args.scenarios} public competition scenarios')
     runtimes={s['global_wallclock_seconds'] for s in scenarios}
     if len(runtimes)!=1 or None in runtimes:raise RuntimeError('Scenario runtime metadata differs')
     preview=deploy.query('select scenario_id,model from private.observer_preparation_config where enabled')
     if len(preview)!=1:raise RuntimeError('No verified public preview configuration')
     result={'phase_id':phase['id'],'scenario_count':len(scenarios),'runtime_seconds':next(iter(runtimes)),
-            'daily_batches':phase['daily_limit'],'mode':'prepare' if args.prepare else 'activate' if args.activate else 'inspect'}
+            'daily_batches':phase['daily_limit'],'mode':'prepare' if args.prepare else 'activate' if args.activate else 'inspect',
+            'hidden_final':inspect_final(args.final_phase)}
     if args.prepare:result['bundles']=[prepare_bundle(s) for s in scenarios]
     if args.activate:
         if not args.revision or not re.fullmatch('[0-9a-f]{40}',args.revision):raise RuntimeError('A published frontend revision is required')
@@ -139,7 +179,7 @@ def main():
                                       headers={'Cache-Control':'no-cache'})
         with urllib.request.urlopen(request,timeout=30) as response:release=json.load(response)
         if release.get('revision')!=args.revision:raise RuntimeError('The requested frontend revision is not live')
-        deploy.query(activation_sql(phase['id'],preview[0]['scenario_id'],result['runtime_seconds'],phase['daily_limit'],preview[0]['model']))
+        deploy.query(activation_sql(phase['id'],preview[0]['scenario_id'],result['runtime_seconds'],phase['daily_limit'],preview[0]['model'],args.scenarios))
         result['activated']=True
     print(json.dumps(result))
 

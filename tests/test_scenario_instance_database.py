@@ -190,35 +190,76 @@ def test_profile_activation_is_atomic_repeatable_and_requires_deployed_runtimes(
         query(uri, statement)
 
 
-def test_final_formal_phase_without_calibration_fails_closed(setup):
+def test_public_formal_phases_use_the_template_and_calibrated_phases_fail_closed(setup):
     s = setup; uri = s["uri"]
+    # A final or 'online' phase without calibration is public: every team plays the template.
     query(uri, "update public.phases set counts_for_final=true where id=%s", (s["phase"],))
     rev = revision(s)
-    create = lambda: rpc(uri, "observer_create_batch", s["phase"], rev, role="authenticated", user=s["user"])
-    with pytest.raises(psycopg.Error, match="formal_instance_not_configured"):
-        create()
-    assert query(uri, "select count(*) from public.observer_batches where phase_id=%s", (s["phase"],)) == [(0,)]
-    configure(s)
-    run = query(uri, "select id from public.observer_runs where batch_id=%s", (create(),))[0][0]
-    assert len(rpc(uri, "observer_instance_input", run)["seed"]) == 64
-
-
-def test_final_formal_run_without_instance_cannot_schedule_or_score(setup):
-    s = setup; uri = s["uri"]
-    # A run created before the phase became final has no instance.
-    _, run = batch_run(s)
+    create = lambda: rpc(uri, "observer_create_batch", s["phase"], rev, True, role="authenticated", user=s["user"])
+    public = create()
+    run = query(uri, "select id from public.observer_runs where batch_id=%s", (public,))[0][0]
     assert rpc(uri, "observer_instance_input", run) is None
-    query(uri, "update public.phases set counts_for_final=true where id=%s", (s["phase"],))
+    summary = {"score": {"total": 1}, "raw_score": {"total": 1}}
+    query(uri, "update public.observer_runs set status='scored',score=1,score_summary=%s,finished_at=now() where id=%s",
+          (Jsonb(summary), run))
+    query(uri, "select private.observer_finalize_batch(%s)", (public,))
+
+
+def test_a_calibrated_phase_run_without_instance_cannot_schedule_or_score(setup):
+    s = setup; uri = s["uri"]
+    configure(s)
+    # Simulate a run that escaped allocation (e.g. inserted with the trigger disabled).
+    query(uri, "alter table public.observer_runs disable trigger observer_allocate_instance")
+    try:
+        first, run = batch_run(s)
+    finally:
+        query(uri, "alter table public.observer_runs enable trigger observer_allocate_instance")
     with pytest.raises(psycopg.Error, match="formal_instance_missing"):
         rpc(uri, "observer_instance_input", run)
     summary = {"score": {"total": 1}, "raw_score": {"total": 1}}
     with pytest.raises(psycopg.Error, match="formal_instance_missing"):
         query(uri, "update public.observer_runs set score=1,score_summary=%s where id=%s", (Jsonb(summary), run))
-    query(uri, "update public.phases set counts_for_final=false,slug='online' where id=%s", (s["phase"],))
-    with pytest.raises(psycopg.Error, match="formal_instance_missing"):
-        rpc(uri, "observer_instance_input", run)
-    query(uri, "update public.phases set slug=%s where id=%s", (str(s["phase"]), s["phase"]))
-    query(uri, "update public.observer_runs set score=1,score_summary=%s where id=%s", (Jsonb(summary), run))
+    query(uri, "update public.observer_batches set status='failed',finished_at=now() where id=%s", (first,))
+    # A calibrated phase whose scenario lost its calibration row cannot allocate either.
+    other = uuid.uuid4()
+    query(uri, "insert into public.scenarios(id,slug,name) values(%s,%s,'Other')", (other, str(other)))
+    query(uri, "alter table public.phase_scenarios disable trigger observer_freeze_calibrated_roster")
+    try:
+        query(uri, "insert into public.phase_scenarios values(%s,%s)", (s["phase"], other))
+    finally:
+        query(uri, "alter table public.phase_scenarios enable trigger observer_freeze_calibrated_roster")
+    query(uri, "alter table public.observer_batches disable trigger observer_check_calibrated_batch")
+    try:
+        with pytest.raises(psycopg.Error, match="formal_instance_not_configured"):
+            batch_run(s)
+    finally:
+        query(uri, "alter table public.observer_batches enable trigger observer_check_calibrated_batch")
+
+
+def test_migration_removes_online_calibration_only():
+    from pg import start as start_database
+    root = Path(__file__).resolve().parents[1]
+    migration = root / "supabase/migrations/20260927000800_public_formal_hidden_final.sql"
+    server, uri = start_database(apply_migrations=False)
+    try:
+        query(uri, (root / "tests/supabase/auth_stub.sql").read_text())
+        for path in sorted((root / "supabase/migrations").glob("*.sql")):
+            if path.name < migration.name:
+                query(uri, path.read_text())
+        pids = {}
+        for slug in ("online", "observer-acceptance-x"):
+            user, team = identity(uri)
+            phase, scenario = uuid.uuid4(), uuid.uuid4()
+            query(uri, "insert into public.phases(id,slug,name_en,name_zh,counts_for_final) values(%s,%s,'P','P',%s)",
+                  (phase, slug, slug == "online"))
+            query(uri, "insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled) values(%s,true,true)", (phase,))
+            query(uri, "insert into public.scenarios(id,slug,name) values(%s,%s,'S')", (scenario, str(scenario)))
+            query(uri, "insert into public.phase_scenarios values(%s,%s)", (phase, scenario))
+            pids[slug] = configure({"uri": uri, "phase": phase, "scenario": scenario})
+        query(uri, migration.read_text())
+        assert query(uri, "select p.slug from private.observer_scenario_calibration c join public.phases p on p.id=c.phase_id") == [("observer-acceptance-x",)]
+    finally:
+        server.cleanup()
 
 
 def test_clients_hold_no_unused_write_privileges_on_scenarios_and_submissions(setup):
