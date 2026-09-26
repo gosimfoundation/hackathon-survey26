@@ -1,4 +1,4 @@
-"""Scenario generator inputs: private formal and hidden-final scenarios never open; public formal ones open at start."""
+"""Scenario generator inputs: formal (flags false) and hidden-final scenarios never open; a fully public formal one opens at start."""
 import uuid
 
 import pytest
@@ -36,7 +36,7 @@ def test_formal_sources_never_reopen_at_start_or_with_public_weather(database):
         started = start != "now()+interval '1 day'"
         for role,user in (('anon',None),('authenticated',participant)):
             names = visible(role,user)
-            # Fully public formal scenarios (organizer decision 2026-09-26) open when the phase starts.
+            # Only a formal scenario whose weather, forecasts and events are all public opens, when the phase starts.
             assert all((prefix+'/'+p in names) == started for p in paths)
             assert all(str(practice)+'/'+p in names for p in paths)
         for role,user in (('authenticated',admin),('service_role',None)):

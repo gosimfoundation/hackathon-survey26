@@ -128,7 +128,7 @@ export function isFinalBoard(p: Pick<Phase, 'observer_settings'>): boolean {
   return !!p.observer_settings?.sealed
 }
 
-/** A formal board on the public scenarios: live, but it does not decide the final ranking. */
+/** The online board on the fixed formal scenarios: live, but it does not decide the final ranking. */
 export function isPublicFormalBoard(p: Pick<Phase, 'slug' | 'observer_settings'>): boolean {
   return p.slug === 'online' && !isFinalBoard(p)
 }

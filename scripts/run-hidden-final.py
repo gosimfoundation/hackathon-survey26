@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluate every team's final version once on the hidden final phase.
 
-Run after the public formal phase ('online') has ended. For each team with a
+Run after the formal phase ('online') has ended. For each team with a
 final version in that phase (its choice, else the version of its best scored
 evaluation) this creates one formal evaluation in the sealed hidden phase
 ('final-hidden'), outside the daily limit. The normal dispatcher then runs it.
@@ -59,7 +59,7 @@ def summarize(result):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--source', default='online', help='Public formal phase slug (default: online)')
+    parser.add_argument('--source', default='online', help='Formal phase slug (default: online)')
     parser.add_argument('--target', default='final-hidden', help='Sealed hidden phase slug (default: final-hidden)')
     parser.add_argument('--team', help='Only this team (slug, name or id)')
     parser.add_argument('--apply', action='store_true', help='Create the evaluations (default: dry run)')

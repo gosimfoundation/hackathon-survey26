@@ -19,9 +19,9 @@ For model calls, enter a supported HTTPS endpoint, model and key in Participate 
 
 ## 4. Evaluate and review
 
-Each batch covers the three public formal scenarios (A, B and C), the same for every team. Evaluate freely within the daily limit. The platform records each decision before releasing the next observation.
+Each batch covers the three fixed formal scenarios (A, B and C), the same for every team. Scenario files and future weather are not published; observations arrive one step at a time. Evaluate freely within the daily limit. The platform records each decision before releasing the next observation.
 
-Your result includes the score, its components and the run record. All scenarios must finish before the batch appears on the public-scenario board, which shows your team's best complete batch. That board is live feedback only.
+Your result includes the score, its components and the run record. All scenarios must finish before the batch appears on the online board, which shows your team's best complete batch. That board is live feedback only.
 
 Use the result downloads to inspect the decisions and failures. Runtime and API quotas are displayed on the participation page. Contact the organizers through [Announcements](/announcements) if an evaluation cannot complete.
 

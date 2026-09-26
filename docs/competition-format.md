@@ -12,8 +12,8 @@ versions and evaluation batches. A prominent Submit button links to that workspa
 | Entry | `/compete` | `/compete` |
 | Input | locally generated `decisions.csv`; or a complete project on the separate `practice-projects` board (5 evaluations per team per day) | complete repository or private project ZIP; no CSV |
 | Execution | participant computer, original scorer | approved project version, platform-controlled sequential observations |
-| Scenario | existing public scenarios; the complete-project board uses scenarios generated from them | three public formal scenarios (`eval-a`, `eval-b`, `eval-c`), one template for every team, no calibration; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
-| Ranking | best score per scenario, unchanged | public-scenario board: best complete batch, mean over the three scenarios (live feedback only). Final ranking: the hidden-scenario score of each team's final version only |
+| Scenario | existing public scenarios; the complete-project board uses scenarios generated from them | three fixed formal scenarios (`eval-a`, `eval-b`, `eval-c`), one template for every team, no calibration, files and weather never published; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
+| Ranking | best score per scenario, unchanged | online board: best complete batch, mean over the three scenarios (live feedback only). Final ranking: the hidden-scenario score of each team's final version only |
 | Model | optional; complete-project board: team's own key only | optional; participant supplies API and quota, no organizer credits |
 | Personal credentials | never include in results | HTTPS only; team's choice: saved encrypted on the server (default, deleted after verification) or kept only in the open page |
 
@@ -21,8 +21,9 @@ Formal evaluation accepts a decision only for its current sequence, records it,
 then publishes the next observation. Immutable decisions support independent
 scoring. CSV remains an exported result artifact, not a formal submission format.
 
-The formal phase (`online`) runs Beijing time 10-05 00:00 to 10-07 23:59; its scenario list and files stay hidden
-until then and are public afterwards (fully public scenarios only; migration 20260927000800).
+The formal phase (`online`) runs Beijing time 10-05 00:00 to 10-07 23:59; its scenario list stays hidden until then.
+Its scenarios keep `weather_public`/`forecasts_public`/`events_public` false, so their files stay private throughout
+(migration 20260927000800 would only open a formal scenario whose three flags are all true).
 
 Final version and hidden final (organizer decision 2026-09-26, migration 20260927000800):
 

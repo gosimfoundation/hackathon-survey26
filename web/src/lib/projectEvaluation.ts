@@ -34,7 +34,7 @@ export function recentDuplicate(projects: Project[] | null | undefined, title: s
     && (url === null ? r.source_kind === 'zip' : r.source_kind === 'repository' && repository(r.source_location ?? '') === repository(url))))
 }
 
-/** The team's final version in a public formal phase (observer_final_versions). */
+/** The team's final version in an open formal phase (observer_final_versions). */
 export type FinalVersion = {
   phase_id: string; deadline: string | null; locked: boolean
   /** The version the hidden final evaluation will use: the team's choice, else its best evaluation's version. */

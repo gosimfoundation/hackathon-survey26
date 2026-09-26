@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Prepare the public formal scenarios, then enable the agreed competition flow.
+"""Prepare the fixed formal scenarios, then enable the agreed competition flow.
 
-Organizer decision 2026-09-26: the 'online' phase evaluates on three public
+Organizer decision 2026-09-26: the 'online' phase evaluates on three fixed
 scenarios (eval-a, eval-b, eval-c), the same template for every team (no
-calibration, no per-team instance). The final ranking comes from one hidden
+calibration, no per-team instance). Their files and weather stay private:
+observations arrive step by step. The final ranking comes from one hidden
 scenario in a separate sealed phase ('final-hidden'), run by
 scripts/run-hidden-final.py after 'online' ends; this script only inspects it.
 
@@ -67,9 +68,9 @@ do $verify$ begin
     or exists(select 1 from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id
       left join private.observer_scenario_bundles b on b.scenario_id=s.id
       where ps.phase_id={q(phase_id)} and (b.scenario_id is null or not s.is_active
-        or not (s.weather_public and s.forecasts_public and s.events_public)))
-    then raise exception 'Public competition bundles are not ready';end if;
-  -- Public formal scenarios: one template for every team, never a private instance.
+        or s.weather_public or s.forecasts_public or s.events_public))
+    then raise exception 'Hidden competition bundles are not ready';end if;
+  -- Fixed formal scenarios: one template for every team, never a private instance.
   if exists(select 1 from private.observer_scenario_calibration where phase_id={q(phase_id)})
     then raise exception 'Competition phase still has calibration rows';end if;
   -- A hidden final scenario is never evaluated in the public phase.
@@ -155,7 +156,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--prepare',action='store_true');mode.add_argument('--activate',action='store_true')
     parser.add_argument('--revision',help='Exact published website commit; required for activation')
-    parser.add_argument('--scenarios',type=int,default=3,help='Expected number of public formal scenarios (default 3)')
+    parser.add_argument('--scenarios',type=int,default=3,help='Expected number of formal scenarios (default 3)')
     parser.add_argument('--final-phase',default='final-hidden',help='Sealed hidden final phase to inspect')
     args=parser.parse_args()
     phases=deploy.query("select id,daily_limit from public.phases where slug='online' and is_active and counts_for_final")
@@ -163,8 +164,8 @@ def main():
     phase=phases[0]
     scenarios=deploy.query("select s.id,s.slug,s.global_wallclock_seconds,s.weather_public,s.forecasts_public,s.events_public "+
       "from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id where ps.phase_id="+q(phase['id'])+" order by s.slug")
-    if len(scenarios)!=args.scenarios or not all(s[k] for s in scenarios for k in ('weather_public','forecasts_public','events_public')):
-        raise RuntimeError(f'Expected {args.scenarios} public competition scenarios')
+    if len(scenarios)!=args.scenarios or any(s[k] for s in scenarios for k in ('weather_public','forecasts_public','events_public')):
+        raise RuntimeError(f'Expected {args.scenarios} private competition scenarios')
     runtimes={s['global_wallclock_seconds'] for s in scenarios}
     if len(runtimes)!=1 or None in runtimes:raise RuntimeError('Scenario runtime metadata differs')
     preview=deploy.query('select scenario_id,model from private.observer_preparation_config where enabled')

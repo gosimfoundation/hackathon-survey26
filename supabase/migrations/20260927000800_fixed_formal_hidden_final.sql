@@ -1,13 +1,15 @@
--- Organizer decision 2026-09-26: public formal scenarios, a team-chosen final
+-- Organizer decision 2026-09-26: fixed formal scenarios, a team-chosen final
 -- version and one hidden final evaluation.
 --
--- 1. The 'online' phase evaluates on public scenarios (eval-a, eval-b, eval-c):
---    every team plays the same public template. Its calibration rows are removed
+-- 1. The 'online' phase evaluates on three fixed scenarios (eval-a, eval-b, eval-c):
+--    every team plays the same template. Their files and weather stay private
+--    (observations arrive step by step). Its calibration rows are removed
 --    and the fail-closed rule of 20260927000600 now applies only to phases that
 --    are configured for calibration (at least one calibration row). Phases that
 --    keep calibration (acceptance) still refuse a run without a private instance.
---    Source files of fully public formal scenarios become downloadable once the
---    phase has started (20260927000100 hid every formal scenario's files).
+--    Source files stay private for formal scenarios as before; only a formal
+--    scenario whose weather, forecasts and events are all public (none today)
+--    would open once its phase starts.
 -- 2. Sealed phases (observer_phase_settings.sealed): the hidden final phase. Until
 --    organizers set its leaderboard_mode to 'published', participants cannot see
 --    the phase, its scenario names, its batches, runs, logs or result downloads,
@@ -15,13 +17,13 @@
 --    batches through private.observer_run_hidden_final (scripts/run-hidden-final.py).
 --    Its scenario files stay private, and its scenario cannot be shared with any
 --    other phase.
--- 3. Final version: during a public formal phase a team member may mark one of
+-- 3. Final version: during an open formal phase a team member may mark one of
 --    the team's approved, not withdrawn versions as its final version, until the
 --    phase ends_at. Without a choice the version of the team's best scored batch
 --    of that phase is used.
 -- Functions are based on the live definitions.
 
--- 1. Public formal scenarios --------------------------------------------------
+-- 1. Fixed formal scenarios ---------------------------------------------------
 create or replace function private.observer_requires_instance(p_batch uuid)
 returns boolean language sql stable security definer set search_path=public,pg_temp as $$
   select exists(select 1 from public.observer_batches b where b.id=p_batch and b.purpose='formal'
@@ -58,7 +60,7 @@ $$;
 
 -- A scenario of a sealed phase stays unnamed until its results are published.
 -- Team-restricted internal phases (observer_phase_settings.access_team_id, e.g.
--- the randomized acceptance phase without dates) no longer keep a public formal
+-- the randomized acceptance phase without dates) no longer keep a formal
 -- scenario unnamed after the public phase has opened.
 create or replace function public.observer_scenario_listed(p_scenario uuid)
 returns boolean language sql stable security definer set search_path=public,pg_temp as $$
@@ -73,8 +75,9 @@ returns boolean language sql stable security definer set search_path=public,pg_t
 $$;
 
 -- Scenario source files (storage bucket 'scenarios', restrictive policy "formal
--- source files remain private" from 20260927000100). The formal scenarios are
--- now public by design, so their generator inputs are no longer secret:
+-- source files remain private" from 20260927000100). eval-a/b/c keep their three
+-- public flags false, so their files stay private; the rules below only matter
+-- for a formal scenario deliberately made fully public:
 --   * a scenario of a sealed phase stays private, also after its results are
 --     published (organizers release it deliberately by unsealing the phase);
 --   * a scenario of a formal phase ('online' or counts_for_final) stays private
@@ -185,7 +188,7 @@ create table if not exists private.observer_final_versions (
 );
 revoke all on private.observer_final_versions from public,anon,authenticated;
 
--- A public formal phase in which teams choose a final version.
+-- An open (not sealed) formal phase in which teams choose a final version.
 create or replace function private.observer_final_phase(p_phase uuid)
 returns boolean language sql stable security definer set search_path=public,pg_temp as $$
   select exists(select 1 from public.phases p join public.observer_phase_settings s on s.phase_id=p.id

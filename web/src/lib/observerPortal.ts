@@ -27,7 +27,7 @@ export type PortalData = {
   model_bases: string[]
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
-  /** The team's final version per public formal phase; missing until the database provides it. */
+  /** The team's final version per open formal phase; missing until the database provides it. */
   final_versions?: FinalVersion[] | null
 }
 

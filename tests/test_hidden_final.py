@@ -37,7 +37,7 @@ def scored_batch(s, rev, score):
 
 @pytest.fixture
 def online(setup):
-    """A public formal phase (like 'online'): counts for final, no calibration, ends tomorrow."""
+    """An open formal phase (like 'online'): counts for final, no calibration, ends tomorrow."""
     s = setup
     query(s['uri'], "update public.phases set counts_for_final=true,starts_at=now()-interval '1 day',"
                     "ends_at=now()+interval '1 day' where id=%s", (s['phase'],))

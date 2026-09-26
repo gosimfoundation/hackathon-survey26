@@ -204,7 +204,7 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
           ...(body.confirm_repeat === true ? { p_confirm_repeat: true } : {}),
         }),
       };
-    // The team's final version for a public formal phase; revision_id null clears
+    // The team's final version for an open formal phase; revision_id null clears
     // the choice. The database checks membership, the version and the deadline.
     case "set_final_version":
       return {

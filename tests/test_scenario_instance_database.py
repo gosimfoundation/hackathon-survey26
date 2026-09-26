@@ -239,7 +239,7 @@ def test_a_calibrated_phase_run_without_instance_cannot_schedule_or_score(setup)
 def test_migration_removes_online_calibration_only():
     from pg import start as start_database
     root = Path(__file__).resolve().parents[1]
-    migration = root / "supabase/migrations/20260927000800_public_formal_hidden_final.sql"
+    migration = root / "supabase/migrations/20260927000800_fixed_formal_hidden_final.sql"
     server, uri = start_database(apply_migrations=False)
     try:
         query(uri, (root / "tests/supabase/auth_stub.sql").read_text())
