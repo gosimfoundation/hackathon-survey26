@@ -3,6 +3,8 @@ import { jobRequest } from "../_shared/observer-job.ts";
 import { ProxyError } from "../_shared/observer-model.ts";
 import { GitHubError } from "../_shared/observer-github.ts";
 import { artifactDownload, configuredApp } from "../_shared/observer-app.ts";
+import { agentLogPath } from "../_shared/observer-agent-log.ts";
+import { singleFileZip } from "../_shared/observer-zip.ts";
 
 const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
   auth: { persistSession: false },
@@ -38,6 +40,15 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
         const { data, error } = await service.storage.from("observer-staging").createSignedUrl(path, 600);
         if (error || !data?.signedUrl) throw new ProxyError(503, "source_download_unavailable");
         return data.signedUrl;
+      },
+      storeAgentLog: async (run, log) => {
+        // The staging bucket only accepts ZIP and CSV objects.
+        const { error } = await service.storage.from("observer-staging").upload(
+          agentLogPath(run),
+          await singleFileZip("agent.log", log),
+          { contentType: "application/zip", upsert: true },
+        );
+        if (error) throw new ProxyError(503, "agent_log_unavailable");
       },
       rpc: async (name, args) => {
         const { data, error } = await service.rpc(name, args);

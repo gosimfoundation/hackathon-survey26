@@ -6,6 +6,7 @@ No hosted database, participant account or repository is used here.
 """
 from __future__ import annotations
 
+import base64
 import concurrent.futures
 import hashlib
 import json
@@ -430,6 +431,16 @@ def test_real_portal_hashes_csv_bytes_and_result_download_is_team_scoped(run_set
     assert status==200,response
     with urllib.request.urlopen(response['data']['url']) as reply:
         assert next(f.data for f in read_project_zip(reply.read()) if f.path=='decisions.csv')==raw
+    # The executor's stored log completes the download; the result itself is unchanged.
+    log=h.storage_root/'observer-staging'/'agent-logs'/str(s['run'])/'agent-log.zip';log.parent.mkdir(parents=True)
+    log.write_bytes(pack_files((ProjectFile('agent.log',b'[platform] project stderr\nTraceback: boom\n'),)))
+    assert post(url,{'action':'download_result','run_id':str(s['run'])},other_token)[0]==404
+    status,response=post(url,{'action':'download_result','run_id':str(s['run'])},token)
+    assert status==200,response
+    with urllib.request.urlopen(response['data']['url']) as reply:
+        files={f.path:f.data for f in read_project_zip(reply.read())}
+    assert files=={'decisions.csv':raw,'agent.log':b'[platform] project stderr\nTraceback: boom\n'}
+    assert result_file.read_bytes()==pack_files((ProjectFile('decisions.csv',raw),))
 
 
 def test_local_cli_and_scoped_credential_export_exact_official_csv(run_setup,tmp_path):
@@ -690,6 +701,7 @@ def test_workflow_jobs_download_run_and_upload_before_publishing_score(run_setup
     source=(ProjectFile(MANIFEST_NAME,manifest.canonical_bytes()),ProjectFile("agent.py",b'''
 import json,os,sys
 assert not any(key in os.environ for key in ('GITHUB_TOKEN','SUPABASE_SERVICE_ROLE_KEY','ACTIONS_ID_TOKEN_REQUEST_TOKEN'))
+print('agent booted with', os.environ['OBSERVER_RUN_TOKEN'], file=sys.stderr, flush=True)
 for line in sys.stdin:
  m=json.loads(line)
  if m['message_type']=='initialize': continue
@@ -701,7 +713,7 @@ for line in sys.stdin:
 '''))
     project_zip=pack_files(source)
     ids={kind:str(uuid.uuid4()) for kind in ("execute","engine")}
-    jobs={};receipts={};uploads=[];requests=[];credential_requests=[]
+    jobs={};receipts={};uploads=[];requests=[];credential_requests=[];agent_logs={}
     session_url=s["stack"]["urls"]["observer-session"]
     result_path=f"{s['team']}/{s['run']}/result.zip"
     if storage_kind=='github':
@@ -727,6 +739,11 @@ for line in sys.stdin:
             body=json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             if body["action"]=="claim":
                 self.reply(200,{"data":jobs[body["job_id"]]})
+            elif body['action']=='agent_log':
+                # Sent by the executor only, before its receipt, with its claim nonce.
+                assert body['job_id']==ids['execute'] and body['job_id'] not in receipts and body['nonce']=='n'*43
+                agent_logs[body['job_id']]=base64.b64decode(body['log']).decode()
+                self.reply(200,{'data':{'accepted':True}})
             elif body['action']=='artifact_repository':
                 assert body['job_id']==ids['engine']
                 assert query(s['uri'],'select score from public.observer_runs where id=%s',(s['run'],))==[(None,)]
@@ -780,6 +797,12 @@ for line in sys.stdin:
         broker.shutdown();broker.server_close()
     assert len(receipts)==(1 if colocated else 2)
     assert all(not value["error"] for value in receipts.values()),receipts
+    if colocated:
+        assert not agent_logs  # the engine job writes agent.log into the result itself
+    else:
+        assert list(agent_logs)==[ids['execute']] and 'agent booted with [REDACTED]' in agent_logs[ids['execute']]
+        assert s['participant'] not in agent_logs[ids['execute']]
+        assert '_agent_log' not in receipts[ids['execute']]['result']
     assert {path for path,auth in requests}=={"/project","/scenario"}
     assert all(auth is None for path,auth in requests)
     if storage_kind=='github':
@@ -789,7 +812,10 @@ for line in sys.stdin:
         commit=result_path.rsplit('@',1)[1]
         archive=subprocess.run(['git','--git-dir',str(remote),'archive','--format=zip',commit],capture_output=True,check=True).stdout
         artifacts=read_project_zip(archive)
-        assert {f.path for f in artifacts}=={'decisions.csv','workflow_result.json'}
+        assert {f.path for f in artifacts}=={'decisions.csv','workflow_result.json'}|({'agent.log'} if colocated else set())
+        if colocated:
+            log=next(f.data for f in artifacts if f.path=='agent.log').decode()
+            assert 'agent booted with [REDACTED]' in log and s['participant'] not in log
     else:
         assert len(uploads)==1
         artifacts=read_project_zip(uploads[0])

@@ -42,7 +42,10 @@ def server():
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             state["requests"].append({"body": body, "auth": self.headers.get("Authorization")})
-            if body["action"] == "claim":
+            if body["action"] == "agent_log":
+                state.setdefault("logs", []).append(body)
+                self.reply(200, {"data": {"accepted": True}})
+            elif body["action"] == "claim":
                 state["claims"] += 1
                 if state["claims"] == 1:
                     self.reply(503, {"error": "temporary failure with secret URL"})
@@ -132,6 +135,61 @@ def test_failed_worker_receipt_does_not_expose_exception_or_arbitrary_score(monk
     with pytest.raises(JobError, match="^execute_job_failed$"):
         run_claimed("execute", client, tmp_path)
     assert client.receipts == [{"result": {'diagnostics':{'stage':'execute','code':'project_operation_failed','log':''}}, "error": "execute_job_failed"}]
+
+
+def test_agent_log_is_sent_with_the_claim_nonce_and_bounded(server):
+    import base64
+    from project_platform.job_client import AGENT_LOG_MAX_BYTES
+    base, state = server
+    client = JobClient(base + "/job", JOB, "n" * 43, lambda: "identity", http=Http(local=True))
+    text = "é" + "z" * (AGENT_LOG_MAX_BYTES + 10) + "\nlast line\n"
+    client.agent_log(text)
+    [body] = state["logs"]
+    assert set(body) == {"action", "job_id", "nonce", "log"} and body["nonce"] == "n" * 43
+    data = base64.b64decode(body["log"])
+    assert len(data) == AGENT_LOG_MAX_BYTES and data.endswith(b"\nlast line\n")
+
+
+class ReceiptClient:
+    job_id = JOB
+    http = Http(local=True)
+
+    def __init__(self, fail_log=False):
+        self.events = []
+        self.fail_log = fail_log
+
+    def claim(self):
+        return {"kind": "execute", "job_id": JOB}
+
+    def agent_log(self, text):
+        self.events.append(("agent_log", text))
+        if self.fail_log:
+            raise JobError("job_http_503")
+
+    def complete(self, result, *, error=""):
+        self.events.append(("complete", result, error))
+
+
+def test_executor_log_precedes_receipt_and_never_enters_it(monkeypatch, tmp_path):
+    import project_platform.job_runner as runner
+    from project_platform.diagnostics import ProjectJobFailure
+    monkeypatch.setattr(runner, "execute_job", lambda *_: {"run_id": RUN, "status": "scored",
+        "diagnostics": {"stage": "execute", "code": "completed", "log": "tail"}, runner.AGENT_LOG_KEY: "full log"})
+    client = ReceiptClient()
+    run_claimed("execute", client, tmp_path)
+    assert client.events == [("agent_log", "full log"), ("complete", {"run_id": RUN, "status": "scored",
+        "diagnostics": {"stage": "execute", "code": "completed", "log": "tail"}}, "")]
+    # A failing project still delivers its log; a failing log upload changes nothing.
+    def crash(*_):
+        failure = ProjectJobFailure({"stage": "execute", "code": "project_operation_failed", "log": "tail"})
+        failure.agent_log = "Traceback: crash"
+        raise failure
+    monkeypatch.setattr(runner, "execute_job", crash)
+    client = ReceiptClient(fail_log=True)
+    with pytest.raises(JobError, match="^execute_job_failed$"):
+        run_claimed("execute", client, tmp_path)
+    assert client.events == [("agent_log", "Traceback: crash"), ("complete", {"diagnostics":
+        {"stage": "execute", "code": "project_operation_failed", "log": "tail"}}, "execute_job_failed")]
 
 
 def test_job_rejects_insecure_and_forged_identity_destinations():

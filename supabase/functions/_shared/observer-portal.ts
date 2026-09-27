@@ -4,6 +4,7 @@ import { boundedJson, decryptCredential, encryptCredential, ProxyError } from ".
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sourceRepository } from "./observer-github.ts";
+import { fetchArchive, resultWithAgentLog } from "./observer-agent-log.ts";
 
 type Dependencies = {
   user: SupabaseClient;
@@ -15,6 +16,8 @@ type Dependencies = {
   /** DNS lookups for participant bases; tests replace it. */
   resolve?: Resolver | null;
   artifactDownload?: (reference: string) => Promise<string>;
+  /** Fetches signed result archives; tests replace it. */
+  fetchArchive?: typeof fetch;
 };
 const known = new Set([
   "team_required",
@@ -267,17 +270,53 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       return { url: await d.artifactDownload(reference) };
     }
     case "download_result": {
-      const { data, error } = await d.user.from("observer_runs").select("result_path").eq("id", uuid(body.run_id))
+      const run = uuid(body.run_id);
+      // The user's own row-level access decides visibility, before any service read.
+      const { data, error } = await d.user.from("observer_runs").select("result_path").eq("id", run)
         .maybeSingle();
       failure(error);
       if (!data?.result_path) throw new ProxyError(404, "result_not_ready");
-      if (data.result_path.startsWith("github:")) {
+      const path: string = data.result_path;
+      let url: string;
+      if (path.startsWith("github:")) {
         if (!d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
-        return { url: await d.artifactDownload(data.result_path) };
+        url = await d.artifactDownload(path);
+      } else {
+        const signed = await staging.createSignedUrl(path, 120, { download: "observer-result.zip" });
+        failure(signed.error);
+        url = signed.data!.signedUrl;
       }
-      const signed = await staging.createSignedUrl(data.result_path, 120, { download: "observer-result.zip" });
-      failure(signed.error);
-      return { url: signed.data!.signedUrl };
+      try {
+        const combined = await resultWithAgentLog(
+          run,
+          async () => {
+            if (path.startsWith("github:")) return await fetchArchive(url, d.fetchArchive);
+            const stored = await staging.download(path);
+            if (stored.error || !stored.data) throw new Error("result_download_failed");
+            return new Uint8Array(await stored.data.arrayBuffer());
+          },
+          {
+            download: async (name) => {
+              const { data, error } = await staging.download(name);
+              return error || !data ? null : new Uint8Array(await data.arrayBuffer());
+            },
+            upload: async (name, bytes) => {
+              const { error } = await staging.upload(name, bytes, { contentType: "application/zip", upsert: true });
+              if (error) throw new Error("result_upload_failed");
+            },
+            sign: async (name) => {
+              const { data, error } = await staging.createSignedUrl(name, 120, { download: "observer-result.zip" });
+              if (error || !data) throw new Error("result_sign_failed");
+              return data.signedUrl;
+            },
+          },
+        );
+        if (combined) return { url: combined };
+      } catch {
+        // The log is a convenience; the trusted result stays downloadable.
+        console.warn("observer-portal: agent.log could not be added to the result download");
+      }
+      return { url };
     }
     case "accept_csv": {
       const run = uuid(body.run_id);

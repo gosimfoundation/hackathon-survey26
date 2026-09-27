@@ -241,6 +241,23 @@ def test_stderr_is_bounded_and_scoped_token_is_redacted(tmp_path):
     p.close()
     assert len(p.log.encode()) <= 65536
     assert "test-run-secret" not in p.log and p.log.endswith("[REDACTED]")
+    assert p.log_truncated
+
+
+def test_project_stderr_keeps_a_two_megabyte_tail_for_agent_log(tmp_path):
+    from project_platform.transport import AGENT_LOG_BYTES
+    body = "import sys\nfor i in range(40000): sys.stderr.write(f'line {i:06d} ' + 'y'*80 + '\\n')\nsys.stderr.flush()"
+    p = python_process(tmp_path, body)
+    p.log_limit = AGENT_LOG_BYTES
+    p.start()
+    p.process.wait(timeout=10)
+    p.close()
+    assert AGENT_LOG_BYTES - 200 <= len(p.log.encode()) <= AGENT_LOG_BYTES
+    assert p.log.endswith("line 039999 " + "y" * 80 + "\n") and "line 000000" not in p.log
+    assert p.log_truncated
+    small = python_process(tmp_path, "import sys\nsys.stderr.write('hello\\n')")
+    small.start(); small.process.wait(timeout=5); small.close()
+    assert small.log == "hello\n" and not small.log_truncated
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node is needed only for the cross-language test")

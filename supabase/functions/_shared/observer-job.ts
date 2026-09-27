@@ -2,6 +2,7 @@ import { boundedJson, decryptCredential, ProxyError } from "./observer-model.ts"
 import type { Rpc } from "./observer-model.ts";
 import { verifyWorkflowIdentity } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
+import { AGENT_LOG_BYTES } from "./observer-agent-log.ts";
 
 export type JobDependencies = {
   rpc: Rpc;
@@ -11,7 +12,12 @@ export type JobDependencies = {
   archiveDownload?: (reference: string, privateOnly: boolean) => Promise<string>;
   scenarioDownload?: (path: string) => Promise<string>;
   sourceDownload?: (path: string) => Promise<string>;
+  /** Stores the scrubbed participant log beside the run's private result. */
+  storeAgentLog?: (run: string, log: Uint8Array) => Promise<void>;
 };
+
+const RECEIPT_BODY_LIMIT = 1100000;
+const AGENT_LOG_BODY_LIMIT = 3 * 1024 * 1024;
 
 function validateArtifactUpload(value: unknown, id: string, filename: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ProxyError(503, "invalid_job_payload");
@@ -204,12 +210,16 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
 export async function jobRequest(request: Request, deps: JobDependencies) {
   const bearer = /^Bearer ([A-Za-z0-9_.-]+)$/.exec(request.headers.get("authorization") ?? "");
   if (!bearer) throw new ProxyError(401, "workflow_identity_required");
-  const body = await boundedJson(request, 1100000);
+  const body = await boundedJson(request, AGENT_LOG_BODY_LIMIT);
   if (
     !body || typeof body !== "object" || Array.isArray(body) ||
     typeof body.job_id !== "string" || !/^[0-9a-f-]{36}$/.test(body.job_id) ||
-    !["claim", "complete", "artifact_repository"].includes(body.action)
+    !["claim", "complete", "artifact_repository", "agent_log"].includes(body.action)
   ) throw new ProxyError(400, "invalid_job_request");
+  // Only the participant log may use the larger request size.
+  if (body.action !== "agent_log" && JSON.stringify(body).length > RECEIPT_BODY_LIMIT) {
+    throw new ProxyError(413, "body_too_large");
+  }
   const identity = await deps.rpc("observer_job_identity", { p_job: body.job_id });
   if (!identity) throw new ProxyError(404, "job_unavailable");
   const expected: WorkflowIdentity = {
@@ -236,11 +246,12 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
       kind: target.kind,
     };
   };
-  if (body.action === "artifact_repository") return await repository();
-  if (body.action === "claim") {
+  const claimedInput = async () => {
     if (typeof body.nonce !== "string" || !/^[A-Za-z0-9_-]{40,100}$/.test(body.nonce)) {
       throw new ProxyError(400, "invalid_job_nonce");
     }
+    // Idempotent for the GitHub run that already claimed the job; any other
+    // run, nonce, workflow or finished job is refused by the database.
     const ciphertext = await deps.rpc("observer_claim_job", {
       p_job: body.job_id,
       p_nonce: body.nonce,
@@ -250,7 +261,47 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
       p_owner: expected.organizationId,
       p_sha: expected.approvedSha,
     });
-    const cleartext = await decryptCredential(ciphertext, body.job_id, deps.masterKey);
+    return await decryptCredential(ciphertext, body.job_id, deps.masterKey);
+  };
+  if (body.action === "artifact_repository") return await repository();
+  if (body.action === "agent_log") {
+    // Only the executor has participant output. The run is taken from the
+    // claimed job's own encrypted input, never from the request.
+    if (expected.workflow !== "observer-execute.yml" || !deps.storeAgentLog) {
+      throw new ProxyError(403, "agent_log_denied");
+    }
+    if (typeof body.log !== "string" || body.log.length > Math.ceil(AGENT_LOG_BYTES / 3) * 4) {
+      throw new ProxyError(400, "invalid_agent_log");
+    }
+    let input;
+    try {
+      input = JSON.parse(await claimedInput());
+    } catch (error) {
+      if (error instanceof ProxyError) throw error;
+      throw new ProxyError(503, "invalid_job_payload");
+    }
+    const run = input?.run_id;
+    if (
+      input?.kind !== "execute" || input?.job_id !== body.job_id || typeof run !== "string" ||
+      !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(run)
+    ) throw new ProxyError(403, "agent_log_denied");
+    let raw: Uint8Array;
+    try {
+      raw = Uint8Array.from(atob(body.log), (c) => c.charCodeAt(0));
+    } catch {
+      throw new ProxyError(400, "invalid_agent_log");
+    }
+    if (raw.length > AGENT_LOG_BYTES) throw new ProxyError(400, "invalid_agent_log");
+    // Defense in depth: the runner already scrubbed its own capability.
+    let text = new TextDecoder().decode(raw);
+    if (typeof input.run_credential === "string" && input.run_credential) {
+      text = text.replaceAll(input.run_credential, "[REDACTED]");
+    }
+    await deps.storeAgentLog(run, new TextEncoder().encode(text));
+    return { accepted: true };
+  }
+  if (body.action === "claim") {
+    const cleartext = await claimedInput();
     let parsed;
     try {
       parsed = JSON.parse(cleartext);

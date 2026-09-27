@@ -340,3 +340,82 @@ Deno.test("a colocated engine job carries only the execute job's own fields", ()
     ]
   ) assertThrows(() => validateJobPayload({ ...engine, ...change }, expected, job), ProxyError);
 });
+
+Deno.test("only the claimed executor stores a log, for the run in its own encrypted input", async () => {
+  const encrypted = await encryptCredential(JSON.stringify(payload), job, key);
+  const stored: [string, string][] = [];
+  const calls: string[] = [];
+  const deps: JobDependencies = {
+    masterKey: key,
+    verify: async () => {
+      calls.push("verify");
+      return { runId: "404", runAttempt: "1", subject: "expected" };
+    },
+    rpc: (name, args) => {
+      calls.push(name);
+      if (name === "observer_job_identity") return Promise.resolve(identity);
+      assertEquals([args.p_nonce, args.p_github_run, args.p_attempt], ["n".repeat(43), "404", "1"]);
+      return Promise.resolve(encrypted);
+    },
+    storeAgentLog: async (run, log) => {
+      stored.push([run, new TextDecoder().decode(log)]);
+    },
+  };
+  const text = "Traceback: boom\ncredential " + payload.run_credential + "\n";
+  // A run chosen in the request is ignored; the claimed job decides the run.
+  const body = { log: btoa(text), run_id: "00000000-0000-4000-8000-00000000dead" };
+  assertEquals(await jobRequest(request("agent_log", body), deps), { accepted: true });
+  assertEquals(calls, ["observer_job_identity", "verify", "observer_claim_job"]);
+  assertEquals(stored, [[payload.run_id, "Traceback: boom\ncredential [REDACTED]\n"]]);
+
+  // Engine and preparation jobs have no participant output to store.
+  for (const workflow of ["observer-engine.yml", "observer-prepare.yml"]) {
+    calls.length = 0;
+    const other = {
+      ...deps,
+      rpc: (name: string) => {
+        calls.push(name);
+        return Promise.resolve(name === "observer_job_identity" ? { ...identity, workflow } : encrypted);
+      },
+    };
+    await assertRejects(() => jobRequest(request("agent_log", body), other), ProxyError, "agent_log_denied");
+    assertEquals(calls, ["observer_job_identity", "verify"]);
+  }
+  // A job whose claim is gone (finished, or another GitHub run) stores nothing.
+  const finished = {
+    ...deps,
+    rpc: (name: string) =>
+      name === "observer_job_identity"
+        ? Promise.resolve(identity)
+        : Promise.reject(new ProxyError(409, "job_unavailable")),
+  };
+  await assertRejects(() => jobRequest(request("agent_log", body), finished), ProxyError, "job_unavailable");
+  // An engine payload replayed through the executor workflow is refused.
+  const engine = await encryptCredential(JSON.stringify({ ...payload, kind: "engine" }), job, key);
+  const mismatched = {
+    ...deps,
+    rpc: (name: string) => Promise.resolve(name === "observer_job_identity" ? identity : engine),
+  };
+  await assertRejects(() => jobRequest(request("agent_log", body), mismatched), ProxyError, "agent_log_denied");
+  await assertRejects(
+    () => jobRequest(request("agent_log", { log: "not base64!" }), deps),
+    ProxyError,
+    "invalid_agent_log",
+  );
+  const huge = btoa("x".repeat(2 * 1024 * 1024 + 65537));
+  await assertRejects(() => jobRequest(request("agent_log", { log: huge }), deps), ProxyError, "invalid_agent_log");
+  assertEquals(stored.length, 1);
+});
+
+Deno.test("only the participant log may exceed the receipt size", async () => {
+  const deps: JobDependencies = {
+    masterKey: key,
+    verify: () => Promise.resolve({ runId: "404", runAttempt: "1", subject: "expected" }),
+    rpc: () => Promise.resolve(identity),
+  };
+  await assertRejects(
+    () => jobRequest(request("complete", { result: { padding: "x".repeat(1200000) } }), deps),
+    ProxyError,
+    "body_too_large",
+  );
+});

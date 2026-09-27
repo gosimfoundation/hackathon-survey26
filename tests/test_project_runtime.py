@@ -55,3 +55,23 @@ def test_container_build_can_write_private_workspace_with_capabilities_dropped(t
     with DockerWorkspace(root,manifest,manifest.image) as runtime:
         runtime.build()
     assert (root/'built.txt').read_text()=='compiled'
+
+
+def test_agent_log_is_the_scrubbed_bounded_participant_output():
+    from project_platform.diagnostics import AGENT_LOG_LIMIT, agent_log
+    token='obs_'+RUN+'.'+'x'*43
+    stderr=('Traceback (most recent call last):\nValueError: bad tile\n'+token+'\n'
+            'calling https://platform.test/functions/v1/observer-model/v1?key=abc\nAuthorization: Bearer sk-live\n')
+    value=agent_log('Collecting tabulate\nSuccessfully installed tabulate\n',stderr,(token,))
+    assert value.startswith('[platform] project build output\nCollecting tabulate\n')
+    assert '[platform] project stderr\nTraceback (most recent call last):\nValueError: bad tile\n' in value
+    assert token not in value and 'platform.test' not in value and 'sk-live' not in value
+    assert agent_log('',"only stderr\n")=='[platform] project stderr\nonly stderr\n'
+    # A retained tail can begin inside a credential; that partial line is dropped.
+    cut=token[20:]+' leaked-suffix\nlater line\n'
+    value=agent_log('',cut,(token,),truncated=True)
+    assert 'leaked-suffix' not in value and value.endswith('later line\n') and 'earlier output was truncated' in value
+    # Far more than two megabytes keeps the newest output, within the bound.
+    value=agent_log('build\n',''.join(f'line {i:07d}\n' for i in range(400000)),(token,))
+    assert len(value.encode())<=AGENT_LOG_LIMIT+64 and value.endswith('line 0399999\n')
+    assert 'line 0000000' not in value and value.startswith('[platform] earlier output was truncated\n')
