@@ -19,7 +19,7 @@ test('the daily reset names its time zone', () => {
 })
 
 test('preparation errors are shown in Chinese on the zh page', () => {
-  assert.equal(revisionErrorText('Project preparation failed. Please retry.', 'zh'), '项目准备失败，请修正后重新上传。')
+  assert.equal(revisionErrorText('Project preparation failed. Please retry.', 'zh'), '项目准备失败，请重新提交。')
   assert.equal(revisionErrorText('Project preparation failed: Automatic adaptation could not identify the entry point.', 'zh'),
     '项目准备失败：Automatic adaptation could not identify the entry point.')
   assert.equal(revisionErrorText('Public test failed. Check the project interface and submit again.', 'zh'), '公开场景测试未通过，请检查项目接口后重新上传。')
