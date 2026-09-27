@@ -131,12 +131,65 @@ def test_pack_agent_builds_zip_with_entry_at_root(tmp_path):
     assert proc.returncode == 0, proc.stderr
     names = zipfile.ZipFile(out).namelist()
     assert "minimal_agent.py" in names and "decision_graph.py" in names and "scoring_preview.py" in names
-    assert "helpers.py" in names and ".env" in names and "requirements.txt" in names
+    assert "helpers.py" in names and "requirements.txt" in names and "observer.project.json" in names
+    assert ".env" not in names, ".env stays out by default: the platform rejects ZIPs with credentials"
     assert not any("__pycache__" in name or name.endswith(".pyc") for name in names)
-    assert all("/" not in name for name in names)  # flat: entry at the zip root
-    without_env = tmp_path / "no-env.zip"
-    assert run("pack_agent.py", "--agent", str(agent), "--out", str(without_env), "--no-env").returncode == 0
-    assert ".env" not in zipfile.ZipFile(without_env).namelist()
+    assert all("/" not in name for name in names)  # flat: entry and manifest at the zip root
+    with_env = tmp_path / "local-only.zip"
+    proc = run("pack_agent.py", "--agent", str(agent), "--out", str(with_env), "--include-env")
+    assert proc.returncode == 0 and "WARNING" in proc.stderr
+    assert ".env" in zipfile.ZipFile(with_env).namelist()
+    legacy = tmp_path / "legacy.zip"
+    assert run("pack_agent.py", "--agent", str(agent), "--out", str(legacy), "--no-env").returncode == 0
+    assert ".env" not in zipfile.ZipFile(legacy).namelist()
+
+
+def test_packed_kit_is_a_complete_project_the_platform_runs_without_a_model_key(tmp_path):
+    """The default kit ZIP carries its own manifest, so preparation never needs the model adapter, and the
+    agent runs deterministically even though the platform injects its model-proxy variables."""
+    sys.path.insert(0, str(ROOT))
+    from challenge.challenge_workflow import ChallengeWorkflow  # noqa: PLC0415
+    from project_platform.local import NativeWorkspace  # noqa: PLC0415
+    from project_platform.package import extract_project, read_manifest, read_project_zip  # noqa: PLC0415
+
+    out = tmp_path / "my-agent.zip"
+    proc = run("pack_agent.py", "--out", str(out))
+    assert proc.returncode == 0, proc.stderr
+    files = read_project_zip(out.read_bytes())
+    manifest = read_manifest(files)
+    assert manifest is not None, "observer.project.json must be at the ZIP root"
+    assert manifest.image == "python:3.12-slim" and manifest.run == ("python3", "-u", "minimal_agent.py")
+    assert manifest.build == () and dict(manifest.environment)["MODEL_PROVIDER"] == "deterministic"
+    project = tmp_path / "project"
+    extract_project(files, project)
+    # Same argv as the container, run natively with this interpreter (Docker is not needed here).
+    from dataclasses import replace  # noqa: PLC0415
+    runtime = NativeWorkspace(project, replace(manifest, run=(PY, *manifest.run[1:])))
+    runtime.build()
+    transport = runtime.start({"OPENAI_BASE_URL": "https://platform.invalid/functions/v1/observer-model/v1",
+                               "OPENAI_API_KEY": "obs_not-a-real-credential"})
+    try:
+        result = ChallengeWorkflow(root=KIT / "scenarios" / "demo-week").run(transport, wallclock_seconds=240)
+    finally:
+        runtime.close()
+    assert result["termination_reason"] == "survey_complete"
+    assert result["committed_action_count"] > 0
+    assert "provider=deterministic" in transport.log
+
+
+def test_pack_agent_generates_a_manifest_and_rejects_an_invalid_one(tmp_path):
+    agent = tmp_path / "agent"
+    shutil.copytree(KIT / "agent", agent)
+    (agent / "observer.project.json").unlink()
+    out = tmp_path / "generated.zip"
+    proc = run("pack_agent.py", "--agent", str(agent), "--out", str(out))
+    assert proc.returncode == 0 and "(generated)" in proc.stdout
+    manifest = json.loads(zipfile.ZipFile(out).read("observer.project.json"))
+    assert manifest["run"] == ["python3", "-u", "minimal_agent.py"]
+    (agent / "observer.project.json").write_text(json.dumps({**manifest, "environment": {"MY_API_KEY": "x"}}), encoding="utf-8")
+    proc = run("pack_agent.py", "--agent", str(agent), "--out", str(tmp_path / "bad.zip"))
+    assert proc.returncode != 0 and "MY_API_KEY" in proc.stderr
+    assert not (tmp_path / "bad.zip").exists()
 
 
 def test_pack_agent_rejects_uninstallable_requirements(tmp_path):

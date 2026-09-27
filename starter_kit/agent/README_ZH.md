@@ -1,6 +1,13 @@
-> 最省事的改法：只改 `my_strategy.py` 里的 `choose_action`（候选已按公开评分排好序，返回要观测的候选或 `None` 等待），然后把这一个文件上传到网站，平台会自动补齐其余文件。下面是完整版说明。
+> 最省事的改法：只改 `my_strategy.py` 里的 `choose_action`（候选已按公开评分排好序，返回要观测的候选或 `None` 等待）。下面是完整版说明。
 >
-> 入门包用法：在 `agent-observer-starter-kit/` 目录运行 `python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py`；打包提交用 `python3 pack_agent.py` 与 `python3 sac_submit.py`。下文的 `src/run_challenge.py` 命令来自主办方的原始仓库，在入门包中对应 `local_runner.py`。
+> 入门包用法：在 `agent-observer-starter-kit/` 目录运行 `python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py`。下文的 `src/run_challenge.py` 命令来自主办方的原始仓库，在入门包中对应 `local_runner.py`。
+>
+> 提交方式（网站已不再接受单个 `my_strategy.py` 文件）：
+>
+> - 练习赛：本地运行后，在「提交」页上传 `run_output/decisions.csv`（也可用 `python3 sac_submit.py`）。
+> - 完整项目（正式赛只接受这种）：运行 `python3 pack_agent.py`，把生成的 `my-agent.zip` 在「参赛」页作为私有 ZIP 上传，或提交公开 GitHub 仓库。
+>   本目录的 `observer.project.json` 会一起打包到 ZIP 根目录，平台直接运行 `python3 -u minimal_agent.py`，不需要任何模型密钥。
+>   `.env` 不会被打包；需要模型时在「参赛」页设置自己的 API。
 
 # Minimal Example Agent
 
@@ -97,6 +104,14 @@ DEEPSEEK_API_KEY=<your-key>
 
 除 OpenAI 和 Anthropic 的原生 LangChain adapter 外，其他 profile 均需显式提供
 `MODEL_BASE_URL`。实际 endpoint 和 model ID 可能变化，应以各厂商当前官方文档为准。
+
+平台运行（云端评测和官方本地项目运行器）不会读取你的 `.env`，也不接受含 `.env` 的 ZIP。
+每次运行会注入 `OPENAI_BASE_URL`（平台的 OpenAI 兼容模型代理，只支持 chat completions）和
+`OPENAI_API_KEY`（本次运行的临时凭证，不是你的密钥）。`model_factory.py` 优先读取这两个变量，
+没有时才回退到上面的 `MODEL_BASE_URL` 和各服务商密钥，所以同一份代码本地和平台都能用。
+模型名读取 `OPENAI_MODEL` 或 `MODEL_NAME`；在平台上可以留空，代理会使用本队在「参赛」页设置的
+地址、模型和密钥。平台上要启用模型，把 `MODEL_PROVIDER` 设为 `openai`（写在 `observer.project.json`
+的 `environment` 中），并在构建步骤里安装依赖，见入门包 `README.md` 的 "Upload a complete project"。
 
 ## JSON-Lines 协议
 

@@ -100,3 +100,53 @@ fn main() {
                 "build": [["rustc", "agent.rs", "-o", "agent"]], "run": ["./agent"]}
     result, _ = _run(workspace, manifest, public_scenario, tmp_path / "result")
     assert result["committed_action_count"] >= len(ChallengeWorkflow(public_scenario).scorer.slots)
+
+
+def _packed_kit(tmp_path: Path) -> Path:
+    import subprocess
+    import sys
+    from project_platform.package import extract_project, read_project_zip
+    root = Path(__file__).resolve().parents[1]
+    out = tmp_path / "my-agent.zip"
+    subprocess.run([sys.executable, str(root / "starter_kit" / "pack_agent.py"), "--out", str(out)], check=True,
+                   capture_output=True)
+    workspace = tmp_path / "kit-project"
+    extract_project(read_project_zip(out.read_bytes()), workspace)
+    return workspace
+
+
+@pytest.mark.skipif(not os.environ.get("OBSERVER_TEST_PYTHON_IMAGE"), reason="Explicit container test image required")
+def test_packed_starter_kit_runs_in_the_container_without_a_model_key(tmp_path, public_scenario):
+    workspace = _packed_kit(tmp_path)
+    manifest = json.loads((workspace / "observer.project.json").read_text())
+    assert manifest["image"] == "python:3.12-slim"
+    manifest["image"] = os.environ["OBSERVER_TEST_PYTHON_IMAGE"]  # the digest preparation would resolve
+    _result, log = _run(workspace, manifest, public_scenario, tmp_path / "result",
+                        {"OPENAI_BASE_URL": "http://127.0.0.1:9/v1", "OPENAI_API_KEY": "obs_test-run-credential"})
+    assert "minimal-agent provider=deterministic" in log
+
+
+@pytest.mark.skipif(not os.environ.get("OBSERVER_TEST_PYTHON_IMAGE"), reason="Explicit container test image required")
+def test_starter_kit_model_build_step_from_the_readme_installs_and_starts(tmp_path, public_scenario):
+    """The documented build step installs requirements as the non-root, read-only container user. The proxy
+    address is unreachable here, so every model call falls back to the deterministic choice."""
+    workspace = _packed_kit(tmp_path)
+    manifest = json.loads((workspace / "observer.project.json").read_text())
+    manifest.update({
+        "image": os.environ["OBSERVER_TEST_PYTHON_IMAGE"],
+        "build": [["python3", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check",
+                   "--target", ".deps", "-r", "requirements.txt"]],
+        "environment": {"PYTHONPATH": ".deps", "PYTHONDONTWRITEBYTECODE": "1", "MODEL_PROVIDER": "openai",
+                        "LLM_MAX_RETRIES": "0", "LLM_TIMEOUT_SECONDS": "2"},
+    })
+    parsed = ProjectManifest.parse(manifest)
+    with DockerWorkspace(workspace, parsed, parsed.image, limits=RuntimeLimits(build_seconds=600)) as runtime:
+        try:
+            runtime.build()
+        except Exception as exc:
+            pytest.fail(f"{exc}\n{runtime.build_log}")
+        transport = runtime.start({"OPENAI_BASE_URL": "http://127.0.0.1:9/v1", "OPENAI_API_KEY": "obs_test-run-credential"})
+        result = ChallengeWorkflow(public_scenario).run(transport, wallclock_seconds=120)
+        runtime.close()
+    assert result["termination_reason"] == "survey_complete", (result.get("commit_log"), transport.log)
+    assert "minimal-agent provider=openai" in transport.log

@@ -115,7 +115,6 @@ and at least one long (≥ 90-night) scenario before submitting.
    combined_quality, estimated_science_score, terminal_penalty_avoidance, request_policy_value, estimated_total_gain,
    estimated_gain_per_second) and returns one of them (optionally with a `reason`) or `None` to wait; `memory` is a
    dict that persists for the run. Exceptions or illegal picks fall back to the default ranking (logged to stderr).
-   This single file can be submitted on its own: the platform wraps it with the rest of the minimal agent.
 1. Decision logic lives in `agent/decision_graph.py`: `_prepare` builds the ranked previews, `_model_node`
    optionally asks an LLM to pick among the top-K, `_finalize` validates and falls back to the deterministic
    best. Change the ranking, add lookahead over `night_start` / `weekly` windows, add memory across decisions
@@ -125,13 +124,16 @@ and at least one long (≥ 90-night) scenario before submitting.
    `xai`, `zai`, `moonshot`, `dashscope`, `minimax`), `MODEL_NAME`, the matching `*_API_KEY`, and
    `MODEL_BASE_URL` for OpenAI-compatible providers; then `python3 -m pip install -r agent/requirements.txt` and
    re-run step 2. `agent.log` prints `minimal-agent provider=<name>`; `deterministic fallback (...)` means the
-   configuration is incomplete. The platform allows network access to LLM APIs and installs
-   `agent/requirements.txt` into a fresh virtualenv before the run, so keep it to installable package names.
+   configuration is incomplete. On the platform `.env` is never uploaded: each run gets `OPENAI_BASE_URL` (the
+   platform's model proxy, chat completions) and `OPENAI_API_KEY` (a temporary run credential); `model_factory.py`
+   reads them first, and the proxy uses the endpoint, model and key the team set on the Participate page.
+   Packages are installed there only by a `build` step in `agent/observer.project.json` (see `README.md`,
+   "Upload a complete project"), so keep `requirements.txt` to installable package names.
    An LLM call per decision multiplies wall-clock use: cap it with `LLM_TOP_K_CANDIDATES`,
    `LLM_TIMEOUT_SECONDS`, or by only consulting the model at night starts.
 3. Rules: only stdout carries protocol lines (log to stderr); every file you import must be inside `agent/`
    (the `challenge/` package is not present on the platform); do not read scenario files or anything outside
-   the package; `.env` values reach only your process.
+   the package; never put keys into the project or its manifest.
 4. Re-run step 2 after every change and compare `total`, `required_missing`, `penalties` and `wall_seconds`.
    `run_output/decision_replay.html` shows each night's choices next to weather and windows.
 
@@ -141,7 +143,10 @@ The formal competition (`online`) evaluates complete projects only: the user upl
 (`/compete`), and the platform runs it step by step on three fixed formal scenarios (the same for every team;
 scenario files and future weather are never published, observations arrive one step at a time). The team marks one confirmed version as its final version before the phase
 ends; after it ends, organizers evaluate that version once on one hidden scenario, which alone decides the final
-ranking. No CSV is accepted there. Only the Playground
+ranking. No CSV is accepted there. To make the ZIP: `python3 pack_agent.py` writes `my-agent.zip` with
+`agent/observer.project.json` at its root (image `python:3.12-slim`, run `python3 -u minimal_agent.py`) and
+without `.env`; the user uploads it on the Participate page (Submit a complete project → private ZIP). The
+deterministic agent needs no model key there. Only the Playground
 `practice` phase takes a results file (the `decisions.csv` from a local run):
 
 1. Run locally on the practice scenario you will submit for, so `run_output/decisions.csv` exists.

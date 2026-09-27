@@ -1,7 +1,8 @@
 # Agent Observer — starter kit (challenge v3)
 
 > New to this? Read **[QUICKSTART.md](QUICKSTART.md)** / **[QUICKSTART_ZH.md](QUICKSTART_ZH.md)**（中文）: double-click `run_baseline`, edit
-> `agent/my_strategy.py`, drop that one file on the website. This README is the detailed engineering version.
+> `agent/my_strategy.py`, upload the `decisions.csv` for practice, or pack `agent/` with `pack_agent.py` and upload the ZIP
+> as a complete project. This README is the detailed engineering version.
 
 Everything in this folder is what the evaluation platform runs: the same workflow, the same JSON-Lines
 transport, the same scorer. A local run on a public scenario reproduces the platform's `score_report.json`
@@ -24,8 +25,8 @@ Windows, macOS and Linux are supported (verified on Windows 11 with Python 3.12 
 | `score_decisions.py` | Re-scores a `decisions.csv` (public scenarios only), including its `report_*` rows. |
 | `make_scenario.py` | Generates new public practice scenarios from a seed. |
 | `fetch_scenario.py` | Downloads any scenario the platform publishes (`--list`, then `fetch_scenario.py dev-fortnight`) into `scenarios/<slug>/`. |
-| `pack_agent.py` | Zips `agent/` into the submission package and validates it. |
-| `sac_submit.py` | Uploads a package or a results file to the platform and waits for the score. |
+| `pack_agent.py` | Zips `agent/` into a complete-project ZIP (with `observer.project.json` at its root) and validates it. |
+| `sac_submit.py` | Uploads a practice results file (`decisions.csv`) to the platform and waits for the score. |
 | `SKILL.md` | Step-by-step instructions an AI coding assistant can follow. |
 
 ## Two rule sets, one kit
@@ -92,8 +93,10 @@ live run reports `survey_complete`, `global_wallclock_expired`, `agent_error` or
 
 ## How a run works
 
-1. The platform starts your entry script once (`python -B minimal_agent.py`, cwd = your package folder, a
-   scrubbed environment plus the `KEY=VALUE` lines of your `.env`, stderr captured to `agent.log`).
+1. The platform starts your program once with the `run` command of `observer.project.json`
+   (`python3 -u minimal_agent.py` for the kit; cwd = your project folder, a scrubbed environment plus the
+   manifest's `environment` and the model-proxy variables `OPENAI_BASE_URL` / `OPENAI_API_KEY`; stderr is
+   captured to the run log). `local_runner.py` mirrors this and also loads your local `agent/.env`.
 2. It writes one `initialize` line: the immutable catalogs (tiles with `tile_science_value`, targets, calendar,
    site) and the exact `scoring_contract` (`challenge-score-v3` config, weather score interface, lunar model).
    No reply is expected. Up to 30 s are allowed for the process to accept it.
@@ -206,14 +209,56 @@ policy scores far lower, mostly through missed REQUIRED tiles and invalid action
 * `agent/decision_graph.py` — the decision logic (`_prepare`, `_model_node`, `_finalize`). The deterministic
   path ranks `preview_actions(...)` by estimated gain and observes the best; `wait` only when nothing can be
   completed. Add your own planning, memory across decisions, or candidate filtering here.
-* `agent/model_factory.py` and `agent/.env` — optional LLM. Copy `.env.example` to `.env`, set
-  `MODEL_PROVIDER`, `MODEL_NAME` and the provider key; install `agent/requirements.txt` in your environment
-  (`python3 -m pip install -r agent/requirements.txt`). Platform runs may reach LLM APIs over the network and
-  install `requirements.txt` into a fresh virtualenv before starting your process.
+* `agent/model_factory.py` and `agent/.env` — optional LLM. Locally: copy `.env.example` to `.env`, set
+  `MODEL_PROVIDER`, `MODEL_NAME` and the provider key, and install `agent/requirements.txt`
+  (`python3 -m pip install -r agent/requirements.txt`). On the platform `.env` is never uploaded: every run gets
+  `OPENAI_BASE_URL` (the platform's OpenAI-compatible model proxy) and `OPENAI_API_KEY` (a temporary run
+  credential, not your key). `model_factory.py` reads these two first and falls back to `MODEL_BASE_URL` and the
+  provider keys (`ZAI_API_KEY`, `DEEPSEEK_API_KEY`, ...) for local runs. The model name comes from `OPENAI_MODEL`
+  or `MODEL_NAME`; on the platform it may be left empty, because the proxy uses the endpoint, model and key your
+  team set on the Participate page. The proxy speaks chat completions, so OpenAI-compatible profiles use the chat
+  API there.
 * Keep `minimal_agent.py` / `protocol.py` compatible with the envelopes above; the platform validates every
   response.
 * Anything your agent imports must live inside `agent/`. The kit's `challenge/` package is not available on
   the platform; `scoring_preview.py` is copied into `agent/` for that reason.
+
+## Upload a complete project
+
+`agent/` already is a complete project: `agent/observer.project.json` tells the platform how to run it, so no
+automatic adapter (and no model key) is needed to prepare it.
+
+```json
+{
+  "schema_version": "observer-project-v1",
+  "protocol": "jsonl-v2",
+  "image": "python:3.12-slim",
+  "build": [],
+  "run": ["python3", "-u", "minimal_agent.py"],
+  "working_directory": ".",
+  "environment": {"PYTHONDONTWRITEBYTECODE": "1", "MODEL_PROVIDER": "deterministic"}
+}
+```
+
+1. `python3 pack_agent.py` writes `my-agent.zip` with the manifest at its root. It checks the manifest the way the
+   platform does and leaves `.env` out (the platform rejects ZIPs with `.env`; `--include-env` exists only for a
+   local copy and prints a warning).
+2. On the website open **Participate** → Submit a complete project → private ZIP, upload `my-agent.zip`, wait for
+   preparation and the public test, review and confirm the version, then evaluate it.
+3. The shipped agent is deterministic and works without any model key. The image tag is resolved to a fixed
+   digest during preparation.
+
+To let a model take part on the platform, set your endpoint, model and key on the Participate page (never in the
+ZIP), then install the packages in a build step and switch the provider, for example:
+
+```json
+  "build": [["python3", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check",
+             "--target", ".deps", "-r", "requirements.txt"]],
+  "environment": {"PYTHONPATH": ".deps", "PYTHONDONTWRITEBYTECODE": "1", "MODEL_PROVIDER": "openai"}
+```
+
+Build steps run in the same image with network access, as a non-root user whose only writable places are the
+project folder and `/tmp`, hence `--target .deps`. The manifest `environment` must not contain keys or tokens.
 
 ## Submit
 
@@ -239,4 +284,6 @@ The URL and anon key are on the platform's Resources page.
 
 参赛 Agent 的中文说明（责任边界、启用各家 LLM 的 `.env` 配置、JSON-Lines 协议、评分参数与回退保障）见
 [`agent/README_ZH.md`](agent/README_ZH.md)。本地流程：`local_runner.py` 跑基线 → `make_scenario.py` 生成更多场景 →
-修改 `agent/decision_graph.py` → `pack_agent.py` 打包。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件和未来天气不公开）上逐步评测，本队评测的结果 ZIP 可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用最高分评测的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。
+修改 `agent/decision_graph.py` → `pack_agent.py` 打包成完整项目 ZIP（根目录含 `observer.project.json`，不含 `.env`），在「参赛」页上传；
+默认的确定性智能体不需要任何模型密钥。平台运行时注入 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（平台模型代理和临时凭证），
+`model_factory.py` 优先读取它们，本地运行时再回退到 `MODEL_BASE_URL` 与各服务商密钥。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件和未来天气不公开）上逐步评测，本队评测的结果 ZIP 可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用最高分评测的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。

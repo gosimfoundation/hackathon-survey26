@@ -245,6 +245,56 @@ class MinimalAgentTests(unittest.TestCase):
                 self.assertEqual(settings.provider, normalized)
                 self.assertEqual(settings.api_key, "test-secret")
 
+    def test_platform_openai_variables_take_precedence(self) -> None:
+        platform = {
+            "OPENAI_BASE_URL": "https://platform.invalid/functions/v1/observer-model/v1",
+            "OPENAI_API_KEY": "run-credential",
+        }
+        local = {
+            "MODEL_PROVIDER": "glm",
+            "MODEL_NAME": "local-model",
+            "MODEL_BASE_URL": "https://example.invalid/v1",
+            "ZAI_API_KEY": "local-secret",
+        }
+        with patch.dict(os.environ, {**local, **platform}, clear=True):
+            settings = ModelSettings.from_environment(Path("/does/not/exist"))
+        self.assertEqual(settings.base_url, platform["OPENAI_BASE_URL"])
+        self.assertEqual(settings.api_key, "run-credential")
+        self.assertEqual(settings.model, "local-model")
+        self.assertEqual(settings.api_mode, "chat")
+        # Local runs without the platform variables keep the provider settings.
+        with patch.dict(os.environ, local, clear=True):
+            settings = ModelSettings.from_environment(Path("/does/not/exist"))
+        self.assertEqual(settings.base_url, "https://example.invalid/v1")
+        self.assertEqual(settings.api_key, "local-secret")
+
+    def test_platform_proxy_needs_no_model_name_and_uses_chat_completions(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "MODEL_PROVIDER": "openai",
+                "OPENAI_BASE_URL": "https://platform.invalid/v1",
+                "OPENAI_API_KEY": "run-credential",
+            },
+            clear=True,
+        ):
+            settings = ModelSettings.from_environment(Path("/does/not/exist"))
+        self.assertEqual(settings.model, "team-model")
+        self.assertEqual(settings.api_mode, "chat")
+        with patch.dict(
+            os.environ,
+            {"OPENAI_BASE_URL": "https://platform.invalid/v1", "OPENAI_API_KEY": "run-credential"},
+            clear=True,
+        ):
+            self.assertTrue(ModelSettings.from_environment(Path("/does/not/exist")).deterministic)
+        with patch.dict(
+            os.environ,
+            {"MODEL_PROVIDER": "openai", "OPENAI_MODEL": "chosen", "OPENAI_API_KEY": "k"},
+            clear=True,
+        ):
+            settings = ModelSettings.from_environment(Path("/does/not/exist"))
+        self.assertEqual((settings.model, settings.api_mode), ("chosen", "responses"))
+
 
 if __name__ == "__main__":
     unittest.main()

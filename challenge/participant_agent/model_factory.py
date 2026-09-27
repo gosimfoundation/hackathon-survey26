@@ -1,4 +1,12 @@
-"""Environment-driven LangChain model construction for the minimal agent."""
+"""Environment-driven LangChain model construction for the minimal agent.
+
+On the platform (cloud runs and the official local project runner) every run gets
+OPENAI_BASE_URL and OPENAI_API_KEY: an OpenAI-compatible chat-completions proxy and a
+temporary run credential. The proxy calls the model your team set on the Participate
+page, so the model name sent from here is replaced. These two variables therefore take
+precedence for every OpenAI-compatible provider; the provider-specific variables
+(MODEL_BASE_URL, ZAI_API_KEY, ...) remain the fallback for your own local runs.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +34,11 @@ PROVIDER_KEY_ENV = {
     "dashscope": "DASHSCOPE_API_KEY",
     "minimax": "MINIMAX_API_KEY",
 }
+
+
+# Sent when the platform proxy is used without a model name; the proxy replaces it with
+# the model configured for the team on the Participate page.
+PLATFORM_MODEL_PLACEHOLDER = "team-model"
 
 
 class ModelConfigurationError(ValueError):
@@ -58,14 +71,30 @@ class ModelSettings:
         key_name = os.environ.get("MODEL_API_KEY_ENV", "").strip() or PROVIDER_KEY_ENV.get(
             provider, "MODEL_API_KEY"
         )
+        # OPENAI_BASE_URL/OPENAI_API_KEY first (what the platform injects), then the
+        # provider-specific settings. Anthropic's native API is not OpenAI-compatible.
+        compatible_base = (
+            os.environ.get("OPENAI_BASE_URL", "").strip() if provider != "anthropic" else ""
+        )
+        base_url = compatible_base or os.environ.get("MODEL_BASE_URL", "").strip()
+        api_key = (
+            os.environ.get("OPENAI_API_KEY", "").strip() if compatible_base else ""
+        ) or os.environ.get(key_name, "").strip()
+        model = (
+            os.environ.get("OPENAI_MODEL", "").strip()
+            or os.environ.get("MODEL_NAME", "").strip()
+            or (PLATFORM_MODEL_PLACEHOLDER if compatible_base else "")
+        )
+        # The platform proxy speaks chat completions only.
         api_mode = os.environ.get(
-            "MODEL_API_MODE", "responses" if provider == "openai" else "chat"
+            "MODEL_API_MODE",
+            "responses" if provider == "openai" and not compatible_base else "chat",
         ).strip().lower()
         return cls(
             provider=provider,
-            model=os.environ.get("MODEL_NAME", "").strip(),
-            base_url=os.environ.get("MODEL_BASE_URL", "").strip(),
-            api_key=os.environ.get(key_name, "").strip(),
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
             api_mode=api_mode,
             timeout_seconds=float(os.environ.get("LLM_TIMEOUT_SECONDS", "30")),
             max_retries=int(os.environ.get("LLM_MAX_RETRIES", "1")),
@@ -83,7 +112,8 @@ def build_chat_model(settings: ModelSettings):
         return None
     if not settings.model or not settings.api_key:
         raise ModelConfigurationError(
-            f"{settings.provider} requires MODEL_NAME and its configured API key"
+            f"{settings.provider} requires a model name (OPENAI_MODEL or MODEL_NAME) "
+            "and an API key (OPENAI_API_KEY or its provider key)"
         )
     if settings.timeout_seconds <= 0 or settings.max_retries < 0:
         raise ModelConfigurationError("timeout must be positive and retries non-negative")
@@ -110,7 +140,7 @@ def build_chat_model(settings: ModelSettings):
         ) from exc
     if settings.provider != "openai" and not settings.base_url:
         raise ModelConfigurationError(
-            f"{settings.provider} requires MODEL_BASE_URL for its compatible endpoint"
+            f"{settings.provider} requires OPENAI_BASE_URL or MODEL_BASE_URL for its compatible endpoint"
         )
     kwargs = {
         "model": settings.model,

@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Zip an agent folder into the package the platform runs, after checking that the platform can start it.
+"""Zip an agent folder into a complete-project ZIP the platform can prepare and run as is.
 
-    python3 pack_agent.py [--agent agent] [--out my-agent.zip] [--no-env]
+    python3 pack_agent.py [--agent agent] [--out my-agent.zip] [--include-env]
 
-Package rules (mirroring the platform's runner):
-  * the entry script (minimal_agent.py, agent.py or main.py, first found) sits at the zip root;
-  * every other file in the folder is importable next to it;
-  * requirements.txt, if present, is `pip install`ed into a fresh virtualenv before the run, so it may only list
-    installable distribution names with optional version specifiers (no local paths, URLs, -e, or pip options);
-  * .env, if present, is loaded into the agent's environment only (API keys for an LLM provider). It is included
-    in the zip unless --no-env is given;
-  * __pycache__, .venv, *.pyc, scratch/, run_output/ and editor/OS clutter are never packaged.
+Upload the ZIP on the website's Participate page (Submit a complete project -> private ZIP). The kit's
+deterministic agent runs there without any model key.
+
+Package rules (mirroring the platform's project checks):
+  * observer.project.json sits at the zip root. The kit ships one (image python:3.12-slim, run
+    `python3 -u minimal_agent.py`, no build steps); if the folder has none, a default one is generated for the
+    entry script (minimal_agent.py, agent.py or main.py, first found). With a manifest the platform runs your
+    own JSON-Lines interface and never needs its automatic, model-assisted adapter;
+  * every other file in the folder is packaged next to it;
+  * requirements.txt is NOT installed automatically: add a `build` step to observer.project.json when your
+    agent needs packages (README.md, "Upload a complete project"). It may only list installable
+    distribution names with optional version specifiers (no local paths, URLs, -e, or pip options);
+  * .env is left out: the platform rejects ZIPs that contain .env files, and permanent keys never belong in
+    a ZIP. On the platform your agent gets OPENAI_BASE_URL / OPENAI_API_KEY (the platform's model proxy and a
+    temporary run credential); set your own model key on the Participate page. --include-env packs .env for
+    a local-only copy and prints a warning;
+  * __pycache__, .venv, .deps, *.pyc, scratch/, run_output/ and editor/OS clutter are never packaged.
 
 Standard library only.
 """
@@ -19,6 +28,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import json
 import re
 import sys
 import zipfile
@@ -26,9 +36,10 @@ from pathlib import Path
 
 KIT_ROOT = Path(__file__).resolve().parent
 ENTRY_CANDIDATES = ("minimal_agent.py", "agent.py", "main.py")
-EXCLUDED_DIRS = {"__pycache__", ".venv", "venv", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache", "scratch", "run_output", ".idea", ".vscode"}
+EXCLUDED_DIRS = {"__pycache__", ".venv", "venv", ".deps", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache", "scratch", "run_output", ".idea", ".vscode"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".zip"}
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
+ENV_TEMPLATES = {".env.example", ".env.sample", ".env.template"}
 REQUIREMENT_LINE = re.compile(
     r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?"  # distribution name (PEP 508)
     r"(?:\[[A-Za-z0-9._,\s-]+\])?"                    # optional extras
@@ -36,6 +47,15 @@ REQUIREMENT_LINE = re.compile(
     r"\s*(?:;.*)?$"                                    # optional environment marker
 )
 MAX_PACKAGE_BYTES = 20 << 20
+
+# The platform's manifest rules (project_platform/manifest.py), repeated here so the kit stays dependency-free.
+MANIFEST_NAME = "observer.project.json"
+MANIFEST_SCHEMA = "observer-project-v1"
+DEFAULT_IMAGE = "python:3.12-slim"
+MANIFEST_FIELDS = {"schema_version", "image", "run", "build", "working_directory", "environment", "protocol"}
+IMAGE_REFERENCE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:-]*(?:@sha256:[0-9a-f]{64})?$")
+ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+PRIVATE_ENV = re.compile(r"(SECRET|PASSWORD|TOKEN|API_KEY|PRIVATE_KEY)")
 
 
 def find_entry(agent_dir: Path) -> Path:
@@ -69,6 +89,65 @@ def check_requirements(path: Path) -> list[str]:
     return problems
 
 
+def default_manifest(entry: Path) -> dict:
+    return {
+        "schema_version": MANIFEST_SCHEMA,
+        "protocol": "jsonl-v2",
+        "image": DEFAULT_IMAGE,
+        "build": [],
+        "run": ["python3", "-u", entry.name],
+        "working_directory": ".",
+        "environment": {"PYTHONDONTWRITEBYTECODE": "1", "MODEL_PROVIDER": "deterministic"},
+    }
+
+
+def _is_argv(value) -> bool:
+    return (isinstance(value, list) and 1 <= len(value) <= 128 and
+            all(isinstance(v, str) and v and "\x00" not in v and len(v) <= 8192 for v in value) and
+            not value[0].startswith("-"))
+
+
+def check_manifest(raw: bytes, agent_dir: Path) -> list[str]:
+    """Return what the platform would reject in this observer.project.json (empty when it is valid)."""
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeError):
+        return [f"{MANIFEST_NAME} is not valid JSON"]
+    if not isinstance(data, dict):
+        return [f"{MANIFEST_NAME} must be a JSON object"]
+    problems = []
+    if set(data) - MANIFEST_FIELDS:
+        problems.append("unknown fields: " + ", ".join(sorted(set(data) - MANIFEST_FIELDS)))
+    if data.get("schema_version") != MANIFEST_SCHEMA:
+        problems.append(f"schema_version must be {MANIFEST_SCHEMA}")
+    image = data.get("image")
+    if not isinstance(image, str) or len(image) > 256 or not IMAGE_REFERENCE.fullmatch(image):
+        problems.append(f"image must be a container image reference such as {DEFAULT_IMAGE}")
+    if data.get("protocol", "jsonl-v2") != "jsonl-v2":
+        problems.append("protocol must be jsonl-v2")
+    if not _is_argv(data.get("run")):
+        problems.append('run must be a nonempty array of command arguments, e.g. ["python3", "-u", "minimal_agent.py"]')
+    build = data.get("build", [])
+    if not isinstance(build, list) or len(build) > 16 or not all(_is_argv(command) for command in build):
+        problems.append("build must be a list of at most 16 command-argument arrays")
+    workdir = data.get("working_directory", ".")
+    if (not isinstance(workdir, str) or workdir.startswith("/") or "\\" in workdir or ":" in workdir or
+            (workdir != "." and any(part in ("", ".", "..") for part in workdir.split("/"))) or
+            not (agent_dir / workdir).is_dir()):
+        problems.append("working_directory must be an existing relative folder inside the project")
+    env = data.get("environment", {})
+    if not isinstance(env, dict) or len(env) > 32:
+        problems.append("environment must be an object with at most 32 settings")
+    else:
+        for key, value in env.items():
+            if (not ENV_NAME.fullmatch(key) or key.startswith(("GITHUB_", "SUPABASE_", "OBSERVER_", "ACTIONS_")) or
+                    PRIVATE_ENV.search(key)):
+                problems.append(f"environment {key}: credentials and platform settings must not be placed in the manifest")
+            elif not isinstance(value, str) or "\x00" in value or len(value) > 4096:
+                problems.append(f"environment {key} must be a short string")
+    return problems
+
+
 def collect(agent_dir: Path, include_env: bool) -> list[Path]:
     files = []
     for path in sorted(agent_dir.rglob("*")):
@@ -79,7 +158,7 @@ def collect(agent_dir: Path, include_env: bool) -> list[Path]:
             continue
         if path.name == ".env" and not include_env:
             continue
-        if path.name.startswith(".env.") and path.name != ".env.example":
+        if path.name.startswith(".env.") and path.name not in ENV_TEMPLATES:
             continue
         files.append(path)
     return files
@@ -89,7 +168,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--agent", type=Path, default=KIT_ROOT / "agent", help="agent folder (default: agent/)")
     parser.add_argument("--out", type=Path, default=KIT_ROOT / "my-agent.zip", help="zip path (default: my-agent.zip)")
-    parser.add_argument("--no-env", action="store_true", help="leave .env out of the package (the platform then runs without your keys)")
+    parser.add_argument("--include-env", action="store_true",
+                        help="also pack agent/.env, for a local-only copy (the platform rejects ZIPs with .env; never upload it)")
+    parser.add_argument("--no-env", action="store_true", help=argparse.SUPPRESS)  # the default now; kept for old scripts
     parser.add_argument("--allow-large", action="store_true", help=f"skip the {MAX_PACKAGE_BYTES >> 20} MB size guard")
     args = parser.parse_args(argv)
 
@@ -103,12 +184,22 @@ def main(argv=None) -> int:
         problems = check_requirements(requirements)
         if problems:
             raise SystemExit("requirements.txt cannot be installed on the platform:\n  " + "\n  ".join(problems))
-    files = collect(agent_dir, include_env=not args.no_env)
+    manifest_path = agent_dir / MANIFEST_NAME
+    generated = not manifest_path.is_file()
+    manifest_bytes = ((json.dumps(default_manifest(entry), indent=2) + "\n").encode() if generated
+                      else manifest_path.read_bytes())
+    problems = check_manifest(manifest_bytes, agent_dir)
+    if problems:
+        raise SystemExit(f"{MANIFEST_NAME} would be rejected by the platform:\n  " + "\n  ".join(problems))
+    manifest = json.loads(manifest_bytes)
+    include_env = args.include_env and not args.no_env
+    files = [path for path in collect(agent_dir, include_env=include_env) if path != manifest_path]
     out = args.out.resolve()
     if out.parent == agent_dir or agent_dir in out.parents:
         raise SystemExit("write the zip outside the agent folder, otherwise it would package itself")
     out.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(MANIFEST_NAME, manifest_bytes)
         for path in files:
             archive.write(path, arcname=path.relative_to(agent_dir).as_posix())
     size = out.stat().st_size
@@ -116,15 +207,22 @@ def main(argv=None) -> int:
         out.unlink()
         raise SystemExit(f"package is {size / (1 << 20):.1f} MB; move data out of the agent folder or pass --allow-large")
     digest = hashlib.sha256(out.read_bytes()).hexdigest()
-    print(f"packed {len(files)} files from {agent_dir} -> {out} ({size} bytes, sha256 {digest[:16]}...)")
-    print(f"  entry: {entry.name}")
+    print(f"packed {len(files) + 1} files from {agent_dir} -> {out} ({size} bytes, sha256 {digest[:16]}...)")
+    print(f"  {MANIFEST_NAME}{' (generated)' if generated else ''}: image {manifest['image']}, run {' '.join(manifest['run'])}")
     for path in files:
         print(f"  {path.relative_to(agent_dir).as_posix()}")
     if (agent_dir / ".env").is_file():
-        print("  note: .env is included; its keys are visible only to your agent process on the platform" if not args.no_env
-              else "  note: .env left out (--no-env); the platform run will use deterministic mode")
-    if requirements.is_file():
-        print("  note: the platform installs requirements.txt into a fresh virtualenv before the run (network is allowed)")
+        if include_env:
+            print("WARNING: .env is included. Keep this ZIP on your own computer: the platform rejects ZIPs that contain "
+                  ".env, and permanent keys must never be uploaded. Set your model key on the Participate page instead.",
+                  file=sys.stderr)
+        else:
+            print("  note: .env left out (keys never go into the ZIP; set your model key on the Participate page)")
+    if requirements.is_file() and not manifest.get("build"):
+        print("  note: requirements.txt is installed on the platform only by a build step in observer.project.json;"
+              " the default deterministic agent needs none")
+    if not include_env:
+        print("  next: upload this ZIP on the website's Participate page (Submit a complete project -> private ZIP)")
     return 0
 
 

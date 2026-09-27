@@ -78,7 +78,7 @@ Details live in the Brief's finals-mechanics section and on the Rules page.
 | Submission sits in the queue | Normal — the evaluator works through submissions one at a time; large scenarios take a while |
 | Submission immediately goes `invalid` | Usually the wrong file. Upload the `run_output/decisions.csv` your local run produced, for the same scenario you ran |
 | Want more weather to test against locally | `python3 make_scenario.py --out scenarios/mine --seed 7 --days 30`, then `python3 local_runner.py --scenario scenarios/mine --agent agent/minimal_agent.py` |
-| Want an LLM in the loop | Copy `agent/.env.example` to `agent/.env`, fill in a key (sponsor credits are on your dashboard), run locally, and upload the `decisions.csv` as usual |
+| Want an LLM in the loop | Copy `agent/.env.example` to `agent/.env`, fill in your own key (the platform provides no model credits), run locally, and upload the `decisions.csv` as usual |
 
 Data formats, the protocol and the scoring formula are on the **Docs** page; `README.md` inside the kit is the full engineer's version.
 
