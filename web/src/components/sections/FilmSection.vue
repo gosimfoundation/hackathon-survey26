@@ -28,9 +28,9 @@ function start() {
             controls
             playsinline
             preload="none"
-            :poster="assetUrl('/media/survey-trailer-poster.jpg')"
+            :poster="assetUrl('/media/survey-film-poster.jpg')"
           >
-            <source :src="assetUrl('/media/survey-trailer.mp4')" type="video/mp4">
+            <source :src="assetUrl('/media/survey-film.mp4')" type="video/mp4">
           </video>
           <button v-if="!started" type="button" class="film-play" :aria-label="t('home.film.play')" @click="start">
             <span class="film-play-mark" aria-hidden="true">▶</span>
