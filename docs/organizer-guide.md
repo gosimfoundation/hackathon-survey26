@@ -206,3 +206,15 @@ select public.team_capacity();  -- {"limit":150,"teams":…,"remaining":…,"ful
 3. 审查：`ANTHROPIC_API_KEY=… python scripts/review-agent-usage.py --review`（默认模型 `claude-opus-5-5`，`--model` 可改），输出 `reviews/agent-usage-<时间>/results.csv` 与 `results.json`，每队一行，含六个环节的判定、证据文件和理由。
 
 需要 `SUPABASE_PROJECT_REF` / `SUPABASE_ACCESS_TOKEN`，以及已登录、对 runner 组织有读权限的 `gh`。结果只是依据，不合格或存疑的队伍由主办方人工复核后再定。`reviews/` 含选手源码摘录，已在 `.gitignore` 中，不要提交或外传。
+
+## 开赛与收赛操作清单（2026-09-27）
+
+| 时间（UTC） | 动作 | 方式 |
+|---|---|---|
+| 10-04 16:00 | 网站切换为正式比赛 | **自动**：pg_cron 任务 `switch-to-competition-2026-10-04` 在该时刻把 `private.observer_site_mode` 切到 `online`，执行后自行删除。也可在「设置 → 切换为正式比赛」手动切（只要求三个正式场景都有评测包，不再要求校准）。 |
+| 10-04 16:00 之后 | 抽查 | 用测试队在「参赛」页评测一次；排行榜显示「线上榜」。 |
+| 10-07 15:59 | 最终版本锁定 | 自动（`online.ends_at`）。 |
+| 10-07 16:00 之后 | 隐藏决赛评测 | `python3 scripts/run-hidden-final.py`（先 dry run，再 `--apply`）。隐藏决赛与组委会验证赛程都在 colocated 模式下运行，不写逐步数据到数据库。 |
+| 核验后 | 公布 | 把 `final-hidden` 的 `leaderboard_mode` 设为 `published`；之后加密保存的密钥按规则自动删除。 |
+
+数据库体积：免费版上限 500 MB。pg_cron 任务 `observer-compact-finished-runs` 每 10 分钟清理结束超过 1 小时的评测逐步数据（完整记录在各自的结果包里）。
