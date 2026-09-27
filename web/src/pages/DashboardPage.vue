@@ -16,6 +16,7 @@ import DashShell from '../components/layout/DashShell.vue'
 import StatusPill from '../components/layout/StatusPill.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 import CreditsPanel from '../components/dashboard/CreditsPanel.vue'
+import KimiPlanPanel from '../components/dashboard/KimiPlanPanel.vue'
 import QuestPanel from '../components/dashboard/QuestPanel.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
 import { questProgress } from '../lib/quest'
@@ -151,6 +152,7 @@ onMounted(async () => {
             <li v-for="m in members" :key="m.id"><UserAvatar :name="m.name" :github="m.github" /> {{ m.name }}<template v-if="m.is_leader"> · <span class="label accent">{{ t('team.leader') }}</span></template></li>
           </ul>
         </div>
+        <KimiPlanPanel class="mt-8" />
         <CreditsPanel v-if="competition.mode==='practice'" :class="{ 'mt-8': Boolean(team) }" />
         <div class="panel mt-8">
           <div class="hd"><h2>{{ t('resources.kicker') }}</h2></div>
