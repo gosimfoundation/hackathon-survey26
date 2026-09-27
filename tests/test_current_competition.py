@@ -3,7 +3,6 @@ import uuid
 import psycopg
 import pytest
 from test_project_database import database, identity, query, rpc  # noqa: F401
-from test_scenario_instance_database import configure
 
 
 def test_mode_switch_is_admin_only_and_requires_a_ready_competition(database):
@@ -24,7 +23,11 @@ def test_mode_switch_is_admin_only_and_requires_a_ready_competition(database):
     query(uri,"insert into public.scenarios(id,slug,name) values(%s,%s,'Test')",(scenario,str(scenario)))
     query(uri,'insert into public.phase_scenarios values(%s,%s)',(competition,scenario))
     query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled) values(%s,true,true)',(competition,))
-    configure({'uri':uri,'phase':competition,'scenario':scenario})
+    # Fixed formal scenarios need an evaluation bundle, not per-team calibration.
+    with pytest.raises(psycopg.Error,match='competition_not_ready'):
+        rpc(uri,'set_competition_mode','competition',role='authenticated',user=admin)
+    query(uri,"insert into private.observer_scenario_bundles values(%s,'test/template.zip',%s)",(scenario,'a'*64))
+    assert query(uri,'select count(*) from private.observer_scenario_calibration')==[(0,)]
     result=rpc(uri,'set_competition_mode','competition',role='authenticated',user=admin)
     assert result=={'mode':'competition','phase_id':str(competition)}
     assert rpc(uri,'current_competition',role='anon')==result
