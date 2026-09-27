@@ -468,3 +468,25 @@ def test_saved_keys_are_purged_automatically_only_after_every_phase_that_uses_th
         save(uri,idle);assert rpc(uri,'observer_purge_provider_keys')==1
     finally:
         server.cleanup()
+
+
+def test_saved_keys_outlive_the_online_phase_until_sealed_final_results_are_published():
+    server,uri=start()
+    try:
+        user,team=identity(uri);save(uri,user)
+        query(uri,"update private.observer_team_models set saved_at=now()-interval '30 days'")
+        online,final=uuid.uuid4(),uuid.uuid4()
+        query(uri,"""insert into public.phases(id,slug,name_en,name_zh,counts_for_final,ends_at,leaderboard_mode)
+              values(%s,'online','O','O',true,now()-interval '20 days','live'),
+                    (%s,'final-hidden','H','H',true,now()+interval '10 days','hidden')""",(online,final))
+        query(uri,"insert into public.observer_phase_settings(phase_id,projects_enabled,sealed) values(%s,true,false),(%s,false,true)",(online,final))
+        # The online phase ended long ago: the hidden final still needs the key.
+        assert auto_purge(uri)==0 and keys_of(uri,team)==1
+        # Past the sealed phase's end plus retention, but results not yet published.
+        query(uri,"update public.phases set ends_at=now()-interval '10 days' where id=%s",(final,))
+        assert auto_purge(uri)==0 and keys_of(uri,team)==1
+        # Results published (verified): the key goes.
+        query(uri,"update public.phases set leaderboard_mode='published' where id=%s",(final,))
+        assert auto_purge(uri)==1 and keys_of(uri,team)==0
+    finally:
+        server.cleanup()

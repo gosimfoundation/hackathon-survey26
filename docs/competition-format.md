@@ -37,8 +37,15 @@ Final version and hidden final (organizer decision 2026-09-26, migration 2026092
   scenario cannot be linked to any other phase.
 - After `online` ends, `scripts/run-hidden-final.py` (dry run by default, `--apply`, `--team`, `--retry-failed`)
   creates one formal batch per team for its final version, outside the daily limit; the normal dispatcher runs
-  them. Teams in relay model mode must keep a page open while their hidden run executes. Publish by setting
-  `final-hidden.leaderboard_mode='published'`. Production data: `drafts/hidden-final-data.sql` (outside the repo).
+  them. Publish by setting
+  `final-hidden.leaderboard_mode='published'`.
+- Model keys (organizer rule 2026-09-27): teams whose program calls a model must switch to stored mode
+  ("加密保存" / "Save encrypted on the server") before `online.ends_at`; in relay mode the key lives only in an
+  open team page, so hidden-run model calls fail. Participate warns relay teams next to the final version and in
+  the model API section; the script flags them. Stored keys are purged automatically
+  (`private.observer_auto_purge_provider_keys`, hourly) only once `final-hidden` is published and the retention
+  period (7 days) after the latest ends_at of every key-using phase has passed (migration 20260927001200); the
+  online ends_at never triggers it on its own. Production data: `drafts/hidden-final-data.sql` (outside the repo).
 Before that, including the October 1–4 training, teams rehearse the formal flow on the Playground
 complete-project board (`scripts/configure-observer-practice-projects.py`), which never uses formal scenarios.
 
