@@ -22,7 +22,7 @@ test('every static route of the app router has a static page with a known title'
 test('a static route added to the router without a page fails the check', () => {
   const grown = router.replace("{ path: '/faq',", "{ path: '/prizes', component: () => import('./pages/PrizesPage.vue'), meta: { page: 'prizes' }},\n    { path: '/faq',")
   assert.deepEqual(routeCoverageProblems(grown, STATIC_ROUTES), ['router path /prizes has no static page in scripts/site-routes.mjs'])
-  const listed = router.replace("['/submit','/projects']", "['/submit','/projects','/upload']")
+  const listed = router.replace("['/submit','/projects','/participate']", "['/submit','/projects','/participate','/upload']")
   assert.deepEqual(routeCoverageProblems(listed, STATIC_ROUTES), ['router path /upload has no static page in scripts/site-routes.mjs'])
   const removed = router.replace("{ path: '/faq', component: () => import('./pages/FaqPage.vue') , meta: { page: 'faq' }},", '')
   assert.notEqual(removed, router)
