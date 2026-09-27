@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 
 from .job_client import JobError
+from .repository import RepositoryError
 from .session import SessionError
 
 
@@ -11,6 +12,9 @@ def safe_code(error: Exception) -> str:
     value=str(error)
     if isinstance(error,(JobError,SessionError)) and re.fullmatch(r'[a-z][a-z0-9_]{0,79}',value):
         return value
+    if isinstance(error,RepositoryError):
+        # Platform storage (GitHub), not the project: distinguishable in job status.
+        return 'snapshot_repository_unavailable'
     return 'project_operation_failed'
 
 

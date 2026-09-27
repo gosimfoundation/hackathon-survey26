@@ -90,3 +90,42 @@ def test_global_git_hooks_filters_and_secrets_do_not_enter_snapshot_environment(
     assert worker.environment["GIT_CONFIG_GLOBAL"]==os.devnull
     assert "scoped-secret" not in worker.remote
     assert worker.environment["GIT_TERMINAL_PROMPT"]=="0"
+
+
+class FlakyRemote(LocalSnapshot):
+    """GitHub refuses the first attempt of each remote operation (e.g. a token not yet usable)."""
+    remote_retry_delays=(0,0,0)
+
+    def __init__(self,remote,failures=1):
+        super().__init__(remote)
+        self.failures={"ls-remote":failures,"push":failures}
+
+    def _git(self,root,*args):
+        if self.failures.get(args[0],0):
+            self.failures[args[0]]-=1
+            self.commands.append(args)
+            raise RepositoryError("Repository operation failed.")
+        return super()._git(root,*args)
+
+
+def test_transient_remote_failures_are_retried_without_changing_the_snapshot(tmp_path):
+    remote=tmp_path/"remote.git"
+    subprocess.run(["git","init","--bare",str(remote)],capture_output=True,check=True)
+    flaky=FlakyRemote(remote)
+    identifier=str(uuid.uuid4())
+    commit,_=flaky.store_snapshot('prepared',identifier,[ProjectFile('agent.py',b'x')])
+    refs=subprocess.run(["git","--git-dir",str(remote),"rev-parse","refs/heads/prepared/"+identifier],
+                        capture_output=True,check=True,text=True).stdout.strip()
+    assert refs==commit
+    assert [cmd[0] for cmd in flaky.commands if cmd[0] in ("ls-remote","push")]==["ls-remote"]*2+["push"]*2+["ls-remote"]
+
+
+def test_persistent_remote_failure_is_reported_as_platform_storage(tmp_path):
+    from project_platform.diagnostics import safe_code
+    remote=tmp_path/"remote.git"
+    subprocess.run(["git","init","--bare",str(remote)],capture_output=True,check=True)
+    flaky=FlakyRemote(remote,failures=99)
+    with pytest.raises(RepositoryError) as caught:
+        flaky.store_snapshot('prepared',str(uuid.uuid4()),[ProjectFile('agent.py',b'x')])
+    assert sum(cmd[0]=="ls-remote" for cmd in flaky.commands)==4
+    assert safe_code(caught.value)=='snapshot_repository_unavailable'
