@@ -1,5 +1,13 @@
 /** Personal credentials are never sent to database RPCs or Broadcast. */
-import { boundedJson, capability, providerError, ProxyError, type Rpc, validateChat } from "./observer-model.ts";
+import {
+  boundedJson,
+  capability,
+  providerError,
+  ProxyError,
+  type Rpc,
+  timedOut,
+  validateChat,
+} from "./observer-model.ts";
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 export const MAX_PERSONAL_RESPONSE = 192 * 1024;
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
@@ -94,8 +102,9 @@ export async function fulfillPersonalModel(
     }
     message = { call_id: input.call_id, result: redact(result, input.api_key) };
     status = "done";
-  } catch {
-    /* Never copy provider errors, headers or credentials. */
+  } catch (error) {
+    /* Never copy provider errors, headers or credentials; only say it was too slow. */
+    if (timedOut(error)) message = { call_id: input.call_id, error: "personal_model_timeout" };
   } finally {
     input.api_key = "";
     await deps.rpc("observer_finish_personal_model", { p_call: input.call_id, p_status: status });

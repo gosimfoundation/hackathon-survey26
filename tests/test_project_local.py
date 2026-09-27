@@ -187,3 +187,72 @@ def test_model_provider_errors_are_explained_and_not_retried():
     with pytest.raises(ProjectError, match=r"rejected the request \(HTTP 401\)"):
         client({"messages": [{"role": "user", "content": "hi"}]})
     assert len(calls) == 1
+
+
+def test_model_retry_after_a_lost_answer_reports_the_timeout_not_the_duplicate(monkeypatch):
+    import io, json, time, urllib.error
+    from project_platform.model_client import ModelClient
+    from project_platform.manifest import ProjectError
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    timeouts = []
+
+    class Opener:
+        def open(self, request, timeout):
+            timeouts.append(timeout)
+            if len(timeouts) == 1:
+                raise TimeoutError("timed out")
+            body = json.dumps({"error": {"type": "observer_error", "code": "model_request_already_received"}}).encode()
+            raise urllib.error.HTTPError(request.full_url, 409, "Conflict", {}, io.BytesIO(body))
+
+    client = ModelClient("https://platform.test/functions/v1/observer-model/v1", "obs_x.y")
+    client.opener = Opener()
+    with pytest.raises(ProjectError, match=r"did not answer within 140 seconds\. Use a faster model") as error:
+        client({"messages": [{"role": "user", "content": "hi"}]})
+    assert "already received" not in str(error.value)
+    # The client outlasts the proxy's own 120-125 s deadlines, below the Edge limit.
+    assert timeouts == [140, 140]
+
+
+@pytest.mark.parametrize("code,status,message", [
+    ("model_provider_timeout", 504, r"longer than the two-minute limit.*observer\.project\.json"),
+    ("model_provider_unavailable", 502, r"could not be reached or did not answer in time"),
+    ("personal_api_not_connected", 503, r"No open Participate page answered.*observer\.project\.json"),
+    ("personal_model_failed", 502, r"failed or did not answer in time through the open Participate page"),
+])
+def test_model_failures_after_acceptance_are_explained_and_not_retried(code, status, message):
+    import io, json, urllib.error
+    from project_platform.model_client import ModelClient
+    from project_platform.manifest import ProjectError
+    calls = []
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            body = json.dumps({"error": {"type": "observer_error", "code": code, "message": code}}).encode()
+            raise urllib.error.HTTPError(request.full_url, status, "Error", {}, io.BytesIO(body))
+
+    client = ModelClient("https://platform.test/functions/v1/observer-model/v1", "obs_x.y")
+    client.opener = Opener()
+    with pytest.raises(ProjectError, match=message):
+        client({"messages": [{"role": "user", "content": "hi"}]})
+    assert len(calls) == 1
+
+
+def test_model_retry_conflict_reports_the_earlier_server_failure(monkeypatch):
+    import io, time, urllib.error
+    from project_platform.model_client import ModelClient
+    from project_platform.manifest import ProjectError
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    calls = []
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            status = 503 if len(calls) == 1 else 409
+            raise urllib.error.HTTPError(request.full_url, status, "Error", {}, io.BytesIO(b"{}"))
+
+    client = ModelClient("https://platform.test/functions/v1/observer-model/v1", "obs_x.y")
+    client.opener = Opener()
+    with pytest.raises(ProjectError, match=r"^Model call failed \(HTTP 503\)\.$"):
+        client({"messages": [{"role": "user", "content": "hi"}]})
+    assert len(calls) == 2

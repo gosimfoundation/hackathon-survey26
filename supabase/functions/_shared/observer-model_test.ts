@@ -155,6 +155,17 @@ Deno.test("unknown network failure consumes reservation and hides internal error
   assertEquals(f.calls.at(-1)?.args.p_actual_tokens, null);
 });
 
+Deno.test("a provider that exceeds the deadline is reported as a timeout, not unreachable", async () => {
+  const slow = () => Promise.reject(new DOMException("Signal timed out.", "TimeoutError"));
+  const f = fixture({ fetch: slow });
+  const error = await assertRejects(() => chatCompletion(request(), f.deps), ProxyError);
+  assertEquals([error.status, error.code], [504, "model_provider_timeout"]);
+  const team = teamFixture({ fetch: slow });
+  const teamError = await assertRejects(() => teamChatCompletion(teamRequest(), team.deps), ProxyError);
+  assertEquals([teamError.status, teamError.code], [504, "model_provider_timeout"]);
+  assertEquals(team.calls.at(-1)?.name, "observer_settle_model");
+});
+
 Deno.test("provider errors never return credential-bearing diagnostics", async () => {
   const f = fixture({ fetch: () => Promise.resolve(new Response("private-master-api-key internal", { status: 500 })) });
   const error = await assertRejects(() => chatCompletion(request(), f.deps), ProxyError);

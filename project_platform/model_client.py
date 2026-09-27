@@ -11,9 +11,27 @@ import uuid
 from .manifest import ProjectError
 from .session import _NoRedirect
 
+# The proxy gives up on the team's model after 110-120 s, and on an unanswered open
+# Participate page relay after 125 s, then answers with a code. Wait longer than
+# that, but below the 150 s Edge request limit, so the code arrives before a retry.
+MODEL_TIMEOUT=140
+_ADAPT=" Use a faster model or endpoint, or add observer.project.json so no automatic adaptation is needed."
+# Failures after the proxy accepted the call. Retrying the same idempotent call
+# cannot help and would only report 409, so these are explained at once.
+_FINAL={
+    "model_provider_timeout":"Your model API took longer than the two-minute limit to answer."+_ADAPT,
+    "model_provider_unavailable":"Your model API could not be reached or did not answer in time. "
+        "Check the API endpoint on the Participate page."+_ADAPT,
+    "personal_api_not_connected":"No open Participate page answered the model request. Your team does not save "
+        "its model key, so keep the Participate page open with the model API connected while the project is prepared, "
+        "or save the key there, or add observer.project.json so no automatic adaptation is needed.",
+    "personal_model_failed":"Your model API failed or did not answer in time through the open Participate page. "
+        "Check the API endpoint, model name, key and balance."+_ADAPT,
+}
+
 
 class ModelClient:
-    def __init__(self, base_url: str, credential: str, *, timeout: float = 125):
+    def __init__(self, base_url: str, credential: str, *, timeout: float = MODEL_TIMEOUT):
         parsed=urllib.parse.urlsplit(base_url)
         if parsed.scheme!="https" and not (parsed.scheme=="http" and parsed.hostname in ("localhost","127.0.0.1")):
             raise ProjectError("Model proxy must use HTTPS except in local tests.")
@@ -29,6 +47,7 @@ class ModelClient:
         if len(payload)>65536:
             raise ProjectError("Model request exceeds the proxy size limit.")
         call_id=str(uuid.uuid4())
+        earlier=None
         for attempt in range(3):
             request=urllib.request.Request(self.url,data=payload,method="POST",
                 headers={"Authorization":"Bearer "+self.credential,"Content-Type":"application/json",
@@ -51,16 +70,25 @@ class ModelClient:
                     raise ProjectError("The model provider rejected the request"
                         +(" (HTTP "+str(status)+")" if isinstance(status,int) else "")
                         +". Check the API endpoint, model name, key and balance on the Participate page.") from None
+                if error.get("code") in _FINAL:
+                    raise ProjectError(_FINAL[error["code"]]) from None
                 if exc.code==403:
                     raise ProjectError("No model API is set up for your team. Set one under Model API on the Participate page, "
                                        "or add observer.project.json so no automatic adaptation is needed.") from None
                 if exc.code==409:
-                    raise ProjectError("The model request was already received. Review the preparation status before retrying.") from None
+                    # A retry of this same call: the first attempt was accepted but
+                    # its answer never arrived here. Report that, not the duplicate.
+                    raise ProjectError(earlier or "The model request was already received. "
+                                       "Review the preparation status before retrying.") from None
                 if exc.code<500 or attempt==2:
                     raise ProjectError("Model call failed (HTTP "+str(exc.code)+").") from None
-            except (urllib.error.URLError,TimeoutError,ConnectionError):
+                earlier="Model call failed (HTTP "+str(exc.code)+")."
+            except (urllib.error.URLError,TimeoutError,ConnectionError) as exc:
+                timed_out=isinstance(exc,TimeoutError) or isinstance(getattr(exc,"reason",None),TimeoutError)
+                earlier=("Your model API did not answer within "+format(self.timeout,"g")+" seconds."+_ADAPT
+                         if timed_out else "Model service is unavailable.")
                 if attempt==2:
-                    raise ProjectError("Model service is unavailable.") from None
+                    raise ProjectError(earlier) from None
             time.sleep(0.25*(attempt+1))
         raise ProjectError("Model service is unavailable.")
 

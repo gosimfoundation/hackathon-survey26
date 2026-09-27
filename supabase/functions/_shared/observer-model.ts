@@ -16,6 +16,11 @@ export function providerError(status: number): ProxyError {
   );
 }
 
+/** The provider did not answer before our own deadline (not a network failure). */
+export function timedOut(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
+
 export type Rpc = (name: string, args: Record<string, unknown>) => Promise<any>;
 export type ProxyDependencies = {
   rpc: Rpc;
@@ -224,6 +229,7 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
     try {
       result = await boundedJson(response, MAX_TEAM_RESPONSE);
     } catch (error) {
+      if (timedOut(error)) throw error;
       if (error instanceof ProxyError && error.code === "body_too_large") {
         throw new ProxyError(502, "model_response_too_large");
       }
@@ -240,6 +246,7 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
     if (!upstreamAttempted) actualTokens = 0;
     // Provider bodies, headers, redirects and exception text never leave here.
     if (error instanceof ProxyError) throw error;
+    if (timedOut(error)) throw new ProxyError(504, "model_provider_timeout");
     throw new ProxyError(502, "model_provider_unavailable");
   } finally {
     key = "";
@@ -300,6 +307,7 @@ export async function chatCompletion(request: Request, deps: ProxyDependencies):
   } catch (error) {
     if (!upstreamAttempted) actualTokens = 0;
     if (error instanceof ProxyError) throw error;
+    if (timedOut(error)) throw new ProxyError(504, "model_provider_timeout");
     throw new ProxyError(502, "model_provider_unavailable");
   } finally {
     // If the database is temporarily unavailable, leave the reservation held.

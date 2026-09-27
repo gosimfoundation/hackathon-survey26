@@ -32,6 +32,10 @@ export async function exchangeModelBroadcast(
           reject(new ProxyError(502, "model_response_too_large"));
           return;
         }
+        if (data.error === "personal_model_timeout") {
+          reject(new ProxyError(504, "model_provider_timeout"));
+          return;
+        }
         if (data.error) {
           reject(new ProxyError(502, "personal_model_failed"));
           return;

@@ -106,3 +106,19 @@ Deno.test("project proxy relays no credentials, and browser loss ends without or
   assertEquals(receipts.map((x) => x.name), ["observer_request_personal_model", "observer_finish_personal_model"]);
   assertEquals(receipts[1].args.p_status, "timeout");
 });
+Deno.test("a relayed provider that exceeds the deadline is reported as a timeout only", async () => {
+  const output: any[] = [];
+  const data = input();
+  assertEquals(
+    await fulfillPersonalModel(data, "owner", {
+      trustedBases: new Set([data.base_url]),
+      rpc: async () => "topic",
+      fetch: (() => Promise.reject(new DOMException("Signal timed out.", "TimeoutError"))) as typeof fetch,
+      send: async (_t, _e, p) => {
+        output.push(p);
+      },
+    }),
+    { completed: false },
+  );
+  assertEquals(output, [{ call_id: call, error: "personal_model_timeout" }]);
+});
