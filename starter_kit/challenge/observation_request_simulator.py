@@ -21,6 +21,7 @@ from .contracts import (
     parse_utc,
     read_exact_csv,
     sha256_file,
+    stream_seed,
     write_exact_csv,
 )
 from .observing_calendar import Night, load_nights
@@ -113,7 +114,7 @@ def load_request_tiles(path: Path) -> dict[str, dict[str, int]]:
 
 
 def generate_schedule(config: Mapping, nights: Sequence[Night], tile_rows: Sequence[Mapping[str, str]]) -> tuple[list[ObservationRequest], list[dict[str, object]]]:
-    rng = random.Random(int(config["seed"]) + 4000)
+    rng = random.Random(stream_seed(config, "requests", 4000))
     candidates = [row for row in tile_rows if parse_utc(row["available_until_utc"]) > nights[0].observing_start_utc]
     requests = []
     links = []

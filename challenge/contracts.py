@@ -25,6 +25,33 @@ ACCEPTED_PROTOCOL_VERSIONS = (LEGACY_PARTICIPANT_PROTOCOL_VERSION, PARTICIPANT_P
 ANOMALY_CONFIG_SECTIONS = ("repeat_observation", "reporting", "anomaly_tags", "fault_response")
 
 
+# Seed derivation. By default every simulator stream is seeded with ``seed + offset`` (the historical scheme; all
+# existing scenarios regenerate byte for byte). A config may opt into ``"seed_derivation": "sha256-v1"``: each
+# stream is then seeded with the first 16 bytes of sha256("<seed>:<stream>"), so the RNG state exposed by one
+# published stream (e.g. the tile catalogue) reveals nothing about the master seed or any other stream.
+SEED_DERIVATION_KEY = "seed_derivation"
+SEED_DERIVATION_HASHED = "sha256-v1"
+SEED_DERIVATIONS = (SEED_DERIVATION_HASHED,)
+
+
+def derive_stream_seed(seed: int, stream: str) -> int:
+    """128-bit seed for one named RNG stream, from sha256("<seed>:<stream>")."""
+    return int.from_bytes(hashlib.sha256(f"{int(seed)}:{stream}".encode("utf-8")).digest()[:16], "big")
+
+
+def stream_seed(config: Mapping, stream: str, legacy_offset: int, mode: str | None = None) -> int:
+    """Seed of one simulator RNG stream: ``seed + legacy_offset`` unless hashed derivation is selected.
+
+    The mode comes from ``mode`` when given, else from the config's own ``seed_derivation`` key. (The tile config
+    has a strict key set that deployed scorers validate, so the tile streams receive the mode explicitly.)"""
+    mode = mode if mode is not None else config.get(SEED_DERIVATION_KEY)
+    if mode is None:
+        return int(config["seed"]) + legacy_offset
+    if mode not in SEED_DERIVATIONS:
+        raise ValueError(f"unsupported {SEED_DERIVATION_KEY} {mode!r}")
+    return derive_stream_seed(int(config["seed"]), stream)
+
+
 def anomaly_mechanics_enabled(score_config) -> bool:
     """The single switch: a scenario opts into the anomaly mechanics through its score config."""
     return any(section in score_config for section in ANOMALY_CONFIG_SECTIONS)

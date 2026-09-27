@@ -145,6 +145,13 @@ python -m worker.main gen-scenario --slug eval-c --seed 777 --days 30 --start-da
   --hidden-weather --hidden-forecasts --regions 8 --tiles-per-region 200 --coverage-weight 0.35
 ```
 
+Hidden scenarios should use a large seed (e.g. `secrets.randbits(128)`) and the opt-in hashed seed derivation
+(`python -m challenge.scenario_builder generate ... --seed-derivation sha256-v1`, or `seed_derivation="sha256-v1"`):
+every simulator stream (tiles, tile tags, weather slots/events/forecasts, requests) is then seeded with the first
+16 bytes of `sha256("<seed>:<stream>")` instead of `seed + offset`, so the RNG output published in the tile catalogue
+reveals nothing about the weather or tag streams. The mode is recorded in the scenario, weather and request configs, the catalogue metadata and
+`scenario_manifest.json`; without it generation is byte-identical to before.
+
 The `demo-week` parameters above are the same ones that produced `starter_kit/scenarios/demo-week`, so the copy in
 the downloaded kit and the copy the platform publishes are the same scenario.
 

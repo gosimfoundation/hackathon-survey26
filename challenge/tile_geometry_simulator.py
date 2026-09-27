@@ -22,7 +22,9 @@ from .contracts import (
     parse_utc,
     read_exact_csv,
     sha256_file,
+    stream_seed,
     write_exact_csv,
+    SEED_DERIVATIONS,
 )
 from .observing_calendar import Night, Slot, load_nights, load_slots
 from .project_paths import CONFIG_DIR, REFERENCE_OUTPUT_DIR
@@ -379,8 +381,9 @@ def build_catalog(
     config: Mapping,
     calendar_config: Mapping,
     nights: Sequence[Night],
+    seed_derivation: str | None = None,
 ) -> tuple[list[Tile], list[dict[str, object]]]:
-    rng = random.Random(int(config["seed"]))
+    rng = random.Random(stream_seed(config, "tiles", 0, seed_derivation))
     catalog = config["catalog"]
     n_regions = int(catalog["n_regions"])
     tiles_per_region = int(catalog["tiles_per_region"])
@@ -470,12 +473,13 @@ def generate_catalog(
     calendar_config_path: Path,
     nights_path: Path,
     output_dir: Path,
+    seed_derivation: str | None = None,
 ) -> dict[str, object]:
     tile_config = load_config(tile_config_path)
     with calendar_config_path.open("r", encoding="utf-8") as handle:
         calendar_config = json.load(handle)
     nights = load_nights(nights_path)
-    tiles, targets = build_catalog(tile_config, calendar_config, nights)
+    tiles, targets = build_catalog(tile_config, calendar_config, nights, seed_derivation)
     output_dir.mkdir(parents=True, exist_ok=True)
     tiles_path = output_dir / "tiles.csv"
     targets_path = output_dir / "targets.csv"
@@ -499,6 +503,8 @@ def generate_catalog(
             "one when Moon altitude is non-positive"
         ),
     }
+    if seed_derivation is not None:  # absent by default, so legacy metadata stays byte-identical
+        metadata["seed_derivation"] = seed_derivation
     write_text_lf(output_dir / "catalog_metadata.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
     return metadata
 
@@ -638,6 +644,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     generate_parser = subparsers.add_parser("generate")
     generate_parser.add_argument("--output-dir", type=Path, default=REFERENCE_OUTPUT_DIR)
+    generate_parser.add_argument("--seed-derivation", choices=SEED_DERIVATIONS, default=None)
     windows_parser = subparsers.add_parser("windows")
     windows_parser.add_argument("--date", type=date.fromisoformat, required=True)
     windows_parser.add_argument("--days", type=int, default=1)
@@ -652,6 +659,7 @@ def main() -> None:
             args.calendar_config,
             args.nights,
             args.output_dir,
+            args.seed_derivation,
         )
     else:
         simulator = _default_simulator(args)
