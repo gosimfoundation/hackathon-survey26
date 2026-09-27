@@ -1444,7 +1444,8 @@
     "seeking_astro": "我在找天文背景的队友",
     "seeking_ai": "我在找智能体背景的队友",
     "seeking_none": "我不需要队友",
-    "seeking_count": "期望队友人数"
+    "seeking_count": "期望队友人数",
+    "team_full_notice": "参赛队伍已满 {limit} 支，报名已关闭：不能再创建新队伍。你仍可以注册账号，并用队长给的邀请码加入已有队伍。"
   },
   "mail": {
     "verify_subject": "验证你的巡天智能体账号",
@@ -1637,6 +1638,10 @@
       "paused": "暂停招募",
       "full": "已满员",
       "in_team": "你已有队伍"
+    },
+    "capacity": {
+      "full": "参赛队伍已满 {limit} 支，报名已关闭。不能再创建新队伍；如果已有队伍还有空位，仍可以用邀请码加入。",
+      "remaining": "队伍名额：还剩 {remaining} / {limit} 支。满 {limit} 支后自动停止创建新队伍。"
     }
   },
   "submit": {
@@ -2316,7 +2321,8 @@
     "unknown_scenario": "没有这个场景。",
     "job_already_pending": "这个场景已经有一个任务在进行中。",
     "banned": "这个账号已被停用。",
-    "online_session_required": "请在智能体项目页提交完整项目，或上传官方本地会话导出的 CSV。"
+    "online_session_required": "请在智能体项目页提交完整项目，或上传官方本地会话导出的 CSV。",
+    "team_limit_reached": "参赛队伍已满，报名已关闭，不能再创建新队伍。你仍可以用邀请码加入已有队伍。"
   },
   "a11y": {
     "skip": "跳到正文"

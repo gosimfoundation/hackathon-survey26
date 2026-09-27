@@ -1444,7 +1444,8 @@
     "seeking_astro": "Looking for astronomy-background teammates",
     "seeking_ai": "Looking for agent-background teammates",
     "seeking_none": "I don't need teammates",
-    "seeking_count": "Preferred teammate count"
+    "seeking_count": "Preferred teammate count",
+    "team_full_notice": "All {limit} team places are taken and registration is closed: no new team can be created. You can still create an account and join an existing team with an invite code from its leader."
   },
   "mail": {
     "verify_subject": "Verify your Agentic Observer account",
@@ -1637,6 +1638,10 @@
       "paused": "Not recruiting",
       "full": "Full",
       "in_team": "Already in a team"
+    },
+    "capacity": {
+      "full": "All {limit} team places are taken and registration is closed. No new team can be created; you can still join an existing team that has room, using its invite code.",
+      "remaining": "Team places: {remaining} of {limit} left. New teams stop automatically once {limit} are registered."
     }
   },
   "submit": {
@@ -2316,7 +2321,8 @@
     "unknown_scenario": "There is no such scenario.",
     "job_already_pending": "A job is already running for this scenario.",
     "banned": "This account is suspended.",
-    "online_session_required": "Use Agent projects to submit a complete project or the CSV exported by your official local session."
+    "online_session_required": "Use Agent projects to submit a complete project or the CSV exported by your official local session.",
+    "team_limit_reached": "All team places are taken and registration is closed, so no new team can be created. You can still join an existing team with an invite code."
   },
   "a11y": {
     "skip": "Skip to content"

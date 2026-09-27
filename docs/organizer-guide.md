@@ -186,3 +186,23 @@ select count(*) from private.observer_providers where team_id is not null and en
 
 - **新机制是否公开**（`mechanics_public`）：关掉后，官网上的"正式赛新机制"教程章节、3 条 FAQ、新手页演练步、通关路线里的相关措辞会全部隐藏（内容保留，随时可开）。注意：入门包本身和规则/文档页的深处描述不受此开关控制。
 - **报名截止时间**（`registration_deadline`）：到点后新用户注册自动停止（数据库层强制，绕过网页直接调接口也注册不了）；已注册用户登录、提交、组队完全不受影响。留空 = 不设截止。关闭期间管理端 API 也无法建号，要临时加人先把"开放报名"勾回来。
+
+## 队伍上限（2026-09-27 决定）
+
+参赛队伍满 150 支后自动停止创建新队伍（数据库 `create_team` 强制，错误码 `team_limit_reached`，迁移 `20260927001300`）。隐藏队伍（主办方、验收、测试队伍）不计入；管理员不受限。个人注册和用邀请码加入已有队伍不受影响，报名总开关仍是 `registration_open`。上限在「管理」→「设置」→「队伍上限」修改（`site_settings.team_limit`）。队伍页、注册页会显示剩余名额和「已满」提示。
+
+当前计数：
+
+```sql
+select public.team_capacity();  -- {"limit":150,"teams":…,"remaining":…,"full":false}
+```
+
+## 智能体技术要求审查（2026-09-27 决定）
+
+规则（正式赛规则第 3 节第 6 条）：作品需在自然语言理解、数据解析、任务规划、行动决策、工具调用、计划自适应六个环节中至少两个采用大模型驱动的智能体技术才合格，主要由 Claude 分析最终版本代码判定。比赛结束、最终版本锁定后：
+
+1. 预览：`python scripts/review-agent-usage.py`（默认只列出每队最终版本和源码引用，不下载、不调用 Claude）。
+2. 抽查提示词：`python scripts/review-agent-usage.py --prompt-only --team <slug>`，在 `reviews/` 下查看发给 Claude 的源码选取（跳过依赖目录、锁文件、二进制和数据文件，有总字符上限）。
+3. 审查：`ANTHROPIC_API_KEY=… python scripts/review-agent-usage.py --review`（默认模型 `claude-opus-5-5`，`--model` 可改），输出 `reviews/agent-usage-<时间>/results.csv` 与 `results.json`，每队一行，含六个环节的判定、证据文件和理由。
+
+需要 `SUPABASE_PROJECT_REF` / `SUPABASE_ACCESS_TOKEN`，以及已登录、对 runner 组织有读权限的 `gh`。结果只是依据，不合格或存疑的队伍由主办方人工复核后再定。`reviews/` 含选手源码摘录，已在 `.gitignore` 中，不要提交或外传。

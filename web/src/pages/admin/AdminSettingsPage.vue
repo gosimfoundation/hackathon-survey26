@@ -5,6 +5,7 @@ import { loadCreditsNote, loadPublicSettings } from '../../lib/data'
 import { publicSiteUrl, BASE_URL } from '../../composables/api'
 import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 import { useAdmin } from '../../composables/useAdmin'
+import { useTeamCapacity } from '../../composables/useTeamCapacity'
 import DashShell from '../../components/layout/DashShell.vue'
 import { competition, loadCompetition } from '../../stores/competition'
 import { useI18n } from '../../composables/useI18n'
@@ -22,9 +23,11 @@ async function switchCompetition() {
   } finally { modeBusy.value=false }
 }
 const { reload } = useRegistrationOpen()
+const { reload: reloadCapacity } = useTeamCapacity()
 const registrationOpen = ref(true)
 const registrationDeadline = ref('')
 const mechanicsPublic = ref(true)
+const teamLimit = ref(150)
 const creditsNote = ref({ en: '', zh: '' })
 
 const toLocalInput = (iso: string | null) => {
@@ -39,11 +42,13 @@ const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '')
 onMounted(async () => {
   const [settings, note, raw] = await Promise.all([
     loadPublicSettings(), loadCreditsNote(),
-    supabase.from('site_settings').select('key, value').in('key', ['registration_open']),
+    supabase.from('site_settings').select('key, value').in('key', ['registration_open', 'team_limit']),
   ])
   // the toggle edits the manual flag itself, not the deadline-derived state
   const manual = (raw.data ?? []).find(row => row.key === 'registration_open')?.value
   registrationOpen.value = !(manual === false || manual === 'false')
+  const limit = Number((raw.data ?? []).find(row => row.key === 'team_limit')?.value)
+  if (Number.isInteger(limit) && limit >= 0) teamLimit.value = limit
   registrationDeadline.value = toLocalInput(settings.registrationDeadline)
   mechanicsPublic.value = settings.mechanicsPublic
   creditsNote.value = note
@@ -55,10 +60,11 @@ async function save() {
       { key: 'registration_open', value: registrationOpen.value },
       { key: 'registration_deadline', value: deadline },
       { key: 'mechanics_public', value: mechanicsPublic.value },
+      { key: 'team_limit', value: Math.max(0, Math.floor(Number(teamLimit.value) || 0)) },
     ], { onConflict: 'key' })
     if (error) throw error
   }, t('admin.settings.saved'))
-  if (ok) await reload()
+  if (ok) { await reload(); await reloadCapacity() }
 }
 async function saveCreditsNote() {
   await run(async () => {
@@ -84,6 +90,9 @@ async function saveCreditsNote() {
         <input v-model="registrationDeadline" type="datetime-local" data-testid="settings-deadline">
       </label>
       <label class="check"><input v-model="mechanicsPublic" type="checkbox" data-testid="settings-mechanics"> {{ t('admin.settings.mechanics_public') }}</label>
+      <label class="field mt-4"><span>{{ pick('Team limit (hidden teams do not count; admins bypass)', '队伍上限（隐藏队伍不计；管理员不受限）') }}</span>
+        <input v-model.number="teamLimit" type="number" min="0" step="1" data-testid="settings-team-limit">
+      </label>
       <button class="btn primary sm" type="submit" :disabled="busy">{{ t('common.save') }}</button>
     </form>
     <form class="panel mt-8 max-w-2xl" @submit.prevent="saveCreditsNote">
