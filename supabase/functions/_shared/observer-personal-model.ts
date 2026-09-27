@@ -1,5 +1,5 @@
 /** Personal credentials are never sent to database RPCs or Broadcast. */
-import { boundedJson, capability, ProxyError, type Rpc, validateChat } from "./observer-model.ts";
+import { boundedJson, capability, providerError, ProxyError, type Rpc, validateChat } from "./observer-model.ts";
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 export const MAX_PERSONAL_RESPONSE = 192 * 1024;
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
@@ -86,7 +86,7 @@ export async function fulfillPersonalModel(
     });
     if (!response.ok) {
       await response.body?.cancel();
-      throw new ProxyError(502, "model_provider_error");
+      throw providerError(response.status);
     }
     const result = await boundedJson(response, MAX_PERSONAL_RESPONSE);
     if (!result || typeof result !== "object" || !Array.isArray(result.choices)) {

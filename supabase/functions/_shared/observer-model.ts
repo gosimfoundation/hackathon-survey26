@@ -2,9 +2,18 @@
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 
 export class ProxyError extends Error {
-  constructor(public status: number, public code: string) {
+  constructor(public status: number, public code: string, public detail?: Record<string, number>) {
     super(code);
   }
+}
+
+/** The provider's HTTP status only (no body/headers), so teams can tell a bad key from a bad model name. */
+export function providerError(status: number): ProxyError {
+  return new ProxyError(
+    502,
+    "model_provider_error",
+    Number.isInteger(status) && status >= 100 && status <= 599 ? { provider_status: status } : undefined,
+  );
 }
 
 export type Rpc = (name: string, args: Record<string, unknown>) => Promise<any>;
@@ -207,7 +216,9 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
     });
     if (!response.ok) {
       await response.body?.cancel();
-      throw new ProxyError(502, "model_provider_error");
+      // No completion was returned: nothing is charged against the team quota.
+      actualTokens = 0;
+      throw providerError(response.status);
     }
     let result: unknown;
     try {
@@ -274,7 +285,7 @@ export async function chatCompletion(request: Request, deps: ProxyDependencies):
     });
     if (!response.ok) {
       await response.body?.cancel();
-      throw new ProxyError(502, "model_provider_error");
+      throw providerError(response.status);
     }
     const result = await boundedJson(response, 2 * 1024 * 1024);
     if (!object(result) || !Array.isArray(result.choices)) throw new ProxyError(502, "invalid_provider_response");

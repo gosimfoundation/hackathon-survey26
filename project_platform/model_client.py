@@ -43,6 +43,14 @@ class ModelClient:
                         raise ProjectError("Invalid model response.")
                     return value
             except urllib.error.HTTPError as exc:
+                error=_observer_error(exc)
+                if error.get("code")=="model_provider_error":
+                    # The team's provider answered with an error. Retrying the same
+                    # idempotent call cannot help and would only report 409.
+                    status=error.get("provider_status")
+                    raise ProjectError("The model provider rejected the request"
+                        +(" (HTTP "+str(status)+")" if isinstance(status,int) else "")
+                        +". Check the API endpoint, model name, key and balance on the Participate page.") from None
                 if exc.code==409:
                     raise ProjectError("The model request was already received. Review the preparation status before retrying.") from None
                 if exc.code<500 or attempt==2:
@@ -52,3 +60,16 @@ class ModelClient:
                     raise ProjectError("Model service is unavailable.") from None
             time.sleep(0.25*(attempt+1))
         raise ProjectError("Model service is unavailable.")
+
+
+def _observer_error(exc: urllib.error.HTTPError) -> dict:
+    """The proxy's fixed error object ({code, provider_status}); never provider text."""
+    try:
+        value=json.loads(exc.read(4096)).get("error")
+    except (ValueError,AttributeError,OSError):
+        return {}
+    if not isinstance(value,dict):
+        return {}
+    status=value.get("provider_status")
+    return {"code":str(value.get("code",""))[:80],
+            "provider_status":status if isinstance(status,int) and 100<=status<=599 else None}
