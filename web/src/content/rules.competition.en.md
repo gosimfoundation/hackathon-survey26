@@ -91,7 +91,7 @@ prizes will be announced separately.
 ## 9. Data and privacy
 
 1. Registration data (name, email, affiliation, GitHub handle) is used only to run the event and to contact winners.
-2. Private ZIP projects, results, run records and score reports are visible only to the submitting team and organizers and are retained until 90 days after Awards Day. Forks of public repositories remain public; use ZIP for private projects. Model keys never enter project repositories or frontend code.
+2. Private ZIP projects, results, run records and score reports are visible only to the submitting team and organizers and are kept by the organizers and may be used for academic research and publications; published material is anonymized unless the team agrees otherwise. Forks of public repositories remain public; use ZIP for private projects. Model keys never enter project repositories or frontend code.
 3. Team names, scores, and ranks are public.
 
 Contact: hackathon@gosim.org
