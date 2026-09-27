@@ -27,6 +27,16 @@ The columns are `decision_id, slot_id, action, tile_id, program, request_id, rea
 
 To try the evaluation flow early, choose Submit a complete project on Participate and submit a GitHub repository or ZIP. The platform runs your program round by round in the cloud (same evaluation flow as the competition) on scenarios generated from Playground data. Each team gets 5 evaluations per day (evaluations that fail because of the platform are not counted), uses its own model key only, and is ranked on a separate complete-project board. During the October 1–4 training, use this track to go through the flow once.
 
+### Complete-project launch file (any language)
+
+The project root must contain `observer.project.json`, which tells the platform the image, build and run commands. ZIPs made by the starter kit's `pack_agent.py` include it. **Without it**, the platform tries to generate an adapter with the model you set under Model API; with no model set, or a failing model call, preparation fails.
+
+```json
+{"schema_version": "observer-project-v1", "image": "python:3.12-slim", "run": ["python3", "-u", "agent.py"]}
+```
+
+Node.js: `"image": "node:22-slim", "run": ["node", "agent.js"]`. Rust: `"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]` (`build` is a list of command arrays). The program reads one JSON message per line on stdin and writes one answer per line on stdout (protocol in the kit's `SKILL.md`); write logs to stderr, they appear as `agent.log` in the result ZIP.
+
 ## 5. Data and scoring
 
 `config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests. Public files are downloadable from Resources. Current practice scenarios retain the original `participant-agent-protocol-v1` contract; existing scores and replays are preserved.

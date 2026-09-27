@@ -27,6 +27,16 @@ CSV 列固定为 `decision_id, slot_id, action, tile_id, program, request_id, re
 
 想提前熟悉评测流程，在「参赛」页选「提交完整项目」，提交 GitHub 仓库或 ZIP。平台在云端逐轮运行你的程序（和比赛相同的评测流程），场景由练习赛数据生成。每队每天 5 次（因平台原因失败的不计次数），只能用本队自己的模型密钥，成绩进单独的完整项目榜。10 月 1–4 日培训期间建议用这种方式把流程走一遍。
 
+### 完整项目的启动配置（任何语言）
+
+项目根目录必须有 `observer.project.json`，告诉平台用哪个镜像、怎么构建、怎么启动。入门包 `pack_agent.py` 打出的 ZIP 已经自带。**没有这个文件时**，平台会尝试用你在「模型 API」里设置的模型自动生成适配器；没有设置模型或模型调用失败，准备就会失败。
+
+```json
+{"schema_version": "observer-project-v1", "image": "python:3.12-slim", "run": ["python3", "-u", "agent.py"]}
+```
+
+Node.js：`"image": "node:22-slim", "run": ["node", "agent.js"]`。Rust：`"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]`（`build` 是命令数组的数组）。程序从 stdin 逐行读 JSON 消息、向 stdout 逐行写回答，协议见入门包 `SKILL.md`；日志请写到 stderr，评测后会出现在结果包的 `agent.log` 里。
+
 ## 5. 数据与评分
 
 `config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求。公开文件可从资源页下载。当前练习场景使用原有 `participant-agent-protocol-v1` 合约，已有成绩与回放保持不变。
