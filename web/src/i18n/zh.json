@@ -1245,7 +1245,7 @@
     "per_scenario_note": "练习榜按场景分开排名：每个场景的榜单只比这个场景的分数，每队取该场景的最高分。",
     "detail": {
       "board_scenario": "榜单：{scenario}",
-      "board_mean": "榜单：三个正式场景的平均",
+      "board_mean": "榜单：每次评测所含各场景的平均",
       "close": "关闭",
       "evenness": "覆盖均匀度",
       "scored_at": "评分时间",

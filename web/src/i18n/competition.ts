@@ -9,6 +9,7 @@ export function competitionMessages(base: Record<string, any>, chinese: boolean)
     'home.mission.closing':pick('No astronomy background is required. Start with the task description and example project.','无需天文背景，从任务说明和示例项目开始即可。'),
     'home.participate.steps.2.desc':pick('Open Participate to upload a complete project, confirm its version and start evaluation.','进入「参赛」，上传完整项目、确认版本并启动评测。'),
     'home.participate.timeline':[{label:pick('Competition','正式比赛'),desc:pick('The current competition','当前比赛')}],
+    'leaderboard.detail.board_mean':pick('Board: mean of the three formal scenarios','榜单：三个正式场景的平均'),
     'home.leaderboard.lede':pick('The live online board shows each team’s best complete batch (the mean over the three formal scenarios). It is feedback only: the final ranking uses the hidden final scenario.','线上榜实时显示每队最高分的完整批次（三个正式场景的平均分），只作反馈；最终排名只看隐藏决赛场景的成绩。'),
     'home.submission.items.0.desc':pick('Upload a public repository or private ZIP. Evaluations run your confirmed project one round at a time.','上传公开仓库链接或私有 ZIP，平台运行确认后的项目，逐轮评测。'),
     'home.submission.items.1.desc':pick('Any language is allowed. ZIP projects may be up to 50 MB. 10 batches per team per day, 3600 s per scenario. Bring your own model API and quota; awards require LLM-driven agent techniques in at least two stages.','语言不限，ZIP 项目最大 50 MB。每队每天 10 批，每个场景 3600 秒。模型请自备 API 和额度；评奖要求至少两个环节采用大模型驱动的智能体技术。'),

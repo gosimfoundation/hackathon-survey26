@@ -719,7 +719,7 @@
     "per_scenario_note": "練習ランキングはシナリオごとに分けて順位付けします。各チームのそのシナリオでの最高スコアを比較します。",
     "detail": {
       "board_scenario": "ランキング：{scenario}",
-      "board_mean": "ランキング：本番 3 シナリオの平均",
+      "board_mean": "ランキング：各評価に含まれるシナリオの平均",
       "close": "閉じる",
       "evenness": "カバレッジ均一度",
       "scored_at": "採点時刻",
