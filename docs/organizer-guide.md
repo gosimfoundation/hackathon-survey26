@@ -15,13 +15,13 @@
 
 练习赛有两条赛道，榜单分开：
 - **CSV 上传**（阶段 `practice`）：每队每天 50 次。
-- **完整项目**（阶段 `practice-projects`）：和正式赛同一套流程，题目由练习赛场景生成，每队每天 5 次，只能用队伍自己的模型密钥。用 `scripts/configure-observer-practice-projects.py` 创建（默认只预览，加 `--apply` 才写入）。
+- **完整项目**（阶段 `practice-projects`）：和正式赛同一套流程，场景为公开的 dev-fortnight 和 dev-reference，每个场景运行时限 5 小时（18000 秒），每队每天 5 次，只能用队伍自己的模型密钥。用 `scripts/configure-observer-practice-projects.py` 创建（默认只预览，加 `--apply` 才写入）。
 
-10 月 1–4 日培训期间，让学员用「完整项目」赛道演练正式赛流程；异常机制用入门包的 `finals-preview` 在本地练。
+10 月 2–3 日培训前后，让学员用「完整项目」赛道演练正式赛流程；异常机制用入门包的 `finals-preview` 在本地练。
 
-**正式赛赛制（2026-09-26 决定）**：`online` 在三个固定正式场景 eval-a、eval-b、eval-c 上评测，所有队伍同一套题，不按队伍随机，场景文件和天气不公开（三个 public 开关保持 false）；每日次数内自由评测，线上榜实时更新但不决定最终排名。比赛期间各队在「参赛」页选定「最终版本」（10-07 23:59 前可改，之后锁定；不选则默认用最高分评测的版本），各队选择可在「管理」→「队伍」→「最终版本」查看。比赛结束后：
+**正式赛赛制（2026-09-26 决定）**：`online` 在三个固定正式场景 formal-a、formal-b、formal-c 上评测，所有队伍使用相同场景，不按队伍随机，场景文件和天气不公开（三个 public 开关保持 false）；每队每天 10 批，每个场景 3600 秒，每日次数内自由评测，线上榜实时更新但不决定最终排名。比赛期间各队在「参赛」页选定「最终版本」（10-07 23:59 前可改，之后锁定；不选则默认用最高分评测的版本），各队选择可在「管理」→「队伍」→「最终版本」查看。比赛结束后：
 
-1. 预览：`python scripts/run-hidden-final.py`（默认只预览；输出每队将评测的版本、来源和模型密钥方式，中转模式的队伍需要在评测期间打开页面，提前通知）。可先用 `--team <队伍 slug> --before-freeze` 对单个测试队伍演练。
+1. 预览：`python scripts/run-hidden-final.py`（默认只预览；输出每队将评测的版本、来源和模型密钥方式；规则要求调用模型的队伍在线上赛结束前改为「加密保存」，仍为中转模式的队伍隐藏评测时模型调用会失败，后果自负，脚本会标出这些队伍）。可先用 `--team <队伍 slug> --before-freeze` 对单个测试队伍演练。
 2. 执行：`python scripts/run-hidden-final.py --apply`，为每队在隐藏阶段 `final-hidden` 创建一次评测（不占每日次数），由正常调度运行；失败的队伍用 `--retry-failed` 重跑。
 3. 公布：核验后把 `final-hidden` 的榜单模式改为 `published`。公布前选手看不到该阶段、隐藏场景、评测记录、日志和结果下载；隐藏场景的文件在公布后仍不公开。
 
@@ -54,15 +54,15 @@ worker 在 GitHub Actions 上自动接力运行（`.github/workflows/worker.yml`
 
 **如果面板显示「离线」超过 30 分钟**：到 GitHub Actions 手动运行一次 "Evaluation worker" 工作流即可。
 
-> 一个 worker 处理一个场景最多 1 小时（eval-a/b 的全局时钟 3600 秒）。10 支队伍同时提交会排队约 10 小时。想缩短排队：在「场景」页把 wallclock 临时调小，或临时改 `worker.yml` 里的 `concurrency` 组名多开一个 worker。
+> 一个 worker 处理一个场景最多 1 小时（formal-a/b/c 的全局时钟 3600 秒）。10 支队伍同时提交会排队约 10 小时。想缩短排队：在「场景」页把 wallclock 临时调小，或临时改 `worker.yml` 里的 `concurrency` 组名多开一个 worker。
 
 ## 4 · 换正式比赛的场景种子
 
 **为什么要换**：知道种子就能在本地重建出完整的"隐藏天气"，把最优解提前算好。**每次正式开赛前都应该换一次新种子。**
 
-> 2026-09-26 起正式赛场景 eval-a/b/c 对所有队伍固定相同（文件仍不公开），eval-final 由主办方单独生成并保密。比赛开始后**不要**再轮换这些场景的种子，更不要对 eval-final 使用「轮换种子」（会在 worker 日志中写出种子）。
+> 2026-09-26 起正式赛场景 formal-a/b/c 对所有队伍固定相同（文件仍不公开），eval-final 由主办方单独生成并保密。比赛开始后**不要**再轮换这些场景的种子，更不要对 eval-final 使用「轮换种子」（会在 worker 日志中写出种子）。
 
-**「管理」→「场景」** → 找到 `eval-a` / `eval-b` → 点「**轮换种子**」。
+**「管理」→「场景」** → 找到要换种子的场景（`formal-a/b/c` 开赛后禁止轮换）→ 点「**轮换种子**」。
 
 点下去之后：系统生成一个新的随机种子，交给正在运行的 worker 重建场景并上传，页面上显示「排队中 → 生成中 → 已完成」，通常一分钟内完成。种子只写进数据库，不会出现在代码仓库里，学员也读不到。
 
@@ -146,7 +146,7 @@ python -m worker.main gen-scenario --slug eval-c \
 换种子重建（在配好 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` 的机器上）：
 
 ```bash
-python -m worker.main gen-scenario --slug eval-a --seed <新种子> --days 30 --start-date 2026-10-05 \
+python -m worker.main gen-scenario --slug formal-a --seed <新种子> --days 30 --start-date 2026-10-05 \
   --wallclock 3600 --regions 8 --tiles-per-region 200 --coverage-weight 0.35 \
   --nova-tags 10 --reddening-tags 10 --hidden-weather --hidden-forecasts
 ```

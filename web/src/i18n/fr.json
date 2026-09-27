@@ -236,7 +236,7 @@
     "steps": [
       "Créez votre compte (sans confirmation par e-mail)",
       "Créez une équipe ou rejoignez-en une avec un code d'invitation",
-      "Téléversez un fichier de résultats (decisions.csv)"
+      "Téléversez decisions.csv (Playground) ou un projet complet"
     ],
     "about_you": "Profil de participant",
     "about_you_note": "Les niveaux figurent sur votre carte de participant et aident des profils complémentaires à se trouver pour former une équipe.",
@@ -279,7 +279,7 @@
     "pipeline": [
       {
         "label": "Formation en ligne",
-        "date": "1–4 oct.",
+        "date": "2–3 oct.",
         "note": "Séances avec des astronomes internationaux et des experts des agents"
       },
       {
@@ -302,7 +302,7 @@
         "label": "de prix"
       },
       {
-        "value": "1–17 oct.",
+        "value": "2–17 oct.",
         "label": "2026 · en ligne + Shenzhen"
       },
       {
@@ -390,7 +390,7 @@
           "desc": "Observer une tuile, ou attendre. Une action par créneau, avec sa raison."
         }
       ],
-      "closing": "Aucun bagage en astronomie n'est requis. Pendant la formation en ligne du 1 au 4 octobre, des astronomes internationaux et des experts des agents animent des séances de pratique ; vous pouvez aussi répéter le déroulement de la compétition avec un projet complet sur le Playground.",
+      "closing": "Aucun bagage en astronomie n'est requis. Deux formations en ligne, les 2 et 3 octobre (horaires annoncés plus tard), présentent la tâche d'astronomie et la compétition avec des agents ; vous pouvez aussi répéter le déroulement de la compétition avec un projet complet sur le Playground.",
       "cardKicker": "Comment arrive le sujet",
       "cardTitle": "Une carte de mission de relevé",
       "cardLede": "Chaque manche commence par une carte de mission. Tout ce qui vous engage y est écrit :",
@@ -428,7 +428,7 @@
           "desc": "Comment le score se calcule et quelles pénalités s'appliquent."
         }
       ],
-      "cardNote": "Les formats d'entrée-sortie officiels et le contrat d'interface sont définis par la carte de mission. La carte et les données publiques de développement — catalogue de tuiles, scénarios météo d'exemple, état initial et rapports visuels — sont publiées avant le début du hackathon."
+      "cardNote": "Les formats d'entrée-sortie officiels et le contrat d'interface sont définis par la carte de mission. Les scénarios publics de développement sont sur la page Ressources ; les scénarios de la compétition restent privés et les observations arrivent pas à pas."
     },
     "participate": {
       "kicker": "03 / Participer",
@@ -453,7 +453,7 @@
       ],
       "timeline": [
         {
-          "label": "1–4 oct.",
+          "label": "2–3 oct.",
           "desc": "Formation en ligne"
         },
         {
@@ -470,7 +470,7 @@
     "prizes": {
       "kicker": "04 / Prix",
       "title": "5 500 $ de prix",
-      "lede": "Attribués sur le classement en ligne : moyenne des deux scénarios de compétition.",
+      "lede": "Attribués sur le classement final : le score de la version finale de chaque équipe sur le scénario final caché.",
       "tiers": [
         {
           "place": "Premier prix",
@@ -681,7 +681,7 @@
     "published": "Résultats finaux publiés.",
     "live": "Mise à jour en direct",
     "tie": "À égalité, la soumission la plus ancienne passe devant.",
-    "mean_note": "Score final = moyenne du meilleur score de l'équipe sur chaque scénario de compétition ; une équipe est classée dès que les deux sont notés. Chaque colonne est moyennée de la même façon.",
+    "mean_note": "Score de compétition = moyenne de tous les scénarios d'un même lot terminé. Chaque équipe garde son meilleur lot complet ; chaque colonne est moyennée de la même façon.",
     "download_csv": "Télécharger le CSV",
     "json": "JSON",
     "n_entries": "{n} équipes",
@@ -719,7 +719,7 @@
     "per_scenario_note": "Le classement d'entraînement est établi scénario par scénario : chaque tableau compare le meilleur score de chaque équipe sur ce scénario.",
     "detail": {
       "board_scenario": "Classement : {scenario}",
-      "board_mean": "Classement : moyenne des deux scénarios de compétition",
+      "board_mean": "Classement : moyenne des trois scénarios officiels",
       "close": "Fermer",
       "evenness": "Uniformité de couverture",
       "scored_at": "Noté le",
@@ -806,11 +806,11 @@
     "title": "Participer",
     "model_api": {
       "title": "API de modèle (facultatif)",
-      "intro": "Aucun crédit de modèle n'est fourni, et les projets déterministes n'ont pas besoin d'API. Choisissez comment la plateforme traite votre clé :",
+      "intro": "Aucun crédit de modèle n'est fourni. Les appels de modèle ne sont pas obligatoires, mais les prix exigent des techniques d'agent (pilotées par un LLM) dans au moins deux étapes. Choisissez comment la plateforme traite votre clé :",
       "choice": "Traitement de votre clé de modèle",
       "tradeoff": "Sans enregistrement : gardez cette page ouverte pendant les évaluations. Avec enregistrement : clé chiffrée, supprimée automatiquement après la vérification des résultats.",
       "stored": "Enregistrer chiffrée sur le serveur",
-      "stored_help": "La clé est stockée chiffrée sur le serveur ; vous pouvez donc fermer cette page pendant l'évaluation. Elle est supprimée automatiquement une fois la compétition terminée et les résultats vérifiés.",
+      "stored_help": "La clé est stockée chiffrée sur le serveur ; vous pouvez donc fermer cette page pendant l'évaluation. Elle est supprimée automatiquement après la publication et la vérification des résultats de la finale cachée.",
       "relay": "Ne pas enregistrer (par défaut)",
       "relay_help": "La clé reste uniquement dans cette page et n'est jamais stockée sur le serveur. Gardez cette page ouverte jusqu'à la fin de chaque évaluation ; les appels de modèle échouent lorsqu'elle est fermée. Si votre équipe est vérifiée parmi les premières, vous devrez aussi ouvrir cette page au moment convenu avec les organisateurs.",
       "relay_deletes": "Ce choix supprime la clé enregistrée.",
@@ -849,7 +849,7 @@
       "csv": "Téléverser un CSV",
       "project": "Soumettre un projet complet",
       "csv_help": "Exécutez-le sur votre machine et téléversez decisions.csv. Les scores vont au classement du Playground.",
-      "project_help": "Soumettez un dépôt GitHub ou un ZIP. La plateforme exécute votre programme tour par tour dans le cloud, comme en compétition. Les scénarios sont générés à partir des données du Playground ; les scores vont au classement séparé des projets complets. 5 évaluations par équipe et par jour ; apportez votre propre clé d'API si vous utilisez un modèle."
+      "project_help": "Soumettez un dépôt GitHub public ou un ZIP. La plateforme exécute votre programme tour par tour dans le cloud, comme en compétition, sur les scénarios publics dev-fortnight et dev-reference (5 heures par scénario) ; les scores vont au classement séparé des projets complets. 5 évaluations par équipe et par jour (remise à zéro à 00:00 UTC) ; les appels de modèle utilisent uniquement la clé d'API de votre équipe."
     }
   },
   "dash": {

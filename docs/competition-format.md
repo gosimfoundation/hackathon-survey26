@@ -5,17 +5,17 @@ The single `/compete` workspace replaces the former submission and project pages
 old links redirect there. Its workflow follows the configured phase, project
 versions and evaluation batches. A prominent Submit button links to that workspace.
 
-## Current policy (2026-09-26)
+## Current policy (2026-09-27)
 
 | | Current Playground | Formal competition after the administrator switches |
 |---|---|---|
 | Entry | `/compete` | `/compete` |
-| Input | locally generated `decisions.csv`; or a complete project on the separate `practice-projects` board (5 evaluations per team per day) | complete repository or private project ZIP; no CSV |
+| Input | locally generated `decisions.csv` (50 per team per day); or a complete project on the separate `practice-projects` board (5 evaluations per team per day, 18000 s per scenario) | complete repository or private project ZIP; no CSV; 10 batches per team per day, 3600 s per scenario |
 | Execution | participant computer, original scorer | approved project version, platform-controlled sequential observations |
-| Scenario | existing public scenarios; the complete-project board uses scenarios generated from them | three fixed formal scenarios (`eval-a`, `eval-b`, `eval-c`), one template for every team, no calibration, files and weather never published; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
+| Scenario | existing public scenarios; the complete-project board runs `dev-fortnight` and `dev-reference` | three fixed formal scenarios (`formal-a`, `formal-b`, `formal-c`), one template for every team, no calibration, files and weather never published; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
 | Ranking | best score per scenario, unchanged | online board: best complete batch, mean over the three scenarios (live feedback only). Final ranking: the hidden-scenario score of each team's final version only |
-| Model | optional; complete-project board: team's own key only | optional; participant supplies API and quota, no organizer credits |
-| Personal credentials | never include in results | HTTPS only; team's choice: saved encrypted on the server (default, deleted after verification) or kept only in the open page |
+| Model | optional; complete-project board: team's own key only | participant supplies API and quota, no organizer credits; award eligibility needs LLM-driven agent techniques in at least two of six stages (judged mainly by Claude reading the final version's code, `scripts/review-agent-usage.py`) |
+| Personal credentials | never include in results | HTTPS only; team's choice: kept only in the open page (relay, default) or saved encrypted on the server (opt-in, deleted after the hidden final results are published); teams that call a model must switch to saved before `online` ends |
 
 Formal evaluation accepts a decision only for its current sequence, records it,
 then publishes the next observation. Immutable decisions support independent
@@ -46,7 +46,7 @@ Final version and hidden final (organizer decision 2026-09-26, migration 2026092
   (`private.observer_auto_purge_provider_keys`, hourly) only once `final-hidden` is published and the retention
   period (7 days) after the latest ends_at of every key-using phase has passed (migration 20260927001200); the
   online ends_at never triggers it on its own. Production data: `drafts/hidden-final-data.sql` (outside the repo).
-Before that, including the October 1–4 training, teams rehearse the formal flow on the Playground
+Before that, including the October 2–3 trainings, teams rehearse the formal flow on the Playground
 complete-project board (`scripts/configure-observer-practice-projects.py`), which never uses formal scenarios.
 
 See `randomized-evaluation.md` for calibration (now used only by internal acceptance phases) and
@@ -65,7 +65,7 @@ coverage_bonus = coverage_bonus_weight × base_science_score × coverage_evennes
 `coverage_evenness` is Jain's fairness index over the per-region counts of completed tiles — 1.0 when finished
 tiles spread evenly across the eight regions, 1/8 when one region took everything, 0 when nothing was observed.
 The weight lives in each scenario's `score_config.json` and defaults to 0, so scenarios that never set it are
-unaffected by the term. Only `eval-a` and `eval-b` set it, at 0.35 — there the term is worth roughly a fifth of
+unaffected by the term. The formal scenarios (`formal-a/b/c`) set it at 0.35 — there the term is worth roughly a fifth of
 a competitive run's total, and measured strategy differences reach ~2% of total, twenty times the ±0.1% spread
 the challenge produced without it.
 
@@ -107,8 +107,8 @@ anomaly-detection game on top of the survey:
   tile could complete or a repeat could beat the tile's banked best.
 - **Audit chain.** Accepted reports are flattened into `decisions.csv` as `report_instrument_failure` /
   `report_nova` / `report_reddening` action rows (sharing the incrementing `decision_id` sequence), so the
-  single trace file replays everything and its SHA-256 covers reports too. The baseline anchor is
-  `23430.568406` (test constant, starter-kit README, SKILL.md).
+  single trace file replays everything and its SHA-256 covers reports too. The practice baseline anchor
+  is `12287.478365` on `dev-reference` (test constant `BASELINE_TOTAL`, starter-kit README, SKILL.md).
 
 Calibration knobs: `score_config.json` sections `repeat_observation` / `reporting` / `anomaly_tags` /
 `fault_response`; `weather_config.json` `quality.instrument_efficiency.jitter_minimum/maximum` and
@@ -152,7 +152,7 @@ the downloaded kit and the copy the platform publishes are the same scenario.
 
 These are decisions for the organizers, not code changes:
 
-- Do not rotate the seeds of `eval-a` / `eval-b` / `eval-c` / `eval-final` once the competition has started: every
+- Do not rotate the seeds of `formal-a` / `formal-b` / `formal-c` / `eval-final` once the competition has started: every
   team is scored on the same template, and rotating would change the scenario mid-competition. Internal acceptance
   phases that keep calibration rows still refuse a formal run without a calibrated instance.
 - Practice-phase `results` uploads are a bare `decisions.csv` — which now also carries any `report_*` rows, so

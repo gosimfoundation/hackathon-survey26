@@ -1,5 +1,8 @@
 # 本地项目运行 / Local project runner
 
+> 2026-09-27：正式比赛 `online` 不开放本地会话，只评测完整项目；本页仅适用于开启了本地会话的阶段。
+> Local sessions are disabled for the formal `online` phase (complete projects only).
+
 需要 Python 3.12；默认使用 Docker 运行完整项目。也可以用 `--native` 在自己的电脑上直接运行自己信任的项目。
 项目语言不限，Python 只是与比赛服务器通信的运行器。
 

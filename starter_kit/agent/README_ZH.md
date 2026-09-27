@@ -6,7 +6,7 @@
 >
 > - 练习赛：本地运行后，在「提交」页上传 `run_output/decisions.csv`（也可用 `python3 sac_submit.py`）。
 > - 完整项目（正式赛只接受这种）：运行 `python3 pack_agent.py`，把生成的 `my-agent.zip` 在「参赛」页作为私有 ZIP 上传，或提交公开 GitHub 仓库。
->   本目录的 `observer.project.json` 会一起打包到 ZIP 根目录，平台直接运行 `python3 -u minimal_agent.py`，不需要任何模型密钥。
+>   本目录的 `observer.project.json` 会一起打包到 ZIP 根目录，平台直接运行 `python3 -u minimal_agent.py`，不需要任何模型密钥（评奖要求至少两个环节采用大模型驱动的智能体技术，见网站规则页）。
 >   `.env` 不会被打包；需要模型时在「参赛」页设置自己的 API。
 
 # Minimal Example Agent
