@@ -1531,7 +1531,7 @@
   "credits": {
     "title": "API credits",
     "kicker": "sponsor codes",
-    "lede": "Sponsor API codes for local development. One code per provider per team.",
+    "lede": "Sponsor API codes, one per team per provider. Cloud evaluations use the model API you set on the Participate page.",
     "need_team": "Codes are issued per team. Create or join a team to claim them.",
     "empty": "No sponsor codes are available yet.",
     "available": "{n} left",
@@ -1566,7 +1566,8 @@
       "not_eligible": "Your team needs one successful score in the practice round first.",
       "no_codes_left": "No Kimi Coding Plan codes are available right now.",
       "need_team": "Create or join a team first."
-    }
+    },
+    "usage": "How to use it: on the Participate page, under Model API, set the endpoint to https://api.kimi.com/coding/v1, the model to kimi-for-coding (or k3), and the key to the API key you get after redeeming. Not api.moonshot.cn and not api.kimi.ai."
   },
   "profile": {
     "title": "Profile",
@@ -1740,7 +1741,7 @@
       "saved_at": "Saved {time}",
       "none": "No key saved yet.",
       "endpoint": "API endpoint",
-      "endpoint_hint": "Any public https:// address works (an OpenAI-compatible API on the default port). IP addresses and internal addresses are not accepted. The suggestions are common providers.",
+      "endpoint_hint": "Any public https:// address works (an OpenAI-compatible API on the default port). IP addresses and internal addresses are not accepted. The suggestions are common providers. For the Kimi Coding Plan handed out by the organizers, use endpoint https://api.kimi.com/coding/v1 and model kimi-for-coding (or k3).",
       "endpoint_refused": "This API address can't be used. Use a public https:// address on the default port whose name resolves, not an IP address or an internal address.",
       "model": "Model",
       "key": "API key",
