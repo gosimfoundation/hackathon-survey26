@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 from typing import Iterable
 import uuid
 
@@ -28,6 +29,10 @@ class RepositoryError(RuntimeError):
 
 class SnapshotRepository:
     """A private repository provisioned with Actions disabled by the control API."""
+
+    # Remote operations are retried: a freshly minted repository token or a
+    # transient GitHub error must not fail a whole preparation or scoring job.
+    remote_retry_delays: tuple[float, ...] = (1.0, 3.0, 6.0)
 
     def __init__(self, full_name: str, token: str, *, timeout: float = 120):
         if not REPOSITORY.fullmatch(full_name) or not token or any(c in token for c in "\r\n\x00"):
@@ -65,6 +70,14 @@ class SnapshotRepository:
             raise RepositoryError("Repository operation failed.")
         return result.stdout.decode("utf-8", "strict").strip()
 
+    def _remote(self, root: Path, *args: str) -> str:
+        for delay in self.remote_retry_delays:
+            try:
+                return self._git(root, *args)
+            except RepositoryError:
+                time.sleep(delay)
+        return self._git(root, *args)
+
     def store_revision(self, revision_id: str, files: Iterable[ProjectFile]) -> tuple[str,str]:
         return self.store_snapshot('revisions', revision_id, files)
 
@@ -90,15 +103,15 @@ class SnapshotRepository:
             commit = self._git(root, "rev-parse", "HEAD")
             if not SHA.fullmatch(commit):
                 raise RepositoryError("Repository returned an invalid commit.")
-            existing = self._git(root, "ls-remote", "--refs", self.remote, ref)
+            existing = self._remote(root, "ls-remote", "--refs", self.remote, ref)
             if existing:
                 if existing.split()[0] != commit:
                     raise RepositoryError("An immutable revision already exists with different contents.")
                 return commit, digest
             # A new branch, never a force push or a change to the repository's default
             # branch. Concurrent identical preparations produce the same commit.
-            self._git(root, "push", "--porcelain", self.remote, "HEAD:" + ref)
-            verified = self._git(root, "ls-remote", "--refs", self.remote, ref)
+            self._remote(root, "push", "--porcelain", self.remote, "HEAD:" + ref)
+            verified = self._remote(root, "ls-remote", "--refs", self.remote, ref)
             if not verified or verified.split()[0] != commit:
                 raise RepositoryError("Source revision could not be verified.")
             return commit, digest
