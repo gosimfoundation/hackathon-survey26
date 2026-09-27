@@ -4,7 +4,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
 import { usePersonalModel } from '../../composables/usePersonalModel'
-import { DEFAULT_MODEL_KEY_MODE, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
+import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 const { pick, t, tf, locale } = useI18n()
@@ -73,6 +73,8 @@ const words = computed(() => pick({
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
   finalBadge: 'Final version', finalScore: 'score',
+  finalRelay: 'If your program calls a large model, switch the model API to “Save encrypted on the server” before the competition ends; otherwise model calls will fail in the hidden final evaluation.',
+  apiFinalNote: 'Nobody keeps a page open during the hidden final evaluation: teams whose program calls a model must switch to “Save encrypted on the server” before the online phase ends.',
 }, {
   title: '智能体项目', intro: '提交完整项目，测试接口后，确认用于评测的具体版本。',
   diagnostics: '运行日志', diagnosticsHelp: '编译和程序输出只供本队与主办方查看。', noLogs: '暂时没有任务日志。',
@@ -110,6 +112,8 @@ const words = computed(() => pick({
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
   finalBadge: '最终版本', finalScore: '分数',
+  finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏题评测时模型调用会失败。',
+  apiFinalNote: '最终隐藏题评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
@@ -132,6 +136,7 @@ const titles = computed(() => new Map((data.value?.projects ?? []).flatMap(p => 
 const phaseName = (id: string) => { const p = data.value?.phases.find(x => x.phase_id === id)?.phases; return p ? pick(p.name_en, p.name_zh) : '' }
 // Team-key runs have no practical token cap (1,000,000,000 or more is shown as uncapped).
 const TOKENS_UNCAPPED = 1_000_000_000
+const relayFinalRisk = computed(() => relayMissesHiddenFinal(modelMode.value, !!finalVersion.value || competition.mode === 'competition'))
 const modelLimits = computed(() => {
   const p = activePhases.value[0]
   if (!p || !(p.model_call_limit > 0)) return null
@@ -283,6 +288,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <h2 id="model-api">{{ t('submit.model_api.title') }}</h2>
         <p class="help mt-3">{{ t('submit.model_api.intro') }}</p>
         <p class="help" data-testid="model-mode-tradeoff">{{ t('submit.model_api.tradeoff') }}</p>
+        <p v-if="relayFinalRisk" class="errors" role="note" data-testid="model-mode-final-note">{{ words.apiFinalNote }}</p>
         <fieldset class="mt-4" :disabled="busy">
           <legend class="sr-only">{{ t('submit.model_api.choice') }}</legend>
           <label class="check"><input v-model="modeChoice" type="radio" name="model-key-mode" value="relay" aria-describedby="model-mode-relay-help" data-testid="model-mode-relay" @change="chooseMode">{{ t('submit.model_api.relay') }}</label>
@@ -399,6 +405,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <h2 id="final">{{ words.final }}</h2>
         <p class="help">{{ words.finalIntro }}</p>
         <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ new Date(finalVersion.deadline).toLocaleString() }}.</template></p>
+        <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
         <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
         <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">

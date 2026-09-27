@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { DEFAULT_MODEL_KEY_MODE, teamModelMode } from '../src/lib/modelKeyMode.ts'
+import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode } from '../src/lib/modelKeyMode.ts'
 
 test('not saving the key is the default; saving is an explicit opt-in', () => {
   assert.equal(DEFAULT_MODEL_KEY_MODE, 'relay')
@@ -24,4 +24,13 @@ test('every locale explains the trade-off and marks not saving as the default', 
   // One plain sentence per language, naming both choices.
   const zh = JSON.parse(readFileSync(new URL('../src/i18n/zh.json', import.meta.url), 'utf8')).submit.model_api
   assert.equal(zh.tradeoff, '不保存：评测时需保持页面打开；保存：加密存储，成绩核实后自动删除。')
+})
+
+test('relay teams are warned that the hidden final cannot use their key', () => {
+  assert.equal(relayMissesHiddenFinal('relay', true), true)
+  assert.equal(relayMissesHiddenFinal('stored', true), false)
+  assert.equal(relayMissesHiddenFinal('relay', false), false)
+  const view = readFileSync(new URL('../src/components/competition/ProjectWorkflow.vue', import.meta.url), 'utf8')
+  assert.ok(view.includes('如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏题评测时模型调用会失败。'))
+  assert.ok(view.includes('data-testid="final-version-relay-warning"') && view.includes('data-testid="model-mode-final-note"'))
 })

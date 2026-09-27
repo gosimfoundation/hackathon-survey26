@@ -304,7 +304,7 @@ def test_organizer_script_dry_run_and_apply(hidden, monkeypatch, capsys):
     with pytest.raises(psycopg.Error, match='source_phase_not_finished'):
         main()
     out = main('--team', team_slug, '--before-freeze')
-    assert 'DRY RUN' in out and 'would_create' in out and 'relay model mode' in out
+    assert 'DRY RUN' in out and 'would_create' in out and 'relay model mode: model calls will fail' in out
     assert query(uri, 'select count(*) from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(0,)]
     query(uri, "update public.phases set ends_at=now()-interval '1 second' where id=%s", (s['phase'],))
     out = main('--apply', '--team', team_slug)

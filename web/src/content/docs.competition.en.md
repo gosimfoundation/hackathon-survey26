@@ -49,7 +49,7 @@ Bring your own API and quota if your algorithm needs a model. The platform does 
 
 Enter a supported HTTPS endpoint, model and key in Participate and choose how the key is handled. Either way, the key never enters project files, run artifacts or logs.
 
-- **Do not save (default)**: the key stays only in your open page and is never stored on the server. Keep the page open until each evaluation finishes; model calls fail while it is closed. You must also open the page during the hidden final evaluation window after the competition, and, if your team is verified, at the time agreed with the organizers.
+- **Do not save (default)**: the key stays only in your open page and is never stored on the server. Keep the page open until each evaluation finishes; model calls fail while it is closed. **The hidden final evaluation cannot use such a key: teams whose program calls a large model must switch to “Save encrypted” before the competition ends, otherwise model calls fail in the hidden final evaluation.** If your team is verified, open the page at the time agreed with the organizers.
 - **Save encrypted (opt-in)**: the key is stored encrypted on the server, used only for evaluation and verification, and deleted automatically once the competition has ended and the results have been verified. The page does not need to stay open during evaluation; you can replace or delete a saved key at any time.
 
 Switching from "save encrypted" to "do not save" deletes the stored key immediately.
@@ -64,7 +64,7 @@ A batch includes all three scenarios and ranks only when they all finish. The **
 
 **Final version.** In Participate, under "Final version", any team member can mark one confirmed version as the team's final version and change or clear the choice until the online competition ends (Oct 7 23:59 UTC+8). After that it is locked. Without a choice, the version of your best evaluation on the online board is used. A chosen version cannot be withdrawn.
 
-**Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on one hidden scenario that nobody has seen. It does not use your daily evaluations. Its data, run logs and results stay private until the organizers publish the final results, and **only this hidden score decides the final ranking**. If you chose not to save your model key, keep the Participate page open during the hidden evaluation window that the organizers announce.
+**Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on one hidden scenario that nobody has seen. It does not use your daily evaluations. Its data, run logs and results stay private until the organizers publish the final results, and **only this hidden score decides the final ranking**. No team page is open during it: **if your program calls a large model, switch the model API to “Save encrypted” before the competition ends; otherwise model calls will fail in the hidden final evaluation.** Teams that do not use a model are unaffected.
 
 ## 7. Results and reproduction
 

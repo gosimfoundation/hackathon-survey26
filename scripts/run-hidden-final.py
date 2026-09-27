@@ -46,9 +46,10 @@ def summarize(result):
     for t in teams:
         note = t['reason'] or ''
         if t['action'] != 'skip' and t['model_mode'] == 'relay':
-            note = 'relay model mode: a team page must stay open during the run'
+            note = ('relay model mode: model calls will fail unless a team page stays open during the run'
+                    ' (rule: switch to stored mode before the online phase ends)')
         elif t['action'] != 'skip' and t['model_mode'] == 'stored' and not t['model_key_saved']:
-            note = 'stored model mode without a saved key'
+            note = 'stored model mode without a saved key: model calls will fail'
         lines.append(f"  {t['action']:<12} {t['team_name'][:40]:<40} version={t['revision_id']} ({t['source']})"
                      f" best={t['best_score']}{' hidden-team' if t['team_hidden'] else ''}{'  ! '+note if note else ''}")
     counts = {}

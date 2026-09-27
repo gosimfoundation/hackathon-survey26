@@ -14,7 +14,7 @@ Models are optional. If needed, bring your own API and quota. Never place keys i
 
 For model calls, enter a supported HTTPS endpoint, model and key in Participate and choose how the key is handled:
 
-- **Do not save (default)**: the key stays only in the page; keep the page open until each evaluation finishes, and during the hidden final evaluation window after the competition. If your team is verified as a top team, you must also open the page at the agreed time during verification.
+- **Do not save (default)**: the key stays only in the page; keep the page open until each evaluation finishes. **The hidden final evaluation cannot use it: if your program calls a large model, switch to “Save encrypted” before the competition ends, otherwise model calls fail in the hidden final evaluation.** If your team is verified as a top team, you must also open the page at the agreed time during verification.
 - **Save encrypted (opt-in)**: the key is stored encrypted on the server and deleted automatically once the results have been verified; the page does not need to stay open during evaluation.
 
 ## 4. Evaluate and review
