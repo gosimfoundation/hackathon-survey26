@@ -51,6 +51,9 @@ class ModelClient:
                     raise ProjectError("The model provider rejected the request"
                         +(" (HTTP "+str(status)+")" if isinstance(status,int) else "")
                         +". Check the API endpoint, model name, key and balance on the Participate page.") from None
+                if exc.code==403:
+                    raise ProjectError("No model API is set up for your team. Set one under Model API on the Participate page, "
+                                       "or add observer.project.json so no automatic adaptation is needed.") from None
                 if exc.code==409:
                     raise ProjectError("The model request was already received. Review the preparation status before retrying.") from None
                 if exc.code<500 or attempt==2:
