@@ -1546,6 +1546,27 @@
       "banned": "该账号已被封禁。"
     }
   },
+  "kimi_plan": {
+    "title": "Kimi Coding Plan",
+    "kicker": "每队一个",
+    "lede": "跑通 Playground（练习赛至少获得一次成功评分）的队伍，每队可获得一个 Kimi Coding Plan 兑换码，由队长领取，全队成员都能在这里查看。",
+    "coming_soon": "Kimi Coding Plan 兑换码即将发放，跑通练习赛的队伍队长届时可在这里领取。",
+    "eligible": "你的队伍已满足条件。",
+    "not_eligible": "还需在练习赛获得一次成功评分。",
+    "hidden": "隐藏/测试队伍不参与发放。",
+    "wait_captain": "你的队伍已满足条件，请队长领取；领取后全队都能在这里看到兑换码。",
+    "sold_out": "Kimi Coding Plan 兑换码已发放完毕，请联系组委会。",
+    "claim": "领取队伍兑换码",
+    "claimed": "已领取 Kimi Coding Plan 兑换码。",
+    "already": "你的队伍已领取过 Kimi Coding Plan 兑换码。",
+    "claimed_by": "{name} 领取于 {at}",
+    "errors": {
+      "captain_only": "只有队长可以领取 Kimi Coding Plan 兑换码。",
+      "not_eligible": "你的队伍还需在练习赛获得一次成功评分。",
+      "no_codes_left": "暂时没有可领取的 Kimi Coding Plan 兑换码。",
+      "need_team": "请先创建或加入队伍。"
+    }
+  },
   "profile": {
     "title": "个人资料",
     "role": "角色",
@@ -2275,6 +2296,18 @@
       "busy": "评测中",
       "idle": "空闲",
       "offline_hint": "超过 {minutes} 分钟没有 worker 在线时，到 GitHub Actions 手动运行一次 “Evaluation worker” 工作流即可拉起。"
+    },
+    "kimi": {
+      "title": "Kimi Coding Plan",
+      "lede": "在上方以服务商 \"kimi\" 导入兑换码。练习赛有成功评分（练习赛 CSV 已评分，或 practice-projects 正式批次已评分）的队伍由队长各领取一个。隐藏队伍会列出，但不能自助领取。",
+      "team": "队伍",
+      "captain": "队长",
+      "first_scored": "首次成功评分",
+      "code": "兑换码",
+      "claimed_at": "领取时间",
+      "claimed_by": "领取人",
+      "hidden": "隐藏",
+      "summary": "{eligible} 支队伍满足条件 · 已领取 {claimed} · 码池剩余 {pool}"
     }
   },
   "construction": {

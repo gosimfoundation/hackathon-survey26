@@ -1546,6 +1546,27 @@
       "banned": "This account is suspended."
     }
   },
+  "kimi_plan": {
+    "title": "Kimi Coding Plan",
+    "kicker": "One per team",
+    "lede": "Every team that runs through the Playground (at least one successful practice score) gets one Kimi Coding Plan code. The captain claims it; every member can see it here.",
+    "coming_soon": "Kimi Coding Plan codes are coming soon. Captains of teams that have run through the practice round can claim theirs here.",
+    "eligible": "Your team qualifies.",
+    "not_eligible": "Your team still needs one successful score in the practice round.",
+    "hidden": "Hidden/test teams do not receive a code.",
+    "wait_captain": "Your team qualifies. Ask your captain to claim the code; it will then show up here for everyone.",
+    "sold_out": "All Kimi Coding Plan codes have been handed out. Contact the organizers.",
+    "claim": "Claim the team code",
+    "claimed": "Kimi Coding Plan code claimed.",
+    "already": "Your team already has its Kimi Coding Plan code.",
+    "claimed_by": "Claimed by {name} · {at}",
+    "errors": {
+      "captain_only": "Only the team captain can claim the Kimi Coding Plan code.",
+      "not_eligible": "Your team needs one successful score in the practice round first.",
+      "no_codes_left": "No Kimi Coding Plan codes are available right now.",
+      "need_team": "Create or join a team first."
+    }
+  },
   "profile": {
     "title": "Profile",
     "role": "Role",
@@ -2275,6 +2296,18 @@
       "busy": "Evaluating",
       "idle": "Idle",
       "offline_hint": "If no worker is online for more than {minutes} minutes, run the “Evaluation worker” workflow once from GitHub Actions to start a new one."
+    },
+    "kimi": {
+      "title": "Kimi Coding Plan",
+      "lede": "Import codes above with provider \"kimi\". Captains of teams with a successful practice score (scored practice CSV or scored formal practice-projects batch) claim one code each. Hidden teams are listed but cannot self-claim.",
+      "team": "team",
+      "captain": "captain",
+      "first_scored": "first successful score",
+      "code": "code",
+      "claimed_at": "claimed at",
+      "claimed_by": "claimed by",
+      "hidden": "hidden",
+      "summary": "{eligible} eligible teams · {claimed} claimed · {pool} codes in the pool"
     }
   },
   "construction": {

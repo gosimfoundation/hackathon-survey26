@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 
 export type PhaseStatus = 'open' | 'upcoming' | 'closed' | 'disabled'
 export type LeaderboardMode = 'live' | 'frozen' | 'hidden' | 'published'
@@ -259,6 +260,13 @@ export async function loadCreditsNote(): Promise<CreditsNote> {
     const value = ((data as { value: unknown }).value ?? {}) as Record<string, unknown>
     return { en: typeof value.en === 'string' ? value.en : '', zh: typeof value.zh === 'string' ? value.zh : '' }
   } catch { return { en: '', zh: '' } }
+}
+
+// --- Kimi Coding Plan (captain claims one code once the team has a practice score) ---
+export async function loadKimiPlanStatus(): Promise<KimiPlanStatus> {
+  const { data, error } = await supabase.rpc('kimi_plan_status')
+  if (error) throw error
+  return normalizeKimiPlanStatus(data)
 }
 
 // --- participants wall -------------------------------------------------------

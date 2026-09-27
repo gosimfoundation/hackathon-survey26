@@ -9,6 +9,7 @@ import StatusPill from '../../components/layout/StatusPill.vue'
 interface Stat { provider: string; available: number; assigned: number; revoked: number; total: number; note: string }
 interface CodeRow { id: number; provider: string; code: string; note: string; status: string; team_id: string | null; team_name: string | null; assigned_by_email: string | null; assigned_at: string | null; created_at: string }
 interface TeamRow { id: string; name: string }
+interface KimiRow { team_id: string; team_name: string; is_hidden: boolean; captain_name: string | null; captain_email: string | null; qualified: boolean; first_scored_at: string | null; code: string | null; claimed_at: string | null; claimed_by_email: string | null }
 
 const STATUSES = ['available', 'assigned', 'revoked']
 const ERROR_NS = ['admin.credits.errors']
@@ -20,7 +21,13 @@ const loading = ref(true)
 const importForm = ref({ provider: '', note: '', codes: '' })
 const assignForm = ref({ team_id: '', provider: '', replace: false })
 const filter = ref({ provider: '', status: '' })
+const kimiTeams = ref<KimiRow[]>([])
 const providerNames = computed(() => stats.value.map(s => s.provider))
+const kimiSummary = computed(() => tf('admin.kimi.summary', {
+  eligible: kimiTeams.value.filter(r => r.qualified && !r.is_hidden).length,
+  claimed: kimiTeams.value.filter(r => r.code).length,
+  pool: stats.value.find(s => s.provider === 'kimi')?.available ?? 0,
+}))
 
 async function loadStats() {
   stats.value = ((await rpc<any[]>('admin_redeem_stats')) ?? []).map(s => ({ provider: String(s.provider), available: Number(s.available ?? 0), assigned: Number(s.assigned ?? 0), revoked: Number(s.revoked ?? 0), total: Number(s.total ?? 0), note: String(s.note ?? '') }))
@@ -31,7 +38,10 @@ async function loadCodes() {
 async function loadTeams() {
   teams.value = ((await rpc<any[]>('admin_teams')) ?? []).map(team => ({ id: String(team.id), name: String(team.name) }))
 }
-async function reload() { await Promise.all([loadStats(), loadCodes()]) }
+async function loadKimiTeams() {
+  kimiTeams.value = ((await rpc<any[]>('admin_kimi_plan_teams')) ?? []) as KimiRow[]
+}
+async function reload() { await Promise.all([loadStats(), loadCodes(), loadKimiTeams()]) }
 
 async function importCodes() {
   const provider = importForm.value.provider.trim()
@@ -111,6 +121,28 @@ onMounted(async () => { try { await Promise.all([reload(), loadTeams()]) } catch
       </form>
     </div>
     <datalist id="credits-provider-names"><option v-for="name in providerNames" :key="name" :value="name"></option></datalist>
+
+    <div class="panel mt-8" data-testid="kimi-plan-admin">
+      <div class="hd"><h2>{{ t('admin.kimi.title') }}</h2><span class="label">{{ kimiSummary }}</span></div>
+      <p class="text2 text-sm mb-4">{{ t('admin.kimi.lede') }}</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>{{ t('admin.kimi.team') }}</th><th>{{ t('admin.kimi.captain') }}</th><th>{{ t('admin.kimi.first_scored') }}</th><th>{{ t('admin.kimi.code') }}</th><th>{{ t('admin.kimi.claimed_by') }}</th><th>{{ t('admin.kimi.claimed_at') }}</th></tr></thead>
+          <tbody>
+            <tr v-for="row in kimiTeams" :key="row.team_id" :data-testid="`kimi-plan-team-${row.team_id}`">
+              <td>{{ row.team_name }}<template v-if="row.is_hidden"> · <span class="label">{{ t('admin.kimi.hidden') }}</span></template></td>
+              <td class="xs">{{ row.captain_name ?? '—' }}<br><span class="text3">{{ row.captain_email ?? '' }}</span></td>
+              <td class="m xs">{{ fmtUtc(row.first_scored_at, { short: true }) }}</td>
+              <td class="m">{{ row.code ?? '—' }}</td>
+              <td class="xs">{{ row.claimed_by_email ?? '—' }}</td>
+              <td class="m xs">{{ fmtUtc(row.claimed_at, { short: true }) }}</td>
+            </tr>
+            <tr v-if="loading"><td colspan="6" class="p-0"><SkeletonRows :rows="3" :cols="5" :label="t('common.loading')" /></td></tr>
+            <tr v-else-if="!kimiTeams.length"><td colspan="6" class="text3">{{ t('common.no_data') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
     <div class="panel mt-8">
       <div class="hd"><h2>{{ t('admin.credits.list') }}</h2></div>
