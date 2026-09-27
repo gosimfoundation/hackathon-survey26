@@ -33,6 +33,6 @@ Submission details include score components, completion, replay and result downl
 
 Respect other participants. Do not share accounts, submit another team's work, or create extra teams to multiply quotas. Do not access another team's private data, alter scoring or deliberately exhaust resources. Report defects to the organizers.
 
-Team names, scores and ranks are public. Registration information is used to operate the event. Participants control their public cards. Submission files and detailed results are available only to the team and organizers and retained until 90 days after Awards Day. Existing submissions, scores and replays remain available.
+Team names, scores and ranks are public. Registration information is used to operate the event. Participants control their public cards. Submission files and detailed results are available only to the team and organizers and kept by the organizers and may be used for academic research and publications; published material is anonymized unless the team agrees otherwise. Existing submissions, scores and replays remain available.
 
 Award details and event updates appear in announcements. Contact: hackathon@gosim.org
