@@ -29,7 +29,7 @@ export function formatDailyReset(resetsAt: string | null | undefined, locale: Te
 
 // Fixed revision errors written by the database; project-specific reasons stay as they are.
 const REVISION_ERRORS: Record<string, string> = {
-  'Project preparation failed. Please retry.': '项目准备失败，请修正后重新上传。',
+  'Project preparation failed. Please retry.': '项目准备失败，请重新提交。',
   'Project preparation did not finish. Please retry.': '项目准备未能完成，请重新提交。',
   'Project scheduling failed. Please retry.': '项目排队失败，请重新提交。',
   'Invalid preparation result. Please retry.': '项目准备结果无效，请重新提交。',
