@@ -1,8 +1,10 @@
 import { boundedJson, decryptCredential, ProxyError } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
-import { verifyWorkflowIdentity } from "./observer-github.ts";
+import { RUNNER_ORGANIZATION_PATTERN, verifyWorkflowIdentity } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
 import { AGENT_LOG_BYTES } from "./observer-agent-log.ts";
+
+const PARTICIPANT_REPOSITORY = new RegExp("^" + RUNNER_ORGANIZATION_PATTERN + "\\/participant-[0-9a-f]{32}$");
 
 export type JobDependencies = {
   rpc: Rpc;
@@ -191,7 +193,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     if (
       !repository || typeof repository !== "object" || Object.keys(repository).sort().join(",") !== "full_name,token" ||
       typeof repository.full_name !== "string" ||
-      !/^AGENTIC-OBSERVER26-runner-[1-6]\/participant-[0-9a-f]{32}$/.test(repository.full_name) ||
+      !PARTICIPANT_REPOSITORY.test(repository.full_name) ||
       !repository.full_name.startsWith(expected.organization + "/") ||
       typeof repository.token !== "string" || !repository.token || /[\r\n\0]/.test(repository.token)
     ) {

@@ -1,6 +1,6 @@
 import { encryptCredential, ProxyError } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
-import { GitHubError, placement } from "./observer-github.ts";
+import { databaseLocator, GitHubError, placement } from "./observer-github.ts";
 
 export interface RunScheduler {
   rpc: Rpc;
@@ -28,7 +28,7 @@ export async function scheduleRuns(deps: RunScheduler) {
   const outcomes = [];
   for (const run of runs) {
     try {
-      const { organization } = await placement(run.user_id);
+      const { organization } = await placement(run.user_id, databaseLocator(deps.rpc));
       if (!enabled.has(organization)) throw new GitHubError("runner_not_configured");
       // Local sessions need a private result repository too. Provision it before
       // opening a capability; a GitHub failure cannot leave a half-started run.

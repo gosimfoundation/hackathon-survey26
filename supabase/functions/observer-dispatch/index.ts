@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { dispatchPending } from "../_shared/observer-dispatch.ts";
-import { GitHubApp } from "../_shared/observer-github.ts";
+import { databaseLocator, GitHubApp } from "../_shared/observer-github.ts";
 import { ProxyError } from "../_shared/observer-model.ts";
 import { scheduleRuns } from "../_shared/observer-orchestrate.ts";
 import { schedulePreparations } from "../_shared/observer-prepare.ts";
@@ -30,6 +30,7 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       Deno.env.get("OBSERVER_GITHUB_APP_ID") ?? "",
       Deno.env.get("OBSERVER_GITHUB_APP_PEM") ?? "",
       installations,
+      databaseLocator(rpc),
     );
     const masterKey = Deno.env.get("OBSERVER_KEY_ENCRYPTION_KEY") ?? "";
     await rpc("observer_reconcile_jobs", {});

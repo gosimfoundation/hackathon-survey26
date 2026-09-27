@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Verify exported sources against all six merged repos before enabling dispatch."""
+"""Verify exported sources against every runner control repo before enabling dispatch.
+
+A row with "enabled": false in ops/github-installations.json is verified and
+recorded but stays disabled (for example a new organization still being checked).
+"""
 import argparse
 import hashlib
 import json
@@ -54,10 +58,11 @@ def main():
             if tagged['object']['type']!='commit' or tagged['object']['sha']!=row['approved_sha']:
                 raise RuntimeError('Runtime tag differs from the approved commit; refusing to overwrite it')
             gh('variable','set','OBSERVER_JOB_URL','--repo',repo,'--body',os.environ['SUPABASE_URL']+'/functions/v1/observer-job')
-            values.append('('+','.join(quote(row[k]) for k in ('organization','organization_id','installation_id','repository_id','approved_sha'))+',true)')
+            enabled='true' if row.get('enabled',True) else 'false'
+            values.append('('+','.join(quote(row[k]) for k in ('organization','organization_id','installation_id','repository_id','approved_sha'))+','+enabled+')')
         sql='insert into private.observer_installations(organization,organization_id,installation_id,repository_id,approved_sha,enabled) values '+','.join(values)+'''
           on conflict(organization) do update set organization_id=excluded.organization_id,installation_id=excluded.installation_id,
-          repository_id=excluded.repository_id,approved_sha=excluded.approved_sha,enabled=true'''
+          repository_id=excluded.repository_id,approved_sha=excluded.approved_sha,enabled=excluded.enabled'''
         req=urllib.request.Request('https://api.supabase.com/v1/projects/'+os.environ['SUPABASE_PROJECT_REF']+'/database/query',
           data=json.dumps({'query':sql}).encode(),headers={'Authorization':'Bearer '+os.environ['SUPABASE_ACCESS_TOKEN'],'Content-Type':'application/json'})
         with urllib.request.urlopen(req,timeout=60) as response:response.read()

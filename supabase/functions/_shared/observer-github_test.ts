@@ -4,15 +4,16 @@ import {
   CONTROL_REPOSITORY,
   GitHubApp,
   GitHubError,
+  isRunnerOrganization,
   placement,
-  RUNNER_ORGANIZATIONS,
   sourceRepository,
   verifyWorkflowIdentity,
 } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
 
 const user = "00000000-0000-4000-8000-000000000001";
-const assigned = await placement(user);
+const locate = () => Promise.resolve("AGENTIC-OBSERVER26-runner-12");
+const assigned = await placement(user, locate);
 const organization = assigned.organization;
 const pair = await generateKeyPair("RS256", { extractable: true });
 const pem = await exportPKCS8(pair.privateKey);
@@ -28,7 +29,7 @@ function backend() {
   let installAccount = organization;
   let branchSha = sha;
   let tagSha: string | null = null;
-  const app = new GitHubApp("42", pem, { [organization]: 100 }, async (input, init) => {
+  const app = new GitHubApp("42", pem, { [organization]: 100 }, locate, async (input, init) => {
     const url = new URL(String(input));
     assertEquals(url.origin, "https://api.github.com");
     const path = url.pathname;
@@ -106,11 +107,29 @@ function backend() {
   };
 }
 
-Deno.test("placement is stable per participant and restricted to the six configured organizations", async () => {
-  assertEquals(await placement(user), assigned);
-  assert(RUNNER_ORGANIZATIONS.includes(assigned.organization));
+Deno.test("placement uses the recorded organization and accepts only the twelve runner organizations", async () => {
+  assertEquals(await placement(user, locate), assigned);
+  assertEquals(assigned.organization, "AGENTIC-OBSERVER26-runner-12");
   assertEquals(assigned.privateRepository, "participant-" + user.replaceAll("-", ""));
-  await assertRejects(() => placement("../../secret"), GitHubError);
+  await assertRejects(() => placement("../../secret", locate), GitHubError);
+  const asked: string[] = [];
+  await placement(user.toUpperCase(), (id) => {
+    asked.push(id);
+    return Promise.resolve("AGENTIC-OBSERVER26-runner-1");
+  });
+  assertEquals(asked, [user]);
+  for (const answer of ["AGENTIC-OBSERVER26-runner-13", "AGENTIC-OBSERVER26-runner-0", "outsider", null, 7]) {
+    await assertRejects(() => placement(user, () => Promise.resolve(answer)), GitHubError, "invalid_placement");
+  }
+  await assertRejects(
+    () => placement(user, () => Promise.reject(new Error("database detail"))),
+    GitHubError,
+    "placement_unavailable",
+  );
+  for (let i = 1; i <= 12; i++) assert(isRunnerOrganization("AGENTIC-OBSERVER26-runner-" + i));
+  for (const name of ["AGENTIC-OBSERVER26-runner-13", "AGENTIC-OBSERVER26-runner-01", "AGENTIC-OBSERVER26-runner-1x"]) {
+    assert(!isRunnerOrganization(name));
+  }
 });
 
 Deno.test("only canonical GitHub repository links enter the ingestion queue", () => {

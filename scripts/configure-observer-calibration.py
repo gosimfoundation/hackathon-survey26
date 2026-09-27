@@ -67,9 +67,11 @@ def activation_sql(phase, entries, runner_versions):
     phase = str(uuid.UUID(phase))
     if not entries or len({e['scenario_id'] for e in entries}) != len(entries):
         raise ValueError('Each scenario requires exactly one study')
-    organizations = {f'AGENTIC-OBSERVER26-runner-{i}' for i in range(1,7)}
-    if set(runner_versions) != organizations or any(not re.fullmatch('[0-9a-f]{40}', s) for s in runner_versions.values()):
-        raise ValueError('Six tested runtime versions are required')
+    # Every enabled runner organization must be covered; the database check below
+    # compares against the live installation list rather than a fixed count.
+    if not runner_versions or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])', o) or
+                                  not re.fullmatch('[0-9a-f]{40}', s) for o, s in runner_versions.items()):
+        raise ValueError('Tested runtime versions for the runner organizations are required')
     rows = []
     for entry in entries:
         sid = str(uuid.UUID(entry['scenario_id']))
@@ -97,6 +99,9 @@ do $verify$ begin
     left join private.observer_installations i using(organization)
     where i.approved_sha is distinct from tested.sha or i.enabled is distinct from true) then
     raise exception 'Tested runtimes are not deployed'; end if;
+  if exists(select organization from private.observer_installations where enabled
+    except select organization from (values {runtimes}) as tested(organization,sha)) then
+    raise exception 'An enabled runner has no tested runtime'; end if;
   if exists(select 1 from private.observer_scenario_calibration c join private.observer_calibration_profiles p on p.id=c.profile_id
     join reviewed_calibration r on r.scenario_id=c.scenario_id where c.phase_id={q(phase)} and
     (p.profile,p.bundle_digest) is distinct from (r.profile,r.bundle_digest)) then
