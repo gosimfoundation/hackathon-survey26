@@ -156,3 +156,13 @@ def test_failed_public_test_remains_unapproved_but_owner_can_inspect_materialize
     assert rpc(uri,'observer_materialized_project',s['revision'],s['user']).startswith('github:')
     with pytest.raises(psycopg.Error,match='revision_not_ready'):
         rpc(uri,'observer_approve_revision',s['revision'],'f'*64,role='authenticated',user=s['user'])
+
+
+def test_known_preparation_error_is_shown_on_the_revision(preparation):
+    s=preparation;started=start(s);j=started['job'];uri=s['uri']
+    rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',j['id'],'404','1',
+        {'diagnostics':{'stage':'prepare','code':'project_error','log':'Automatic adaptation could not identify the entry point.'}},
+        'prepare_job_failed')
+    assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==[
+        ('failed','Project preparation failed: Automatic adaptation could not identify the entry point.')]

@@ -295,3 +295,25 @@ def test_failed_initialization_preserves_transport_error_without_scoring(tmp_pat
         run_session(scenario,output,Client(),wallclock_seconds=1)
     assert calls==['initialize']
     assert not output.exists()
+
+
+def test_preparation_project_error_reaches_the_team_as_fixed_wording(monkeypatch, tmp_path):
+    import project_platform.job_runner as runner
+    from project_platform.manifest import ProjectError
+    class Client:
+        job_id = JOB
+        http = Http(local=True)
+        artifact_repository = None
+        receipts = []
+        def claim(self):
+            return {"kind": "prepare", "job_id": JOB}
+        def complete(self, result, *, error=""):
+            self.receipts.append({"result": result, "error": error})
+    def fail(*_args, **_kwargs):
+        raise ProjectError("Automatic adaptation could not identify the entry point.")
+    monkeypatch.setattr(runner, "prepare_project", fail)
+    client = Client()
+    with pytest.raises(JobError, match="^prepare_job_failed$"):
+        run_claimed("prepare", client, tmp_path)
+    assert client.receipts == [{"result": {'diagnostics': {'stage': 'prepare', 'code': 'project_error',
+        'log': 'Automatic adaptation could not identify the entry point.'}}, "error": "prepare_job_failed"}]
