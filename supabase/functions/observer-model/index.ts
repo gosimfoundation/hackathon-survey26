@@ -71,8 +71,9 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
   } catch (error) {
     const status = error instanceof ProxyError ? error.status : 503;
     const code = error instanceof ProxyError ? error.code : "model_proxy_unavailable";
+    const detail = error instanceof ProxyError ? error.detail ?? {} : {};
     // Never forward database/provider exception messages, headers or credentials.
-    return new Response(JSON.stringify({ error: { type: "observer_error", code, message: code } }), {
+    return new Response(JSON.stringify({ error: { type: "observer_error", code, message: code, ...detail } }), {
       status,
       headers: { ...cors, "content-type": "application/json" },
     });

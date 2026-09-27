@@ -159,6 +159,7 @@ Deno.test("provider errors never return credential-bearing diagnostics", async (
   const f = fixture({ fetch: () => Promise.resolve(new Response("private-master-api-key internal", { status: 500 })) });
   const error = await assertRejects(() => chatCompletion(request(), f.deps), ProxyError);
   assertEquals(error.code, "model_provider_error");
+  assertEquals(error.detail, { provider_status: 500 });
   assertEquals(f.calls.at(-1)?.args.p_actual_tokens, null);
 });
 
@@ -325,7 +326,10 @@ Deno.test("provider redirects are never followed and failures disclose no key or
   });
   const failed = await assertRejects(() => teamChatCompletion(teamRequest(), denied.deps), ProxyError);
   assertEquals(failed.code, "model_provider_error");
+  assertEquals(failed.detail, { provider_status: 401 });
   assert(!failed.message.includes(teamKey));
+  // A rejected call returned no completion, so the team is not charged for it.
+  assertEquals(denied.calls.at(-1)?.args.p_actual_tokens, 0);
 });
 
 Deno.test("provider output echoing the saved key is redacted, and oversized output is refused", async () => {

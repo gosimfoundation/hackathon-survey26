@@ -167,3 +167,23 @@ def test_gzipped_error_bodies_keep_their_code():
     client.opener = Opener()
     with pytest.raises(GlobalDeadlineExpired):
         client.call("poll", scope="engine")
+
+
+def test_model_provider_errors_are_explained_and_not_retried():
+    import io, json, urllib.error
+    from project_platform.model_client import ModelClient
+    from project_platform.manifest import ProjectError
+    calls = []
+
+    class Opener:
+        def open(self, request, timeout):
+            calls.append(request)
+            body = json.dumps({"error": {"type": "observer_error", "code": "model_provider_error",
+                                         "message": "model_provider_error", "provider_status": 401}}).encode()
+            raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, io.BytesIO(body))
+
+    client = ModelClient("https://platform.test/functions/v1/observer-model/v1", "obs_x.y")
+    client.opener = Opener()
+    with pytest.raises(ProjectError, match=r"rejected the request \(HTTP 401\)"):
+        client({"messages": [{"role": "user", "content": "hi"}]})
+    assert len(calls) == 1
