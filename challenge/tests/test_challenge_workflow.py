@@ -42,6 +42,20 @@ class ChallengeWorkflowTests(unittest.TestCase):
         self.assertEqual(len(workflow.committed), 3)
         self.assertNotIn("runtime", result["score_report"]["score"]["penalties"])
 
+    def test_initial_publication_reports_the_clock_that_applies(self) -> None:
+        clock = FakeClock()
+        workflow = ChallengeWorkflow(ROOT / "reference", clock)
+        published = []
+
+        def provider(snapshot, deadline):
+            clock.value += 10.0
+            return {"action": "wait", "reason": "clock test"}
+
+        provider.publish_initial = published.append
+        result = workflow.run(provider, wallclock_seconds=18000.0)
+        self.assertEqual(published[0]["global_wallclock_seconds"], 18000.0)
+        self.assertEqual(result["initial_publication"]["global_wallclock_seconds"], 18000.0)
+
     def test_malformed_in_flight_response_is_not_committed_or_replaced(self) -> None:
         clock = FakeClock()
         workflow = ChallengeWorkflow(ROOT / "reference", clock)

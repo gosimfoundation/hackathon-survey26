@@ -673,7 +673,8 @@ for line in sys.stdin:
     output=tmp_path/"trusted-result"
     def trusted():
         try:
-            result,digest=run_session(scenario,output,engine,wallclock_seconds=120)
+            # Generous for slow CI hosts; the expiring case uses the 10 s phase limit.
+            result,digest=run_session(scenario,output,engine,wallclock_seconds=300)
             assert result["termination_reason"]==('global_wallclock_expired' if expire else 'survey_complete'),result["commit_log"][-3:]
             engine.call("finish",summary=result_summary(result),decisions_digest=digest,result_path="private/test-artifact")
             return result,digest
