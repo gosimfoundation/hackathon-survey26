@@ -33,3 +33,32 @@ export function recentDuplicate(projects: Project[] | null | undefined, title: s
     !r.archived_at && r.created_at && now - Date.parse(r.created_at) < windowMs
     && (url === null ? r.source_kind === 'zip' : r.source_kind === 'repository' && repository(r.source_location ?? '') === repository(url))))
 }
+
+/** The team's final version in an open formal phase (observer_final_versions). */
+export type FinalVersion = {
+  phase_id: string; deadline: string | null; locked: boolean
+  /** The version the hidden final evaluation will use: the team's choice, else its best evaluation's version. */
+  revision_id: string | null; source: 'chosen' | 'best' | null
+  chosen_revision_id: string | null; chosen_by: string | null; chosen_at: string | null
+  best_batch_id: string | null; best_revision_id: string | null; best_score: number | null
+}
+
+/** The final version shown for the selected phase: its own entry, else the first one. */
+export function finalVersionFor(finals: FinalVersion[] | null | undefined, phaseId: string): FinalVersion | null {
+  return (finals ?? []).find(f => f.phase_id === phaseId) ?? (finals ?? [])[0] ?? null
+}
+
+/** How a version relates to the final version: explicitly chosen, the default (best evaluation), or neither. */
+export function finalRole(final: FinalVersion | null, revisionId: string): 'chosen' | 'best' | null {
+  return final && final.revision_id === revisionId ? final.source : null
+}
+
+/** A team can still change its choice: before the deadline, never for the version it already chose. */
+export function canChooseFinal(final: FinalVersion | null, revisionId: string, now = Date.now()): boolean {
+  if (!final || final.locked || (final.deadline && Date.parse(final.deadline) <= now)) return false
+  return final.chosen_revision_id !== revisionId
+}
+
+export function canClearFinal(final: FinalVersion | null, now = Date.now()): boolean {
+  return !!final && !final.locked && !(final.deadline && Date.parse(final.deadline) <= now) && final.chosen_revision_id != null
+}

@@ -52,6 +52,8 @@ const known = new Set([
   "upload_limit",
   "account_banned",
   "diagnostics_not_found",
+  "final_phase_invalid",
+  "final_version_locked",
 ]);
 function failure(error: { message: string } | null) {
   if (error) throw new ProxyError(400, known.has(error.message) ? error.message : "portal_request_failed");
@@ -131,6 +133,7 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       results.forEach((r) => failure(r.error));
       // Remaining evaluations are informational; the database enforces the limit.
       const quota = await d.user.rpc("observer_evaluation_quota");
+      const finals = await d.user.rpc("observer_final_versions");
       return {
         phases: results[0].data,
         projects: results[1].data,
@@ -139,6 +142,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         providers: await userRpc("observer_list_providers"),
         team_model: await userRpc("observer_team_model"),
         model_bases: d.modelBases,
+        // Informational like the quota; an older database without the RPC shows no choice.
+        final_versions: finals.error ? null : finals.data,
       };
     }
     case "upload": {
@@ -197,6 +202,15 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
           p_revision: body.revision_id ? uuid(body.revision_id) : null,
           // Another evaluation of an already evaluated version is an explicit choice.
           ...(body.confirm_repeat === true ? { p_confirm_repeat: true } : {}),
+        }),
+      };
+    // The team's final version for an open formal phase; revision_id null clears
+    // the choice. The database checks membership, the version and the deadline.
+    case "set_final_version":
+      return {
+        final_version: await userRpc("observer_set_final_version", {
+          p_phase: uuid(body.phase_id),
+          p_revision: body.revision_id == null ? null : uuid(body.revision_id),
         }),
       };
     case "withdraw":
@@ -271,7 +285,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
     }
     case "download_result": {
       const run = uuid(body.run_id);
-      // The user's own row-level access decides visibility, before any service read.
+      // Read with the participant's token: RLS hides other teams' runs and runs of a
+      // sealed (hidden final) phase until its results are published.
       const { data, error } = await d.user.from("observer_runs").select("result_path").eq("id", run)
         .maybeSingle();
       failure(error);

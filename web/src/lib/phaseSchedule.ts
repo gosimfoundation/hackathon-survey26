@@ -5,20 +5,21 @@ export interface ScheduledPhase {
   id: string; slug: string; name_en: string; name_zh: string; sort_order: number
   starts_at: string | null; ends_at: string | null; is_active: boolean
 }
-type Settings = { access_team_id?: string | null } | null | undefined
+type Settings = { access_team_id?: string | null; sealed?: boolean } | null | undefined
 export type ScheduledPhaseRow = ScheduledPhase & { observer_settings?: Settings | Settings[] }
 
 /**
  * Active phases that start after `now`, soonest first. Row-level security already hides
  * team-restricted phases from everyone else; an administrator or the access team still
  * sees them, so they are dropped here too: a test phase is never the event's next stage.
+ * The sealed hidden final phase is not a stage participants enter; it is dropped as well.
  */
 export function upcomingPublicPhases(rows: ScheduledPhaseRow[], now: number): ScheduledPhase[] {
   return rows
     .filter(row => {
       const settings = Array.isArray(row.observer_settings) ? row.observer_settings[0] : row.observer_settings
       const start = row.starts_at ? Date.parse(row.starts_at) : NaN
-      return row.is_active && start > now && !settings?.access_team_id
+      return row.is_active && start > now && !settings?.access_team_id && !settings?.sealed
     })
     .map(row => ({ id: row.id, slug: row.slug, name_en: row.name_en, name_zh: row.name_zh, sort_order: row.sort_order,
       starts_at: row.starts_at, ends_at: row.ends_at, is_active: row.is_active }))

@@ -14,13 +14,17 @@ Models are optional. If needed, bring your own API and quota. Never place keys i
 
 For model calls, enter a supported HTTPS endpoint, model and key in Participate and choose how the key is handled:
 
-- **Do not save (default)**: the key stays only in the page; keep the page open until each evaluation finishes. If your team is verified as a top team, you must also open the page at the agreed time during verification.
+- **Do not save (default)**: the key stays only in the page; keep the page open until each evaluation finishes, and during the hidden final evaluation window after the competition. If your team is verified as a top team, you must also open the page at the agreed time during verification.
 - **Save encrypted (opt-in)**: the key is stored encrypted on the server and deleted automatically once the results have been verified; the page does not need to stay open during evaluation.
 
 ## 4. Evaluate and review
 
-Each batch covers all configured scenarios. Every new attempt receives new private random seeds. The platform records each decision before releasing the next observation. Difficulties are screened and scores calibrated against fixed reference algorithms.
+Each batch covers the three fixed formal scenarios (A, B and C), the same for every team. Scenario files and future weather are not published; observations arrive one step at a time. Evaluate freely within the daily limit. The platform records each decision before releasing the next observation.
 
-Your result includes the calibrated ranking score, original score components and the run record. All scenarios must finish before the batch ranks. Your team's best complete batch counts.
+Your result includes the score, its components and the run record. All scenarios must finish before the batch appears on the online board, which shows your team's best complete batch. That board is live feedback only.
 
 Use the result downloads to inspect the decisions and failures. Runtime and API quotas are displayed on the participation page. Contact the organizers through [Announcements](/announcements) if an evaluation cannot complete.
+
+## 5. Choose your final version
+
+Under **Final version** in Participate, mark one confirmed version as your team's final version. You can change or clear it until the competition ends (Oct 7 23:59 UTC+8); without a choice, the version of your best evaluation is used. After the competition, the organizers evaluate each team's final version once on one hidden scenario. **Only that hidden score decides the final ranking.** Its results stay private until the organizers publish them.

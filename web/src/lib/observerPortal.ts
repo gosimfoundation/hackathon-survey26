@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { EvaluationQuota } from './projectEvaluation'
+import type { EvaluationQuota, FinalVersion } from './projectEvaluation'
 
 export type ProjectRevision = {
   id: string; status: string; source_kind: string; source_location: string; source_digest: string | null
@@ -27,6 +27,8 @@ export type PortalData = {
   model_bases: string[]
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
+  /** The team's final version per open formal phase; missing until the database provides it. */
+  final_versions?: FinalVersion[] | null
 }
 
 export async function portal<T>(action: string, fields: Record<string, unknown> = {}): Promise<T> {

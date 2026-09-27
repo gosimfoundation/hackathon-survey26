@@ -6,7 +6,7 @@ import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import { DEFAULT_MODEL_KEY_MODE, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
-import { canWithdraw, countedEvaluations, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMe } = useAuth()
 const personal=usePersonalModel()
@@ -67,6 +67,12 @@ const words = computed(() => pick({
   close: 'Close review', done: 'Saved.', prepared: 'Project queued for preparation.', confirmed: 'Version confirmed.',
   queued: 'Evaluation queued.', failed: 'This request could not be completed. Refresh and try again.', working: 'Working…',
   team: 'Join or create a team first.', phaseUnavailable: 'No evaluation phase is open.',
+  final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version once on a hidden scenario. Only that hidden score decides the final ranking; the online board does not.',
+  finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
+  finalLocked: 'The choice is locked. This version will be evaluated on the hidden scenario.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
+  finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
+  finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
+  finalBadge: 'Final version', finalScore: 'score',
 }, {
   title: '智能体项目', intro: '提交完整项目，测试接口后，确认用于评测的具体版本。',
   diagnostics: '运行日志', diagnosticsHelp: '编译和程序输出只供本队与主办方查看。', noLogs: '暂时没有任务日志。',
@@ -98,6 +104,12 @@ const words = computed(() => pick({
   saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。',
   confirmed: '已确认版本。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
   team: '请先加入或创建队伍。', phaseUnavailable: '当前没有开放的评测赛程。',
+  final: '最终版本', finalIntro: '线上赛结束后，主办方会在一个隐藏场景上对每队的最终版本评测一次。最终排名只看这个隐藏场景的成绩，线上榜不决定最终排名。',
+  finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
+  finalLocked: '选择已锁定，将用这个版本参加隐藏场景评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
+  finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
+  finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
+  finalBadge: '最终版本', finalScore: '分数',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
@@ -111,6 +123,11 @@ const hiddenCount = computed(() => withdrawnCount(data.value?.projects))
 const approvedVersions = computed(() => (data.value?.projects ?? []).flatMap(p => p.observer_revisions
   .filter(r => r.status === 'approved' && !r.archived_at)
   .map(r => ({ title: p.title, revision: r, evaluated: countedEvaluations(data.value?.batches, r.id, phaseId.value) }))))
+// After the phase closes no phase is selected; the competition's own phase still owns the choice.
+const finalVersion = computed(() => finalVersionFor(data.value?.final_versions, phaseId.value || (competition.betaPhaseId ?? competition.phaseId ?? '')))
+// Every confirmed version can be chosen, also after the phase stopped taking evaluations.
+const finalCandidates = computed(() => (data.value?.projects ?? []).flatMap(p => p.observer_revisions
+  .filter(r => r.status === 'approved' && !r.archived_at).map(r => ({ title: p.title, revision: r }))))
 const titles = computed(() => new Map((data.value?.projects ?? []).flatMap(p => p.observer_revisions.map(r => [r.id, p.title] as const))))
 const phaseName = (id: string) => { const p = data.value?.phases.find(x => x.phase_id === id)?.phases; return p ? pick(p.name_en, p.name_zh) : '' }
 // Team-key runs have no practical token cap (1,000,000,000 or more is shown as uncapped).
@@ -143,6 +160,8 @@ function errorMessage(e: unknown) {
     invalid_repository_url: pick('Enter a public https://github.com/owner/repository URL.', '请输入公开 GitHub 仓库的完整地址。'),
     model_destination_not_enabled: t('submit.model_api.endpoint_refused'),
     invalid_team_model: t('submit.model_api.invalid'),
+    final_version_locked: pick('The online phase has ended; the final version can no longer change.', '线上赛已结束，最终版本不能再修改。'),
+    revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
   }
   return code === 'cancelled' ? '' : messages[code] ?? words.value.failed
 }
@@ -201,6 +220,12 @@ function evaluate(revision_id: string) {
       await portal('evaluate', { phase_id, revision_id, confirm_repeat: true })
     }
   }, words.value.queued, 'evaluate:' + revision_id)
+}
+function setFinal(revision_id: string | null) {
+  const final = finalVersion.value
+  if (!final || (revision_id === null && !window.confirm(words.value.finalClearConfirm))) return
+  void action(async () => { await portal('set_final_version', { phase_id: final.phase_id, revision_id }) },
+    revision_id ? words.value.finalSaved : words.value.finalCleared, 'final:' + (revision_id ?? 'clear'))
 }
 function withdraw(revision_id: string) {
   if (!window.confirm(words.value.withdrawConfirm)) return
@@ -320,10 +345,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <h3>{{ p.title }}</h3>
           <div v-for="r in p.observer_revisions" :key="r.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="r.id">
             <span class="pill">{{ r.archived_at ? words.withdrawnPill : statuses[r.status] ?? r.status }}</span>
+            <span v-if="finalRole(finalVersion, r.id)" class="pill ok" data-testid="final-version-badge">{{ words.finalBadge }}</span>
             <span class="meta">{{ new Date(r.created_at).toLocaleString() }}</span>
             <span v-if="r.error && !r.archived_at" class="errors" role="status">{{ r.error }}</span>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
-            <button v-if="canWithdraw(r, data?.batches)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" @click="withdraw(r.id)">{{ words.withdraw }}</button>
+            <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" @click="withdraw(r.id)">{{ words.withdraw }}</button>
             <button type="button" class="log-link" :disabled="busy" @click="showLogs({ revision_id: r.id })">{{ words.logs }}</button>
           </div>
         </article>
@@ -362,11 +388,32 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
+            <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ new Date(v.revision.approved_at).toLocaleString() }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
             <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" @click="evaluate(v.revision.id)">{{ v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
           </div>
         </template>
+      </section>
+      <section v-if="finalVersion" class="panel mb-6" data-testid="final-version">
+        <h2 id="final">{{ words.final }}</h2>
+        <p class="help">{{ words.finalIntro }}</p>
+        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ new Date(finalVersion.deadline).toLocaleString() }}.</template></p>
+        <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+        <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
+        <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
+          <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
+          <span class="pill ok">{{ finalVersion.source === 'chosen' ? words.finalChosen : words.finalBest }}</span>
+          <span v-if="finalVersion.chosen_at && finalVersion.source === 'chosen'" class="meta">{{ new Date(finalVersion.chosen_at).toLocaleString() }}</span>
+          <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
+          <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
+        </p>
+        <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
+          <span>{{ v.title }}</span>
+          <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ new Date(v.revision.approved_at).toLocaleString() }}</span>
+          <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
+          <button v-if="canChooseFinal(finalVersion, v.revision.id)" type="button" class="btn sm" :disabled="busy || locked.has('final:'+v.revision.id)" data-testid="final-version-set" @click="setFinal(v.revision.id)">{{ words.finalSet }}</button>
+        </div>
       </section>
       <section class="panel mb-6"><h2 id="results">{{ words.batches }}</h2>
         <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>

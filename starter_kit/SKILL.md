@@ -138,8 +138,10 @@ and at least one long (≥ 90-night) scenario before submitting.
 ## 6. Submit
 
 The formal competition (`online`) evaluates complete projects only: the user uploads the project on the site
-(`/compete`), and the platform runs it step by step on each formal scenario with one fixed private instance per
-team and scenario. Formal scenarios cannot be downloaded and no CSV is accepted there. Only the Playground
+(`/compete`), and the platform runs it step by step on three fixed formal scenarios (the same for every team;
+scenario files and future weather are never published, observations arrive one step at a time). The team marks one confirmed version as its final version before the phase
+ends; after it ends, organizers evaluate that version once on one hidden scenario, which alone decides the final
+ranking. No CSV is accepted there. Only the Playground
 `practice` phase takes a results file (the `decisions.csv` from a local run):
 
 1. Run locally on the practice scenario you will submit for, so `run_output/decisions.csv` exists.

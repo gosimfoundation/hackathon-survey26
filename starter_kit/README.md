@@ -217,9 +217,13 @@ policy scores far lower, mostly through missed REQUIRED tiles and invalid action
 
 ## Submit
 
-The formal competition (`online`) evaluates complete projects only: upload your project on the site
-(`/compete`). The platform runs it step by step on each formal scenario, using one fixed private instance per team
-and scenario. There is no CSV path for the formal phase and its scenarios are never downloadable.
+The formal competition (`online`, Oct 5–7) evaluates complete projects only: upload your project on the site
+(`/compete`). The platform runs it step by step on three fixed formal scenarios (A, B, C), the same for every team;
+their files and future weather are never published, and observations arrive one step at a time. Result ZIPs of your
+own evaluations remain downloadable. Evaluate freely within the daily limit, then mark one confirmed
+version as your team's **final version** (changeable until the phase ends; default: the version of your best
+evaluation). After the phase ends the organizers evaluate each final version once on one hidden scenario, and only
+that hidden score decides the final ranking. There is no CSV path for the formal phase.
 
 The Playground `practice` phase still accepts the `decisions.csv` your local run produced:
 
@@ -234,4 +238,4 @@ The URL and anon key are on the platform's Resources page.
 
 参赛 Agent 的中文说明（责任边界、启用各家 LLM 的 `.env` 配置、JSON-Lines 协议、评分参数与回退保障）见
 [`agent/README_ZH.md`](agent/README_ZH.md)。本地流程：`local_runner.py` 跑基线 → `make_scenario.py` 生成更多场景 →
-修改 `agent/decision_graph.py` → `pack_agent.py` 打包。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`）只评测完整项目：在网站上传项目，平台为每队在每个正式场景上固定一个私有实例并逐步评测，不接受 CSV。
+修改 `agent/decision_graph.py` → `pack_agent.py` 打包。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件和未来天气不公开）上逐步评测，本队评测的结果 ZIP 可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用最高分评测的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。

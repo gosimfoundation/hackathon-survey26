@@ -1254,7 +1254,9 @@
     },
     "calibrated_score": "Calibrated score",
     "raw_score": "Raw score",
-    "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration."
+    "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
+    "public_board": "Online board: each team’s best evaluation on the three fixed formal scenarios. It is live, but it does not decide the final ranking — after the online phase ends, each team’s final version is evaluated once on a hidden scenario, and only that score ranks.",
+    "final_board": "Final ranking: one evaluation of each team’s final version on the hidden scenario, run after the online phase ended."
   },
   "cta": {
     "title": "The next observation, decided by you and your agent",
@@ -2179,7 +2181,18 @@
       "flags": "flags",
       "code": "code",
       "hidden": "hidden",
-      "locked": "locked"
+      "locked": "locked",
+      "final_title": "Final versions",
+      "final_help": "Each team’s version for the hidden final evaluation: its choice, else the version of its best scored evaluation. Relay-mode teams must keep a page open during their hidden run.",
+      "final_phase": "Phase",
+      "final_version": "Version",
+      "final_source": "Source",
+      "final_chosen": "chosen",
+      "final_best": "best evaluation",
+      "final_score": "Best score",
+      "final_model": "Model key",
+      "final_locked": "locked",
+      "final_open": "changeable until"
     },
     "announcements": {
       "new": "New announcement",

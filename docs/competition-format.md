@@ -5,28 +5,44 @@ The single `/compete` workspace replaces the former submission and project pages
 old links redirect there. Its workflow follows the configured phase, project
 versions and evaluation batches. A prominent Submit button links to that workspace.
 
-## Current policy (2026-09-24)
+## Current policy (2026-09-26)
 
 | | Current Playground | Formal competition after the administrator switches |
 |---|---|---|
 | Entry | `/compete` | `/compete` |
 | Input | locally generated `decisions.csv`; or a complete project on the separate `practice-projects` board (5 evaluations per team per day) | complete repository or private project ZIP; no CSV |
 | Execution | participant computer, original scorer | approved project version, platform-controlled sequential observations |
-| Scenario | existing public scenarios; the complete-project board uses scenarios generated from them | one fixed private seed per team and scenario (reused by all of that team's evaluations), calibrated difficulty |
-| Ranking | best score per scenario, unchanged | best complete batch, mean calibrated score over all scenarios |
+| Scenario | existing public scenarios; the complete-project board uses scenarios generated from them | three fixed formal scenarios (`eval-a`, `eval-b`, `eval-c`), one template for every team, no calibration, files and weather never published; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
+| Ranking | best score per scenario, unchanged | online board: best complete batch, mean over the three scenarios (live feedback only). Final ranking: the hidden-scenario score of each team's final version only |
 | Model | optional; complete-project board: team's own key only | optional; participant supplies API and quota, no organizer credits |
 | Personal credentials | never include in results | HTTPS only; team's choice: saved encrypted on the server (default, deleted after verification) or kept only in the open page |
 
 Formal evaluation accepts a decision only for its current sequence, records it,
-then publishes the next observation. Private seeds, frozen generator/calibration
-versions and immutable decisions support independent reconstruction and scoring.
-CSV remains an exported result artifact, not a formal submission format.
+then publishes the next observation. Immutable decisions support independent
+scoring. CSV remains an exported result artifact, not a formal submission format.
 
 The formal phase (`online`) runs Beijing time 10-05 00:00 to 10-07 23:59; its scenario list stays hidden until then.
+Its scenarios keep `weather_public`/`forecasts_public`/`events_public` false, so their files stay private throughout
+(migration 20260927000800 would only open a formal scenario whose three flags are all true).
+
+Final version and hidden final (organizer decision 2026-09-26, migration 20260927000800):
+
+- During `online` a team member marks one approved, not withdrawn version as the team's final version
+  (`observer_set_final_version`, Participate → "Final version"); changeable until `online.ends_at`, locked after.
+  Without a choice the version of the team's best scored `online` batch is used. Organizers see every team's
+  choice in Admin → Teams → "Final versions" (`observer_admin_final_versions`).
+- The hidden phase `final-hidden` is sealed (`observer_phase_settings.sealed`): until its `leaderboard_mode` is
+  `published`, participants cannot see the phase, its scenario, its batches/runs/logs or result downloads, and no
+  signed-in user can start an evaluation there. Its scenario files stay private even after publication, and its
+  scenario cannot be linked to any other phase.
+- After `online` ends, `scripts/run-hidden-final.py` (dry run by default, `--apply`, `--team`, `--retry-failed`)
+  creates one formal batch per team for its final version, outside the daily limit; the normal dispatcher runs
+  them. Teams in relay model mode must keep a page open while their hidden run executes. Publish by setting
+  `final-hidden.leaderboard_mode='published'`. Production data: `drafts/hidden-final-data.sql` (outside the repo).
 Before that, including the October 1–4 training, teams rehearse the formal flow on the Playground
 complete-project board (`scripts/configure-observer-practice-projects.py`), which never uses formal scenarios.
 
-See `randomized-evaluation.md` for calibration and
+See `randomized-evaluation.md` for calibration (now used only by internal acceptance phases) and
 `model-api-keys.md` for the personal API flow. Existing scores and
 submissions are not deleted or rewritten by the migration.
 
@@ -129,9 +145,9 @@ the downloaded kit and the copy the platform publishes are the same scenario.
 
 These are decisions for the organizers, not code changes:
 
-- Do not rotate the seeds of `eval-a` / `eval-b`. Formal runs no longer evaluate the template seed: each team is
-  scored on its own private instance derived from it. Rotating would change `template_digest` and invalidate the
-  calibration profiles, and a final-phase formal run without a calibrated instance is refused.
+- Do not rotate the seeds of `eval-a` / `eval-b` / `eval-c` / `eval-final` once the competition has started: every
+  team is scored on the same template, and rotating would change the scenario mid-competition. Internal acceptance
+  phases that keep calibration rows still refuse a formal run without a calibrated instance.
 - Practice-phase `results` uploads are a bare `decisions.csv` — which now also carries any `report_*` rows, so
   practice scoring settles reports exactly like hosted runs.
 - Decide how many worker runners to keep alive during the online phase. A 1–2 h wall clock per scenario means one

@@ -40,7 +40,7 @@ export interface Phase {
   sort_order: number; starts_at: string | null; ends_at: string | null; allow_results: boolean; allow_agents: boolean
   daily_limit: number; leaderboard_mode: LeaderboardMode; counts_for_final: boolean; is_active: boolean
   scenarios: Scenario[]; status: PhaseStatus
-  observer_settings?: { projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number } | null
+  observer_settings?: { projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number; sealed?: boolean } | null
 }
 export interface Announcement {
   id: string; title_en: string; title_zh: string; body_en: string | null; body_zh: string | null
@@ -108,7 +108,7 @@ export function phaseStatus(p: { is_active: boolean; starts_at: string | null; e
 export async function loadPhases(all = false): Promise<Phase[]> {
   const { data, error } = await supabase
     .from('phases')
-    .select(`*, observer_settings:observer_phase_settings(projects_enabled,local_sessions_enabled,daily_batches), phase_scenarios(scenario_id, scenarios(${SCENARIO_PUBLIC_COLUMNS}))`)
+    .select(`*, observer_settings:observer_phase_settings(projects_enabled,local_sessions_enabled,daily_batches,sealed), phase_scenarios(scenario_id, scenarios(${SCENARIO_PUBLIC_COLUMNS}))`)
     .order('sort_order', { ascending: true })
   if (error) throw error
   const rows = ((data ?? []) as any[]).map(row => {
@@ -120,7 +120,17 @@ export async function loadPhases(all = false): Promise<Phase[]> {
   if (all) return rows
   const { loadCompetition } = await import('../stores/competition')
   const current = await loadCompetition()
-  return rows.filter(p => p.id===current.projectPhaseId || (current.phaseId ? p.id===current.phaseId : p.slug===(current.mode==='practice'?'practice':'online')))
+  return rows.filter(p => p.id===current.projectPhaseId || isFinalBoard(p) || (current.phaseId ? p.id===current.phaseId : p.slug===(current.mode==='practice'?'practice':'online')))
+}
+
+/** The hidden final phase: readable only once organizers publish its results (the database hides it before). */
+export function isFinalBoard(p: Pick<Phase, 'observer_settings'>): boolean {
+  return !!p.observer_settings?.sealed
+}
+
+/** The online board on the fixed formal scenarios: live, but it does not decide the final ranking. */
+export function isPublicFormalBoard(p: Pick<Phase, 'slug' | 'observer_settings'>): boolean {
+  return p.slug === 'online' && !isFinalBoard(p)
 }
 
 /** The "main" phase: the counts_for_final one that is open/closed, else the first open one, else the first. */
