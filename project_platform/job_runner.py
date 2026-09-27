@@ -11,7 +11,7 @@ from .docker_runtime import DockerWorkspace
 from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
-from .manifest import ProjectManifest
+from .manifest import ProjectError, ProjectManifest
 from .package import extract_project, project_digest, read_project_zip
 from .preparation import prepare_project
 from .session import SessionClient
@@ -173,7 +173,14 @@ def run_claimed(kind: str, client: JobClient, root: Path) -> None:
                 SessionClient(payload["session_url"], payload["run_credential"]).call("fail", error="engine_job_failed")
             except Exception:
                 pass
-        diagnostics=error.diagnostics if isinstance(error,ProjectJobFailure) else {'stage':kind,'code':safe_code(error),'log':''}
+        if isinstance(error,ProjectJobFailure):
+            diagnostics=error.diagnostics
+        elif isinstance(error,ProjectError):
+            # Fixed, participant-facing wording (never secrets or project output):
+            # e.g. the automatic adapter could not find an entry point.
+            diagnostics={'stage':kind,'code':'project_error','log':private_log(str(error)[:500])}
+        else:
+            diagnostics={'stage':kind,'code':safe_code(error),'log':''}
         if kind == "execute":
             # Must precede the receipt: the job API binds the log to this run
             # only while the job is still claimed.
