@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 from .build_scenario_manifest import CONFIG_FILES, DATA_FILES, csv_rows
-from .contracts import TILE_ANOMALY_COLUMNS, TILE_COLUMNS, read_exact_csv, sha256_file, write_exact_csv, write_text_lf
+from .contracts import (SEED_DERIVATION_KEY, SEED_DERIVATIONS, TILE_ANOMALY_COLUMNS, TILE_COLUMNS, read_exact_csv, sha256_file,
+                        stream_seed, write_exact_csv, write_text_lf)
 from .project_paths import EXAMPLE3_ROOT
 from .scoring_core import ChallengeScorer
 
@@ -69,6 +70,8 @@ def build_manifest(root: Path) -> dict:
         files[f"outputs/reference/{name}"] = {"sha256": sha256_file(p), "rows": csv_rows(p)}
     manifest = {"schema_version": "example3-scenario-manifest-v2", "scenario_id": scenario["scenario_id"], "seed": scenario["seed"],
                 "global_wallclock_seconds": scenario["competition"]["global_wallclock_seconds"], "files": dict(sorted(files.items()))}
+    if SEED_DERIVATION_KEY in scenario:  # absent for the default scheme, so existing manifests stay byte-identical
+        manifest[SEED_DERIVATION_KEY] = scenario[SEED_DERIVATION_KEY]
     write_text_lf(data_dir(root) / "scenario_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return manifest
 
@@ -83,7 +86,7 @@ def _run(module: str, *args: str) -> None:
 def generate_tile_anomalies(tile_config: Mapping, tile_ids: Sequence[str]) -> list[dict[str, str]]:
     """Draw hidden nova/reddening tags from the tile config's own seed; the two tag sets may overlap."""
     spec = tile_config.get("anomaly_tags", {})
-    rng = random.Random(int(tile_config["seed"]) + 4000)
+    rng = random.Random(stream_seed(tile_config, "tile_tags", 4000))
     rows = []
     for tag, key in (("nova", "nova_count"), ("reddening", "reddening_count")):
         count = min(int(spec.get(key, 0)), len(tile_ids))
@@ -94,8 +97,14 @@ def generate_tile_anomalies(tile_config: Mapping, tile_ids: Sequence[str]) -> li
 def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 180, start_date: str | None = None,
                       global_wallclock_seconds: int = 7200, tile_overrides: dict | None = None, base: Path = EXAMPLE3_ROOT,
                       window_days: int = 3, coverage_bonus_weight: float | None = None,
-                      anomaly_overrides: dict | None = None) -> dict:
-    """Create a complete scenario directory from the reference configs with a new seed (deterministic)."""
+                      anomaly_overrides: dict | None = None, seed_derivation: str | None = None) -> dict:
+    """Create a complete scenario directory from the reference configs with a new seed (deterministic).
+
+    ``seed_derivation=None`` keeps the historical ``seed + offset`` streams (existing seeds regenerate byte for byte).
+    ``seed_derivation="sha256-v1"`` seeds every simulator stream from sha256("<seed>:<stream>") instead, and records
+    the mode in each seeded config and in the manifest, so the scenario is reproducible from (seed, mode)."""
+    if seed_derivation is not None and seed_derivation not in SEED_DERIVATIONS:
+        raise ScenarioError(f"unsupported seed derivation {seed_derivation!r}")
     root = Path(root)
     if root.exists():
         shutil.rmtree(root)
@@ -109,14 +118,19 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
         cfg = json.loads(p.read_text(encoding="utf-8"))
         fn(cfg)
         write_text_lf(p, json.dumps(cfg, indent=2) + "\n")
+    def _mode(c):
+        if seed_derivation is not None:
+            c[SEED_DERIVATION_KEY] = seed_derivation
     def _scn(c):
         c["scenario_id"] = scenario_id; c["seed"] = seed; c["competition"]["global_wallclock_seconds"] = global_wallclock_seconds
+        _mode(c)
     def _cal(c):
         c["survey"]["days"] = days
         if start_date:
             c["survey"]["start_date"] = start_date
     def _tile(c):
         c["seed"] = seed
+        _mode(c)
         # time-limited REQUIRED tiles need their window inside the survey
         c["catalog"]["time_limited_window_days"] = max(1, min(int(c["catalog"].get("time_limited_window_days", 14)), max(1, days - 1)))
         for k, v in (tile_overrides or {}).items():
@@ -128,10 +142,12 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
                 c.pop("anomaly_tags", None)
     def _weather(c):
         c["seed"] = seed
+        _mode(c)
         # forecasts need a few nights of headroom beyond their horizon
         c["forecast"]["horizon_days"] = max(1, min(int(c["forecast"].get("horizon_days", 7)), max(1, days - 3)))
     def _req(c):
         c["seed"] = seed
+        _mode(c)
     def _wf(c):
         c["global_wallclock_seconds"] = float(global_wallclock_seconds)
     def _score(c):
@@ -193,6 +209,8 @@ def describe_scenario(root: Path) -> dict:
     }
     if (data_dir(root) / ANOMALY_FILE).exists():
         info["n_anomaly_tags"] = csv_rows(data_dir(root) / ANOMALY_FILE)
+    if SEED_DERIVATION_KEY in scenario_cfg:
+        info["seed_derivation"] = scenario_cfg[SEED_DERIVATION_KEY]
     return info
 
 
@@ -214,6 +232,8 @@ def main(argv=None) -> int:
     g.add_argument("--regions", type=int); g.add_argument("--tiles-per-region", type=int)
     g.add_argument("--coverage-weight", type=float, default=None)
     g.add_argument("--nova-tags", type=int, default=None); g.add_argument("--reddening-tags", type=int, default=None)
+    g.add_argument("--seed-derivation", choices=SEED_DERIVATIONS, default=None,
+                   help="opt-in: seed each simulator stream from sha256(seed:stream) instead of seed+offset")
     v = sub.add_parser("validate"); v.add_argument("root", type=Path)
     a = p.parse_args(argv)
     if a.cmd == "generate":
@@ -225,7 +245,8 @@ def main(argv=None) -> int:
         if a.reddening_tags is not None: an["reddening_count"] = a.reddening_tags
         info = generate_scenario(a.root, scenario_id=a.scenario_id, seed=a.seed, days=a.days, start_date=a.start_date,
                                  global_wallclock_seconds=a.wallclock, tile_overrides=ov,
-                                 coverage_bonus_weight=a.coverage_weight, anomaly_overrides=an or None)
+                                 coverage_bonus_weight=a.coverage_weight, anomaly_overrides=an or None,
+                                 seed_derivation=a.seed_derivation)
     else:
         info = describe_scenario(a.root)
     info = {k: v for k, v in info.items() if k != "manifest"}

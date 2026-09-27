@@ -24,6 +24,7 @@ from .contracts import (
     parse_utc,
     read_exact_csv,
     sha256_file,
+    stream_seed,
     write_exact_csv,
 )
 from .observing_calendar import Night, Slot, load_nights, load_slots
@@ -292,7 +293,7 @@ def _random_scope(scope_type: str, rng: random.Random, tile_ids: Sequence[str]) 
 
 
 def generate_events(config: Mapping, slots: Sequence[Slot], tile_ids: Sequence[str]) -> list[WeatherEvent]:
-    rng = random.Random(int(config["seed"]) + 2000)
+    rng = random.Random(stream_seed(config, "weather.events", 2000))
     events = []
     sequence = 0
     fault_intervals: list[tuple[datetime, datetime]] = []
@@ -337,7 +338,7 @@ def generate_events(config: Mapping, slots: Sequence[Slot], tile_ids: Sequence[s
 
 
 def generate_weather(config: Mapping, slots: Sequence[Slot], events: Sequence[WeatherEvent]) -> list[WeatherSlot]:
-    rng = random.Random(int(config["seed"]) + 1000)
+    rng = random.Random(stream_seed(config, "weather.slots", 1000))
     quality = config["quality"]
     fields = ("seeing_arcsec", "transparency", "sky_quality")
     night_state = {field: float(quality[field]["nominal"]) for field in fields}
@@ -418,8 +419,8 @@ def _perturb_scope(scope_type: str, payload: Mapping, closeness: float, rng: ran
 
 
 def generate_forecasts(config: Mapping, events: Sequence[WeatherEvent], nights: Sequence[Night], tile_ids: Sequence[str]) -> list[Forecast]:
-    rng = random.Random(int(config["seed"]) + 3000)
-    miss_rng = random.Random(int(config["seed"]) + 3100)
+    rng = random.Random(stream_seed(config, "weather.forecasts", 3000))
+    miss_rng = random.Random(stream_seed(config, "weather.forecast_misses", 3100))
     horizon_days = int(config["forecast"]["horizon_days"])
     rows = []
     revisions: Counter[str] = Counter()

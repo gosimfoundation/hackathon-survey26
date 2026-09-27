@@ -22,7 +22,9 @@ from .contracts import (
     parse_utc,
     read_exact_csv,
     sha256_file,
+    stream_seed,
     write_exact_csv,
+    SEED_DERIVATION_KEY,
 )
 from .observing_calendar import Night, Slot, load_nights, load_slots
 from .project_paths import CONFIG_DIR, REFERENCE_OUTPUT_DIR
@@ -73,8 +75,8 @@ def load_config(path: Path) -> dict:
 
 def validate_config(config: Mapping) -> None:
     required = {"schema_version", "seed", "geometry", "catalog", "lunar_model", "target_models"}
-    # anomaly_tags is optional: absent means the scenario ships no hidden tile tags.
-    if not required <= set(config) <= required | {"anomaly_tags"} or config.get("schema_version") != SCHEMA_VERSION:
+    # anomaly_tags / seed_derivation are optional (absent: no hidden tags / legacy seed + offset streams).
+    if not required <= set(config) <= required | {"anomaly_tags", SEED_DERIVATION_KEY} or config.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("invalid tile geometry config keys or schema_version")
     catalog = config["catalog"]
     for key in (
@@ -380,7 +382,7 @@ def build_catalog(
     calendar_config: Mapping,
     nights: Sequence[Night],
 ) -> tuple[list[Tile], list[dict[str, object]]]:
-    rng = random.Random(int(config["seed"]))
+    rng = random.Random(stream_seed(config, "tiles", 0))
     catalog = config["catalog"]
     n_regions = int(catalog["n_regions"])
     tiles_per_region = int(catalog["tiles_per_region"])
