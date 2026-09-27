@@ -26,7 +26,7 @@ The live phase configuration table above this document is authoritative if the t
 ## 4. Running locally
 
 1. Practice uses the starter kit's `local_runner.py`. Competition uses `project_platform.local`, downloaded from the project page, with the session instructions shown there. Any project language is allowed; Docker is the default execution environment.
-2. Models may use the organizer's API or a supported personal API saved on the project page. Keys are encrypted; running projects receive expiring credentials with quotas. Do not put keys in projects or CSVs. Each scenario has a shared runtime limit and the server computes the official score.
+2. Model calls are optional; use your own API key, set on the Participate page. The platform does not provide model credits. Do not put keys in projects or CSVs. Each scenario has a shared runtime limit and the server computes the official score.
 3. Attempts to read other teams' data, to tamper with the scorer or with score files, or to exhaust platform resources deliberately lead to disqualification.
 
 ## 5. Scoring

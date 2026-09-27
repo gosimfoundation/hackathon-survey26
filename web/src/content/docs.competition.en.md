@@ -6,6 +6,8 @@ The source revision, launch configuration and any adapter are fixed and tested. 
 
 [Minimal complete project](https://github.com/BH3GEI/observer-project-example)
 
+The starter kit uploads as is: run `python3 pack_agent.py` in the kit folder; the resulting `my-agent.zip` already has `observer.project.json` at its root. Upload it as a private ZIP on Participate. The bundled deterministic agent needs no model key.
+
 ## 2. Launch configuration
 
 Place `observer.project.json` at the project root. For example:
@@ -53,6 +55,8 @@ Enter a supported HTTPS endpoint, model and key in Participate and choose how th
 - **Save encrypted (opt-in)**: the key is stored encrypted on the server, used only for evaluation and verification, and deleted automatically once the competition has ended and the results have been verified. The page does not need to stay open during evaluation; you can replace or delete a saved key at any time.
 
 Switching from "save encrypted" to "do not save" deletes the stored key immediately.
+
+Your program calls the model through the environment variables `OPENAI_BASE_URL` and `OPENAI_API_KEY`: the platform's OpenAI-compatible proxy (chat completions) and a temporary run credential, not your key. The proxy uses the model you set here and replaces the model name your program sends.
 
 Deterministic algorithms do not need a key. Explanation length does not increase the performance score.
 

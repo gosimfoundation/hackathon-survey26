@@ -88,7 +88,7 @@ export function phaseCopy(
         `结果文件 ${phase.allow_results ? '允许' : '不允许'}`,
         ...(phase.allow_agents ? ['智能体程序包 允许'] : []),
         `每队每天 ${phase.daily_limit} 次`,
-        `榜单 ${phase.leaderboard_mode}`,
+        `榜单 ${({ live: '实时', frozen: '已冻结', hidden: '隐藏', published: '已公布' } as Record<string, string>)[phase.leaderboard_mode] ?? phase.leaderboard_mode}`,
       ]
     : [
         `results files ${phase.allow_results ? 'allowed' : 'not allowed'}`,

@@ -1,6 +1,6 @@
 # 快速上手（零基础版） · Quick start in Chinese
 
-不需要懂命令行，也不需要装任何第三方库。三步：跑起来 → 改一个文件 → 上传。
+不需要装任何第三方库。三步：跑起来 → 改一个文件 → 上传结果。
 
 ## 第 1 步 · 跑起来（看到分数和回放）
 
@@ -29,18 +29,28 @@
 
 改完保存，再双击一次 `run_baseline`，看分数有没有变高。运行出错时，终端会直接打印 `agent.log` 的最后几行。
 
-## 第 3 步 · 上传
+## 第 3 步 · 上传（练习赛）
 
 1. 打开比赛网站 → 注册 → 创建队伍（一个人也可以）。
 2. 「提交」页 → 选你本地跑的那个场景 → 把 `run_output/decisions.csv` 拖进上传框。
 3. 几秒钟出分；分数分解、每晚回放都在提交页。
 
-Playground 和正式比赛都只收这个文件。正式比赛场景的天气在开赛时公开，到时用 `fetch_scenario.py` 下载，在本地跑完再上传。
+上传 CSV 只用于 Playground 练习赛。正式比赛评测完整项目：
+
+## 上传到平台（完整项目）
+
+1. 在本目录运行 `python3 pack_agent.py`，生成 `my-agent.zip`：整个 `agent/` 文件夹，ZIP 根目录带 `observer.project.json`，
+   告诉平台运行 `python3 -u minimal_agent.py`。`.env` 不会被打包。
+2. 打开网站「参赛」页 → 提交完整项目 → 私有 ZIP 上传，选择 `my-agent.zip`。
+3. 等待准备和公开场景测试完成，检查接口、确认版本，再开始评测。
+
+入门包自带的智能体在平台上不需要任何模型密钥。云端运行不会使用你文件里的密钥：程序需要调用大模型时，
+请在「参赛」页设置自己的 API 地址、模型和密钥；平台不为云端运行提供模型额度。
 
 ## 想更进一步
 
 - 想在本地试更多天气：`python3 make_scenario.py --out scenarios/mine --seed 7 --days 30`，再运行 `python3 local_runner.py --scenario scenarios/mine --agent agent/minimal_agent.py`。
-- 想让大模型参与决策：复制 `agent/.env.example` 为 `agent/.env`，填 `MODEL_PROVIDER` 与对应 API key（网站「控制台」页可领取赞助额度），在本地运行，照常上传生成的 `decisions.csv`。
+- 想让大模型参与决策：本地运行时复制 `agent/.env.example` 为 `agent/.env`，填 `MODEL_PROVIDER` 与自己的 API key。平台上不上传 `.env`，智能体读取平台注入的 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（对应你在「参赛」页设置的密钥），做法见 `README.md` 的 "Upload a complete project"。跑通练习赛的队伍，队长可领取赞助兑换码（如 Kimi Coding Plan），兑换码即将发放。
 - 完整的数据格式、协议和评分公式见网站「文档」页；`README.md` 是给工程师看的详细版。
 
 > 练习场景仍按旧规则计分（无异常标签、不能重复观测、不接受上报）；想演练正式赛的新机制，跑 `run_finals_preview` 或 `scenarios/finals-preview`（基线约 **8214 分**，示例智能体会自己发现并上报那次仪器故障）。

@@ -78,7 +78,7 @@
 | 上传后一直排队 | 正常，评测机在逐个跑；场景大的时候要等一会儿 |
 | 提交立刻变成 `invalid` | 多半是文件不对。要传的是本地运行后生成的 `run_output/decisions.csv`，场景要和本地跑的一致 |
 | 想在本地多试几种天气 | `python3 make_scenario.py --out scenarios/mine --seed 7 --days 30`，再 `python3 local_runner.py --scenario scenarios/mine --agent agent/minimal_agent.py` |
-| 想让大模型参与决策 | 复制 `agent/.env.example` 为 `agent/.env`，填好 key（「控制台」页可以领赞助额度），在本地运行，照常上传生成的 `decisions.csv` |
+| 想让大模型参与决策 | 复制 `agent/.env.example` 为 `agent/.env`，填好自己的 key（平台不提供模型额度），在本地运行，照常上传生成的 `decisions.csv` |
 
 更细的数据格式、协议和评分公式在「文档」页；入门包里的 `README.md` 是给工程师看的完整版。
 

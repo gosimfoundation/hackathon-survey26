@@ -1990,7 +1990,7 @@
       },
       {
         "q": "Can I use an LLM or a commercial API?",
-        "a": "Yes. Your agent runs on your own machine and may call a model at decision time too, with your own key or a sponsor code from the dashboard. A 180-night scenario has about 8,000 decisions, and a model call for each is slow; let deterministic code answer the obvious waits."
+        "a": "Yes. Your agent runs on your own machine and may call a model at decision time too, with your own key. A 180-night scenario has about 8,000 decisions, and a model call for each is slow; let deterministic code answer the obvious waits."
       },
       {
         "q": "What is the global wall clock?",
@@ -2029,8 +2029,8 @@
         "a": "Prize amounts are gross. Payment details are confirmed with winning teams after Awards Day."
       },
       {
-        "q": "Are there API credits for development?",
-        "a": "Registered teams can claim sponsor API codes from the dashboard, one code per provider per team, for calling models while running the agent locally."
+        "q": "Does the platform provide API credits?",
+        "a": "The platform does not provide model credits. Cloud runs of complete projects use your own API key, set on the Participate page. Teams that complete the practice round (at least one successful practice score) each get one sponsor code, such as Kimi Coding Plan. Codes are coming soon; the captain claims it on the dashboard."
       },
       {
         "q": "What is anomaly reporting? What if I get one wrong?",
@@ -2050,7 +2050,13 @@
     "version": "Rules version 1.0 · 2026-09-09",
     "phases_title": "Phase configuration (live)",
     "daily": "submissions/day",
-    "board": "board"
+    "board": "board",
+    "board_modes": {
+      "live": "live",
+      "frozen": "frozen",
+      "hidden": "hidden",
+      "published": "published"
+    }
   },
   "docs_page": {
     "kicker": "Docs",

@@ -9,7 +9,7 @@ export function practiceMessages(base: Record<string, any>, chinese: boolean) {
     'home.participate.timeline':[{label:'Playground',desc:pick('The current competition','当前练习赛')}],
     'home.prizes.lede':pick('Award details are published in the rules and announcements.','奖项安排见规则与公告。'),
     'home.leaderboard.lede':pick('Scores appear after evaluation. CSV scores rank per scenario; complete projects have their own board.','评测完成后显示成绩。CSV 成绩按场景分别排名，完整项目单独一个榜。'),
-    'home.submission.items.0.desc':pick('Upload decisions.csv from your local run; your team keeps its best score for each scenario. Or submit a complete project: same evaluation flow as the competition, scenarios from Playground data, separate board.','上传本地运行生成的 decisions.csv，每队保留各场景的最高分。也可提交完整项目：评测流程和比赛相同，题目由练习赛数据生成，单独榜单。'),
+    'home.submission.items.0.desc':pick('Upload decisions.csv from your local run; your team keeps its best score for each scenario. Or submit a complete project: same evaluation flow as the competition, scenarios from Playground data, separate board.','上传本地运行生成的 decisions.csv，每队保留各场景的最高分。也可提交完整项目：评测流程和比赛相同，场景由练习赛数据生成，单独榜单。'),
     'home.submission.items.1.desc':pick('Any algorithm is welcome. Model calls are optional. CSV files may be up to 20 MB, 50 per team per day. Complete projects: 5 evaluations per team per day, your own model key only.','算法不限，不强制调用模型。CSV 最大 20 MB，每队每天 50 次；完整项目每队每天 5 次，只能用本队自己的模型密钥。'),
     'home.quest.levels.3.title':pick('Submit and view your score','提交并查看成绩'),
     'home.quest.levels.3.desc':pick('Upload decisions.csv or submit a complete project, then inspect the score breakdown and decision replay.','上传 decisions.csv 或提交完整项目，查看得分构成和逐步决策回放。'),

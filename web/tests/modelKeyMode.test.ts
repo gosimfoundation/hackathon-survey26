@@ -31,6 +31,6 @@ test('relay teams are warned that the hidden final cannot use their key', () => 
   assert.equal(relayMissesHiddenFinal('stored', true), false)
   assert.equal(relayMissesHiddenFinal('relay', false), false)
   const view = readFileSync(new URL('../src/components/competition/ProjectWorkflow.vue', import.meta.url), 'utf8')
-  assert.ok(view.includes('如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏题评测时模型调用会失败。'))
+  assert.ok(view.includes('如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏场景评测时模型调用会失败。'))
   assert.ok(view.includes('data-testid="final-version-relay-warning"') && view.includes('data-testid="model-mode-final-note"'))
 })

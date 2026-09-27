@@ -4,12 +4,13 @@ import { supabase } from '../../lib/supabase'
 import { competition } from '../../stores/competition'
 import { useAuth } from '../../stores/auth'
 import { useI18n } from '../../composables/useI18n'
-import { fmtUtc, num } from '../../lib/format'
+import { num } from '../../lib/format'
+import { formatDateTime } from '../../lib/projectText'
 import { useQuestFlags } from '../../composables/useQuestFlags'
 // `quiet` keeps the new-submission button secondary while the dashboard quest leads.
 // `allPhases` is the records page: every complete-project evaluation with its scenario scores.
 const props=withDefaults(defineProps<{limit?:number;quiet?:boolean;allPhases?:boolean;hideEmpty?:boolean}>(),{limit:50,quiet:false,allPhases:false,hideEmpty:false})
-const {team}=useAuth(), {pick,t}=useI18n(), {remember}=useQuestFlags()
+const {team}=useAuth(), {pick,t,locale}=useI18n(), {remember}=useQuestFlags()
 type Run={id:string;status:string;score:number|null;scenarios?:{name:string}|null}
 type Batch={id:string;status:string;score:number|null;created_at:string;quota_refunded?:boolean
   phases?:{name_en:string;name_zh:string}|null;observer_runs?:Run[]}
@@ -41,7 +42,7 @@ onUnmounted(()=>window.clearInterval(timer))
     <div v-else class="table-wrap"><table class="data-table">
       <thead><tr><th>{{ t('subs.when') }}</th><th v-if="props.allPhases">{{ t('subs.phase') }}</th><th>{{ t('common.status') }}</th><th>{{ props.allPhases ? pick('Average score','平均分') : t('subs.score') }}</th><th v-if="props.allPhases">{{ pick('Scenario scores','各场景得分') }}</th><th>{{ pick('Details','详情') }}</th></tr></thead>
       <tbody><tr v-for="row in rows" :key="row.id" :data-batch-id="row.id">
-        <td class="m xs whitespace-nowrap">{{ fmtUtc(row.created_at) }}</td>
+        <td class="m xs whitespace-nowrap">{{ formatDateTime(row.created_at, locale) }}</td>
         <td v-if="props.allPhases">{{ row.phases ? pick(row.phases.name_en,row.phases.name_zh) : '—' }}</td>
         <td>{{ statuses[row.status]??row.status }}<span v-if="row.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ pick('Not counted toward the daily limit','未计入次数') }}</span></td>
         <td class="m">{{ num(row.score) }}</td>

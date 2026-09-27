@@ -7,6 +7,7 @@ import { usePersonalModel } from '../../composables/usePersonalModel'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { canPrepareAgain, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMe } = useAuth()
 const personal=usePersonalModel()
@@ -31,6 +32,7 @@ const modeChoice = ref<ModelKeyMode>(DEFAULT_MODEL_KEY_MODE), replacingKey = ref
 const modelForm = ref({ base_url: '', model: '', key: '' })
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
+const when = (value: string | null | undefined) => formatDateTime(value, locale.value)
 const sentences = (...parts: string[]) => parts.join(['zh', 'ja'].includes(locale.value) ? '' : ' ')
 let timer: ReturnType<typeof setInterval> | undefined
 const words = computed(() => pick({
@@ -43,13 +45,15 @@ const words = computed(() => pick({
   step1: 'Step 1 · Upload a project', step1Note: 'Up to 10 uploads per day. Uploading does not use evaluations.',
   step2: 'Step 2 · Review and confirm a version', step2Note: 'Does not use evaluations. When preparation finishes, open the review, check the execution settings and adapter code, and confirm the version.',
   step3: 'Step 3 · Start an evaluation', step3Note: 'Each click uses one of today’s evaluations. One evaluation runs every scenario of this phase once; its score is the average of those scenarios. The leaderboard keeps your team’s best evaluation. Evaluations that fail because of the platform are not counted.',
-  left: 'Evaluations left today', perDay: 'per day', resets: 'resets at', active: 'An evaluation is running. Start the next one when it finishes.',
+  left: 'Evaluations left today', perDay: 'per day', dailyLimit: 'Daily evaluation limit', active: 'An evaluation is running. Start the next one when it finishes.',
   noneLeft: 'No evaluations left today.', noApproved: 'Confirm a version in step 2 first.', evaluated: 'Evaluated', times: '×', confirmedAt: 'Confirmed',
   evaluateAgain: 'Evaluate again', repeat: 'This version has already been evaluated. Evaluating it again uses one more of today’s evaluations', repeatLeft: 'left today', proceed: 'Continue?',
   withdraw: 'Withdraw', withdrawConfirm: 'Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.',
   withdrawn: 'Version withdrawn.', withdrawnPill: 'Withdrawn', showWithdrawn: 'Show withdrawn versions', hideWithdrawn: 'Hide withdrawn versions',
   duplicate: 'You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.',
   logs: 'Logs', refunded: 'Not counted toward the daily limit', noBatches: 'No evaluations yet.',
+  prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from its current default branch? This uses one of today’s 10 uploads.',
+  reuploadZip: 'Fix the project and upload the ZIP again (the uploaded ZIP is not kept for another attempt).',
   csv: 'Existing CSV submission', newProject: 'Submit a project', name: 'Project name', repository: 'Public GitHub repository',
   zip: 'Private ZIP upload', privacy: 'Public repositories remain public after forking. ZIP projects and detailed results are private to your team and the organizers.',
   file: 'Complete project ZIP · up to 50 MB', submit: 'Upload and prepare', projects: 'Your projects', empty: 'No projects yet.',
@@ -84,13 +88,15 @@ const words = computed(() => pick({
   step1: '第1步 · 上传项目', step1Note: '每天最多 10 次，不占评测次数。',
   step2: '第2步 · 检查并确认版本', step2Note: '不占评测次数。准备完成后点“检查接口”，核对运行设置和适配代码，再确认版本。',
   step3: '第3步 · 开始评测', step3Note: '每点一次占当天 1 次；一次评测会把本赛程全部场景各跑一遍，分数是这些场景的平均分；排行榜取本队最高的一次；因平台原因失败的不计次数。',
-  left: '今天还剩', perDay: '每天', resets: '重置时间', active: '本队有评测正在进行，结束后才能开始下一次。',
+  left: '今天还剩', perDay: '每天', dailyLimit: '每日评测上限', active: '本队有评测正在进行，结束后才能开始下一次。',
   noneLeft: '今天的评测次数已用完。', noApproved: '请先在第2步确认一个版本。', evaluated: '已评测', times: '次', confirmedAt: '确认于',
   evaluateAgain: '再评测一次', repeat: '这个版本已经评测过。再评测一次会再占用今天 1 次评测', repeatLeft: '今天还剩', proceed: '确定继续吗？',
   withdraw: '撤回', withdrawConfirm: '撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。',
   withdrawn: '已撤回。', withdrawnPill: '已撤回', showWithdrawn: '显示已撤回的版本', hideWithdrawn: '隐藏已撤回的版本',
   duplicate: '几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。',
   logs: '日志', refunded: '未计入次数', noBatches: '还没有评测记录。',
+  prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库当前的默认分支重新准备？这会占用今天 10 次上传中的 1 次。',
+  reuploadZip: '请修正后重新上传 ZIP（已上传的 ZIP 不会保留用于重试）。',
   closed: '当前比赛尚未开放项目评测。', csv: '原有 CSV 提交', newProject: '提交项目',
   name: '项目名称', repository: '公开 GitHub 仓库', zip: '私有 ZIP 上传',
   privacy: '公开仓库 Fork 后仍然公开；ZIP 项目和详细结果只供本队与主办方查看。', file: '完整项目 ZIP · 最大 50 MB',
@@ -112,8 +118,8 @@ const words = computed(() => pick({
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
   finalBadge: '最终版本', finalScore: '分数',
-  finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏题评测时模型调用会失败。',
-  apiFinalNote: '最终隐藏题评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
+  finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏场景评测时模型调用会失败。',
+  apiFinalNote: '最终隐藏场景评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
@@ -121,6 +127,8 @@ const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enab
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
+// Shown even before the quota RPC answers: the phase setting is the same number the database enforces.
+const dailyLimit = computed(() => quota.value?.daily_batches ?? selectedPhase.value?.daily_batches ?? null)
 const activeBatch = computed(() => (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 const shownProjects = computed(() => visibleProjects(data.value?.projects, showWithdrawn.value))
 const hiddenCount = computed(() => withdrawnCount(data.value?.projects))
@@ -202,6 +210,11 @@ function submit() {
     form.value = { title: '', kind: form.value.kind, url: '' }; selectedFile.value = null
     const file = document.querySelector<HTMLInputElement>('[data-testid="project-zip"]'); if (file) file.value = ''
   }, words.value.prepared, 'submit')
+}
+// Resubmits the same public repository through the ordinary upload action (a new revision).
+function prepareAgain(title: string, r: ProjectRevision) {
+  if (!window.confirm(words.value.prepareAgainConfirm)) return
+  void action(async () => { await portal('submit_repository', { title, url: r.source_location }) }, words.value.prepared, 'again:' + r.id)
 }
 function openReview(r: ProjectRevision) {
   review.value = r; confirmed.value = false; notes.value = r.observer_evidence?.notes ?? ''; codeUrl.value = r.observer_evidence?.code_url ?? ''
@@ -302,31 +315,31 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <div v-if="savedModel && !replacingKey" class="mt-4" data-testid="team-model-saved">
             <h3>{{ t('submit.model_api.saved_title') }}</h3>
             <p class="help break-all">{{ savedModel.base_url }} · {{ savedModel.model }}</p>
-            <p class="help" data-testid="team-model-hint">{{ savedModel.key_hint ? tf('submit.model_api.key_ending', { hint: savedModel.key_hint }) : t('submit.model_api.key_hidden') }} · {{ tf('submit.model_api.saved_at', { time: new Date(savedModel.saved_at).toLocaleString() }) }}</p>
+            <p class="help" data-testid="team-model-hint">{{ savedModel.key_hint ? tf('submit.model_api.key_ending', { hint: savedModel.key_hint }) : t('submit.model_api.key_hidden') }} · {{ tf('submit.model_api.saved_at', { time: when(savedModel.saved_at) }) }}</p>
             <div class="flex flex-wrap gap-3 mt-3">
               <button type="button" class="btn sm" :disabled="busy" @click="replacingKey = true">{{ t('submit.model_api.replace') }}</button>
               <button type="button" class="btn sm" :disabled="busy" @click="deleteModel">{{ t('submit.model_api.delete') }}</button>
             </div>
           </div>
-          <form v-else class="mt-4" data-testid="team-model-form" @submit.prevent="saveModel">
+          <form v-else class="mt-4" data-testid="team-model-form" autocomplete="off" @submit.prevent="saveModel">
             <p v-if="!savedModel" class="help">{{ t('submit.model_api.none') }}</p>
-            <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="modelForm.base_url" type="url" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" spellcheck="false" aria-describedby="team-model-endpoint-help" data-testid="team-model-endpoint"></label>
+            <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="modelForm.base_url" type="url" name="observer-model-endpoint" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" aria-describedby="team-model-endpoint-help" data-testid="team-model-endpoint"></label>
             <p id="team-model-endpoint-help" class="help">{{ t('submit.model_api.endpoint_hint') }}</p>
-            <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="modelForm.model" type="text" maxlength="256" required autocomplete="off"></label>
-            <label class="field"><span>{{ t('submit.model_api.key') }}</span><input v-model="modelForm.key" type="password" autocomplete="new-password" maxlength="8192" required data-testid="team-model-key"></label>
+            <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="modelForm.model" type="text" name="observer-model-name" maxlength="256" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" data-testid="team-model-name"></label>
+            <label class="field"><span>{{ t('submit.model_api.key') }}</span><input v-model="modelForm.key" type="password" name="observer-model-secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" maxlength="8192" required data-testid="team-model-key"></label>
             <div class="flex flex-wrap gap-3">
               <button class="btn sm" :disabled="busy">{{ t('submit.model_api.save') }}</button>
               <button v-if="savedModel" type="button" class="btn sm" :disabled="busy" @click="replacingKey = false; modelForm.key = ''">{{ t('submit.model_api.cancel') }}</button>
             </div>
           </form>
         </template>
-        <form v-else class="mt-4" data-testid="personal-model-settings" @submit.prevent="action(personal.connect)">
+        <form v-else class="mt-4" data-testid="personal-model-settings" autocomplete="off" @submit.prevent="action(personal.connect)">
           <p v-if="relayRunning && !personal.connected.value" class="errors" role="alert">{{ t('submit.model_api.relay_running') }}</p>
           <p class="help">{{ t('submit.model_api.keep_open') }}</p>
-          <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="personal.endpoint.value" type="url" :disabled="personal.connected.value" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" spellcheck="false" aria-describedby="personal-model-endpoint-help" data-testid="personal-model-endpoint"></label>
+          <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="personal.endpoint.value" type="url" name="observer-relay-endpoint" :disabled="personal.connected.value" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" aria-describedby="personal-model-endpoint-help" data-testid="personal-model-endpoint"></label>
           <p id="personal-model-endpoint-help" class="help">{{ t('submit.model_api.endpoint_hint') }}</p>
-          <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="personal.model.value" type="text" :disabled="personal.connected.value" maxlength="256" required></label>
-          <label class="field"><span>{{ t('submit.model_api.key') }}</span><input v-model="personal.key.value" type="password" autocomplete="off" :disabled="personal.connected.value" maxlength="8192" required data-testid="personal-api-key"></label>
+          <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="personal.model.value" type="text" name="observer-relay-model" :disabled="personal.connected.value" maxlength="256" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" data-testid="personal-model-name"></label>
+          <label class="field"><span>{{ t('submit.model_api.key') }}</span><input v-model="personal.key.value" type="password" name="observer-relay-secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" :disabled="personal.connected.value" maxlength="8192" required data-testid="personal-api-key"></label>
           <button v-if="!personal.connected.value" class="btn sm" :disabled="busy">{{ t('submit.model_api.connect') }}</button>
           <button v-else type="button" class="btn sm" @click="personal.clear">{{ t('submit.model_api.disconnect') }}</button>
           <p v-if="personal.connected.value" class="help mt-3" role="status">{{ personal.status.value==='failed'?t('submit.model_api.call_failed'):personal.status.value==='working'?t('submit.model_api.working'):t('submit.model_api.connected') }}</p>
@@ -352,8 +365,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <div v-for="r in p.observer_revisions" :key="r.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="r.id">
             <span class="pill">{{ r.archived_at ? words.withdrawnPill : statuses[r.status] ?? r.status }}</span>
             <span v-if="finalRole(finalVersion, r.id)" class="pill ok" data-testid="final-version-badge">{{ words.finalBadge }}</span>
-            <span class="meta">{{ new Date(r.created_at).toLocaleString() }}</span>
-            <span v-if="r.error && !r.archived_at" class="errors" role="status">{{ r.error }}</span>
+            <span class="meta">{{ when(r.created_at) }}</span>
+            <span v-if="r.error && !r.archived_at" class="errors" role="status" data-testid="revision-error">{{ revisionErrorText(r.error, locale) }}<template v-if="r.status === 'failed' && r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></span>
+            <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
             <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" @click="withdraw(r.id)">{{ words.withdraw }}</button>
             <button type="button" class="log-link" :disabled="busy" @click="showLogs({ revision_id: r.id })">{{ words.logs }}</button>
@@ -363,7 +377,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </section>
       <section v-if="review" ref="reviewPanel" tabindex="-1" class="panel mb-6" data-testid="project-review" aria-live="polite">
         <h2>{{ words.review }}</h2><p v-if="review.public_test.passed" class="pill ok mt-3">{{ words.testPassed }}</p>
-        <p v-else-if="review.error" class="errors mt-3">{{ review.error }}</p>
+        <p v-else-if="review.error" class="errors mt-3">{{ revisionErrorText(review.error, locale) }}</p>
         <div class="flex flex-wrap gap-3 mt-3">
           <button class="btn sm" :disabled="busy" @click="downloadProject(review.id)">{{ words.projectDownload }}</button>
           <button v-if="review.public_test.passed && review.public_test.run_id" class="btn sm" :disabled="busy" @click="download(review.public_test.run_id!)">{{ words.testResult }}</button>
@@ -386,16 +400,17 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <h2 id="evaluate">{{ words.step3 }}</h2><p class="help">{{ words.step3Note }}</p>
         <p v-if="!openPhases.length" class="help">{{ words.phaseUnavailable }}</p>
         <template v-else>
-          <p class="mt-4" data-testid="evaluation-quota">{{ selectedPhase ? pick(selectedPhase.phases.name_en, selectedPhase.phases.name_zh) : '' }}<template v-if="quota">
-            · <strong>{{ pick(`${words.left}: ${quota.remaining}`, `${words.left} ${quota.remaining} 次`) }}</strong>
-            <span class="help">({{ pick(`${quota.daily_batches} ${words.perDay}`, `${words.perDay} ${quota.daily_batches} 次`) }}<template v-if="quota.resets_at">, {{ words.resets }} {{ new Date(quota.resets_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</template>)</span></template></p>
+          <p class="mt-4" data-testid="evaluation-quota">{{ selectedPhase ? pick(selectedPhase.phases.name_en, selectedPhase.phases.name_zh) : '' }}<template v-if="dailyLimit != null">
+            · <strong data-testid="evaluation-daily-limit">{{ pick(`${words.dailyLimit}: ${dailyLimit}`, `${words.dailyLimit} ${dailyLimit} 次`) }}</strong></template><template v-if="quota">
+            · <strong>{{ pick(`${words.left}: ${quota.remaining}`, `${words.left} ${quota.remaining} 次`) }}</strong></template>
+            <span v-if="dailyLimit != null" class="help" data-testid="evaluation-reset"> ({{ formatDailyReset(quota?.resets_at, locale) }})</span></p>
           <p v-if="quota && quota.remaining <= 0" class="help">{{ words.noneLeft }}</p>
           <p v-else-if="activeBatch" class="help">{{ words.active }}</p>
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
             <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
-            <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ new Date(v.revision.approved_at).toLocaleString() }}</span>
+            <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
             <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" @click="evaluate(v.revision.id)">{{ v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
           </div>
@@ -404,20 +419,20 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <section v-if="finalVersion" class="panel mb-6" data-testid="final-version">
         <h2 id="final">{{ words.final }}</h2>
         <p class="help">{{ words.finalIntro }}</p>
-        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ new Date(finalVersion.deadline).toLocaleString() }}.</template></p>
+        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
         <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
         <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
         <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
           <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
           <span class="pill ok">{{ finalVersion.source === 'chosen' ? words.finalChosen : words.finalBest }}</span>
-          <span v-if="finalVersion.chosen_at && finalVersion.source === 'chosen'" class="meta">{{ new Date(finalVersion.chosen_at).toLocaleString() }}</span>
+          <span v-if="finalVersion.chosen_at && finalVersion.source === 'chosen'" class="meta">{{ when(finalVersion.chosen_at) }}</span>
           <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
           <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
         </p>
         <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
           <span>{{ v.title }}</span>
-          <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ new Date(v.revision.approved_at).toLocaleString() }}</span>
+          <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
           <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
           <button v-if="canChooseFinal(finalVersion, v.revision.id)" type="button" class="btn sm" :disabled="busy || locked.has('final:'+v.revision.id)" data-testid="final-version-set" @click="setFinal(v.revision.id)">{{ words.finalSet }}</button>
         </div>
@@ -425,7 +440,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <section class="panel mb-6"><h2 id="results">{{ words.batches }}</h2>
         <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>
         <article v-for="b in data?.batches" :key="b.id" :id="'batch-'+b.id" class="project-row" :class="{ target: b.id === targetBatch }">
-          <p>{{ new Date(b.created_at).toLocaleString() }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
+          <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <div v-for="run in b.observer_runs" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
