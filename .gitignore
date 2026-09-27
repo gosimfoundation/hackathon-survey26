@@ -9,6 +9,7 @@ __pycache__/
 data/
 artifacts/
 run_output/
+reviews/
 test-results/
 web/node_modules/
 web/dist/

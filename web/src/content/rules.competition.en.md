@@ -4,6 +4,7 @@
 2. A team has 1 to 3 members. A person belongs to at most one team. Submissions are made on behalf of a team.
 3. Organizers, evaluation-platform maintainers, and their immediate collaborators are excluded from awards. Their teams are marked hidden on the boards.
 4. Team names and content must follow the code of conduct (section 8).
+5. The competition accepts at most 150 teams (hidden organizer and test teams do not count). Once that number is reached, team registration closes automatically and no new team can be created. Individual accounts can still sign up and join an existing team that has room, using its invite code.
 
 ## 2. Schedule
 
@@ -23,6 +24,7 @@ All participants use the same Participate page; the platform selects the active 
 3. Each evaluation receives current observations one round at a time. The server records each decision before releasing the next observation. Future weather and hidden anomaly answers remain private.
 4. Every team has the same daily quota of complete batches, shown on the page and reset at 00:00 UTC. Within that quota you may evaluate freely. Every batch covers all three formal scenarios (A, B and C). Batches that fail because of the platform do not count toward the quota; failures caused by the project itself (build failure, crash, output that violates the protocol) do.
 5. **Final version.** During the competition, any team member can mark one of the team's confirmed (and not withdrawn) versions as the team's **final version** on the Participate page, and change or clear that choice until the competition ends (Oct 7 23:59 UTC+8). The choice is then locked. If a team never chooses, the version of its best-scoring evaluation on the online board is used. A chosen final version cannot be withdrawn.
+6. **Agent technology requirement.** To qualify, a project must use agent technology (driven by a large language model) in at least two of these stages: natural-language understanding, data parsing, task planning, action decision-making, tool calling, and plan adaptation. The organizers decide this mainly from an analysis of the final version's code by Claude. The platform does not require a model call in every evaluation round (section 4), but projects that do not meet this requirement are not eligible for awards.
 
 ## 4. Execution and model APIs
 

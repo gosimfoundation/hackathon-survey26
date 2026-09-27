@@ -11,6 +11,8 @@ import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
 import TeamDirectory from '../components/TeamDirectory.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
+import { useTeamCapacity } from '../composables/useTeamCapacity'
+import { teamCreationBlocked } from '../lib/teamCapacity'
 
 interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number }
 
@@ -36,6 +38,8 @@ const editForm = ref({ max_size: 3, github_repo: '', project_idea: '', is_locked
 const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
 
 const errorText = (e: unknown) => describeError(e, i18n, ['team.errors', 'team'])
+const { capacity, reload: reloadCapacity } = useTeamCapacity()
+const creationBlocked = computed(() => teamCreationBlocked(capacity.value, me.value?.is_admin))
 
 async function load() {
   loading.value = true
@@ -71,7 +75,11 @@ const rpc = async (name: string, args?: Record<string, unknown>) => {
   return data
 }
 
-const createTeam = () => run(() => rpc('create_team', { p_name: createForm.value.name.trim(), p_max_size: Number(createForm.value.max_size), p_project_idea: createForm.value.project_idea.trim(), p_github_repo: createForm.value.github_repo.trim() }), t('flash.team_created'))
+const createTeam = () => run(async () => {
+  try {
+    await rpc('create_team', { p_name: createForm.value.name.trim(), p_max_size: Number(createForm.value.max_size), p_project_idea: createForm.value.project_idea.trim(), p_github_repo: createForm.value.github_repo.trim() })
+  } finally { void reloadCapacity() }
+}, t('flash.team_created'))
 const joinTeam = () => run(async () => {
   await rpc('join_team', { p_invite_code: joinForm.value.code.trim().toUpperCase() })
   const fresh = await refreshMe()
@@ -170,6 +178,8 @@ onMounted(load)
     <div v-else class="dash-grid">
       <div id="create" class="panel">
         <div class="hd"><h2>{{ t('team.create_title') }}</h2></div>
+        <div v-if="capacity?.full" class="errors mb-6" role="status" data-testid="team-capacity-full">{{ tf('team.capacity.full', { limit: capacity.limit }) }}</div>
+        <p v-else-if="capacity" class="text3 text-sm mb-4" data-testid="team-capacity">{{ tf('team.capacity.remaining', { remaining: capacity.remaining, limit: capacity.limit }) }}</p>
         <div class="solo-callout mb-6" data-testid="solo-callout">
           <p class="text2 text-sm">{{ t('team.solo_lede') }}</p>
           <SoloTeamButton class="mt-3" />
@@ -181,7 +191,7 @@ onMounted(load)
             <label class="field"><span>{{ t('team.github_repo') }}</span><input v-model="createForm.github_repo" type="text"></label>
             <label class="field"><span>{{ t('team.project_idea') }}</span><input v-model="createForm.project_idea" type="text"></label>
           </div>
-          <button data-testid="team-create" class="btn primary sm" type="submit" :disabled="busy">{{ t('team.create') }} →</button>
+          <button data-testid="team-create" class="btn primary sm" type="submit" :disabled="busy || creationBlocked">{{ t('team.create') }} →</button>
         </form>
       </div>
       <div>

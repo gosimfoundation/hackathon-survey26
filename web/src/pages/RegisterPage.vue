@@ -8,15 +8,17 @@ import { describeError } from '../lib/errors'
 import { useAuth } from '../stores/auth'
 import { useFlash } from '../stores/flash'
 import { useRegistrationOpen } from '../composables/useRegistrationOpen'
+import { useTeamCapacity } from '../composables/useTeamCapacity'
 
 type Mode = 'register' | 'login' | 'forgot'
-const { t, locale } = useI18n()
+const { t, tf, locale } = useI18n()
 const i18n = useI18n()
 const route = useRoute()
 const router = useRouter()
 const flash = useFlash()
 const { state, refreshMe } = useAuth()
 const { registrationOpen } = useRegistrationOpen()
+const { capacity: teamCapacity } = useTeamCapacity()
 
 const mode = ref<Mode>(readMode())
 const regStep = ref<1 | 2>(1)
@@ -198,6 +200,7 @@ async function submitForgot() {
 
           <form v-if="mode === 'register'" @submit.prevent="regStep === 1 ? nextStep() : submitRegister()" novalidate>
             <div v-if="!registrationOpen" class="errors">{{ t('auth.closed_notice') }}</div>
+            <div v-else-if="teamCapacity?.full" class="errors" role="status" data-testid="reg-team-full">{{ tf('auth.team_full_notice', { limit: teamCapacity.limit }) }}</div>
             <div class="reg-steps" aria-hidden="true">
               <span class="reg-step-dot" :class="{ on: true }">1</span>
               <span class="reg-step-line" :class="{ on: regStep === 2 }"></span>
