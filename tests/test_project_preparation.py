@@ -166,3 +166,21 @@ def test_known_preparation_error_is_shown_on_the_revision(preparation):
         'prepare_job_failed')
     assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==[
         ('failed','Project preparation failed: Automatic adaptation could not identify the entry point.')]
+
+
+def test_colocated_public_test_with_one_engine_job_makes_the_version_reviewable(preparation):
+    s=preparation;uri=s['uri'];started=start(s)
+    finish(s,started)
+    query(uri,'update public.observer_phase_settings set colocated=true')
+    preview=query(uri,'select preview_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
+    selected=next(r for r in rpc(uri,'observer_pending_runs',10) if r['id']==str(preview))
+    engine=job('engine')
+    rpc(uri,'observer_schedule_run',preview,selected['lease'],'AGENTIC-OBSERVER26-runner-1',
+        secrets.token_urlsafe(32),secrets.token_urlsafe(32),None,[engine])
+    query(uri,"""update public.observer_runs set status='scored',score=123,finished_at=now(),score_summary='{"termination_reason":"survey_complete","committed_action_count":1}' where id=%s""",(preview,))
+    rpc(uri,'observer_reconcile_preparations')
+    assert query(uri,'select status from public.observer_revisions where id=%s',(s['revision'],))==[('preparing',)]
+    rpc(uri,'observer_claim_job',engine['id'],engine['nonce'],'600','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',engine['id'],'600','1',{'finished':True},'')
+    rpc(uri,'observer_reconcile_preparations')
+    assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[('reviewable','true')]
