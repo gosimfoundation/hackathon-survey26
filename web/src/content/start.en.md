@@ -47,7 +47,7 @@ Save, double-click `run_baseline` again, and see whether the score went up. If i
 
 Back on the site, open **Submit**, pick the phase and the scenario, drag in the `run_output/decisions.csv` your local run produced, and press **Upload and queue →**. Scored within seconds.
 
-This upload flow is for practice. For competition, open [Agent projects](/projects) to submit a public repository or private project ZIP, or start an official local session and upload its exported CSV. Both modes receive current information step by step; future weather remains private.
+This upload flow is for practice. The competition accepts complete projects only: submit a public repository or private ZIP on the Participate page, and the platform evaluates it step by step on three fixed formal scenarios; future weather stays private. After the competition, each team's chosen final version is evaluated once on a hidden scenario, and only that score decides the ranking.
 
 To try the evaluation flow early, choose Submit a complete project on Participate. The platform runs your program round by round in the cloud (same evaluation flow as the competition) on scenarios generated from Playground data: 5 evaluations per team per day, your own model key only, and a separate board. We recommend doing this once during the October 1–4 training.
 
