@@ -83,10 +83,11 @@ def _run(module: str, *args: str) -> None:
         raise ScenarioError(f"{module} failed: {proc.stderr[-2000:] or proc.stdout[-2000:]}")
 
 
-def generate_tile_anomalies(tile_config: Mapping, tile_ids: Sequence[str]) -> list[dict[str, str]]:
+def generate_tile_anomalies(tile_config: Mapping, tile_ids: Sequence[str],
+                            seed_derivation: str | None = None) -> list[dict[str, str]]:
     """Draw hidden nova/reddening tags from the tile config's own seed; the two tag sets may overlap."""
     spec = tile_config.get("anomaly_tags", {})
-    rng = random.Random(stream_seed(tile_config, "tile_tags", 4000))
+    rng = random.Random(stream_seed(tile_config, "tile_tags", 4000, seed_derivation))
     rows = []
     for tag, key in (("nova", "nova_count"), ("reddening", "reddening_count")):
         count = min(int(spec.get(key, 0)), len(tile_ids))
@@ -102,7 +103,9 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
 
     ``seed_derivation=None`` keeps the historical ``seed + offset`` streams (existing seeds regenerate byte for byte).
     ``seed_derivation="sha256-v1"`` seeds every simulator stream from sha256("<seed>:<stream>") instead, and records
-    the mode in each seeded config and in the manifest, so the scenario is reproducible from (seed, mode)."""
+    the mode in scenario/weather/request configs and in the manifest, so the scenario is reproducible from
+    (seed, mode). The tile config keeps its exact key set (deployed scorers validate it), so the tile catalogue and
+    tag streams receive the mode explicitly; generated scenarios therefore load in scorers without this change."""
     if seed_derivation is not None and seed_derivation not in SEED_DERIVATIONS:
         raise ScenarioError(f"unsupported seed derivation {seed_derivation!r}")
     root = Path(root)
@@ -129,8 +132,7 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
         if start_date:
             c["survey"]["start_date"] = start_date
     def _tile(c):
-        c["seed"] = seed
-        _mode(c)
+        c["seed"] = seed  # no seed_derivation key here: deployed scorers validate the tile config's exact key set
         # time-limited REQUIRED tiles need their window inside the survey
         c["catalog"]["time_limited_window_days"] = max(1, min(int(c["catalog"].get("time_limited_window_days", 14)), max(1, days - 1)))
         for k, v in (tile_overrides or {}).items():
@@ -161,7 +163,8 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
     cd, dd = config_dir(root), data_dir(root)
     _run("observing_calendar", "--config", str(cd / "calendar_config.json"), "--output-dir", str(dd), "generate")
     _run("tile_geometry_simulator", "--tile-config", str(cd / "tile_config.json"), "--calendar-config", str(cd / "calendar_config.json"),
-         "--nights", str(dd / "night_calendar.csv"), "--slots", str(dd / "slots.csv"), "--tiles", str(dd / "tiles.csv"), "generate", "--output-dir", str(dd))
+         "--nights", str(dd / "night_calendar.csv"), "--slots", str(dd / "slots.csv"), "--tiles", str(dd / "tiles.csv"), "generate", "--output-dir", str(dd),
+         *(("--seed-derivation", seed_derivation) if seed_derivation else ()))
     first = json.loads((cd / "calendar_config.json").read_text())["survey"]["start_date"]
     _run("tile_geometry_simulator", "--tile-config", str(cd / "tile_config.json"), "--calendar-config", str(cd / "calendar_config.json"),
          "--nights", str(dd / "night_calendar.csv"), "--slots", str(dd / "slots.csv"), "--tiles", str(dd / "tiles.csv"),
@@ -171,7 +174,7 @@ def generate_scenario(root: Path, *, scenario_id: str, seed: int, days: int = 18
          "--tiles", str(dd / "tiles.csv"), "generate", "--output-dir", str(dd))
     tile_config = json.loads((cd / "tile_config.json").read_text(encoding="utf-8"))
     tile_ids = [row["tile_id"] for row in read_exact_csv(dd / "tiles.csv", TILE_COLUMNS)]
-    anomaly_rows = generate_tile_anomalies(tile_config, tile_ids)
+    anomaly_rows = generate_tile_anomalies(tile_config, tile_ids, seed_derivation)
     if anomaly_rows:
         write_exact_csv(dd / ANOMALY_FILE, TILE_ANOMALY_COLUMNS, anomaly_rows)
     _run("observation_request_simulator", "--config", str(cd / "request_config.json"), "--nights", str(dd / "night_calendar.csv"),

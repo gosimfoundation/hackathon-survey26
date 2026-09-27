@@ -39,9 +39,12 @@ def derive_stream_seed(seed: int, stream: str) -> int:
     return int.from_bytes(hashlib.sha256(f"{int(seed)}:{stream}".encode("utf-8")).digest()[:16], "big")
 
 
-def stream_seed(config: Mapping, stream: str, legacy_offset: int) -> int:
-    """Seed of one simulator RNG stream: ``seed + legacy_offset`` unless the config opts into hashed derivation."""
-    mode = config.get(SEED_DERIVATION_KEY)
+def stream_seed(config: Mapping, stream: str, legacy_offset: int, mode: str | None = None) -> int:
+    """Seed of one simulator RNG stream: ``seed + legacy_offset`` unless hashed derivation is selected.
+
+    The mode comes from ``mode`` when given, else from the config's own ``seed_derivation`` key. (The tile config
+    has a strict key set that deployed scorers validate, so the tile streams receive the mode explicitly.)"""
+    mode = mode if mode is not None else config.get(SEED_DERIVATION_KEY)
     if mode is None:
         return int(config["seed"]) + legacy_offset
     if mode not in SEED_DERIVATIONS:

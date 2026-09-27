@@ -37,7 +37,7 @@ GOLDEN_DEFAULT = {
 }
 STREAMS = {"tiles": 0, "tile_tags": 4000, "weather.slots": 1000, "weather.events": 2000,
            "weather.forecasts": 3000, "weather.forecast_misses": 3100, "requests": 4000}
-SEEDED_CONFIGS = ("scenario_config.json", "tile_config.json", "weather_config.json", "request_config.json")
+SEEDED_CONFIGS = ("scenario_config.json", "weather_config.json", "request_config.json")  # tile config: exact key set
 
 
 def _generate(root: Path, seed: int, **kwargs) -> dict:
@@ -75,6 +75,7 @@ def test_default_scenario_config_matches_golden(tmp_path):
 def test_stream_seed_default_is_seed_plus_offset():
     for stream, offset in STREAMS.items():
         assert stream_seed({"seed": 12345}, stream, offset) == 12345 + offset
+        assert stream_seed({"seed": 12345}, stream, offset, SEED_DERIVATION_HASHED) == derive_stream_seed(12345, stream)
 
 
 def test_hashed_streams_are_independent_128_bit_seeds():
@@ -112,6 +113,10 @@ def test_hashed_mode_is_deterministic_recorded_and_differs_from_default(tmp_path
     for name in SEEDED_CONFIGS:
         cfg = json.loads((tmp_path / "a/config" / name).read_text(encoding="utf-8"))
         assert cfg[SEED_DERIVATION_KEY] == SEED_DERIVATION_HASHED and cfg["seed"] == seed
+    tile_cfg = json.loads((tmp_path / "a/config/tile_config.json").read_text(encoding="utf-8"))
+    assert SEED_DERIVATION_KEY not in tile_cfg and tile_cfg["seed"] == seed
+    catalog_meta = json.loads((tmp_path / "a/outputs/reference/catalog_metadata.json").read_text(encoding="utf-8"))
+    assert catalog_meta[SEED_DERIVATION_KEY] == SEED_DERIVATION_HASHED
     for name in ("tiles.csv", "weather.csv", "weather_events.csv", "weather_forecasts.csv", "tile_anomalies.csv"):
         key = f"outputs/reference/{name}"
         assert first["files"][key]["sha256"] != legacy["files"][key]["sha256"], name
