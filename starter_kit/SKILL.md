@@ -49,7 +49,8 @@ means the environment is broken; read `run_output/agent.log` first. Exit code 2 
    `observe` runs `nominal_exptime_seconds` from the cursor and may cross
    slot boundaries; `wait` consumes the rest of the current slot.
 4. Time: one global wall clock per scenario (`initialize.global_wallclock_seconds`, also `SAC_WALLCLOCK_SECONDS`
-   in the environment; 7200 s on the reference scenario). No per-decision limit. When it expires the process is
+   in the environment; 7200 s on the local reference scenario; on the platform 3600 s per formal scenario and
+   18000 s per scenario on the Playground complete-project track). No per-decision limit. When it expires the process is
    killed and everything not yet observed scores nothing — a slow agent that only reaches night 40 of 180 loses
    1000 per unfinished REQUIRED tile. Budget roughly `wallclock / expected_decisions` per decision; the
    reference scenario has about 7,900 slots.
@@ -78,10 +79,10 @@ means the environment is broken; read `run_output/agent.log` first. Exit code 2 
    dominate the tile's read history; a fault needs repeated collapses). A correct fault report publishes
    `fault_status` one simulated day later and starts a two-day repair; with no active fault the same report is
    a misreport (one free per correct report, then 100 each) and gets a one-night `"status":"normal"` answer.
-   The short `demo-week` scenario (see `QUICKSTART.md`) is only seven nights long, so the shipped detector
-   resolves just part of its hidden tags there — it can miss tags and file a wrong report. That is expected:
-   it is a demonstration detector, not a calibrated solution; `scenarios/dev-reference` is the 180-night
-   scenario where it reports all four tags.
+   Only scenarios with the finals mechanics have hidden tags: `demo-week` and `dev-reference` have none (reports
+   are not scored there). On the seven-night `finals-preview` the shipped detector reports the instrument fault
+   but none of the four hidden tags — seven nights give too few repeat reads. That is expected: it is a
+   demonstration detector, not a calibrated solution.
 7. Scenario directory (`scenarios/<name>/`): `config/*.json` (calendar, tiles, weather, requests, workflow,
    score) and `outputs/reference/*.csv` (`night_calendar`, `slots`, `tiles`, `targets`, `tile_windows`,
    `observation_requests`, `observation_request_tiles`, `weather`, `weather_forecasts`, `weather_events`,
@@ -105,8 +106,8 @@ python3 local_runner.py --scenario scenarios/s7 --agent agent/minimal_agent.py -
 `python3 fetch_scenario.py --list` shows the scenarios the platform publishes and `python3 fetch_scenario.py dev-fortnight`
 downloads one into `scenarios/dev-fortnight/` (weather files included only for public-weather practice scenarios).
 Short scenarios (fewer than 10 nights) automatically get a shorter forecast horizon (`forecast_horizon_days` in the output). Hidden platform
-scenarios come from the same generator with undisclosed seeds, sizes and wall clocks; test on several seeds
-and at least one long (≥ 90-night) scenario before submitting.
+scenarios (the three fixed formal scenarios and the hidden final one) come from the same generator with
+undisclosed seeds and sizes; test on several seeds and at least one long (≥ 90-night) scenario before submitting.
 
 ## 5. Edit the agent
 
@@ -139,14 +140,21 @@ and at least one long (≥ 90-night) scenario before submitting.
 
 ## 6. Submit
 
-The formal competition (`online`) evaluates complete projects only: the user uploads the project on the site
-(`/compete`), and the platform runs it step by step on three fixed formal scenarios (the same for every team;
-scenario files and future weather are never published, observations arrive one step at a time). The team marks one confirmed version as its final version before the phase
-ends; after it ends, organizers evaluate that version once on one hidden scenario, which alone decides the final
-ranking. No CSV is accepted there. To make the ZIP: `python3 pack_agent.py` writes `my-agent.zip` with
+The formal competition (`online`, Oct 5–7, Beijing time) evaluates complete projects only: the user uploads the
+project on the site (`/compete`), and the platform runs it step by step on three fixed formal scenarios (the same
+for every team; scenario files, weather, forecasts and events are never published, observations arrive one step at
+a time), 10 batches per team per day, 3600 s per scenario. The team marks one confirmed version as its final version
+before the phase ends (default: the version of its best online batch); after it ends, organizers evaluate that
+version once on one hidden scenario, which alone decides the final ranking. No CSV is accepted there. Awards
+require agent (LLM-driven) techniques in at least two of: natural-language understanding, data parsing, task
+planning, action decision-making, tool calling, plan adaptation. If the program calls a model, the team must switch
+its model key to "Save encrypted" on the Participate page before the phase ends (the hidden run has no open page).
+Before that, the Playground complete-project track runs the same flow on `dev-fortnight` and `dev-reference`
+(5 evaluations per team per day, 18000 s per scenario, separate board). To make the ZIP: `python3 pack_agent.py` writes `my-agent.zip` with
 `agent/observer.project.json` at its root (image `python:3.12-slim`, run `python3 -u minimal_agent.py`) and
 without `.env`; the user uploads it on the Participate page (Submit a complete project → private ZIP). The
-deterministic agent needs no model key there. Only the Playground
+deterministic agent needs no model key there (fine for testing the flow, but not enough for the award
+requirement above). Only the Playground
 `practice` phase takes a results file (the `decisions.csv` from a local run):
 
 1. Run locally on the practice scenario you will submit for, so `run_output/decisions.csv` exists.

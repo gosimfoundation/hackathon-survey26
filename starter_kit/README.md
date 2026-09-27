@@ -109,7 +109,8 @@ live run reports `survey_complete`, `global_wallclock_expired`, `agent_error` or
 5. The platform replays `decisions.csv` with the public scorer and stores `score_report.json`.
 
 The wall clock is the only time rule: no per-decision timeout, no synthetic fallback action. The reference
-scenario's budget is 7200 s; hidden scenarios publish their own budget in `initialize.global_wallclock_seconds`
+scenario's budget is 7200 s locally; on the platform each formal scenario has 3600 s and each Playground
+complete-project scenario 18000 s. Every run publishes its budget in `initialize.global_wallclock_seconds`
 and in the `SAC_WALLCLOCK_SECONDS` environment variable.
 
 ### Envelopes (`participant-agent-protocol-v2`)
@@ -245,8 +246,9 @@ automatic adapter (and no model key) is needed to prepare it.
    local copy and prints a warning).
 2. On the website open **Participate** → Submit a complete project → private ZIP, upload `my-agent.zip`, wait for
    preparation and the public test, review and confirm the version, then evaluate it.
-3. The shipped agent is deterministic and works without any model key. The image tag is resolved to a fixed
-   digest during preparation.
+3. The shipped agent is deterministic and works without any model key; that is enough to test the flow, but
+   awards require agent (LLM-driven) techniques in at least two stages (see the site's Rules). The image tag is
+   resolved to a fixed digest during preparation.
 
 To let a model take part on the platform, set your endpoint, model and key on the Participate page (never in the
 ZIP), then install the packages in a build step and switch the provider, for example:
@@ -264,12 +266,17 @@ project folder and `/tmp`, hence `--target .deps`. The manifest `environment` mu
 
 The formal competition (`online`, Oct 5–7) evaluates complete projects only: upload your project on the site
 (`/compete`). The platform runs it step by step on three fixed formal scenarios (A, B, C), the same for every team;
-their files and future weather are never published, and observations arrive one step at a time. Result ZIPs of your
-own evaluations remain downloadable. Evaluate freely within the daily limit, then mark one confirmed
-version as your team's **final version** (changeable until the phase ends; default: the version of your best
-evaluation). After the phase ends the organizers evaluate each final version once on one hidden scenario, and only
+their files, weather, forecasts and events are never published, and observations arrive one step at a time. Result
+ZIPs of your own evaluations (including `agent.log`) remain downloadable. Evaluate freely within the daily limit
+(10 batches per team per day, 3600 s per scenario), then mark one confirmed version as your team's **final
+version** (changeable until the phase ends; default: the version of your best online batch). After the phase ends the organizers evaluate each final version once on one hidden scenario, and only
 that hidden score decides the final ranking. If your program calls a model, switch the model API to "Save encrypted"
 before the phase ends: the hidden run has no open page, so a key that is not saved cannot be used. There is no CSV path for the formal phase.
+Awards require agent (LLM-driven) techniques in at least two of: natural-language understanding, data parsing,
+task planning, action decision-making, tool calling, plan adaptation.
+
+Before the competition, the Playground complete-project track (`practice-projects`) runs the same cloud flow on
+`dev-fortnight` and `dev-reference`: 5 evaluations per team per day, 18000 s per scenario, separate board.
 
 The Playground `practice` phase still accepts the `decisions.csv` your local run produced:
 
@@ -285,5 +292,5 @@ The URL and anon key are on the platform's Resources page.
 参赛 Agent 的中文说明（责任边界、启用各家 LLM 的 `.env` 配置、JSON-Lines 协议、评分参数与回退保障）见
 [`agent/README_ZH.md`](agent/README_ZH.md)。本地流程：`local_runner.py` 跑基线 → `make_scenario.py` 生成更多场景 →
 修改 `agent/decision_graph.py` → `pack_agent.py` 打包成完整项目 ZIP（根目录含 `observer.project.json`，不含 `.env`），在「参赛」页上传；
-默认的确定性智能体不需要任何模型密钥。平台运行时注入 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（平台模型代理和临时凭证），
-`model_factory.py` 优先读取它们，本地运行时再回退到 `MODEL_BASE_URL` 与各服务商密钥。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件和未来天气不公开）上逐步评测，本队评测的结果 ZIP 可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用最高分评测的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。
+默认的确定性智能体不需要任何模型密钥，可用来跑通流程，但评奖要求至少两个环节采用智能体（大模型驱动）技术。平台运行时注入 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（平台模型代理和临时凭证），
+`model_factory.py` 优先读取它们，本地运行时再回退到 `MODEL_BASE_URL` 与各服务商密钥。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件、天气、预报和事件不公开）上逐步评测，每队每天 10 批，每个场景 3600 秒，本队评测的结果 ZIP（含 `agent.log`）可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用线上最高分批次的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。

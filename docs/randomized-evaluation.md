@@ -1,5 +1,8 @@
 # Per-attempt online evaluation
 
+> Status 2026-09-27: not used by the `online` phase, which evaluates three fixed formal scenarios
+> (see `competition-format.md`). Calibration now applies only to internal acceptance phases.
+
 Practice and existing scores keep their current behavior. Randomization is opt-in
 per formal phase, and every scenario in an enabled phase needs a frozen profile.
 Configuration cannot change after the first formal batch. No production phase is

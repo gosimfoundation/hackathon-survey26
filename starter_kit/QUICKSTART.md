@@ -16,9 +16,8 @@ The terminal ends with the score, about **12287** for the unmodified kit, with `
 For a first look, use `run_demo_week` (`.command` / `.bat` / `.sh`) instead: same pipeline and same scorer over a
 seven-night scenario. It finishes in about two seconds and the replay is short enough to follow night by night.
 Its results go to `demo_week_output/`.
-Note: seven nights is short, so the shipped anomaly detector only gets part of the hidden tags right there — it can
-miss some and file a wrong tag report. That is expected: it is a demonstration detector, not a calibrated solution,
-and the 180-night scenario is the one where it reports all four tags.
+Note: `demo-week` and the 180-night scenario use the practice rules, with no hidden anomaly tags; only
+`finals-preview` has them (see the end of this page).
 
 ## Step 2 · Edit one file
 
@@ -49,7 +48,8 @@ This CSV upload is for the Playground practice only. The online competition eval
 2. On the website open **Participate** → Submit a complete project → private ZIP, and upload `my-agent.zip`.
 3. Wait for preparation and the public test, check the review, confirm the version, then evaluate it.
 
-The kit's agent works there without any model key. Cloud runs never use a key from your files: if your agent
+The kit's agent works there without any model key (enough to test the flow; awards require LLM-driven agent
+techniques in at least two stages, see the site's Rules). Cloud runs never use a key from your files: if your agent
 calls a model, set your own API endpoint, model and key on the Participate page. The platform does not provide
 model credit for cloud runs.
 

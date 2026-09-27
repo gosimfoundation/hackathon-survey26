@@ -25,7 +25,7 @@ Open [Submit](/compete), choose the scenario you used locally and upload `run_ou
 
 The columns are `decision_id, slot_id, action, tile_id, program, request_id, reason`. After submission, inspect evaluation status, score components, completion and replay. Each scenario has separate standings using the team's best score.
 
-To try the evaluation flow early, choose Submit a complete project on Participate and submit a GitHub repository or ZIP. The platform runs your program round by round in the cloud (same evaluation flow as the competition) on scenarios generated from Playground data. Each team gets 5 evaluations per day (evaluations that fail because of the platform are not counted), uses its own model key only, and is ranked on a separate complete-project board. During the October 1–4 training, use this track to go through the flow once.
+To try the evaluation flow early, choose Submit a complete project on Participate and submit a GitHub repository or ZIP. The platform runs your program round by round in the cloud (same evaluation flow as the competition) on the public scenarios dev-fortnight and dev-reference, with a runtime limit of 5 hours per scenario. Each team gets 5 evaluations per day (reset at 00:00 UTC, 08:00 Beijing time; evaluations that fail because of the platform are not counted), model calls use the team's own model API key only, and scores go to a separate complete-project board. Use this track around the October 2–3 trainings to go through the flow once.
 
 ### Complete-project launch file (any language)
 

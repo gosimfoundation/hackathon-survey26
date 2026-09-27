@@ -39,7 +39,7 @@
       },
       "register": {
         "title": "Register",
-        "description": "Create an account or log in to submit results files."
+        "description": "Create an account or log in to take part."
       },
       "reset": {
         "title": "Reset password",
@@ -55,7 +55,7 @@
       },
       "submit": {
         "title": "Participate",
-        "description": "Upload a decisions.csv or an agent for evaluation."
+        "description": "Upload a decisions.csv or a complete project for evaluation."
       },
       "submissions": {
         "title": "Submissions",
@@ -148,7 +148,7 @@
     "pipeline": [
       {
         "label": "Online Training",
-        "date": "Oct 1–4",
+        "date": "Oct 2–3",
         "note": "Sessions with international astronomers and agent experts"
       },
       {
@@ -163,7 +163,7 @@
       }
     ],
     "location": [
-      "Online training Oct 1–4 · Online competition Oct 5–7",
+      "Online training Oct 2–3 · Online competition Oct 5–7",
       "October 17 · Awards at GOSIM Shenzhen"
     ],
     "cta": "Mission card coming soon",
@@ -176,7 +176,7 @@
         "label": "prize pool"
       },
       {
-        "value": "Oct 1–17",
+        "value": "Oct 2–17",
         "label": "2026 · online + Shenzhen"
       },
       {
@@ -264,7 +264,7 @@
           "desc": "Observe a tile, or wait. One action per slot, and the reason for it."
         }
       ],
-      "closing": "You don't need an astronomy background. During the October 1–4 online training, international astronomers and agent experts run practice sessions. You can also submit a complete project on the Playground to rehearse with the same evaluation flow as the competition.",
+      "closing": "You don't need an astronomy background. Online trainings on October 2 and 3 (times to be announced) introduce the astronomy task and the competition with agents. You can also submit a complete project on the Playground to rehearse with the same evaluation flow as the competition.",
       "cardKicker": "How the challenge arrives",
       "cardTitle": "One Survey Mission Card",
       "cardLede": "Every round of the challenge starts from a mission card. Everything that round holds you to is written on it:",
@@ -302,7 +302,7 @@
           "desc": "How the score is computed and which penalties apply."
         }
       ],
-      "cardNote": "The authoritative input and output formats and the interface contract are defined by the mission card. The card and the public development data — tile catalogue, example weather scenarios, initial state and visual reports — are released before the hackathon begins."
+      "cardNote": "The authoritative input and output formats and the interface contract are defined by the mission card. The public development scenarios are on Resources."
     },
     "participate": {
       "kicker": "03 / How to participate",
@@ -327,7 +327,7 @@
       ],
       "timeline": [
         {
-          "label": "Oct 1–4",
+          "label": "Oct 2–3",
           "desc": "Online training"
         },
         {
@@ -344,7 +344,7 @@
     "prizes": {
       "kicker": "04 / Awards",
       "title": "$5,500 in prizes",
-      "lede": "Awarded on the online ranking: the mean score over both competition scenarios.",
+      "lede": "Awarded on the final ranking: the score of each team's final version on the hidden final scenario.",
       "tiers": [
         {
           "place": "First Prize",
@@ -543,8 +543,8 @@
         },
         {
           "title": "Enter the online competition",
-          "desc": "October 5–7: submit a complete project or connect the local runner. Future weather stays private; rehearse anomaly mechanics with finals-preview.",
-          "desc_gated": "October 5–7: complete projects and local-session CSVs use the same live information. The score is the mean of all scenarios in one batch.",
+          "desc": "October 5–7: submit a complete project, evaluate it on three fixed formal scenarios and choose your final version; the hidden final scenario decides the ranking.",
+          "desc_gated": "October 5–7: complete projects only. A batch scores the mean of the three formal scenarios; the hidden final scenario decides the ranking.",
           "time": "Oct 5",
           "to": "/brief#section-7"
         }
@@ -757,14 +757,14 @@
         "kicker": "09 / Timeline",
         "title": "Three stages from training to awards",
         "paragraphs": [
-          "The event has three stages: online training from October 1–4, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17.",
+          "The event has three stages: online training from October 2–3, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17.",
           "Training covers the simulator and participant protocol; details will be announced. Competition accepts complete projects and official local-session CSVs. The server reveals current information step by step and scores each complete multi-scenario batch."
         ],
         "rounds": [
           {
             "number": "01",
             "name": "Online Training",
-            "dates": "Oct 1–4",
+            "dates": "Oct 2–3",
             "format": "Online",
             "challenge": "Learn the shared simulator, mission cards, and the observer interface, then prepare with public development scenarios.",
             "participants": "Open worldwide to individuals and teams."
@@ -1151,14 +1151,14 @@
   "schedule": {
     "kicker": "07 / Timeline",
     "title": "Schedule",
-    "intro": "Online training runs October 1–4, the online competition runs October 5–7, and Awards Day is October 17.",
+    "intro": "Online training runs October 2–3, the online competition runs October 5–7, and Awards Day is October 17.",
     "challengeLabel": "Survey task",
     "participantsLabel": "Who participates",
     "rounds": [
       {
         "number": "01",
         "name": "Online Training",
-        "dates": "Oct 1–4",
+        "dates": "Oct 2–3",
         "format": "Online",
         "challenge": "Learn the shared simulator, mission cards, and the observer interface, then prepare with public development scenarios.",
         "participants": "Open worldwide to individuals and teams."
@@ -1245,7 +1245,7 @@
     "per_scenario_note": "The practice board ranks each scenario separately: each board compares scores on that scenario only, with a team's best score there.",
     "detail": {
       "board_scenario": "Board: {scenario}",
-      "board_mean": "Board: mean of the two competition scenarios",
+      "board_mean": "Board: mean of the three formal scenarios",
       "close": "Close",
       "evenness": "Coverage evenness",
       "scored_at": "Scored at",
@@ -1411,7 +1411,7 @@
     "steps": [
       "Create your account (no e-mail confirmation needed)",
       "Create a team or join one with an invite code",
-      "Upload a results file (decisions.csv)"
+      "Upload decisions.csv (Playground) or a complete project"
     ],
     "about_you": "Participant profile",
     "about_you_note": "Your tiers appear on your participant card, helping entrants from different backgrounds find each other and form teams.",
@@ -1724,11 +1724,11 @@
     "packed": "Packed {n} file(s) in the browser",
     "model_api": {
       "title": "Model API (optional)",
-      "intro": "No model credits are provided, and deterministic projects need no API. Choose how the platform handles your key:",
+      "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. Choose how the platform handles your key:",
       "choice": "How your model key is handled",
       "tradeoff": "Not saved: keep this page open during evaluations. Saved: stored encrypted and deleted automatically after the results are verified.",
       "stored": "Save encrypted on the server",
-      "stored_help": "The key is stored encrypted on the server, so you can close this page during evaluation. It is deleted automatically once the competition has ended and the results are verified.",
+      "stored_help": "The key is stored encrypted on the server, so you can close this page during evaluation. It is deleted automatically after the hidden final results are published and verified.",
       "relay": "Do not save (default)",
       "relay_help": "The key stays only in this page and is never stored on the server. Keep this page open until each evaluation finishes; model calls fail while it is closed. If your team is verified as a top team, you must also open this page at the time agreed with the organizers.",
       "relay_deletes": "Choosing this deletes the saved key.",
@@ -1767,7 +1767,7 @@
       "csv": "Upload a CSV result",
       "project": "Submit a complete project",
       "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board.",
-      "project_help": "Submit a GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition. Scenarios are generated from Playground data; scores go to the separate complete-project board. 5 evaluations per team per day; bring your own API key if you use a model."
+      "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
   "subs": {
@@ -1987,7 +1987,7 @@
       },
       {
         "q": "Which languages can I use?",
-        "a": "Any language is allowed. The Python runner exchanges JSONL messages with your project over stdin/stdout. Submit a public repository or private project ZIP, or use the official local runner and upload its CSV. The practice starter kit remains available."
+        "a": "Any language is allowed. The Python runner exchanges JSONL messages with your project over stdin/stdout. Submit a public repository or private project ZIP; the formal competition accepts no CSV. The practice starter kit remains available."
       },
       {
         "q": "Can I use an LLM or a commercial API?",
@@ -1995,7 +1995,7 @@
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each scenario publishes global_wallclock_seconds (7200 s on the reference scenario, less on short ones). It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
+        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message): 7200 s on the reference scenario, less on short ones; cloud runs of complete projects get 5 hours per scenario. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
       },
       {
         "q": "What is hidden on the competition scenarios?",
@@ -2007,7 +2007,7 @@
       },
       {
         "q": "Is the leaderboard score the final result?",
-        "a": "The online competition board (October 5–7) determines the ranking. Organizers verify the top entries for rule compliance before awards are confirmed on October 17."
+        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated once on one hidden scenario, and only that score decides the final ranking; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams before awards are confirmed on October 17."
       },
       {
         "q": "Do I have to attend in Shenzhen?",
@@ -2019,7 +2019,7 @@
       },
       {
         "q": "Must I open-source my agent?",
-        "a": "Not required. Before awards are confirmed, organizers may ask top teams for their agent code and regenerate the decisions.csv with it to reproduce the result."
+        "a": "Not required. Before awards are confirmed, organizers may re-run top teams' final versions and ask for the complete code and the external services and models used, to reproduce the result."
       },
       {
         "q": "What happens if my agent crashes or times out?",
@@ -2048,7 +2048,7 @@
   "rules_page": {
     "kicker": "Rules",
     "title": "Competition rules and scoring",
-    "version": "Rules version 1.0 · 2026-09-09",
+    "version": "Rules version 1.1 · 2026-09-27",
     "phases_title": "Phase configuration (live)",
     "daily": "submissions/day",
     "board": "board",

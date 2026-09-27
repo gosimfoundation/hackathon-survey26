@@ -63,7 +63,7 @@ const words = computed(() => pick({
   testPassed: 'Public scenario test passed', testResult: 'Download public test result', projectDownload: 'Download this project version', phase: 'Evaluation phase', evaluate: 'Evaluate this version',
   batches: 'Evaluations', local: 'Start local CSV session', localHelp: 'Run locally with the same step-by-step information. Upload the resulting decisions.csv after the session.',
   download: 'Download private result', uploadCsv: 'Upload matching CSV', average: 'Combined score',
-  api: 'Model APIs', apiHelp: 'Model use is optional. Team keys stay on the server. Set the model parameter to the call name below; OPENAI_BASE_URL and OPENAI_API_KEY are provided for each run. Each run and provider has separate limits.', callName: 'Model call name',
+  api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Team keys stay on the server. Set the model parameter to the call name below; OPENAI_BASE_URL and OPENAI_API_KEY are provided for each run. Each run and provider has separate limits.', callName: 'Model call name',
   shared: 'Organizer API', own: 'Team API', modelNames: 'Model names, separated by commas', endpoint: 'API endpoint', key: 'API key',
   apiName: 'API name', edit: 'Edit', limit: 'Daily token limit', saveKey: 'Save encrypted key', disable: 'Disable', enabled: 'Enabled', disabled: 'Disabled',
   evidence: 'Design award evidence', evidenceHelp: 'Describe the architecture and reproducible steps. This does not change performance scores.',
@@ -105,7 +105,7 @@ const words = computed(() => pick({
   check: '我已检查运行设置和适配代码，确认使用这个版本。', approve: '确认版本', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
   phase: '评测赛程', evaluate: '评测此版本', batches: '评测记录', local: '启动本地 CSV 会话',
   localHelp: '在本机运行，按步骤获得相同信息；运行结束后上传生成的 decisions.csv。', download: '下载私有结果',
-  uploadCsv: '上传匹配的 CSV', average: '综合成绩', api: '模型 API', apiHelp: '模型调用可选，队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
+  uploadCsv: '上传匹配的 CSV', average: '综合成绩', api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
   shared: '主办方接口', own: '队伍接口', modelNames: '模型名称，用逗号分隔', endpoint: 'API 地址', key: 'API 密钥',
   apiName: '接口名称', edit: '修改', limit: '每天最多使用的 token 数', saveKey: '加密保存密钥', disable: '停用', enabled: '已启用', disabled: '已停用',
   evidence: '设计奖材料', evidenceHelp: '说明项目架构和复现步骤；这里不影响实际成绩。', codeUrl: '代码或文档链接（选填）',
@@ -459,7 +459,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p>{{ entry.kind }} · {{ statuses[entry.status] ?? entry.status }} · {{ entry.code }}</p><pre v-if="entry.log">{{ entry.log }}</pre>
         </article><button class="btn sm mt-3" @click="diagnostics = null">{{ words.close }}</button>
       </section>
-      <p class="help mt-6">{{ pick('Model use is optional. Bring your own API; organizer credits are not provided. Never include a permanent key in your repository or ZIP.','模型调用可选，需要时请自备 API，平台不提供额度。不要把永久密钥放进仓库或 ZIP。') }}</p>
+      <p class="help mt-6">{{ pick('Bring your own model API; organizer credits are not provided. Awards require LLM-driven agent techniques in at least two stages (see Rules). Never include a permanent key in your repository or ZIP.','请自备模型 API，平台不提供额度。评奖要求至少两个环节采用大模型驱动的智能体技术（见规则）。不要把永久密钥放进仓库或 ZIP。') }}</p>
     </template>
   </section>
 </template>

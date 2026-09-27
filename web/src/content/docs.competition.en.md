@@ -2,11 +2,11 @@
 
 Open [Participate](/compete) to upload a complete project. Submissions accept a public GitHub repository URL or a private ZIP up to 50 MB. Any language is allowed. The platform's Python runner connects to your program; it does not require your project to be Python.
 
-The source revision, launch configuration and any adapter are fixed and tested. You review them before confirming the version. Adaptation proposes interface files; it does not silently replace your algorithm. Model calls are optional.
+The source revision, launch configuration and any adapter are fixed and tested. You review them before confirming the version. Adaptation proposes interface files; it does not silently replace your algorithm. The platform does not require a model call in every round, but awards require agent (LLM-driven) techniques in at least two stages; see [Rules](/rules), section 3.
 
 [Minimal complete project](https://github.com/BH3GEI/observer-project-example)
 
-The starter kit uploads as is: run `python3 pack_agent.py` in the kit folder; the resulting `my-agent.zip` already has `observer.project.json` at its root. Upload it as a private ZIP on Participate. The bundled deterministic agent needs no model key.
+The starter kit uploads as is: run `python3 pack_agent.py` in the kit folder; the resulting `my-agent.zip` already has `observer.project.json` at its root. Upload it as a private ZIP on Participate. The bundled deterministic agent needs no model key; it is fine for trying the flow, but on its own it does not meet the agent requirement for awards.
 
 ## 2. Launch configuration
 
@@ -43,7 +43,7 @@ The platform records the source revision and launch configuration, tests the int
 
 Uploading and confirming do not use evaluations (up to 10 uploads per team per day). A version that was never evaluated can be withdrawn: it is hidden and can no longer be confirmed or evaluated. A version still being prepared can be withdrawn once preparation finishes.
 
-Each click on "Evaluate this version" uses one of the day's evaluations. One evaluation runs every scenario of the phase once; its score is the average of those scenarios, and the online board keeps the team's best complete evaluation. Within the daily limit you may evaluate as often as you like; choose your final version (section 6) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC and the page shows how many evaluations are left today.
+Each click on "Evaluate this version" uses one of the day's evaluations (one batch). One evaluation runs each of the three formal scenarios once, with a runtime limit of 3600 seconds per scenario; its score is the average of the three, and the online board keeps the team's best complete evaluation. Each team has 10 evaluations per day. Within the daily limit you may evaluate as often as you like; choose your final version (section 6) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
 
 ## 5. Optional personal model APIs
 
@@ -52,13 +52,13 @@ Bring your own API and quota if your algorithm needs a model. The platform does 
 Enter a supported HTTPS endpoint, model and key in Participate and choose how the key is handled. Either way, the key never enters project files, run artifacts or logs.
 
 - **Do not save (default)**: the key stays only in your open page and is never stored on the server. Keep the page open until each evaluation finishes; model calls fail while it is closed. **The hidden final evaluation cannot use such a key: teams whose program calls a large model must switch to “Save encrypted” before the competition ends, otherwise model calls fail in the hidden final evaluation.** If your team is verified, open the page at the time agreed with the organizers.
-- **Save encrypted (opt-in)**: the key is stored encrypted on the server, used only for evaluation and verification, and deleted automatically once the competition has ended and the results have been verified. The page does not need to stay open during evaluation; you can replace or delete a saved key at any time.
+- **Save encrypted (opt-in)**: the key is stored encrypted on the server, used only for evaluation and verification, and deleted automatically after the hidden final results are published and verified. The page does not need to stay open during evaluation; you can replace or delete a saved key at any time.
 
 Switching from "save encrypted" to "do not save" deletes the stored key immediately.
 
 Your program calls the model through the environment variables `OPENAI_BASE_URL` and `OPENAI_API_KEY`: the platform's OpenAI-compatible proxy (chat completions) and a temporary run credential, not your key. The proxy uses the model you set here and replaces the model name your program sends.
 
-Deterministic algorithms do not need a key. Explanation length does not increase the performance score.
+Deterministic algorithms do not need a key, but awards require agent techniques in at least two stages (Rules, section 3). Explanation length does not increase the performance score.
 
 ## 6. Fixed scenarios, final version and the hidden final
 
@@ -66,9 +66,9 @@ The online competition evaluates on three **fixed** formal scenarios (A, B and C
 
 A batch includes all three scenarios and ranks only when they all finish. The **online board** keeps each team's best complete batch, without mixing the best scenario scores from different attempts. It updates live and is for feedback: it does **not** decide the final ranking.
 
-**Final version.** In Participate, under "Final version", any team member can mark one confirmed version as the team's final version and change or clear the choice until the online competition ends (Oct 7 23:59 UTC+8). After that it is locked. Without a choice, the version of your best evaluation on the online board is used. A chosen version cannot be withdrawn.
+**Final version.** In Participate, under "Final version", any team member can mark one confirmed version as the team's final version and change or clear the choice until the online competition ends (Oct 7 23:59 UTC+8). After that it is locked. Without a choice, the version of your best online batch is used. A chosen version cannot be withdrawn.
 
-**Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on one hidden scenario that nobody has seen. It does not use your daily evaluations. Its data, run logs and results stay private until the organizers publish the final results, and **only this hidden score decides the final ranking**. No team page is open during it: **if your program calls a large model, switch the model API to “Save encrypted” before the competition ends; otherwise model calls will fail in the hidden final evaluation.** Teams that do not use a model are unaffected.
+**Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on one hidden scenario that nobody has seen. It does not use your daily evaluations. Its data, run logs and results stay private until the organizers publish the final results, and **only this hidden score decides the final ranking**. No team page is open during it: **if your program calls a large model, switch the model API to “Save encrypted” before the competition ends; otherwise model calls will fail in the hidden final evaluation.** Teams that do not use a model are unaffected. Exact ties on the hidden score are settled by the organizers and announced with the results.
 
 ## 7. Results and reproduction
 
