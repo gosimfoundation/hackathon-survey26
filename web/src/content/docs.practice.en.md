@@ -1,6 +1,6 @@
 ## 1. Current competition
 
-The current competition is Playground. Run an algorithm, upload results and inspect your score. The platform chooses the competition automatically. The formal competition (October 5–7, Beijing time) evaluates complete projects only; no CSV.
+The current competition is Playground. Run an algorithm, upload results and inspect your score. The platform chooses the competition automatically.
 
 ## 2. Registration and teams
 

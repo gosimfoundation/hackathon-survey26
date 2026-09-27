@@ -428,7 +428,7 @@
           "desc": "Comment le score se calcule et quelles pénalités s'appliquent."
         }
       ],
-      "cardNote": "Les formats d'entrée-sortie officiels et le contrat d'interface sont définis par la carte de mission. Les scénarios publics de développement sont sur la page Ressources ; les scénarios de la compétition restent privés et les observations arrivent pas à pas."
+      "cardNote": "Les formats d'entrée-sortie officiels et le contrat d'interface sont définis par la carte de mission. Les scénarios publics de développement sont sur la page Ressources."
     },
     "participate": {
       "kicker": "03 / Participer",

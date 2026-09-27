@@ -302,7 +302,7 @@
           "desc": "分数怎么算，惩罚项有哪些。"
         }
       ],
-      "cardNote": "权威的输入输出格式与接口约定，一律以任务卡为准。公开开发场景见「资源」页；正式比赛场景保密，评测时逐步提供观测。"
+      "cardNote": "权威的输入输出格式与接口约定，一律以任务卡为准。公开开发场景见「资源」页。"
     },
     "participate": {
       "kicker": "03 / 如何参赛",
@@ -1975,7 +1975,7 @@
     "items": [
       {
         "q": "我编程基础一般，最少要做什么？",
-        "a": "下载入门包，双击 run_baseline，然后只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。改完再双击 run_baseline，把生成的 run_output/decisions.csv 拖到「提交」页即可（练习赛）。正式比赛提交完整项目：运行 python3 pack_agent.py 打出 ZIP 上传。macOS 自带的 Python 就够用，Windows 从 python.org 装 Python 3.12。"
+        "a": "下载入门包，双击 run_baseline，然后只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。改完再双击 run_baseline，把生成的 run_output/decisions.csv 拖到「提交」页即可。macOS 自带的 Python 就够用，Windows 从 python.org 装 Python 3.12。"
       },
       {
         "q": "需要天文背景吗？",
@@ -1995,7 +1995,7 @@
       },
       {
         "q": "什么是全局时钟？",
-        "a": "每个场景有一个总时长（global_wallclock_seconds，随 initialize 消息下发）。云端评测时正式场景每个 3600 秒，Playground 完整项目每个场景 5 小时；本地参考场景为 7200 秒。它在 initialize 消息后开始并覆盖全部决策——包括快照序列化、你的思考时间与解析。没有单次决策限制。到期时进程被停止，已提交动作照常评分，并适用未完成 必做天区、可选天区缺额与到期请求的终局惩罚。"
+        "a": "每个场景有一个总时长（global_wallclock_seconds，随 initialize 消息下发）：参考场景 7200 秒，短场景更少；完整项目云端评测时每个场景 5 小时。它在 initialize 消息后开始并覆盖全部决策——包括快照序列化、你的思考时间与解析。没有单次决策限制。到期时进程被停止，已提交动作照常评分，并适用未完成 必做天区、可选天区缺额与到期请求的终局惩罚。"
       },
       {
         "q": "比赛场景隐藏了什么？",

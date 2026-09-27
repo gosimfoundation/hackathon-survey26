@@ -302,7 +302,7 @@
           "desc": "How the score is computed and which penalties apply."
         }
       ],
-      "cardNote": "The authoritative input and output formats and the interface contract are defined by the mission card. The public development scenarios are on Resources; the formal competition scenarios stay private and arrive one observation at a time."
+      "cardNote": "The authoritative input and output formats and the interface contract are defined by the mission card. The public development scenarios are on Resources."
     },
     "participate": {
       "kicker": "03 / How to participate",
@@ -1975,7 +1975,7 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Download the kit, double-click run_baseline, and edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. Double-click run_baseline again and drop the run_output/decisions.csv it writes onto the Submit page (Playground). The formal competition takes complete projects: python3 pack_agent.py builds the ZIP to upload. macOS's built-in Python is enough; Windows needs Python 3.12 from python.org."
+        "a": "Download the kit, double-click run_baseline, and edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. Double-click run_baseline again and drop the run_output/decisions.csv it writes onto the Submit page. macOS's built-in Python is enough; Windows needs Python 3.12 from python.org."
       },
       {
         "q": "Do I need an astronomy background?",
@@ -1995,7 +1995,7 @@
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message). In cloud evaluations it is 3600 s per formal scenario and 5 hours per scenario for Playground complete projects; locally the reference scenario uses 7200 s. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
+        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message): 7200 s on the reference scenario, less on short ones; cloud runs of complete projects get 5 hours per scenario. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
       },
       {
         "q": "What is hidden on the competition scenarios?",
