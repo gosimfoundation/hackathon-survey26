@@ -9,6 +9,7 @@ import { join } from 'node:path'
  * Route (relative to the app base) → page key in web/src/i18n/zh.json `meta.pages`,
  * the same key the router gives `applyDocumentMeta`, so the static title matches the
  * one the app sets after it starts. Redirect-only routes keep old links working.
+ * `leaderboard/<slug>` pages cover the public boards linked from the site (phase slugs).
  */
 export const STATIC_ROUTES = {
   start: 'start',
@@ -21,6 +22,7 @@ export const STATIC_ROUTES = {
   leaderboard: 'leaderboard',
   'leaderboard/practice': 'leaderboard',
   'leaderboard/online': 'leaderboard',
+  'leaderboard/practice-projects': 'leaderboard',
   announcements: 'announcements',
   teammates: 'teammates',
   register: 'register',

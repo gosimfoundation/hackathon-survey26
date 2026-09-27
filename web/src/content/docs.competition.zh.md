@@ -23,7 +23,13 @@
 }
 ```
 
-根据语言选择容器镜像和构建命令。`run` 和每条 `build` 命令都使用参数数组，评测时镜像会固定到具体摘要。不要把密钥写入配置或项目文件。
+根据语言选择容器镜像和构建命令。`run` 和每条 `build` 命令都使用参数数组（`build` 是命令数组的数组），评测时镜像会固定到具体摘要。不要把密钥写入配置或项目文件。Rust 示例：
+
+```json
+{"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
+```
+
+**构建与联网：**`build` 命令在程序启动前执行，使用同一个镜像，**可以访问互联网**，因此 pip、npm、cargo 等可以在构建时下载依赖。构建以非 root 用户运行，系统目录只读，时限 10 分钟；只有项目目录（`/workspace`）和 `/tmp`（256 MB）可写，请把依赖装进项目目录：pip 用 `--target .deps` 并设置 `"environment": {"PYTHONPATH": ".deps"}`；npm 设置 `"NPM_CONFIG_CACHE": "/tmp/npm-cache"`（`node_modules` 留在项目里）；cargo 设置 `"CARGO_HOME": "/workspace/.cargo"`。建议提交锁文件，保证每次构建使用相同版本的依赖。
 
 ## 3. 每轮请求对应一个决策
 

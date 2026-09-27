@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { loadPhases, phaseStatus, type Phase } from '../lib/data'
-import { startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhase, type ScheduledPhaseRow } from '../lib/phaseSchedule'
+import { EVENT_TIME_ZONE, startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhase, type ScheduledPhaseRow } from '../lib/phaseSchedule'
 import { useI18n } from './useI18n'
 
 // One shared fetch for every clock on the page (header + hero); refreshed at most once a minute.
@@ -76,15 +76,15 @@ export function usePhaseClock() {
   const usingFallback = computed(() => false)
   const nextStartsAt = computed<string | null>(() => next.value?.starts_at ?? current.value?.ends_at ?? null)
   const countdown = computed(() => countdownParts(nextStartsAt.value, now.value))
-  /** "10月5日开赛 · 还有 9 天" in the viewer's own time zone. */
+  /** "10月5日开赛（北京时间） · 还有 9 天": the event's own time zone, as in the brief and rules. */
   const nextStart = computed(() => {
     const at = next.value?.starts_at
     if (!next.value || !at) return null
     const left = timeLeft(at, now.value)
     return {
       name: pick(next.value.name_en, next.value.name_zh),
-      day: tf('phase_clock.starts_on', { date: startDay(at, locale.value) }),
-      moment: startMoment(at, locale.value),
+      day: tf('phase_clock.starts_on', { date: startDay(at, locale.value, EVENT_TIME_ZONE) }),
+      moment: startMoment(at, locale.value, EVENT_TIME_ZONE),
       left: left.unit === 'soon' ? t('phase_clock.left_soon') : tf(`phase_clock.left_${left.unit}`, { n: left.n }),
     }
   })

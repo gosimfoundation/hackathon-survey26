@@ -521,7 +521,7 @@
       "note": "Fully online · solo entry supported",
       "current_chip": "Current stage",
       "done_chip": "✓ Completed",
-      "locked_chip": "Upcoming",
+      "locked_chip": "Later step",
       "levels": [
         {
           "title": "Register",
@@ -1784,6 +1784,7 @@
     "score": "Score",
     "by": "By",
     "empty": "No submissions yet.",
+    "empty_csv": "No CSV submissions yet.",
     "detail_title": "Submission #{id}",
     "file": "File",
     "sha": "SHA-256",
@@ -2380,7 +2381,7 @@
     "seconds": "s",
     "countdown_aria": "Countdown to the next phase",
     "none_scheduled": "No further phase scheduled",
-    "starts_on": "starts {date}",
+    "starts_on": "starts {date} (Beijing time)",
     "left_days": "{n} days to go",
     "left_day": "1 day to go",
     "left_hours": "{n} h to go",

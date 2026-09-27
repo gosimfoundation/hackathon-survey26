@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
+import { supabase } from '../../lib/supabase'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
@@ -18,6 +19,8 @@ const loading = ref(true), busy = ref(false), error = ref(''), notice = ref('')
 // A completed request keeps its button disabled until the list shows its result,
 // so a second click (or a failed refresh) cannot create a duplicate.
 const locked = ref(new Set<string>()), showWithdrawn = ref(false), targetBatch = ref('')
+// The action a click started, until its request and the refreshed list are back: its button reads "Working…".
+const pending = ref('')
 const form = ref({ title: '', kind: 'repository', url: '' })
 const selectedFile = ref<File | null>(null), review = ref<ProjectRevision | null>(null)
 const reviewPanel = ref<HTMLElement | null>(null)
@@ -178,8 +181,18 @@ function errorMessage(e: unknown) {
   }
   return code === 'cancelled' ? '' : messages[code] ?? words.value.failed
 }
+// Scenario names for the runs of each evaluation. Only listed scenarios are readable; others stay unnamed.
+const scenarioNames = ref<Record<string, { slug: string; name: string }>>({})
+async function loadScenarioNames() {
+  const ids = [...new Set((data.value?.batches ?? []).flatMap(b => b.observer_runs.map(run => run.scenario_id)))]
+    .filter(id => id && !(id in scenarioNames.value))
+  if (!ids.length) return
+  const { data: rows } = await supabase.from('scenarios').select('id,slug,name').in('id', ids)
+  scenarioNames.value = { ...scenarioNames.value, ...Object.fromEntries((rows ?? []).map(row => [row.id, { slug: row.slug, name: row.name }])) }
+}
 async function reload() {
   data.value = await portal<PortalData>('list')
+  void loadScenarioNames().catch(() => {})
   locked.value = new Set()
   modeChoice.value = modelMode.value
   await personal.refresh()
@@ -190,12 +203,12 @@ async function reload() {
 }
 async function action(work: () => Promise<void>, success = words.value.done, key = '') {
   if (busy.value || (key && locked.value.has(key))) return
-  busy.value = true; error.value = ''; notice.value = ''
-  try { await work() } catch (e) { error.value = errorMessage(e); busy.value = false; return }
+  busy.value = true; pending.value = key; error.value = ''; notice.value = ''
+  try { await work() } catch (e) { error.value = errorMessage(e); busy.value = false; pending.value = ''; return }
   // The request succeeded even if the refresh below fails; never invite a retry.
   if (key) locked.value.add(key)
   notice.value = success
-  try { await reload() } catch { /* the periodic refresh retries and unlocks */ } finally { busy.value = false }
+  try { await reload() } catch { /* the periodic refresh retries and unlocks */ } finally { busy.value = false; pending.value = '' }
 }
 function submit() {
   const url = form.value.kind === 'repository' ? form.value.url : null
@@ -310,7 +323,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p id="model-mode-stored-help" class="help">{{ t('submit.model_api.stored_help') }}</p>
         </fieldset>
         <p class="help mt-4">{{ t('submit.model_api.usage') }}</p>
-        <template v-if="modelMode === 'stored'">
+        <!-- The form follows the choice at once; a refused change resets the choice (chooseMode). -->
+        <template v-if="modeChoice === 'stored'">
           <p v-if="modelLimits" class="help">{{ tf(modelLimits.key, modelLimits.params) }}</p>
           <div v-if="savedModel && !replacingKey" class="mt-4" data-testid="team-model-saved">
             <h3>{{ t('submit.model_api.saved_title') }}</h3>
@@ -369,7 +383,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="r.error && !r.archived_at" class="errors" role="status" data-testid="revision-error">{{ revisionErrorText(r.error, locale) }}<template v-if="r.status === 'failed' && r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></span>
             <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
-            <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" @click="withdraw(r.id)">{{ words.withdraw }}</button>
+            <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" :aria-busy="pending === 'withdraw:'+r.id" @click="withdraw(r.id)">{{ pending === 'withdraw:'+r.id ? words.working : words.withdraw }}</button>
             <button type="button" class="log-link" :disabled="busy" @click="showLogs({ revision_id: r.id })">{{ words.logs }}</button>
           </div>
         </article>
@@ -412,7 +426,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
-            <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" @click="evaluate(v.revision.id)">{{ v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
+            <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" :aria-busy="pending === 'evaluate:'+v.revision.id" @click="evaluate(v.revision.id)">{{ pending === 'evaluate:'+v.revision.id ? words.working : v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
           </div>
         </template>
       </section>
@@ -444,6 +458,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <div v-for="run in b.observer_runs" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
+            <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.name" data-testid="run-scenario">{{ scenarioNames[run.scenario_id]!.slug }}</span>
             <span class="pill">{{ statuses[run.status] ?? run.status }}</span>
             <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>

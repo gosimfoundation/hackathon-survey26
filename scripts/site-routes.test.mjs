@@ -14,9 +14,9 @@ test('every static route of the app router has a static page with a known title'
   for (const path of ['rules', 'leaderboard', 'vision', 'login', 'forgot', 'submit', 'projects', 'admin/settings']) {
     assert.ok(routerStaticPaths(router).includes(path), path)
   }
-  // Parameterised pages stay on the 404 fallback; the two public boards get their own page.
+  // Parameterised pages stay on the 404 fallback; the public boards get their own page.
   assert.ok(!routerStaticPaths(router).some(path => path.includes(':')))
-  assert.ok('leaderboard/practice' in STATIC_ROUTES && 'leaderboard/online' in STATIC_ROUTES)
+  for (const board of ['practice', 'practice-projects', 'online']) assert.ok(`leaderboard/${board}` in STATIC_ROUTES, board)
 })
 
 test('a static route added to the router without a page fails the check', () => {

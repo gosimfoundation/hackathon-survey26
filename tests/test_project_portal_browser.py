@@ -114,12 +114,17 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         evaluate.get_by_role('button',name='Evaluate this version',exact=True).click()
         expect(page.get_by_role('status').filter(has_text='Evaluation queued.')).to_be_visible(timeout=15000)
         batch=query(uri,"select id from public.observer_batches where revision_id=%s and purpose='formal'",(revision,))[0][0]
-        expect(evaluate.get_by_role('button',name='Evaluate this version',exact=True)).to_be_disabled()
+        # Disabled from the click on (reading "Working…" until the list is back), then while the evaluation is active.
+        expect(evaluate.get_by_test_id('project-evaluate-button')).to_be_disabled()
+        expect(evaluate.get_by_test_id('project-evaluate-button')).not_to_have_text('Working…',timeout=15000)
+        expect(evaluate.get_by_test_id('project-evaluate-button')).to_be_disabled()
         # A platform failure is labelled and refunded; retrying it is not a repeat.
         query(uri,"update public.observer_runs set status='failed',error='engine_job_failed' where batch_id=%s",(batch,))
         query(uri,'select private.observer_finalize_batch(%s)',(batch,))
         page.get_by_role('button',name='Refresh',exact=True).click()
         expect(page.locator('#batch-'+str(batch)).get_by_test_id('batch-refunded')).to_have_text('Not counted toward the daily limit',timeout=15000)
+        # Each run of an evaluation names its scenario.
+        expect(page.locator('#batch-'+str(batch)).get_by_test_id('run-scenario')).to_have_text(str(s['scenario']))
         expect(evaluate.get_by_test_id('evaluation-quota')).to_contain_text('Evaluations left today: 2')
         evaluate.get_by_role('button',name='Evaluate this version',exact=True).click()
         expect(page.get_by_role('status').filter(has_text='Evaluation queued.')).to_be_visible(timeout=15000)
@@ -179,6 +184,8 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         personal=models.get_by_test_id('personal-model-settings')
         expect(personal).to_contain_text('Keep this page open until each evaluation finishes',timeout=15000)
         expect(models).to_contain_text('open this page at the time agreed with the organizers')
+        # The form follows the choice at once; the notice confirms the server deleted the key.
+        expect(page.get_by_role('status').filter(has_text='Saved key deleted.')).to_be_visible(timeout=15000)
         assert query(uri,'select count(*) from private.observer_team_models where team_id=%s',(s['team'],))==[(0,)]
         assert query(uri,"select count(*) from private.observer_providers where team_id=%s and encrypted_key<>''",(s['team'],))==[(0,)]
         personal.get_by_test_id('personal-model-endpoint').fill(suggested)
@@ -196,6 +203,7 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         expect(page.get_by_test_id('team-model-form')).to_be_visible(timeout=15000)
         expect(page.get_by_test_id('personal-model-settings')).to_have_count(0)
         expect(page.get_by_text('Keep this page open until each evaluation finishes, including')).to_have_count(0)
+        expect(page.get_by_role('status').filter(has_text='Keys will be saved encrypted on the server.')).to_be_visible(timeout=15000)
         for lang,title in (('fr','API de modèle (facultatif)'),('ja','モデル API（任意）'),('zh','模型 API（可选）')):
             page.goto(portal_site+'/projects?lang='+lang)
             expect(page.get_by_test_id('model-api-settings').get_by_role('heading',name=title,exact=True)).to_be_visible(timeout=15000)

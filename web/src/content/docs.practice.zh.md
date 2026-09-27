@@ -35,11 +35,17 @@ CSV 列固定为 `decision_id, slot_id, action, tile_id, program, request_id, re
 {"schema_version": "observer-project-v1", "image": "python:3.12-slim", "run": ["python3", "-u", "agent.py"]}
 ```
 
-Node.js：`"image": "node:22-slim", "run": ["node", "agent.js"]`。Rust：`"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]`（`build` 是命令数组的数组）。程序从 stdin 逐行读 JSON 消息、向 stdout 逐行写回答，协议见入门包 `SKILL.md`；日志请写到 stderr，评测后会出现在结果包的 `agent.log` 里。
+Node.js：`"image": "node:22-slim", "run": ["node", "agent.js"]`。Rust：`"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]`（`build` 是命令数组的数组）。程序从 stdin 逐行读 JSON 消息、向 stdout 逐行写回答，协议见入门包 `SKILL.md`；日志请写到 stderr，评测后会出现在结果包的 `agent.log` 里。完整的 Rust 示例：
+
+```json
+{"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
+```
+
+**构建与联网：**`build` 命令在程序启动前执行，使用同一个镜像，**可以访问互联网**，因此 pip、npm、cargo 等可以在构建时下载依赖。构建以非 root 用户运行，系统目录只读，时限 10 分钟；只有项目目录（`/workspace`）和 `/tmp`（256 MB）可写，请把依赖装进项目目录：pip 用 `--target .deps` 并设置 `"environment": {"PYTHONPATH": ".deps"}`；npm 设置 `"NPM_CONFIG_CACHE": "/tmp/npm-cache"`（`node_modules` 留在项目里）；cargo 设置 `"CARGO_HOME": "/workspace/.cargo"`。建议提交锁文件，保证每次构建使用相同版本的依赖。
 
 ## 5. 数据与评分
 
-`config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求。公开文件可从资源页下载。当前练习场景使用原有 `participant-agent-protocol-v1` 合约，已有成绩与回放保持不变。
+`config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求。公开文件可从资源页下载。用入门包在本地运行当前练习场景时仍使用原有 `participant-agent-protocol-v1` 合约，已有成绩与回放保持不变；完整项目的云端评测一律使用 `participant-agent-protocol-v2`（日志里显示的就是这个版本），回答时沿用请求里的 `protocol_version` 即可。入门包自带的智能体两个版本都支持。
 
 当前快照提供可用候选、天气与进度。`observe` 观测，`wait` 等待；平台和入门包使用同一评分器。科学分、项目加成、请求奖励与各项扣分见[规则](/rules)，精确公式和常数以场景配置与公开评分器为准。
 
