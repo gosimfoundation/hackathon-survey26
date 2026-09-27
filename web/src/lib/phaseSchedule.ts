@@ -37,8 +37,11 @@ export function timeLeft(startsAt: string, now: number): TimeLeft {
   return hours >= 1 ? { unit: 'hours', n: hours } : { unit: 'soon', n: 0 }
 }
 
+/** Event dates are announced in Beijing time (the online competition: October 5–7, Beijing time). */
+export const EVENT_TIME_ZONE = 'Asia/Shanghai'
+
 const LOCALE_TAGS: Record<string, string> = { zh: 'zh-CN', en: 'en', ja: 'ja-JP', fr: 'fr-FR' }
-/** The start day in the viewer's own time zone ("10月5日", "October 5", "5 octobre"). */
+/** The start day in `timeZone` (default: the viewer's own) ("10月5日", "October 5", "5 octobre"). */
 export function startDay(startsAt: string, locale: string, timeZone?: string): string {
   return new Intl.DateTimeFormat(LOCALE_TAGS[locale] ?? locale, { month: 'long', day: 'numeric', timeZone }).format(new Date(startsAt))
 }

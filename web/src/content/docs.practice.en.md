@@ -35,11 +35,17 @@ The project root must contain `observer.project.json`, which tells the platform 
 {"schema_version": "observer-project-v1", "image": "python:3.12-slim", "run": ["python3", "-u", "agent.py"]}
 ```
 
-Node.js: `"image": "node:22-slim", "run": ["node", "agent.js"]`. Rust: `"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]` (`build` is a list of command arrays). The program reads one JSON message per line on stdin and writes one answer per line on stdout (protocol in the kit's `SKILL.md`); write logs to stderr, they appear as `agent.log` in the result ZIP.
+Node.js: `"image": "node:22-slim", "run": ["node", "agent.js"]`. Rust: `"image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"]` (`build` is a list of command arrays). The program reads one JSON message per line on stdin and writes one answer per line on stdout (protocol in the kit's `SKILL.md`); write logs to stderr, they appear as `agent.log` in the result ZIP. A complete Rust example:
+
+```json
+{"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
+```
+
+**Build and internet access:** the `build` commands run before your program starts, in the same image and with internet access, so package managers can download dependencies (pip, npm, cargo and others). The build runs as a non-root user on a read-only system with a 10-minute limit; only the project folder (`/workspace`) and `/tmp` (256 MB) are writable, so install into the project folder: pip with `--target .deps` plus `"environment": {"PYTHONPATH": ".deps"}`; npm with `"NPM_CONFIG_CACHE": "/tmp/npm-cache"` (`node_modules` stays in the project); cargo with `"CARGO_HOME": "/workspace/.cargo"`. Commit a lock file so every build uses the same dependency versions.
 
 ## 5. Data and scoring
 
-`config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests. Public files are downloadable from Resources. Current practice scenarios retain the original `participant-agent-protocol-v1` contract; existing scores and replays are preserved.
+`config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests. Public files are downloadable from Resources. Local runs of the current practice scenarios with the starter kit keep the original `participant-agent-protocol-v1` contract, so existing scores and replays are preserved. Complete-project cloud evaluations always use `participant-agent-protocol-v2` (the version in their logs): answer each request with the `protocol_version` it carries. The kit's agent accepts both.
 
 Snapshots expose available candidates, weather and progress. `observe` exposes a tile; `wait` advances time. The platform and kit use the same scorer. See [Rules](/rules) for science points, program bonuses, request rewards and penalties; the published scorer and scenario configuration define the exact formulas and constants.
 

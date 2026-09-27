@@ -521,7 +521,7 @@
       "note": "全程线上 · 支持个人参赛",
       "current_chip": "当前阶段",
       "done_chip": "✓ 已完成",
-      "locked_chip": "后续阶段",
+      "locked_chip": "后续步骤",
       "levels": [
         {
           "title": "注册报名",
@@ -1784,6 +1784,7 @@
     "score": "得分",
     "by": "提交人",
     "empty": "还没有提交。",
+    "empty_csv": "还没有 CSV 提交。",
     "detail_title": "提交 #{id}",
     "file": "文件",
     "sha": "SHA-256",
@@ -2380,7 +2381,7 @@
     "seconds": "秒",
     "countdown_aria": "距下一阶段开始的倒计时",
     "none_scheduled": "暂无后续阶段安排",
-    "starts_on": "{date}开赛",
+    "starts_on": "{date}开赛（北京时间）",
     "left_days": "还有 {n} 天",
     "left_day": "还有 1 天",
     "left_hours": "还有 {n} 小时",

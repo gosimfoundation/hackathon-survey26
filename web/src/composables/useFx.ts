@@ -71,14 +71,18 @@ export const vCountup: Directive<HTMLElement> = {
     const match = original.match(/^([^0-9]*)([\d,.]+)(.*)$/s)
     if (!match || reduced()) return
     const [, prefix, digits, suffix] = match
+    // Only a quantity counts up; a date or range ("Oct 2–17", "10.2–10.17") keeps its text.
+    if (/[\p{L}]/u.test(prefix) || /\d/.test(suffix)) return
     const target = Number(digits.replace(/,/g, ''))
     if (!Number.isFinite(target) || target === 0) return
     const decimals = digits.includes('.') ? digits.split('.')[1].length : 0
     const grouped = digits.includes(',')
-    el.textContent = `${prefix}${(0).toFixed(decimals)}${suffix}`
+    // The real value stays in place until the animation actually starts, so a page that is
+    // never scrolled to it (a screenshot, a background tab) never shows a placeholder 0.
     const observer = new IntersectionObserver(entries => {
       if (!entries.some(entry => entry.isIntersecting)) return
       observer.disconnect()
+      el.textContent = `${prefix}${(0).toFixed(decimals)}${suffix}`
       const started = performance.now()
       const duration = 1100
       const frame = (now: number) => {

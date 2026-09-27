@@ -39,7 +39,7 @@ onMounted(async () => {
       <summary v-if="competition.mode==='competition'" class="btn sm mb-5">{{ pick('Earlier submissions','查看已有提交') }}</summary>
     <SkeletonRows v-if="loading" :rows="6" :cols="6" :label="t('common.loading')" />
     <div v-else-if="!team" class="panel"><p class="text2">{{ t('submit.errors.need_team') }}</p><p class="mt-5"><router-link class="btn primary sm" to="/team">{{ t('nav.team') }} →</router-link></p></div>
-    <p v-else-if="!rows.length" class="text2">{{ t('subs.empty') }} <router-link class="accent-l" to="/compete">{{ t('dash.new_submission') }} →</router-link></p>
+    <p v-else-if="!rows.length" class="text2">{{ t('subs.empty_csv') }} <router-link class="accent-l" to="/compete">{{ t('dash.new_submission') }} →</router-link></p>
     <div v-else class="table-wrap">
       <table class="data-table">
         <thead><tr><th>{{ t('subs.id') }}</th><th>{{ t('subs.when') }}</th><th>{{ t('subs.phase') }}</th><th>{{ t('subs.kind') }}</th><th>{{ t('subs.scenario') }}</th><th>{{ t('common.status') }}</th><th class="r">{{ t('subs.score') }}</th><th class="r">{{ t('subs.base_science') }}</th><th class="r">{{ t('subs.penalties') }}</th><th class="r">{{ t('subs.tiles_done') }}</th><th>{{ t('subs.termination') }}</th><th>{{ t('subs.by') }}</th></tr></thead>

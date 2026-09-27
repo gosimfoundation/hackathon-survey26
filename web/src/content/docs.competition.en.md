@@ -23,7 +23,13 @@ Place `observer.project.json` at the project root. For example:
 }
 ```
 
-Use a suitable container image and build command for your language. `run` and each `build` command are arrays of arguments. The evaluated container image is pinned to a digest. Do not put credentials in the manifest or project files.
+Use a suitable container image and build command for your language. `run` and each `build` command are arrays of arguments (`build` is a list of command arrays). The evaluated container image is pinned to a digest. Do not put credentials in the manifest or project files. A Rust example:
+
+```json
+{"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
+```
+
+**Build and internet access:** the `build` commands run before your program starts, in the same image and with internet access, so package managers can download dependencies (pip, npm, cargo and others). The build runs as a non-root user on a read-only system with a 10-minute limit; only the project folder (`/workspace`) and `/tmp` (256 MB) are writable, so install into the project folder: pip with `--target .deps` plus `"environment": {"PYTHONPATH": ".deps"}`; npm with `"NPM_CONFIG_CACHE": "/tmp/npm-cache"` (`node_modules` stays in the project); cargo with `"CARGO_HOME": "/workspace/.cargo"`. Commit a lock file so every build uses the same dependency versions.
 
 ## 3. One decision per request
 

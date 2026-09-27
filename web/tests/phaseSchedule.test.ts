@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhaseRow } from '../src/lib/phaseSchedule.ts'
+import { EVENT_TIME_ZONE, startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhaseRow } from '../src/lib/phaseSchedule.ts'
 
 const now = Date.parse('2026-09-25T09:30:00Z')
 const row = (slug: string, starts_at: string | null, over: Partial<ScheduledPhaseRow> = {}): ScheduledPhaseRow => ({
@@ -52,4 +52,6 @@ test('the start day is shown in the viewer time zone and language', () => {
   assert.equal(startDay(start, 'fr', 'Asia/Shanghai'), '5 octobre')
   assert.equal(startDay(start, 'ja', 'Asia/Tokyo'), '10月5日')
   assert.match(startMoment(start, 'zh', 'Asia/Shanghai'), /2026年10月5日.*00:00/)
+  // The site announces the online competition as October 5–7, Beijing time.
+  assert.equal(startDay(start, 'en', EVENT_TIME_ZONE), 'October 5')
 })

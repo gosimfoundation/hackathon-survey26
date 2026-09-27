@@ -122,7 +122,7 @@
     "seconds": "秒",
     "countdown_aria": "次のフェーズ開始までのカウントダウン",
     "none_scheduled": "今後のフェーズは未定です",
-    "starts_on": "{date}開始",
+    "starts_on": "{date}開始（北京時間）",
     "left_days": "あと {n} 日",
     "left_day": "あと 1 日",
     "left_hours": "あと {n} 時間",

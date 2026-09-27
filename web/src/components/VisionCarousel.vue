@@ -218,11 +218,14 @@ function onTouchEnd(e: TouchEvent) {
 
 .carousel-dots { display: flex; flex-shrink: 0; gap: .5rem; padding-top: .3rem; }
 .carousel-dot {
+  position: relative;
   width: 1.75rem;
   height: 2px;
   background: rgba(226,234,255,.28);
   transition: background .2s;
 }
+/* The bar stays 2px thin; an invisible 24px-tall hit area makes it easy to tap. */
+.carousel-dot::before { position: absolute; inset: -11px -.25rem; content: ''; }
 .carousel-dot.is-active { background: #78a6ff; }
 .carousel-dot:focus-visible { outline: 2px solid #78a6ff; outline-offset: 3px; }
 

@@ -122,7 +122,7 @@
     "seconds": "s",
     "countdown_aria": "Compte à rebours avant la phase suivante",
     "none_scheduled": "Aucune phase à venir pour l'instant",
-    "starts_on": "début le {date}",
+    "starts_on": "début le {date} (heure de Pékin)",
     "left_days": "dans {n} jours",
     "left_day": "dans 1 jour",
     "left_hours": "dans {n} h",

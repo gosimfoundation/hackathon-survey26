@@ -71,12 +71,13 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
     errors = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.environ.get('OBSERVER_BROWSER_CHANNEL'))
-        desktop = browser.new_context(viewport=DESKTOP, timezone_id='Asia/Shanghai').new_page()
+        # The start day is always given in Beijing time, whatever the visitor's own time zone.
+        desktop = browser.new_context(viewport=DESKTOP, timezone_id='America/Los_Angeles').new_page()
         desktop.on('pageerror', lambda error: errors.append(str(error)))
         desktop.goto(portal_site + '/?lang=zh')
         stage = desktop.get_by_test_id('phase-next')
         expect(stage).to_contain_text('线上比赛', timeout=15000)
-        expect(stage).to_contain_text(f'{local.month}月{local.day}日开赛')
+        expect(stage).to_contain_text(f'{local.month}月{local.day}日开赛（北京时间）')
         expect(stage).to_contain_text('还有 9 天')
         expect(stage.locator('.phase-countdown')).to_be_visible()
         expect(stage).not_to_contain_text('内测验收')
@@ -94,6 +95,7 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
         shot(desktop, 'home-next-stage.zh.desktop')
         desktop.goto(portal_site + '/?lang=en')
         expect(desktop.get_by_test_id('phase-next')).to_contain_text('Online Competition', timeout=15000)
+        expect(desktop.get_by_test_id('phase-next')).to_contain_text(f"starts {local.strftime('%B')} {local.day} (Beijing time)")
         expect(desktop.get_by_test_id('phase-next')).to_contain_text('9 days to go')
         # The header already offers registration from md up: no floating button covers the board.
         assert desktop.get_by_test_id('register-float').count() == 0
@@ -277,5 +279,26 @@ def test_team_directory_recruiting_filter_search_and_one_line_rows(portal_site, 
         directory.get_by_test_id('team-directory-search').fill('nothing matches here')
         expect(directory.get_by_test_id('team-directory-empty').get_by_test_id('solo-team')).to_be_visible()
         shot(page, 'team-directory-empty.zh.desktop')
+        browser.close()
+    assert not errors, errors
+
+
+def test_log_out_clears_the_stored_session(portal_site, schedule):
+    """Log out forgets the session in this browser at once, also after a reload."""
+    user = person(schedule['uri'], 'Log Out Tester')
+    errors = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.environ.get('OBSERVER_BROWSER_CHANNEL'))
+        page = browser.new_context(viewport=DESKTOP).new_page()
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        login(page, portal_site, user, lang='en')
+        stored = "() => Object.keys(localStorage).filter(key => key.startsWith('sb-') && key.endsWith('-auth-token'))"
+        assert page.evaluate(stored)
+        page.get_by_test_id('nav-logout').click()
+        expect(page.get_by_test_id('nav-logout')).to_have_count(0, timeout=10000)
+        assert page.evaluate(stored) == []
+        page.reload()
+        expect(page.get_by_role('link', name='Register').first).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id('nav-logout')).to_have_count(0)
         browser.close()
     assert not errors, errors
