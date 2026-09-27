@@ -120,6 +120,29 @@ Deno.test("preparation receives only its organization repository and a bounded p
   ) assertThrows(() => validateJobPayload({ ...input, ...change }, expected, job), ProxyError);
 });
 
+Deno.test("added runner organizations prepare into their own repository only", () => {
+  for (const organization of ["AGENTIC-OBSERVER26-runner-7", "AGENTIC-OBSERVER26-runner-12"]) {
+    const expected: WorkflowIdentity = { ...identity, organization, workflow: "observer-prepare.yml" };
+    const input = {
+      kind: "prepare",
+      job_id: job,
+      revision_id: payload.run_id,
+      archive_url: "https://codeload.github.com/approved/source.zip",
+      source_digest: null,
+      repository: { full_name: organization + "/participant-" + "a".repeat(32), token: "repository-scoped-token" },
+      artifact_upload: { url: "https://storage.test/signed", path: job + "/" + payload.run_id + "/preview.zip" },
+    };
+    assertEquals(validateJobPayload(input, expected, job), input);
+    for (const other of ["AGENTIC-OBSERVER26-runner-1", "AGENTIC-OBSERVER26-runner-13"]) {
+      const moved = {
+        ...input,
+        repository: { ...input.repository, full_name: other + "/participant-" + "a".repeat(32) },
+      };
+      assertThrows(() => validateJobPayload(moved, expected, job), ProxyError);
+    }
+  }
+});
+
 Deno.test("job claim verifies workflow before obtaining or decrypting its input", async () => {
   const steps: string[] = [];
   const encrypted = await encryptCredential(JSON.stringify(payload), job, key);

@@ -3,7 +3,12 @@ import { createPrivateKey } from "node:crypto";
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "npm:jose@6.1.0";
 import type { JWTVerifyGetKey } from "npm:jose@6.1.0";
 
-export const RUNNER_ORGANIZATIONS = Array.from({ length: 6 }, (_, i) => "AGENTIC-OBSERVER26-runner-" + (i + 1));
+/** Runner organization names; which of them are usable comes from the installation table. */
+export const RUNNER_ORGANIZATION = /^AGENTIC-OBSERVER26-runner-([1-9]|1[0-2])$/;
+export const RUNNER_ORGANIZATION_PATTERN = "AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])";
+export function isRunnerOrganization(value: unknown): value is string {
+  return typeof value === "string" && RUNNER_ORGANIZATION.test(value);
+}
 export const CONTROL_REPOSITORY = "observer-control";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA = /^[0-9a-f]{40}$/;
@@ -16,12 +21,29 @@ export class GitHubError extends Error {
   }
 }
 
-export async function placement(userId: string) {
+/** Returns the participant's recorded runner organization (public.observer_placement). */
+export type Locator = (userId: string) => Promise<unknown>;
+
+export function databaseLocator(rpc: (name: string, args: Record<string, unknown>) => Promise<unknown>): Locator {
+  return (userId) => rpc("observer_placement", { p_user: userId });
+}
+
+/**
+ * A participant's organization is recorded once and never recomputed, so the
+ * private repository and every later job stay together even when runner
+ * organizations are added.
+ */
+export async function placement(userId: string, locate: Locator) {
   if (!UUID.test(userId)) throw new GitHubError("invalid_participant");
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(userId.toLowerCase())));
-  const index = new DataView(digest.buffer).getUint32(0) % RUNNER_ORGANIZATIONS.length;
+  let organization: unknown;
+  try {
+    organization = await locate(userId.toLowerCase());
+  } catch {
+    throw new GitHubError("placement_unavailable");
+  }
+  if (!isRunnerOrganization(organization)) throw new GitHubError("invalid_placement");
   return {
-    organization: RUNNER_ORGANIZATIONS[index],
+    organization,
     privateRepository: "participant-" + userId.toLowerCase().replaceAll("-", ""),
   };
 }
@@ -48,7 +70,7 @@ export function sourceRepository(input: string): string {
 
 function target(organization: string, repository: string) {
   if (
-    !RUNNER_ORGANIZATIONS.includes(organization) || !NAME.test(repository) ||
+    !isRunnerOrganization(organization) || !NAME.test(repository) ||
     repository === "." || repository === ".."
   ) throw new GitHubError("unapproved_repository");
   return organization + "/" + repository;
@@ -71,10 +93,11 @@ export class GitHubApp {
     private appId: string,
     private privateKey: string,
     private installations: Record<string, number>,
+    private locate: Locator,
     private fetcher: GitHubTransport = fetch,
   ) {
     if (
-      !/^\d+$/.test(appId) || Object.keys(installations).some((org) => !RUNNER_ORGANIZATIONS.includes(org)) ||
+      !/^\d+$/.test(appId) || Object.keys(installations).some((org) => !isRunnerOrganization(org)) ||
       Object.values(installations).some((id) => !Number.isSafeInteger(id) || id < 1)
     ) {
       throw new GitHubError("invalid_app_configuration");
@@ -122,7 +145,7 @@ export class GitHubApp {
 
   async installationToken(organization: string): Promise<string> {
     const installation = this.installations[organization];
-    if (!RUNNER_ORGANIZATIONS.includes(organization) || !installation) {
+    if (!isRunnerOrganization(organization) || !installation) {
       throw new GitHubError("organization_not_installed");
     }
     const cached = this.tokens.get(organization);
@@ -160,7 +183,7 @@ export class GitHubApp {
   }
 
   async privateParticipantRepository(userId: string): Promise<Repository> {
-    const { organization, privateRepository } = await placement(userId);
+    const { organization, privateRepository } = await placement(userId, this.locate);
     const token = await this.installationToken(organization);
     let repo: Repository;
     try {
@@ -194,7 +217,7 @@ export class GitHubApp {
   }
 
   async snapshotWriteToken(userId: string, includeWorkflows = true): Promise<string> {
-    const { organization } = await placement(userId);
+    const { organization } = await placement(userId, this.locate);
     const repo = await this.privateParticipantRepository(userId);
     // A preparation job can write exactly this participant's repository. It does
     // not receive the organization-wide installation token or administration access.
@@ -216,7 +239,7 @@ export class GitHubApp {
     url: string,
   ): Promise<{ repository: Repository; sourceCommit: string; sourceRepository: string }> {
     const source = sourceRepository(url);
-    const { organization } = await placement(userId);
+    const { organization } = await placement(userId, this.locate);
     const token = await this.installationToken(organization);
     const original: Repository = await this.request("/repos/" + source, token);
     if (original.private) throw new GitHubError("private_source_requires_zip");
@@ -321,7 +344,7 @@ export async function verifyWorkflowIdentity(
   expected: WorkflowIdentity,
   keys: JWTVerifyGetKey = actionsKeys,
 ) {
-  if (!RUNNER_ORGANIZATIONS.includes(expected.organization) || !SHA.test(expected.approvedSha)) {
+  if (!isRunnerOrganization(expected.organization) || !SHA.test(expected.approvedSha)) {
     throw new GitHubError("invalid_workflow_configuration");
   }
   let claims;

@@ -50,9 +50,22 @@ def storage(path,data=None):
         raise RuntimeError('Scenario storage request failed: HTTP '+str(exc.code)) from None
 
 
-def activation_sql(phase_id,preview_id,runtime,daily,model,scenario_count=3):
+def configured_runners():
+    # The runner list is ops/github-installations.json; a row marked enabled=false
+    # (for example a newly added organization still being verified) is not required.
+    config=json.loads((ROOT/'ops/github-installations.json').read_text())
+    orgs=[r['organization'] for r in config['installations'] if r.get('enabled',True)]
+    if not orgs or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])',o) for o in orgs):
+        raise ValueError('Invalid runner configuration')
+    return orgs
+
+
+def activation_sql(phase_id,preview_id,runtime,daily,model,scenario_count=3,runners=None):
     # Values come from existing DB metadata, never from a submitted project.
     if not 10<=runtime<=18000 or not 1<=daily<=100 or not 1<=int(scenario_count)<=10:raise ValueError('Invalid existing phase limits')
+    runners=configured_runners() if runners is None else list(runners)
+    if not runners:raise ValueError('Invalid runner configuration')
+    required='array['+','.join(q(o) for o in runners)+']::text[]'
     return f"""
 begin;
 select pg_advisory_xact_lock(hashtext('observer-competition-activation'));
@@ -61,7 +74,7 @@ do $verify$ begin
     then raise exception 'Competition phase is not available';end if;
   if exists(select 1 from public.submissions where phase_id={q(phase_id)})
     then raise exception 'Existing competition submissions require an explicit migration plan';end if;
-  if (select count(*) from private.observer_installations where enabled)<>6
+  if exists(select unnest({required}) except select organization from private.observer_installations where enabled)
     or not exists(select 1 from private.observer_dispatch_config where enabled)
     then raise exception 'Runners or dispatcher are not ready';end if;
   if (select count(*) from public.phase_scenarios where phase_id={q(phase_id)})<>{int(scenario_count)}

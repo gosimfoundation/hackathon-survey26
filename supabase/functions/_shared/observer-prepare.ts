@@ -1,6 +1,6 @@
 import { encryptCredential } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
-import { GitHubError, placement } from "./observer-github.ts";
+import { databaseLocator, GitHubError, placement } from "./observer-github.ts";
 import type { GitHubApp } from "./observer-github.ts";
 import { randomCapability } from "./observer-orchestrate.ts";
 
@@ -21,7 +21,7 @@ export async function schedulePreparations(deps: {
   const outcomes = [];
   for (const revision of revisions) {
     try {
-      const { organization, privateRepository } = await placement(revision.owner_id);
+      const { organization, privateRepository } = await placement(revision.owner_id, databaseLocator(deps.rpc));
       if (!enabled.has(organization)) throw new GitHubError("runner_not_configured");
       const repository = await deps.app.privateParticipantRepository(revision.owner_id);
       if (repository.full_name !== organization + "/" + privateRepository) throw new GitHubError("invalid_repository");

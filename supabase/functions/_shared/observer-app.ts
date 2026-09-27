@@ -1,4 +1,4 @@
-import { GitHubApp, GitHubError } from "./observer-github.ts";
+import { databaseLocator, GitHubApp, GitHubError, RUNNER_ORGANIZATION_PATTERN } from "./observer-github.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export async function configuredApp(service: SupabaseClient): Promise<GitHubApp> {
@@ -9,15 +9,21 @@ export async function configuredApp(service: SupabaseClient): Promise<GitHubApp>
     Deno.env.get("OBSERVER_GITHUB_APP_ID") ?? "",
     Deno.env.get("OBSERVER_GITHUB_APP_PEM") ?? "",
     installations,
+    databaseLocator(async (name, args) => {
+      const { data, error } = await service.rpc(name, args);
+      if (error) throw new GitHubError("placement_unavailable");
+      return data;
+    }),
   );
 }
 
+const ARCHIVE_REFERENCE = new RegExp(
+  "^github:(" + RUNNER_ORGANIZATION_PATTERN + ")\\/(participant-[0-9a-f]{32}|source-[0-9a-f]{20})@([0-9a-f]{40})$",
+);
+
 export function archiveReference(value: unknown, privateOnly = true) {
   if (typeof value !== "string") throw new GitHubError("invalid_artifact_reference");
-  const match =
-    /^github:(AGENTIC-OBSERVER26-runner-[1-6])\/(participant-[0-9a-f]{32}|source-[0-9a-f]{20})@([0-9a-f]{40})$/.exec(
-      value,
-    );
+  const match = ARCHIVE_REFERENCE.exec(value);
   if (!match || (privateOnly && !match[2].startsWith("participant-"))) {
     throw new GitHubError("invalid_artifact_reference");
   }

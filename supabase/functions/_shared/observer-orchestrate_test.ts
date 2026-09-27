@@ -1,6 +1,9 @@
 import { assertEquals, assertNotEquals, assertThrows } from "@std/assert";
 import { decryptCredential } from "./observer-model.ts";
 import { placement } from "./observer-github.ts";
+
+// Recorded placement from public.observer_placement; runner-9 is one of the added organizations.
+const locate = () => Promise.resolve("AGENTIC-OBSERVER26-runner-9");
 import { scheduleRuns } from "./observer-orchestrate.ts";
 import { validateJobPayload } from "./observer-job.ts";
 
@@ -15,7 +18,7 @@ for (const randomized of [false, true]) {
       mode + (randomized ? " randomized" : " fixed") +
         " scheduler encrypts separate capabilities and publishes no secrets in receipts",
       async () => {
-        const { organization } = await placement(user);
+        const { organization } = await placement(user, locate);
         const manifest = {
           schema_version: "observer-project-v1",
           image: "python@sha256:" + "a".repeat(64),
@@ -40,6 +43,7 @@ for (const randomized of [false, true]) {
             provisioned = true;
           },
           rpc: (name, args) => {
+            if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
             if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
             if (name === "observer_instance_input") return Promise.resolve(instance);
             if (name === "observer_run_colocated") return Promise.resolve(false);
@@ -121,7 +125,7 @@ for (const randomized of [false, true]) {
 }
 
 Deno.test("unconfigured deployments do not consume retries; provisioning failures never open a session", async () => {
-  const { organization } = await placement(user);
+  const { organization } = await placement(user, locate);
   const calls: string[] = [];
   const disabled = await scheduleRuns({
     masterKey: key,
@@ -130,6 +134,7 @@ Deno.test("unconfigured deployments do not consume retries; provisioning failure
       throw new Error("must not provision");
     },
     rpc: (name) => {
+      if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       return Promise.resolve([]);
     },
@@ -144,6 +149,7 @@ Deno.test("unconfigured deployments do not consume retries; provisioning failure
       throw new Error("sensitive installation error");
     },
     rpc: (name, args) => {
+      if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_pending_runs") return Promise.resolve([{ id: run, user_id: user, lease, mode: "local" }]);
@@ -157,13 +163,14 @@ Deno.test("unconfigured deployments do not consume retries; provisioning failure
 });
 
 Deno.test("a final formal run whose instance lookup is refused is never scheduled", async () => {
-  const { organization } = await placement(user);
+  const { organization } = await placement(user, locate);
   const calls: string[] = [];
   const output = await scheduleRuns({
     masterKey: key,
     apiBase: "https://platform.test",
     ensureRepository: async () => {},
     rpc: (name, args) => {
+      if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_pending_runs") {
@@ -181,7 +188,7 @@ Deno.test("a final formal run whose instance lookup is refused is never schedule
 });
 
 Deno.test("a colocated public run gets one engine job that also starts the participant", async () => {
-  const { organization } = await placement(user);
+  const { organization } = await placement(user, locate);
   const manifest = {
     schema_version: "observer-project-v1",
     image: "python@sha256:" + "a".repeat(64),
@@ -194,6 +201,7 @@ Deno.test("a colocated public run gets one engine job that also starts the parti
     apiBase: "https://platform.test",
     ensureRepository: async () => {},
     rpc: (name, args) => {
+      if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_instance_input") return Promise.resolve(null);
       if (name === "observer_run_colocated") return Promise.resolve(true);

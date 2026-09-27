@@ -1,6 +1,9 @@
 import { assertEquals } from "@std/assert";
 import { decryptCredential } from "./observer-model.ts";
 import { placement } from "./observer-github.ts";
+
+// Recorded placement from public.observer_placement; runner-9 is one of the added organizations.
+const locate = () => Promise.resolve("AGENTIC-OBSERVER26-runner-9");
 import { schedulePreparations } from "./observer-prepare.ts";
 
 const user = "00000000-0000-4000-8000-000000000001";
@@ -13,7 +16,7 @@ for (const source_kind of ["repository", "zip"]) {
   Deno.test(
     source_kind + " preparation snapshots source and scopes the model budget without installation secrets",
     async () => {
-      const { organization, privateRepository } = await placement(user);
+      const { organization, privateRepository } = await placement(user, locate);
       const privateRepo = {
         id: 42,
         full_name: organization + "/" + privateRepository,
@@ -50,6 +53,7 @@ for (const source_kind of ["repository", "zip"]) {
           },
         },
         rpc: (name, args) => {
+          if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
           if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
           if (name === "observer_pending_preparations") {
             return Promise.resolve([{
@@ -90,7 +94,7 @@ for (const source_kind of ["repository", "zip"]) {
 }
 
 Deno.test("an unavailable source does not open a model session or expose backend diagnostics", async () => {
-  const { organization } = await placement(user);
+  const { organization } = await placement(user, locate);
   const calls: string[] = [];
   const output = await schedulePreparations({
     masterKey: key,
@@ -102,6 +106,7 @@ Deno.test("an unavailable source does not open a model session or expose backend
       },
     },
     rpc: (name, args) => {
+      if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_pending_preparations") return Promise.resolve([{ id: revision, lease, owner_id: user }]);
