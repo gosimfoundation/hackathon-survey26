@@ -1245,7 +1245,7 @@
     "per_scenario_note": "The practice board ranks each scenario separately: each board compares scores on that scenario only, with a team's best score there.",
     "detail": {
       "board_scenario": "Board: {scenario}",
-      "board_mean": "Board: mean of the three formal scenarios",
+      "board_mean": "Board: mean over the scenarios in each evaluation",
       "close": "Close",
       "evenness": "Coverage evenness",
       "scored_at": "Scored at",
