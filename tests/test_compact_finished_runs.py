@@ -1,0 +1,23 @@
+"""Finished runs keep only the committed CSV rows needed for export."""
+from psycopg.types.json import Jsonb
+
+from test_project_database import database, query, rpc, session, setup  # noqa: F401
+
+
+def test_finished_runs_are_compacted_and_running_ones_are_untouched(setup):
+    s = setup; uri = s["uri"]
+    done, _participant, _engine = session(s)
+    live = None
+    query(uri, "insert into private.observer_messages(run_id,sequence,observation,response,committed) values(%s,1,%s,%s,%s)",
+          (done, Jsonb({"big": "x" * 1000}), Jsonb({"action": "wait"}), Jsonb({"rows": [{"decision_id": "D1"}]})))
+    query(uri, "update private.observer_sessions set publication=%s where run_id=%s", (Jsonb({"catalog": "y" * 1000}), done))
+    query(uri, "update public.observer_runs set status='scored',finished_at=now()-interval '2 hours' where id=%s", (done,))
+    assert query(uri, "select private.observer_compact_finished_runs()")[0][0] == 1
+    assert query(uri, "select observation,response,committed from private.observer_messages where run_id=%s", (done,)) == [
+        ({}, None, {"rows": [{"decision_id": "D1"}]})]
+    assert query(uri, "select publication from private.observer_sessions where run_id=%s", (done,)) == [(None,)]
+    assert query(uri, "select private.observer_compact_finished_runs()")[0][0] == 0
+    # A run that finished minutes ago is left alone.
+    query(uri, "update public.observer_runs set finished_at=now() where id=%s", (done,))
+    query(uri, "update private.observer_messages set observation=%s where run_id=%s", (Jsonb({"a": 1}), done))
+    assert query(uri, "select private.observer_compact_finished_runs()")[0][0] == 0
