@@ -1,23 +1,17 @@
-<!--
-Playground task card alpha (v4, English). Filled from taskcard.template.v4.en.md.
-Still to fill from the card generator's describe output before publishing: {{START_DATE}}, {{END_DATE}},
-{{NIGHTS}}, {{TARGETS}}, {{AREA_DEG2}}, {{COMPONENTS}}, {{REQUIRED}}. Then delete this comment.
--->
-
 # Task card α (alpha): First light
 
-A season to learn the rules. It has the usual hidden weather and no extra messages.
+A season to learn the rules. It sends no extra messages.
 
 ## At a glance
 
 | | |
 |---|---|
 | Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
-| Survey | {{START_DATE}} to {{END_DATE}}, {{NIGHTS}} nights. You observe when the sun is below −18°. |
-| Targets | {{TARGETS}} targets on {{AREA_DEG2}} deg² of sky, in {{COMPONENTS}} regions. {{REQUIRED}} are required. |
+| Survey | 2026-10-01 to 2026-11-04, 35 nights. You observe when the sun is below −18°. |
+| Targets | 9,400 targets on 1,880 deg² of sky, in 3 regions. 470 are required. |
 | Instrument | 16 square fibres in a 4 × 4 grid. The field is 2.73° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
-| Weather | Hidden. You get a short bulletin every 15 minutes and a forecast about once a week. |
+| Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
 | Extra messages | None. Only bulletins and forecasts. |
 
 ## Your goal
@@ -72,11 +66,12 @@ least 0.50, so it would still count as missing.
 - Short exposures on faint targets. Exposures do not add up; only the best one counts.
 - Pointing low in a direction a bulletin warns about.
 - Reporting a fault after one bad exposure. Weather also lowers scores.
+- Reading the weather files from your agent. On the platform your agent only has its own folder.
 
 ## Try it
 
 1. Download the v4 starter kit and card α from the Resources page. Put the card folder into the kit's `cards/` folder.
-2. Run `python3 local_runner.py --card cards/alpha`. The last line shows your score.
+2. Run `python3 local_runner.py --card cards/alpha`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
 3. Compare with `python3 local_runner.py --card cards/alpha --agent examples/idle_agent.py` (an agent that does nothing).
 4. Change `agent/planner.py`, run again, and compare.
 5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card α in the cloud, with the same 900 s limit. Daily limits are on the Rules page.

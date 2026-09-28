@@ -3,6 +3,10 @@ v4 task card template (English). One page per card. Copy it, fill every {{...}} 
 generator's describe output, and delete this comment. Keep sentences short: one idea per sentence.
 Stage words: a card page must use only its own stage's words (see tests/test_v4_participant_docs.py).
 Never add hidden-truth details: no seeds, no event times or strengths, no instrument-fault details.
+{{WEATHER}}: for a card whose weather files are public, say so and add "Your agent does not get them: during a run it
+only receives a short bulletin every 15 minutes and a forecast about once a week." For a card with hidden weather:
+"Hidden. Only the public inputs are published (targets, sky outline, site, telescope and fibres, schedule, score
+settings). During a run your agent receives a short bulletin every 15 minutes and a forecast about once a week."
 -->
 
 # Task card {{CARD_ID}}: {{CARD_TITLE}}
@@ -18,7 +22,7 @@ Never add hidden-truth details: no seeds, no event times or strengths, no instru
 | Targets | {{TARGETS}} targets on {{AREA_DEG2}} deg² of sky, in {{COMPONENTS}} regions. {{REQUIRED}} are required. |
 | Instrument | 16 square fibres in a 4 × 4 grid. The field is 2.73° across. |
 | Time limit | {{WALLCLOCK}} s of wall-clock time for the whole survey. |
-| Weather | Hidden. You get a short bulletin every 15 minutes and a forecast about once a week. |
+| Weather | {{WEATHER}} |
 | Extra messages | {{EXTRA_MESSAGES}} |
 
 ## Your goal
