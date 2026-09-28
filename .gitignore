@@ -25,3 +25,6 @@ release/
 legacy-event/node_modules/
 legacy-event/dist/
 legacy-event/.env.local
+
+# v4 reference products are generated on demand (tests use a temp copy)
+challenge/reference/v4/products/
