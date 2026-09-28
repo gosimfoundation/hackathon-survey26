@@ -20,7 +20,7 @@ def script(monkeypatch):
     card = lambda slug, i, **extra: {'id': f'00000000-0000-4000-9000-{i:012d}', 'slug': slug, 'is_active': True,
                                      'public_flags': False, 'all_public': False, 'contract': 'v4-score-v1',
                                      'global_wallclock_seconds': 900, 'bundle': True, 'listed': False,
-                                     'public_files': 0, 'links': [], **extra}
+                                     'public_files': 0, 'files': [], 'links': [], **extra}
     cards = {s: card(s, i) for i, s in enumerate(['v4-alpha', 'v4-beta', 'v4-a', 'v4-b', 'v4-c', 'v4-d',
                                                   'v4-e', 'v4-f', 'v4-g', 'v4-h'])}
     cards['v4-alpha'].update(public_flags=True, all_public=True)
@@ -28,7 +28,7 @@ def script(monkeypatch):
     cards['formal-a'] = card('formal-a', 98, contract='challenge-score-v3', public_flags=True, all_public=True)
     monkeypatch.setattr(module, 'phase', lambda slug: phases[slug])
     monkeypatch.setattr(module, 'scenarios', lambda slugs: {s: cards[s] for s in slugs})
-    monkeypatch.setattr(module, 'activity', lambda: {'jobs': 0, 'batches': 0, 'open_snapshots': 0})
+    monkeypatch.setattr(module, 'activity', lambda: {'jobs': 0, 'batches': 0, 'open_snapshots': 0, 'missing_migrations': []})
     module.prep_fixture = {'scenario': 'formal-a', 'phase': 'practice-projects', 'enabled': True, 'phase_colocated': False}
     monkeypatch.setattr(module, 'query', lambda sql: [module.prep_fixture])
     module.cards_fixture = cards
