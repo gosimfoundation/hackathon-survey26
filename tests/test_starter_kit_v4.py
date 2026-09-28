@@ -97,13 +97,20 @@ def test_baseline_beats_doing_nothing_on_the_demo_card(baseline, idle):
     assert nothing["required_missing"] == 120 and nothing["targets_observed"] == 0
     assert base["termination_reason"] == "survey_complete"
     assert base["error"] is None
-    assert base["total"] > 0 and base["total"] > IDLE_TOTAL + 5000, base
-    assert base["required_missing"] <= 5
+    assert base["total"] > 900 and base["total"] > IDLE_TOTAL + 5000, base
+    assert base["required_missing"] <= 3
     assert base["targets_observed"] > 600
     assert base["wall_seconds"] < 120
     out = baseline["out"]
     for name in ("decisions.csv", "observations.csv", "messages.jsonl", "score_report.json", "workflow_result.json", "agent.log"):
         assert (out / name).is_file(), name
+    # Regression guard for the old failure mode: the planner kept re-observing the same hopeless
+    # required targets (100+ times) while other required targets were never observed.
+    import csv  # noqa: PLC0415
+    from collections import Counter  # noqa: PLC0415
+    with (out / "observations.csv").open(encoding="utf-8") as handle:
+        repeats = Counter(row["target_id"] for row in csv.DictReader(handle))
+    assert max(repeats.values()) <= 10, repeats.most_common(3)
     report = json.loads((out / "score_report.json").read_text(encoding="utf-8"))
     assert report["schema_version"] == "v4-score-report-v1" and report["total"] == base["total"]
     workflow = json.loads((out / "workflow_result.json").read_text(encoding="utf-8"))

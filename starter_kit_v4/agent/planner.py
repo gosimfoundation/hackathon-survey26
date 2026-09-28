@@ -32,6 +32,7 @@ from skymath import (
     normalized_airmass,
     parse_utc,
     radec_to_altaz,
+    shift_altaz,
     tangent_offsets,
     wrap180,
 )
@@ -40,7 +41,7 @@ ALT_MARGIN_DEG = 0.6            # keep targets this far above the altitude limit
 REQUIRED_BONUS = 60.0           # planning value of one required target (the penalty for missing one is 50)
 REQUIRED_SAFE_FACTOR = 0.62     # treat a required target as done once its estimated factor reaches this
 DONE_FACTOR = 0.95              # other targets are done at this factor
-PLAN_FACTOR_SAFETY = 0.8        # plan exposures as if the sky were 20% worse than estimated
+PLAN_FACTOR_SAFETY = 0.9        # plan exposures as if the sky were 10% worse than estimated
 EDGE_MARGIN_DEG = 0.08          # prefer targets at least this far inside the fibre glass
 DURATIONS = (300, 450, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600)
 RECENT_SAMPLES = 60             # fault check: recent clean samples, spanning at least two nights
@@ -49,6 +50,7 @@ SKY_MEMORY_HOURS = 2.0         # forget sky-quality samples older than this (in 
 MIN_VISIBLE_SECONDS = 600
 NEIGHBOUR_RADIUS_DEG = 2.1
 ANCHORS = 3
+ANCHOR_POOL = 150             # top-ranked candidates checked for what they can still gain tonight
 CLOSED_KINDS = {"rain", "storm"}
 BLOCKING_KINDS = {"terrain_obstruction", "rocket_launch"}
 DIRECTION_AZ = {"N": 0.0, "NE": 45.0, "E": 90.0, "SE": 135.0, "S": 180.0, "SW": 225.0, "W": 270.0, "NW": 315.0}
@@ -94,6 +96,7 @@ class Planner:
         self.hmax = [max_hour_angle_deg(d, self.lat, self.min_alt + ALT_MARGIN_DEG) for d in self.dec]
         self.factor = [0.0] * len(rows)          # best estimated exposure factor so far
         self.misses = [0] * len(rows)            # assigned but not hit (e.g. too close to a fibre edge)
+        self.attempts = [0] * len(rows)          # required hits that still ended below factor 0.5
         self.active = [i for i in range(len(rows)) if self.hmax[i] > 0.0]
         self._build_index()
         self._build_windows()
@@ -230,6 +233,8 @@ class Planner:
             matched = self._band(ratio_match * prediction["band_model"]) == self.pending_program
             factor = factor_if_match if matched else factor_if_miss
             self.factor[i] = max(self.factor[i], min(1.0, factor))
+            if self.required[i] and self.factor[i] < 0.5:
+                self.attempts[i] += 1  # not enough yet: lower its priority a little for next time
             if factor < 0.97:
                 ratio = factor * self.f0t0 / (self.flux[i] * self.pending_duration * prediction["model"])
                 self.samples.append((hours, ratio))
@@ -369,10 +374,31 @@ class Planner:
             return altaz_cache[i]
 
         visible = {i for _, i in candidates}
+        achievable_cache: dict[int, float] = {}
+
+        def achievable(i: int) -> float:
+            """Value this target can still gain tonight with the longest exposure it allows.
+            A required target whose factor cannot reach 0.5 now brings no bonus now; try it later."""
+            if i not in achievable_cache:
+                alt, az = altaz(i)
+                model = moon.lunar_factor(self.ra[i], self.dec[i]) / (
+                    self.q0 * normalized_airmass(max(alt, 1.0)) ** self.airmass_exponent)
+                k = self.flux[i] * model * self.scale * PLAN_FACTOR_SAFETY / self.f0t0
+                up = (self.hmax[i] - wrap180(lst - self.ra[i])) / SIDEREAL_DEG_PER_SECOND if self.hmax[i] < 180 else 1e9
+                reach = min(1.0, k * min(self.max_exposure, up, seconds_left))
+                f = self.factor[i]
+                gain = self.weight[i] * max(0.0, reach * reach - f * f)
+                if self.required[i] and f < 0.5 and reach >= 0.5:
+                    gain += REQUIRED_BONUS
+                damp = 0.6 ** self.misses[i] * 0.7 ** self.attempts[i]
+                achievable_cache[i] = gain * damp * self._direction_factor(alt, az)
+            return achievable_cache[i]
+
         anchors = []
-        for priority, i in candidates[:40]:
-            alt, az = altaz(i)
-            weighted = priority * self._direction_factor(alt, az)
+        for checked, (priority, i) in enumerate(candidates):
+            if checked >= ANCHOR_POOL and len(anchors) >= 3 * ANCHORS:
+                break
+            weighted = achievable(i) * priority / max(1e-9, self.value(i))  # keep the urgency terms
             if weighted > 0:
                 anchors.append((weighted, i))
         if not anchors:
@@ -381,19 +407,21 @@ class Planner:
         n_anchors = 1 if self.fast_level >= 1 else ANCHORS
         fibers = range(self.grid.n) if self.fast_level < 2 else (5, 6, 9, 10)
         best = None
-        for _, anchor in anchors[:n_anchors]:
+        tried = 0
+        for _, anchor in anchors:
+            if tried >= n_anchors and best is not None:
+                break
+            if tried >= n_anchors + 8:
+                break  # nothing places well right now
+            tried += 1
             a_alt, a_az = altaz(anchor)
             near = [j for j in self.neighbours(self.ra[anchor], self.dec[anchor], NEIGHBOUR_RADIUS_DEG) if j in visible]
-            near_values = {}
-            for j in near:
-                alt, az = altaz(j)
-                near_values[j] = self.value(j) * self._direction_factor(alt, az)
+            near_values = {j: achievable(j) for j in near}
             for fiber in fibers:
                 d_north, d_east = self.grid.fiber_center(fiber)
-                c_alt = a_alt - d_north
-                if not self.min_alt + 1.5 <= c_alt <= 86.0:
+                c_alt, c_az = shift_altaz(a_alt, a_az, -d_north, -d_east)
+                if not self.min_alt + 1.5 <= c_alt <= 89.0:
                     continue
-                c_az = (a_az - d_east / max(0.05, math.cos(math.radians(c_alt)))) % 360.0
                 c_alt, c_az = round(c_alt, 4), round(c_az, 4) % 360.0
                 chosen: dict[int, tuple[float, int, float]] = {}
                 for j, v in near_values.items():
@@ -410,7 +438,7 @@ class Planner:
                     score = v * (1.0 if margin >= EDGE_MARGIN_DEG * (1 + 1.5 * self.misses[j]) else 0.4)
                     if fib not in chosen or score > chosen[fib][0]:
                         chosen[fib] = (score, j, margin)
-                if anchor not in {j for _, j, _ in chosen.values()}:
+                if not chosen:
                     continue
                 total = sum(item[0] for item in chosen.values())
                 if best is None or total > best[0]:
@@ -458,7 +486,9 @@ class Planner:
             return None
         duration = best[1]
         if best[0] <= 0.0:
-            # The estimate says nothing improves. It may be stale: take one normal exposure to measure.
+            if any(when >= hours - SKY_MEMORY_HOURS for when, _ in self.samples):
+                return None  # the estimate is fresh and says nothing improves here
+            # The sky estimate is stale: take one normal exposure to measure it again.
             duration = next((d for d in (900, 600, 300) if d <= seconds_left and d <= center_up), None)
             if duration is None:
                 return None

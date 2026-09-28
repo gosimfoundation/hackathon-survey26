@@ -12,7 +12,7 @@ python3 local_runner.py --agent examples/idle_agent.py --quiet
 ```
 
 Expected on `cards/demo` (the public demo card at Paranal, Chile (virtual), 7 nights, 2,400 targets):
-baseline `"termination_reason": "survey_complete"`, `"total"` about +780, `"required_missing"` 0–2;
+baseline `"termination_reason": "survey_complete"`, `"total"` about +1,200, `"required_missing"` 0–2;
 idle agent `"total": -6200.0`. Exit code 2 means `agent_error`: read `"error"` and `run_output/agent.log`.
 
 ## 2. Know the contract (`participant-agent-protocol-v4`)

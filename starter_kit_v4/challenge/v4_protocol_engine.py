@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Local engine for participant-agent-protocol-v4: a JSON-Lines agent process driving the v4 runner.
 
+TODO(v4 switch): replace this module with a vendored copy of the platform's challenge/v4_workflow.py
+(W1 PR-2, gosimfoundation/hackathon-survey26#95) once that PR merges, so local runs use exactly the
+platform adapter. Until then this file mirrors it: same initialize/snapshot/finish payloads, same
+envelope checks, same validation (v4_runner.normalize_action), same wall-clock rule.
+
 This is the starter kit's stand-in for the platform's colocated v4 engine adapter. It follows the frozen
 protocol plus the W1 clarifications (docs: README.md, "Protocol"):
 

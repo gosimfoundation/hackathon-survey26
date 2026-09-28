@@ -31,7 +31,7 @@ Expected on the demo card (a few seconds):
 | Agent | `total` | Required missing |
 |---|---|---|
 | `examples/idle_agent.py` | −6200 | 120 of 120 |
-| `agent/` (baseline) | about +780 | 0–2 |
+| `agent/` (baseline) | about +1,200 | 0–2 |
 
 The last line of the output is a JSON summary. Files are in `run_output/`: `decisions.csv`,
 `observations.csv`, `messages.jsonl`, `score_report.json`, `workflow_result.json`, `agent.log`
@@ -133,8 +133,8 @@ target, a fibre used twice (`"5"` and `"05"` are the same fibre), a value out of
 
 ```json
 {"protocol_version":"participant-agent-protocol-v4","message_type":"finish",
- "payload":{"schema_version":"v4-finish-v1","termination_reason":"survey_complete","decisions":324,
-            "observe_actions":218,"last_decision_sequence":238,"grace_seconds":30}}
+ "payload":{"schema_version":"v4-finish-v1","termination_reason":"survey_complete","decisions":266,
+            "observe_actions":160,"last_decision_sequence":180,"grace_seconds":30}}
 ```
 
 `termination_reason` is `survey_complete`, `agent_finished`, `global_wallclock_expired` or `agent_error`.
@@ -223,13 +223,15 @@ time already spent is not returned.
 1. Daytime: `wait` `until_utc` the next night.
 2. `rain`/`storm` over `ALL` in the bulletin: wait one slot.
 3. Find targets that are up now and stay above 30° long enough.
-4. Rank them: required targets first, then targets that set soon or have few nights left.
-5. For the top 3 targets, try 16 pointings each (the target centred on each fibre). Fill every fibre with
-   its most valuable target. Keep the best pointing.
+4. Rank them by what they can still gain **tonight**: a required target counts as a big gain only if
+   its factor can reach 0.5 with the longest exposure it allows now (faint targets wait for a better
+   sky). Targets that set soon or have few nights left rank higher. Targets that failed before rank lower.
+5. For the best targets, try 16 pointings each (the target centred on each fibre). Fill every fibre with
+   the target that can gain most there. Keep the best pointing.
 6. Pick the duration with the best expected score per second. Pick the program most targets will match.
 7. Learn the sky quality from recent hits. Avoid announced directions and terrain at low altitude.
-8. Report a fault only after a large drop in quality that lasts across two nights and that the program
-   bands do not explain. At most twice per run.
+8. Report a fault only after a large drop in quality that stays on three different nights and that the
+   program bands do not explain. At most twice per run.
 
 Ideas to beat it: plan whole nights ahead, balance RA bands, use forecasts, handle `state_resync`
 better, and use a model for the few decisions where judgement matters.

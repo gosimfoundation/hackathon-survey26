@@ -26,7 +26,8 @@ from skymath import format_utc, parse_utc
 
 PROTOCOL = "participant-agent-protocol-v4"
 REPORT_DROP = 0.62          # report when recent clean-sky quality falls below 62% of the earlier level
-REPORT_CONFIRMATIONS = 3    # ... on this many checks in a row, at least 30 minutes of sky time apart
+REPORT_CONFIRMATIONS = 3    # ... on this many checks in a row, on different nights (the drop must persist)
+REPORT_SPACING_HOURS = 6.0
 MAX_REPORTS = 2
 
 
@@ -120,8 +121,8 @@ class BaselineAgent:
             log(f"llm night {night_date}: avoid {advice['avoid_directions']} duration x{advice['duration_scale']:.2f}")
 
     def _maybe_report(self, hours: float, payload: dict):
-        """Report only when (1) clean-sky quality dropped a lot, across two nights, and (2) saturated hits
-        declared DARK still match DARK, so the sky itself is fine and the loss is on the instrument side."""
+        """Report only when clean-sky quality dropped a lot and stayed low on three different nights, and
+        saturated hits declared DARK do not show that the sky band dropped too (that would be weather)."""
         planner = self.planner
         planner.force_program = None
         if self.reports >= MAX_REPORTS or hours - self.last_report_hours < 24.0:
@@ -133,11 +134,10 @@ class BaselineAgent:
             return None
         if evidence["dark_checks"] < 6:
             planner.force_program = "DARK"   # diagnostic: ask the sky which band it is in
-            return None
-        if evidence["dark_matched"] < 0.75 * evidence["dark_checks"]:
+        elif evidence["dark_matched"] < 0.5 * evidence["dark_checks"]:
             self.suspicion = []              # the sky band dropped too: weather, not the instrument
             return None
-        if self.suspicion and hours - self.suspicion[-1] < 0.5:
+        if self.suspicion and hours - self.suspicion[-1] < REPORT_SPACING_HOURS:
             return None
         self.suspicion.append(hours)
         if len(self.suspicion) < REPORT_CONFIRMATIONS:

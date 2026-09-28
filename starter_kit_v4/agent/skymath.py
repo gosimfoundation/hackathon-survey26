@@ -87,6 +87,19 @@ def tangent_offsets(target_alt: float, target_az: float, center_alt: float, cent
             math.degrees((t[0] * east[0] + t[1] * east[1] + t[2] * east[2]) / depth))
 
 
+def shift_altaz(alt_deg: float, az_deg: float, d_north: float, d_east: float) -> tuple[float, float]:
+    """The direction d_north / d_east degrees away on the tangent plane at (alt, az). Works near the zenith."""
+    alt, az = math.radians(alt_deg), math.radians(az_deg)
+    point = (math.cos(alt) * math.cos(az), math.cos(alt) * math.sin(az), math.sin(alt))
+    north = (-math.sin(alt) * math.cos(az), -math.sin(alt) * math.sin(az), math.cos(alt))
+    east = (-math.sin(az), math.cos(az), 0.0)
+    dn, de = math.radians(d_north), math.radians(d_east)
+    x, y, z = (p + dn * n + de * e for p, n, e in zip(point, north, east))
+    norm = math.sqrt(x * x + y * y + z * z)
+    x, y, z = x / norm, y / norm, z / norm
+    return math.degrees(math.asin(max(-1.0, min(1.0, z)))), math.degrees(math.atan2(y, x)) % 360.0
+
+
 class FiberGrid:
     """n x n square fibres; fibre 0 bottom-left, rows along +alt, columns along +az."""
 
