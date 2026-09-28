@@ -20,6 +20,8 @@ jobs:
           curl -sSL -o postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v16.2/postgrest-v16.2-linux-static-x86-64.tar.xz
           tar xJf postgrest.tar.xz && chmod +x postgrest
       - run: SAC_POSTGREST_BIN=$PWD/postgrest pytest tests/supabase -q
+      - name: v4 participant task cards (drafts behind the v4 switch)
+        run: pytest tests/test_v4_participant_docs.py -q
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.7
