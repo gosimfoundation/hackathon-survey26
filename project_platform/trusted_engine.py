@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from challenge.challenge_workflow import ChallengeWorkflow
+from challenge import v4_workflow
 from .session import SessionClient, long_poll_seconds, wait_until
 from .scenario_instances import PANEL_VERSION, calibrated_score
 from .transport import NORMAL_TERMINATION_REASONS
@@ -18,6 +19,8 @@ from .transport import NORMAL_TERMINATION_REASONS
 
 def result_summary(result: dict) -> dict:
     """Small database summary; full action/replay evidence stays in private storage."""
+    if result.get("schema_version") == v4_workflow.RESULT_SCHEMA:
+        return v4_workflow.result_summary(result)
     report=result["score_report"]
     completion=report.get("completion",{})
     summary = {
@@ -137,8 +140,11 @@ class ColocatedProvider:
     def __call__(self, snapshot, deadline_monotonic):
         return self.transport(snapshot, min(deadline_monotonic, self.server_deadline or deadline_monotonic))
 
-    def finish(self, termination_reason: str, last_decision_sequence: int) -> None:
-        self.transport.finish(termination_reason, last_decision_sequence)
+    def finish(self, termination_reason: str, last_decision_sequence: int, extra: dict | None = None) -> None:
+        if extra is None:
+            self.transport.finish(termination_reason, last_decision_sequence)
+        else:
+            self.transport.finish(termination_reason, last_decision_sequence, extra=extra)
 
 
 COLOCATED_FORMAT = "observer-colocated-v1"
@@ -146,6 +152,9 @@ COLOCATED_FORMAT = "observer-colocated-v1"
 
 def run_session(scenario: Path, output: Path, client: SessionClient, *, wallclock_seconds: float | None = None,
                 instance_record: dict | None = None, provider=None):
+    if v4_workflow.is_v4_bundle(scenario):
+        return run_v4_session(scenario, output, client, wallclock_seconds=wallclock_seconds,
+                              instance_record=instance_record, provider=provider)
     workflow=ChallengeWorkflow(scenario)
     evaluation = None if instance_record is None else {
         "instance_commitment": instance_record["instance_digest"], "calibration_version": PANEL_VERSION,
@@ -182,6 +191,44 @@ def run_session(scenario: Path, output: Path, client: SessionClient, *, wallcloc
     workflow.write_outputs(output,result)
     digest=hashlib.sha256((output/"decisions.csv").read_bytes()).hexdigest()
     return result,digest
+
+
+class V4ColocatedOnly(ValueError):
+    """v4 cards never run step by step through the session database."""
+
+    def __str__(self):
+        return "v4_requires_colocated"
+
+
+def run_v4_session(scenario: Path, output: Path, client: SessionClient, *, wallclock_seconds: float | None = None,
+                   instance_record: dict | None = None, provider=None):
+    """One v4 task card, colocated only: the container speaks participant-agent-protocol-v4
+    over the same JSON-Lines transport, the engine enforces the card's wall clock (at most
+    900 s), and a final "finish" message with the 30 s grace ends every run."""
+    if instance_record is not None or not isinstance(provider, ColocatedProvider):
+        raise V4ColocatedOnly()
+    workflow = v4_workflow.V4Workflow(scenario)
+    transport = provider.transport
+    transport.protocol_version = v4_workflow.PROTOCOL_VERSION
+
+    def decide(message, deadline):
+        transport.send(message, deadline)
+        return transport.receive(deadline)
+
+    result = workflow.run(decide, output, wallclock_seconds=wallclock_seconds,
+                          initialize=provider.publish_initial, deadline_cap=lambda: provider.server_deadline)
+    result.pop("initialization_error", None)
+    if provider.initialization_error is not None:
+        # Same as v3: a failed startup fails the job instead of publishing an empty score.
+        raise provider.initialization_error
+    # The score is final. Best effort, never changes the recorded result.
+    try:
+        provider.finish(result["termination_reason"], result["last_decision_sequence"],
+                        extra=v4_workflow.V4Workflow.finish_payload(result))
+    except Exception:
+        pass
+    digest = hashlib.sha256((output / "decisions.csv").read_bytes()).hexdigest()
+    return result, digest
 
 
 def last_committed_sequence(result: dict) -> int:

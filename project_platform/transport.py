@@ -24,6 +24,8 @@ AGENT_LOG_BYTES = 2 * 1024 * 1024
 FINISH_GRACE_SECONDS = 30
 
 NORMAL_TERMINATION_REASONS = ("survey_complete", "global_wallclock_expired")
+# v4 ends normally in these as well; the v4 engine sends "finish" after every run.
+V4_TERMINATION_REASONS = ("survey_complete", "agent_finished", "global_wallclock_expired", "agent_error")
 
 
 class ExecutionError(RuntimeError):
@@ -41,6 +43,9 @@ class JsonlTransport:
                  environment: Mapping[str, str] | None = None,
                  redactions: tuple[str, ...] = (), initialization_seconds: float = 30,
                  log_limit: int = MAX_LOG_BYTES):
+        # The envelope version of every engine message. The v4 engine switches it to
+        # participant-agent-protocol-v4 before the first message; v3 keeps the default.
+        self.protocol_version = PARTICIPANT_PROTOCOL_VERSION
         self.command = command
         self.cwd = cwd
         self.environment = dict(environment) if environment is not None else None
@@ -144,12 +149,12 @@ class JsonlTransport:
         return payload
 
     def publish_initial(self, publication: Mapping) -> None:
-        self.send({"protocol_version": PARTICIPANT_PROTOCOL_VERSION,
+        self.send({"protocol_version": self.protocol_version,
                    "message_type": "initialize", "payload": publication},
                   time.monotonic() + self.initialization_seconds, limit=MAX_INITIALIZATION_BYTES)
 
     def finish(self, termination_reason: str, last_decision_sequence: int, *,
-               grace_seconds: float = FINISH_GRACE_SECONDS) -> None:
+               grace_seconds: float = FINISH_GRACE_SECONDS, extra: Mapping | None = None) -> None:
         """End a normally finished run gracefully: one final "finish" line,
         then stdin EOF, then up to grace_seconds for the process to exit on its
         own before the usual terminate/kill. Best-effort and never raises: a
@@ -162,9 +167,10 @@ class JsonlTransport:
         grace_deadline = time.monotonic() + grace_seconds
         if process.poll() is None:
             try:
-                self.send({"protocol_version": PARTICIPANT_PROTOCOL_VERSION,
+                self.send({"protocol_version": self.protocol_version,
                            "message_type": "finish",
-                           "payload": {"termination_reason": termination_reason,
+                           "payload": {**(extra or {}),
+                                       "termination_reason": termination_reason,
                                        "last_decision_sequence": int(last_decision_sequence),
                                        "grace_seconds": grace_seconds}}, grace_deadline)
             except (ExecutionError, GlobalDeadlineExpired):
@@ -183,11 +189,11 @@ class JsonlTransport:
 
     def __call__(self, snapshot: Mapping, deadline_monotonic: float) -> dict:
         sequence = snapshot["decision_sequence"]
-        self.send({"protocol_version": PARTICIPANT_PROTOCOL_VERSION,
+        self.send({"protocol_version": self.protocol_version,
                    "message_type": "decision_request", "decision_sequence": sequence,
                    "payload": snapshot}, deadline_monotonic)
         response = self.receive(deadline_monotonic)
-        if (response.get("protocol_version") != PARTICIPANT_PROTOCOL_VERSION or
+        if (response.get("protocol_version") != self.protocol_version or
                 response.get("message_type") != "decision_response" or
                 type(response.get("decision_sequence")) is not int or
                 response["decision_sequence"] != sequence):

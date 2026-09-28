@@ -18,6 +18,7 @@ from .session import SessionClient
 from .scenario_job import prepare_bounded
 from .scenario_instances import InstanceError
 from .trusted_engine import ColocatedProvider, result_summary, run_session
+from challenge.v4_workflow import is_v4_bundle
 
 # Carried from the execute handler to run_claimed only; never part of a receipt.
 AGENT_LOG_KEY = "_agent_log"
@@ -94,6 +95,9 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
     extract_project(files, scenario)
     client = SessionClient(payload["session_url"], payload["run_credential"])
     participant = payload.get("colocated")
+    if is_v4_bundle(scenario) and (participant is None or payload.get("instance") is not None):
+        # v4 cards run only next to the participant container (thousands of steps).
+        raise JobError("v4_requires_colocated")
     if participant is not None:
         # Public scenarios only: the scheduler never colocates a private instance.
         if payload.get("instance") is not None:

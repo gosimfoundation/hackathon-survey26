@@ -13,7 +13,9 @@ evaluations in one transaction (private.observer_run_hidden_final, migration
 20260927000800). Teams that already have an evaluation there are skipped; a
 failed one is retried only with --retry-failed. --team limits the run to one
 team (slug, name or id); --before-freeze allows that single-team test before the
-public phase has ended. Uses the management credential from the environment
+public phase has ended. It also prints the target phase's run settings: v4 task
+cards (E-H) run only colocated, so the phase needs colocated=true. After the runs,
+scripts/verify-v4-run.py replays any v4 result against its bundle. Uses the management credential from the environment
 (SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN), like the other organizer scripts.
 """
 import argparse
@@ -58,6 +60,20 @@ def summarize(result):
     return '\n'.join(lines)
 
 
+def target_settings(target):
+    """Batch shape and runtime of the sealed phase; v4 cards need a colocated phase."""
+    row = one(deploy.query('select coalesce(c.colocated,false) as colocated, c.runtime_seconds,'
+                           ' (select count(*) from public.phase_scenarios where phase_id='+q(target)+'::uuid) as scenarios'
+                           ' from (select 1) x left join public.observer_phase_settings c on c.phase_id='+q(target)+'::uuid'),
+              'target settings')
+    line = (f"  target phase: {row['scenarios']} scenario(s) per batch, runtime_seconds={row['runtime_seconds']},"
+            f" colocated={str(row['colocated']).lower()}")
+    if not row['colocated']:
+        line += ('\n  ! v4 task cards run only colocated: set observer_phase_settings.colocated=true first,'
+                 ' or every v4 run fails with v4_requires_colocated')
+    return line
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--source', default='online', help='Formal phase slug (default: online)')
@@ -77,7 +93,7 @@ def main():
                                 +' or name='+q(args.team)), 'team')['id']
     result = one(deploy.query(plan_sql(source, target, team, args.apply, args.before_freeze, args.retry_failed)), 'result')['result']
     if isinstance(result, str): result = json.loads(result)
-    print(json.dumps(result, ensure_ascii=False, indent=1) if args.json else summarize(result))
+    print(json.dumps(result, ensure_ascii=False, indent=1) if args.json else summarize(result) + '\n' + target_settings(target))
 
 
 if __name__ == '__main__': main()
