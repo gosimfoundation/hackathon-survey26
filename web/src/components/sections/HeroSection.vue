@@ -2,8 +2,6 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { assetUrl } from '../../composables/api'
-import { useAuth } from '../../stores/auth'
-import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 import { usePhaseClock } from '../../composables/usePhaseClock'
 import { fmtUtc } from '../../lib/format'
 import { meteorShower } from '../../lib/eggs'
@@ -12,11 +10,7 @@ import HeroGalaxy from './HeroGalaxy.vue'
 import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
-const { isLoggedIn } = useAuth()
-const { registrationOpen } = useRegistrationOpen()
 const { current, next, nextStart, nextStartsAt, usingFallback, countdown, loaded } = usePhaseClock()
-type Metric = { value: string; label: string }
-const metrics = computed(() => t('hero.metrics') as Metric[])
 const heroTitleLines = computed(() => locale.value === 'zh' ? ['巡天智能体'] : ['Agent Observer'])
 const pad = (n: number) => String(n).padStart(2, '0')
 const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
@@ -89,17 +83,11 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 
           <p class="mt-7 max-w-xl text-base leading-[1.75] text-white/92 md:text-lg reveal reveal-delay-3">{{ t('hero.lede') }}</p>
           <div class="mt-7 flex flex-wrap gap-3 reveal reveal-delay-4">
-            <router-link v-if="isLoggedIn" to="/dashboard" class="hero-action hero-action-primary">
-              {{ t('hero.cta_dashboard') }} <span>→</span>
+            <router-link to="/start" class="hero-action hero-action-primary" data-testid="hero-cta-start">
+              {{ t('hero.cta_start') }} <span>→</span>
             </router-link>
-            <router-link v-else-if="registrationOpen" to="/register" class="hero-action hero-action-primary">
-              {{ t('hero.cta_register') }} <span>→</span>
-            </router-link>
-            <span v-else aria-disabled="true" class="hero-action hero-action-primary pointer-events-none opacity-60">
-              {{ t('nav.registration_closed') }}
-            </span>
-            <router-link to="/brief" class="hero-action">
-              {{ t('hero.cta_brief') }} <span>→</span>
+            <router-link to="/leaderboard" class="hero-action" data-testid="hero-cta-board">
+              {{ t('nav.leaderboard') }} <span>→</span>
             </router-link>
           </div>
 
@@ -136,17 +124,6 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
         </div>
       </div>
 
-      <div class="hero-metrics hero-metrics-strong grid grid-cols-2 reveal reveal-delay-3" :style="`--metric-cols:${metrics.length}`">
-        <div
-          v-for="(metric, index) in metrics"
-          :key="metric.label"
-          class="hero-metric py-5 md:py-6"
-          :class="{ 'metric-rule-sm': index % 2 === 0 && index !== metrics.length - 1, 'metric-rule-md': index !== metrics.length - 1 }"
-        >
-          <b v-countup class="hero-metric-value block text-[clamp(1.7rem,2.8vw,2.6rem)] font-semibold leading-[1.05] tracking-[-.04em]">{{ metric.value }}</b>
-          <span class="mt-2 block font-mono text-[.7rem] uppercase leading-snug tracking-[.06em] text-white/50">{{ metric.label }}</span>
-        </div>
-      </div>
     </div>
 
     <div class="hero-side-note" aria-hidden="true">{{ t('hero.side_note') }}</div>

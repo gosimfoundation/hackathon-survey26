@@ -78,8 +78,8 @@
         "description": "This page does not exist."
       },
       "start": {
-        "title": "Get started",
-        "description": "The participant walkthrough: register, create a team, run the starter kit and upload a first score."
+        "title": "Get started in 3 steps",
+        "description": "Download the starter kit, run it locally and submit — three steps to your first score."
       },
       "teammates": {
         "title": "Find teammates",
@@ -109,7 +109,7 @@
     "registration_closed": "Registration closed",
     "reset": "Reset password",
     "teammates": "Teammates",
-    "handbook": "Handbook",
+    "more": "More",
     "series": {
       "label": "Shenzhen hackathon series",
       "pick": "Pick an event",
@@ -233,7 +233,8 @@
       "top_score": "Champion's run: {score}",
       "lst": "Where the telescope points right now · sky time {lst}"
     },
-    "pipeline_intro": "Milestones"
+    "pipeline_intro": "Milestones",
+    "cta_start": "Get started in 3 steps"
   },
   "home": {
     "vision": {
@@ -2389,13 +2390,7 @@
     "next_line": "Next: {name} · {day} · {left}"
   },
   "start_page": {
-    "kicker": "Get started",
-    "title": "From zero to your first score",
-    "lede": "No command line needed. Run it, change one function, upload — about twenty minutes.",
-    "cta_register": "Register first",
-    "cta_dashboard": "Go to my dashboard",
-    "cta_kit": "Download the kit",
-    "cta_docs": "Full docs"
+    "title": "Get started in 3 steps"
   },
   "tiers": {
     "astro_label": "Astronomy tier",
@@ -2461,6 +2456,54 @@
     "mid_autumn": {
       "title": "Happy Mid-Autumn Festival!",
       "close": "Close"
+    }
+  },
+  "start3": {
+    "practice": {
+      "subtitle": "No astronomy background needed. If this is your first time, just do these three steps in order.",
+      "s1_title": "Step 1 · Download the starter kit",
+      "s1_desc": "It contains an example program, a local scoring tool and public scenarios.",
+      "s1_cta": "Download the starter kit",
+      "s2_title": "Step 2 · Run it locally",
+      "s2_lead": "Unzip it and run this in the kit folder:",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "When you see a score, it works. Then change the decision logic in the example program to raise the score.",
+      "s2_link": "Read the task description",
+      "s3_title": "Step 3 · Submit",
+      "s3_intro": "Log in and open Participate. Choose one way:",
+      "s3_points": [
+        "CSV: upload the decisions.csv you generated locally and get a score at once. 50 per team per day.",
+        "Complete project: upload your code; the platform runs and scores it in the cloud. 5 per team per day."
+      ],
+      "s3_cta": "Go to Participate",
+      "help_prefix": "More questions? See the",
+      "help_faq": "FAQ",
+      "help_or": "or the",
+      "help_rules": "Rules",
+      "help_suffix": "."
+    },
+    "competition": {
+      "subtitle": "No astronomy background needed. Do these three steps in order to take part.",
+      "s1_title": "Step 1 · Download the starter kit",
+      "s1_desc": "It contains an example program and a local scoring tool.",
+      "s1_cta": "Download the starter kit",
+      "s2_title": "Step 2 · Run it locally",
+      "s2_lead": "Unzip it and run this in the kit folder:",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "When you see a score, it works. Then change the decision logic in the example program.",
+      "s2_link": "Read the task description",
+      "s3_title": "Step 3 · Submit a complete project",
+      "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
+      "s3_points": [
+        "10 batches per team per day; each batch runs on three fixed scenarios and scores their mean.",
+        "Choose your final version before the competition ends."
+      ],
+      "s3_cta": "Go to Participate",
+      "help_prefix": "More questions? See the",
+      "help_faq": "FAQ",
+      "help_or": "or the",
+      "help_rules": "Rules",
+      "help_suffix": "."
     }
   }
 }

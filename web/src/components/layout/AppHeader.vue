@@ -8,6 +8,7 @@ import { useFlash } from '../../stores/flash'
 import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 import { usePhaseClock } from '../../composables/usePhaseClock'
 import { isFullMoonToday } from '../../lib/eggs'
+import { mainNavItems, moreNavItems, participateItem } from '../../lib/nav'
 import { computed } from 'vue'
 
 const { t, tf, pick, toggleLocale, locale } = useI18n()
@@ -32,27 +33,16 @@ const phasePill = computed(() => {
   return { text: `${name} · ${tf('phase_clock.in', { d: countdown.value.days, h: pad(countdown.value.hours) })}`, cls: 'upcoming' }
 })
 
-const items = [
-  { key: 'nav.start', to: '/start' },
-  { key: 'nav.leaderboard', to: '/leaderboard' },
-  { key: 'nav.teammates', to: '/teammates' },
-]
-const handbook = [
-  { key: 'nav.brief', to: '/brief' },
-  { key: 'nav.rules', to: '/rules' },
-  { key: 'nav.docs', to: '/docs' },
-  { key: 'nav.resources', to: '/resources' },
-  { key: 'nav.faq', to: '/faq' },
-  { key: 'nav.announcements', to: '/announcements' },
-]
-const handbookOpen = ref(false)
+const items = mainNavItems
+const more = moreNavItems
+const moreOpen = ref(false)
 const seriesOpen = ref(false)
 type SeriesItem = { n: string; name: string; sub: string; href: string; current: boolean }
 const seriesItems = computed(() => t('nav.series.items') as SeriesItem[])
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`)
-const handbookActive = () => handbook.some(item => isActive(item.to))
+const moreActive = () => more.some(item => isActive(item.to))
 const dashActive = () => ['/dashboard', '/team', '/compete', '/submissions', '/profile'].some(p => route.path.startsWith(p))
-watch(() => route.fullPath, () => { mobileOpen.value = false; handbookOpen.value = false; seriesOpen.value = false })
+watch(() => route.fullPath, () => { mobileOpen.value = false; moreOpen.value = false; seriesOpen.value = false })
 
 async function logout() {
   mobileOpen.value = false
@@ -98,12 +88,12 @@ async function logout() {
           class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]"
           :class="isActive(item.to) ? 'text-[#78a6ff]' : 'text-white/50'"
         >{{ t(item.key) }}</router-link>
-        <div class="nav-drop relative" @mouseenter="handbookOpen = true" @mouseleave="handbookOpen = false">
-          <button type="button" class="inline-flex h-10 items-center gap-1 font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="handbookActive() ? 'text-[#78a6ff]' : 'text-white/50'" :aria-expanded="handbookOpen" @click="handbookOpen = !handbookOpen">
-            {{ t('nav.handbook') }} <span aria-hidden="true" class="text-[.6rem]">▾</span>
+        <div class="nav-drop relative" @mouseenter="moreOpen = true" @mouseleave="moreOpen = false">
+          <button type="button" class="inline-flex h-10 items-center gap-1 font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="moreActive() ? 'text-[#78a6ff]' : 'text-white/50'" :aria-expanded="moreOpen" data-testid="nav-more" @click="moreOpen = !moreOpen">
+            {{ t('nav.more') }} <span aria-hidden="true" class="text-[.6rem]">▾</span>
           </button>
-          <div v-show="handbookOpen" class="nav-drop-panel">
-            <router-link v-for="item in handbook" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
+          <div v-show="moreOpen" class="nav-drop-panel">
+            <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
           </div>
         </div>
         <router-link v-if="isLoggedIn" to="/dashboard" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="dashActive() ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.dashboard') }}</router-link>
@@ -111,7 +101,7 @@ async function logout() {
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
-        <router-link to="/compete" class="inline-flex h-10 shrink-0 items-center justify-center bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ pick('Submit','提交') }}</router-link>
+        <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
         <router-link v-if="isLoggedIn" to="/notifications" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80" :aria-label="pick('Team notifications','组队通知')" data-testid="team-notifications">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
           <span v-if="unreadTeamNotifications" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ unreadTeamNotifications > 99 ? '99+' : unreadTeamNotifications }}</span>
@@ -130,22 +120,23 @@ async function logout() {
       </div>
     </div>
 
-    <div v-if="mobileOpen" class="border-t border-white/20 bg-[#070708] px-5 py-4 lg:hidden">
+    <div v-if="mobileOpen" class="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/20 bg-[#070708] px-5 pb-20 pt-4 lg:hidden" data-testid="mobile-menu">
       <p v-if="nextLine" class="mb-2 font-mono text-[.68rem] leading-relaxed tracking-[.06em] text-white/60" data-testid="menu-next-phase">{{ nextLine }}</p>
       <router-link v-for="item in items" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
+      <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
       <router-link v-if="isLoggedIn" to="/dashboard" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.dashboard') }}</router-link>
       <router-link v-if="isAdmin" to="/admin" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.admin') }}</router-link>
       <p class="mt-4 mb-1 font-mono text-[.62rem] uppercase tracking-[.14em] text-white/35">{{ t('nav.series.label') }}</p>
       <template v-for="item in seriesItems" :key="item.n">
         <a v-if="item.href" :href="item.href" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ item.name }} <small class="text-white/35">{{ item.sub }}</small></a>
       </template>
-      <p class="mt-4 mb-1 font-mono text-[.62rem] uppercase tracking-[.14em] text-white/35">{{ t('nav.handbook') }}</p>
-      <router-link v-for="item in handbook" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
       <button v-if="isLoggedIn" type="button" @click="logout" class="mt-3 block w-full border border-white/35 px-4 py-3 text-center font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5]">{{ t('nav.logout') }}</button>
       <template v-else>
         <router-link v-if="registrationOpen" to="/register" class="cosmos-register-link mt-3 block border px-4 py-3 text-center font-mono text-xs font-semibold uppercase tracking-widest">{{ t('nav.register') }}</router-link>
         <router-link to="/register?mode=login" class="mt-3 block border border-white/35 px-4 py-3 text-center font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5]">{{ t('nav.login') }}</router-link>
       </template>
+      <p class="mt-4 mb-1 font-mono text-[.62rem] uppercase tracking-[.14em] text-white/35" data-testid="mobile-more">{{ t('nav.more') }}</p>
+      <router-link v-for="item in more" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
     </div>
   </header>
 </template>

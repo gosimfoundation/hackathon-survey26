@@ -302,3 +302,82 @@ def test_log_out_clears_the_stored_session(portal_site, schedule):
         expect(page.get_by_test_id('nav-logout')).to_have_count(0)
         browser.close()
     assert not errors, errors
+
+
+def test_simple_header_and_three_step_start_page(portal_site, schedule):
+    """The header leads with four destinations, the rest sits under More, and /start is three steps."""
+    errors = []
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel=os.environ.get('OBSERVER_BROWSER_CHANNEL'))
+        page = browser.new_context(viewport=DESKTOP).new_page()
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        page.goto(portal_site + '/?lang=zh')
+        header = page.locator('header')
+        for label in ('上手', '规则', '排行榜'):
+            expect(header.get_by_role('link', name=label, exact=True)).to_be_visible(timeout=15000)
+        expect(page.get_by_test_id('primary-submit')).to_have_text('参赛')
+        expect(page.get_by_test_id('primary-submit')).to_have_attribute('href', '/compete')
+        # The other public pages live behind the More dropdown instead of the nav row.
+        assert header.get_by_role('link', name='完整赛事说明', exact=True).count() == 0 or \
+            not header.get_by_role('link', name='完整赛事说明', exact=True).first.is_visible()
+        page.get_by_test_id('nav-more').hover()
+        for label, path in (('完整赛事说明', '/brief'), ('文档', '/docs'), ('资源', '/resources'),
+                            ('常见问题', '/faq'), ('公告', '/announcements'), ('找队友', '/teammates')):
+            expect(header.get_by_role('link', name=label, exact=True)).to_have_attribute('href', path)
+        header.get_by_role('link', name='常见问题', exact=True).click()
+        expect(page).to_have_url(re.compile(r'/faq'), timeout=15000)
+        # The hero leads with the three-step start and the leaderboard.
+        page.goto(portal_site + '/?lang=zh')
+        expect(page.get_by_test_id('hero-cta-start')).to_have_attribute('href', '/start')
+        expect(page.get_by_test_id('hero-cta-start')).to_contain_text('3 步上手')
+        expect(page.get_by_test_id('hero-cta-board')).to_have_attribute('href', '/leaderboard')
+        page.get_by_test_id('hero-cta-start').click()
+        expect(page).to_have_url(re.compile(r'/start'), timeout=15000)
+        shot(page, 'simple-start.zh.desktop')
+        expect(page.locator('h1').first).to_have_text('3 步上手')
+        for step in ('start-step-1', 'start-step-2', 'start-step-3'):
+            expect(page.get_by_test_id(step)).to_be_visible()
+        expect(page.get_by_test_id('start-kit-download')).to_have_attribute('href', re.compile(r'agent-observer-starter-kit\.zip$'))
+        expect(page.get_by_test_id('start-step-2')).to_contain_text('python3 local_runner.py')
+        expect(page.get_by_test_id('start-step-3')).to_contain_text('50 次')
+        expect(page.get_by_test_id('start-step-3')).to_contain_text('5 次')
+        expect(page.get_by_test_id('start-go-compete')).to_have_attribute('href', '/compete')
+        page.goto(portal_site + '/start?lang=en')
+        expect(page.locator('h1').first).to_have_text('Get started in 3 steps')
+        expect(page.get_by_test_id('start-step-3')).to_contain_text('50 per team per day')
+        header_en = page.locator('header')
+        for label in ('Get started', 'Rules', 'Leaderboard'):
+            expect(header_en.get_by_role('link', name=label, exact=True)).to_be_visible()
+        expect(page.get_by_test_id('primary-submit')).to_have_text('Participate')
+        shot(page, 'simple-start.en.desktop')
+        page.context.close()
+
+        mobile = browser.new_context(viewport=MOBILE).new_page()
+        mobile.on('pageerror', lambda error: errors.append(str(error)))
+        mobile.goto(portal_site + '/?lang=zh')
+        mobile.get_by_role('button', name='菜单').click()
+        menu = mobile.get_by_test_id('mobile-menu')
+        expect(menu).to_be_visible(timeout=5000)
+        for label in ('上手', '规则', '排行榜', '参赛'):
+            expect(menu.get_by_role('link', name=label, exact=True)).to_be_visible()
+        # The More pages close the menu, below the session controls, with tap targets of at least 24 px.
+        more_label = mobile.get_by_test_id('mobile-more')
+        expect(more_label).to_have_text('更多')
+        layout = mobile.evaluate("""() => {
+          const menu = document.querySelector('[data-testid=mobile-menu]')
+          const more = document.querySelector('[data-testid=mobile-more]').getBoundingClientRect()
+          const auth = [...menu.querySelectorAll('a, button')].filter(el => /报名|登录/.test(el.textContent))
+          const links = [...menu.querySelectorAll('a')].map(el => el.getBoundingClientRect().height)
+          return { moreTop: more.top, authBottom: Math.max(...auth.map(el => el.getBoundingClientRect().bottom)),
+                   minLink: Math.min(...links), width: document.documentElement.scrollWidth } }""")
+        assert layout['moreTop'] >= layout['authBottom'], layout
+        assert layout['minLink'] >= 24, layout
+        assert layout['width'] <= MOBILE['width'] + 1, layout
+        menu.get_by_role('link', name='找队友', exact=True).click()
+        expect(mobile).to_have_url(re.compile(r'/teammates'), timeout=15000)
+        mobile.goto(portal_site + '/start?lang=zh')
+        expect(mobile.locator('h1').first).to_have_text('3 步上手')
+        assert mobile.evaluate("() => document.documentElement.scrollWidth") <= MOBILE['width'] + 1
+        shot(mobile, 'simple-start.zh.mobile')
+        browser.close()
+    assert not errors, errors

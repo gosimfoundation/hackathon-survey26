@@ -30,7 +30,6 @@ export function competitionMessages(base: Record<string, any>, chinese: boolean)
     'rules_page.phases_title':pick('Current competition','当前比赛'),
     'dash.phases':pick('Current competition','当前比赛'),
     'dash.quick.kit':pick('Example project and interface','示例项目与接口'),
-    'start_page.cta_kit':pick('Project resources','项目资源'),
     'resources.kit':pick('Complete example project','完整项目示例'),
     'resources.kit_desc':pick('Use this complete example to implement the language-neutral project interface. The platform runs your confirmed version.','参考完整示例实现语言无关的项目接口，平台运行你确认的版本。'),
     'resources.reference':pick('Example source','示例源码'),
