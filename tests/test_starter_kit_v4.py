@@ -1,0 +1,368 @@
+"""End-to-end checks for the v4 starter kit (starter_kit_v4/).
+
+Runs the kit's scripts as a participant would: the baseline and the idle agent on the public demo card
+through local_runner.py (JSON-Lines subprocess, participant-agent-protocol-v4), protocol error handling,
+the wall clock, the finish message, the LLM hook fallback, and pack_agent.py output checked by the
+platform's own ZIP and manifest readers.
+"""
+from __future__ import annotations
+
+import hashlib
+import http.server
+import importlib
+import importlib.util
+import json
+import os
+import shutil
+import subprocess
+import sys
+import threading
+import zipfile
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+KIT = ROOT / "starter_kit_v4"
+DEMO = KIT / "cards" / "demo"
+PY = sys.executable
+IDLE_TOTAL = -6200.0  # 120 required targets x 50 missing + the full uniformity penalty (200)
+
+
+def kit_module(name: str):
+    """Import starter_kit_v4/challenge/<name> under its own package name (the platform's challenge/ package
+    is already on sys.path under the name `challenge`)."""
+    package = "starter_kit_v4_challenge"
+    if package not in sys.modules:
+        spec = importlib.util.spec_from_file_location(package, KIT / "challenge" / "__init__.py",
+                                                      submodule_search_locations=[str(KIT / "challenge")])
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[package] = module
+        spec.loader.exec_module(module)
+    return importlib.import_module(f"{package}.{name}")
+
+
+def run(script: str, *args: str, env: dict | None = None, timeout: int = 300) -> subprocess.CompletedProcess:
+    full_env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **(env or {})}
+    return subprocess.run([PY, "-B", str(KIT / script), *args], cwd=str(KIT), env=full_env,
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def summary_of(proc: subprocess.CompletedProcess, code: int = 0) -> dict:
+    assert proc.returncode == code, f"exit {proc.returncode}\nstdout:\n{proc.stdout[-3000:]}\nstderr:\n{proc.stderr[-3000:]}"
+    return json.loads(proc.stdout)
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_agent(path: Path, body: str) -> Path:
+    """A tiny scripted agent: `body` runs for each decision_request with `m` (message) and `p` (payload)
+    in scope and must set `action` (a dict). Finish messages and EOF are logged to stderr."""
+    path.write_text(
+        "import json, sys, time\n"
+        "for line in sys.stdin:\n"
+        "    m = json.loads(line)\n"
+        "    t = m.get('message_type')\n"
+        "    if t == 'decision_request':\n"
+        "        p = m['payload']\n"
+        + "".join("        " + row + "\n" for row in body.strip().splitlines()) +
+        "        print(json.dumps({'protocol_version': m['protocol_version'], 'message_type': 'decision_response',\n"
+        "                          'decision_sequence': m['decision_sequence'], **action}), flush=True)\n"
+        "    elif t == 'finish':\n"
+        "        print('saw finish ' + json.dumps(m['payload'], sort_keys=True), file=sys.stderr, flush=True)\n"
+        "print('stdin closed', file=sys.stderr, flush=True)\n", encoding="utf-8")
+    return path
+
+
+@pytest.fixture(scope="module")
+def baseline(tmp_path_factory) -> dict:
+    out = tmp_path_factory.mktemp("baseline")
+    summary = summary_of(run("local_runner.py", "--out", str(out), "--quiet"))
+    return {"out": out, "summary": summary}
+
+
+@pytest.fixture(scope="module")
+def idle(tmp_path_factory) -> dict:
+    out = tmp_path_factory.mktemp("idle")
+    summary = summary_of(run("local_runner.py", "--agent", "examples/idle_agent.py", "--out", str(out), "--quiet"))
+    return {"out": out, "summary": summary}
+
+
+def test_baseline_beats_doing_nothing_on_the_demo_card(baseline, idle):
+    base, nothing = baseline["summary"], idle["summary"]
+    assert nothing["termination_reason"] == "agent_finished"
+    assert nothing["total"] == pytest.approx(IDLE_TOTAL)
+    assert nothing["required_missing"] == 120 and nothing["targets_observed"] == 0
+    assert base["termination_reason"] == "survey_complete"
+    assert base["error"] is None
+    assert base["total"] > 0 and base["total"] > IDLE_TOTAL + 5000, base
+    assert base["required_missing"] <= 5
+    assert base["targets_observed"] > 600
+    assert base["wall_seconds"] < 120
+    out = baseline["out"]
+    for name in ("decisions.csv", "observations.csv", "messages.jsonl", "score_report.json", "workflow_result.json", "agent.log"):
+        assert (out / name).is_file(), name
+    report = json.loads((out / "score_report.json").read_text(encoding="utf-8"))
+    assert report["schema_version"] == "v4-score-report-v1" and report["total"] == base["total"]
+    workflow = json.loads((out / "workflow_result.json").read_text(encoding="utf-8"))
+    assert workflow["termination_reason"] == "survey_complete" and workflow["score"]["total"] == base["total"]
+    log = (out / "agent.log").read_text(encoding="utf-8")
+    assert "llm=off" in log  # the kit manifest keeps the model hook off by default
+    assert "baseline finished: termination_reason=survey_complete" in log  # it handled the finish message
+
+
+def test_baseline_is_deterministic(baseline, tmp_path):
+    second = summary_of(run("local_runner.py", "--out", str(tmp_path), "--quiet"))
+    assert second["total"] == baseline["summary"]["total"]
+    assert sha256(tmp_path / "decisions.csv") == sha256(baseline["out"] / "decisions.csv")
+
+
+def test_invalid_response_ends_as_agent_error_and_the_score_still_settles(tmp_path):
+    agent = write_agent(tmp_path / "agent.py", """
+if m['decision_sequence'] == 1:
+    action = {'action': 'wait', 'duration_seconds': 600}
+else:
+    action = {'action': 'observe', 'pointing': {'alt_deg': 60, 'az_deg': 10}, 'assignments': {'0': 'NOT_A_TARGET'},
+              'duration_seconds': 600, 'program': 'DARK'}
+""")
+    summary = summary_of(run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--quiet"), code=2)
+    assert summary["termination_reason"] == "agent_error"
+    assert summary["error"].startswith("decision 2: ") and "unknown target_id" in summary["error"]
+    assert summary["total"] == pytest.approx(IDLE_TOTAL)
+    assert '"termination_reason": "agent_error"' in (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("bad, message", [
+    ({"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 10}, "assignments": {}, "duration_seconds": 600, "note": "x"},
+     "observe needs pointing"),
+    ({"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 10}, "assignments": {}, "duration_seconds": 30}, "duration_seconds"),
+    ({"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 10}, "assignments": {"5": "V4T000001", "05": "V4T000002"},
+      "duration_seconds": 600}, "assigned twice"),
+    ({"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 10}, "assignments": {}, "duration_seconds": 600, "program": "GREY"},
+     "program must be"),
+    ({"action": "wait", "duration_seconds": 7200}, "wait duration_seconds"),
+    ({"action": "wait", "until_utc": "2020-01-01T00:00:00Z"}, "later than now_utc"),
+    ({"action": "wait", "until_utc": "2026-10-03T00:00:00"}, "ending in Z"),
+    ({"action": "report", "why": "x"}, "takes no fields"),
+    ({"action": "jump"}, "unknown action"),
+])
+def test_invalid_actions_are_rejected_like_on_the_platform(bad, message):
+    """Actions are checked by the runner's normalize_action (the platform's validator)."""
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    runner = kit_module("v4_runner")
+    scenario = runner.load_scenario(DEMO / "config" / "v4_scenario.json")
+    targets = {t["target_id"]: t for t in scenario.targets}
+    with pytest.raises(runner.InvalidAgentAction, match=message):
+        runner.normalize_action(bad, scenario, targets, datetime(2026, 10, 2, 1, tzinfo=timezone.utc))
+    ok = runner.normalize_action({"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 10},
+                                  "assignments": {"5": "V4T000001"}, "duration_seconds": 600}, scenario, targets,
+                                 datetime(2026, 10, 2, 1, tzinfo=timezone.utc))
+    assert ok["program"] == "BACKUP"  # program is optional
+
+
+def test_envelope_checks():
+    engine = kit_module("v4_protocol_engine")
+    good = {"protocol_version": engine.PROTOCOL_VERSION, "message_type": "decision_response", "decision_sequence": 3,
+            "reason": "r", "decision_source": "rule", "action": "wait", "duration_seconds": 600}
+    assert engine.check_envelope(good, 3) == {"action": "wait", "duration_seconds": 600}
+    for bad, message in (({**good, "decision_sequence": 4}, "decision_sequence"),
+                         ({**good, "decision_sequence": 3.0}, "decision_sequence"),
+                         ({**good, "protocol_version": "participant-agent-protocol-v2"}, "protocol_version"),
+                         ({**good, "message_type": "decision"}, "message_type"),
+                         ({**good, "reason": 5}, "reason must be a string")):
+        with pytest.raises(engine.AgentProtocolError, match=message):
+            engine.check_envelope(bad, 3)
+
+
+def test_wait_until_batches_messages_and_finish_message_is_sent(tmp_path):
+    """until_utc skips the day without round trips; bulletins published meanwhile arrive in one batch."""
+    agent = write_agent(tmp_path / "agent.py", """
+kinds = [x.get('record_type') for x in p['new_messages']]
+print('req', m['decision_sequence'], p['now_utc'], len(kinds), kinds.count('bulletin'), file=sys.stderr, flush=True)
+assert p['schema_version'] == 'v4-decision-snapshot-v1' and 'remaining_seconds' in p['wallclock']
+action = {'action': 'wait', 'until_utc': '2026-10-04T00:00:00Z'} if m['decision_sequence'] == 1 else {'action': 'finish'}
+""")
+    summary = summary_of(run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--quiet"))
+    assert summary["termination_reason"] == "agent_finished" and summary["decision_requests"] == 2
+    log = (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+    first, second = [line.split() for line in log.splitlines() if line.startswith("req ")]
+    assert first[2] == "2026-10-02T00:00:00Z" and second[2] == "2026-10-04T00:00:00Z"
+    assert int(second[4]) >= 60  # two nights of per-slot bulletins in one batch
+    finish = json.loads(log.split("saw finish ", 1)[1].splitlines()[0])
+    rows = (tmp_path / "out" / "decisions.csv").read_text(encoding="utf-8").strip().splitlines()[1:]
+    assert len(rows) == 48 and all(",wait," in row for row in rows)  # 48 h expanded into 3600 s waits
+    assert finish == {"decisions": 48, "observe_actions": 0, "schema_version": "v4-finish-v1",
+                      "termination_reason": "agent_finished", "last_decision_sequence": 2, "grace_seconds": 30.0}
+    assert "stdin closed" in log
+
+
+def test_global_wallclock_expiry_settles_the_run(tmp_path):
+    agent = write_agent(tmp_path / "agent.py", """
+time.sleep(0.4)
+action = {'action': 'wait', 'duration_seconds': 900}
+""")
+    summary = summary_of(run("local_runner.py", "--agent", str(agent), "--wallclock", "1.5",
+                             "--out", str(tmp_path / "out"), "--quiet"))
+    assert summary["termination_reason"] == "global_wallclock_expired"
+    assert summary["wall_seconds"] <= 1.6 and summary["total"] == pytest.approx(IDLE_TOTAL)
+    # Still computing at the deadline: the agent is stopped at once and gets no finish message.
+    assert "saw finish" not in (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+
+
+def test_initialize_carries_only_public_data():
+    init = kit_module("v4_protocol_engine").build_initialize(DEMO, 900)
+    assert init["schema_version"] == "v4-initialize-v1"
+    assert set(init) == {"schema_version", "task_card", "site", "survey", "instrument", "scoring", "footprint", "targets", "limits"}
+    assert init["site"]["name"] == "Paranal, Chile (virtual)"
+    assert init["limits"]["global_wallclock_seconds"] == 900
+    assert len(init["targets"]["rows"]) == 2400 and len(init["survey"]["nights"]) == 7
+    text = json.dumps(init)
+    for hidden in ("is_observable", "seeing_arcsec", "transparency\"", "instrument_fault", "instrument_efficiency",
+                   "seed", "rocket_launch", "terrain_obstruction", "stress"):
+        assert hidden not in text, hidden
+
+
+def test_demo_card_is_public_small_and_seedless():
+    scenario = json.loads((DEMO / "config" / "v4_scenario.json").read_text(encoding="utf-8"))
+    assert scenario["task_card"]["card_id"] == "demo"
+    assert scenario["task_card"]["card_id"].lower() not in {"alpha", "beta", *"abcdefgh"}
+    assert scenario["site"]["name"] == "Paranal, Chile (virtual)" and scenario["limits"]["global_wallclock_seconds"] == 900
+    assert sorted(p.name for p in (DEMO / "public").iterdir()) == [
+        "footprint.csv", "targets.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl", "v4_night_calendar.csv"]
+    assert not (DEMO / "truth" / "v4_stress_events.csv").exists() and scenario["stress"] == {"enabled": False}
+    for path in DEMO.rglob("*.json"):
+        assert '"seed"' not in path.read_text(encoding="utf-8"), path
+    assert not list(DEMO.rglob("*summary*"))
+    assert sum(p.stat().st_size for p in DEMO.rglob("*") if p.is_file()) < 400_000
+
+
+def test_kit_modules_match_the_platform_copies():
+    """Shared helpers are byte copies of challenge/. The v4 simulator modules are compared once the
+    platform vendors them (challenge/v4_runner.py); until then this part is skipped."""
+    for name in ("__init__.py", "contracts.py", "observing_calendar.py", "project_paths.py", "tile_geometry_simulator.py"):
+        assert (KIT / "challenge" / name).read_bytes() == (ROOT / "challenge" / name).read_bytes(), name
+    for name in ("v4_fiber_map.py", "v4_scorer.py", "v4_runner.py", "v4_config_check.py"):
+        platform = ROOT / "challenge" / name
+        if platform.exists():
+            assert (KIT / "challenge" / name).read_bytes() == platform.read_bytes(), f"starter_kit_v4/challenge/{name} differs"
+
+
+def test_llm_hook_falls_back_without_a_reachable_model(baseline, tmp_path):
+    agent = tmp_path / "agent"
+    shutil.copytree(KIT / "agent", agent)
+    (agent / ".env").write_text("USE_LLM=1\nOPENAI_BASE_URL=http://127.0.0.1:9/v1\nOPENAI_API_KEY=obs_not-a-real-credential\n", encoding="utf-8")
+    summary = summary_of(run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--quiet"))
+    assert summary["termination_reason"] == "survey_complete"
+    assert summary["total"] == baseline["summary"]["total"]  # the rules decide when the model is unreachable
+    log = (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+    assert "llm=on" in log and "llm: call failed" in log
+    assert "obs_not-a-real-credential" not in log
+
+
+def test_llm_hook_uses_an_openai_compatible_endpoint(tmp_path):
+    seen = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            seen.append((self.path, self.headers.get("Authorization"), body["model"]))
+            reply = {"choices": [{"message": {"content": '{"avoid_directions": ["N"], "duration_scale": 1.1}'}}]}
+            data = json.dumps(reply).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        agent = tmp_path / "agent"
+        shutil.copytree(KIT / "agent", agent)
+        (agent / ".env").write_text(f"USE_LLM=1\nOPENAI_BASE_URL=http://127.0.0.1:{server.server_address[1]}/v1\n"
+                                    "OPENAI_API_KEY=obs_test-key\nNO_PROXY=127.0.0.1,localhost\n", encoding="utf-8")
+        summary = summary_of(run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--quiet"))
+    finally:
+        server.shutdown()
+    assert summary["termination_reason"] == "survey_complete" and summary["total"] > 0
+    assert seen and seen[0] == ("/v1/chat/completions", "Bearer obs_test-key", "team-model")
+    assert len(seen) <= 10  # one short call per night (plus rare report checks), never one per decision
+    assert "llm night 2026-10-01: avoid ['N'] duration x1.10" in (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+
+
+def _pack(tmp_path: Path) -> Path:
+    out = tmp_path / "my-agent.zip"
+    proc = run("pack_agent.py", "--out", str(out))
+    assert proc.returncode == 0, proc.stderr
+    return out
+
+
+def test_pack_output_passes_the_platform_zip_and_manifest_checks(tmp_path):
+    from project_platform.manifest import ProjectError, ProjectManifest  # noqa: PLC0415
+    from project_platform.package import read_project_zip  # noqa: PLC0415
+
+    files = read_project_zip(_pack(tmp_path).read_bytes())
+    names = sorted(f.path for f in files)
+    assert names == ["baseline_agent.py", "llm_hook.py", "observer.project.json", "planner.py", "skymath.py"]
+    raw = json.loads(next(f.data for f in files if f.path == "observer.project.json"))
+    assert raw["protocol"] == "jsonl-v4" and raw["run"] == ["python3", "-u", "baseline_agent.py"]
+    assert raw["environment"]["USE_LLM"] == "0"
+    # Every other field passes the platform's manifest parser as it is today.
+    manifest = ProjectManifest.parse({**raw, "protocol": "jsonl-v2"})
+    assert manifest.image == "python:3.12-slim" and manifest.build == ()
+    try:
+        ProjectManifest.parse(raw)
+    except ProjectError as exc:
+        pytest.skip(f"platform does not accept jsonl-v4 manifests yet (v4 protocol plumbing pending): {exc}")
+
+
+def test_packed_project_runs_on_the_demo_card_with_platform_style_environment(tmp_path):
+    from project_platform.package import extract_project, read_project_zip  # noqa: PLC0415
+
+    engine = kit_module("v4_protocol_engine")
+    AgentProcess, run_card = engine.AgentProcess, engine.run_card
+
+    files = read_project_zip(_pack(tmp_path).read_bytes())
+    project = tmp_path / "project"
+    extract_project(files, project)
+    manifest = json.loads((project / "observer.project.json").read_text(encoding="utf-8"))
+    env = {"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path), **manifest["environment"],
+           "OPENAI_BASE_URL": "https://platform.invalid/functions/v1/observer-model/v1",
+           "OPENAI_API_KEY": "obs_not-a-real-credential"}
+    with (tmp_path / "agent.log").open("w", encoding="utf-8") as log:
+        agent = AgentProcess([PY, *manifest["run"][1:]], cwd=project, env=env, stderr=log)
+        result = run_card(DEMO, agent, tmp_path / "out", wallclock_seconds=300)
+    assert result["termination_reason"] == "survey_complete"
+    assert result["score"]["total"] > 0
+    assert "llm=off" in (tmp_path / "agent.log").read_text(encoding="utf-8")
+
+
+def test_pack_agent_rejects_a_v2_manifest_and_leaves_env_out(tmp_path):
+    agent = tmp_path / "agent"
+    shutil.copytree(KIT / "agent", agent)
+    (agent / ".env").write_text("USE_LLM=1\n", encoding="utf-8")
+    ok = tmp_path / "ok.zip"
+    assert run("pack_agent.py", "--agent", str(agent), "--out", str(ok)).returncode == 0
+    assert ".env" not in zipfile.ZipFile(ok).namelist()
+    manifest = json.loads((agent / "observer.project.json").read_text(encoding="utf-8"))
+    (agent / "observer.project.json").write_text(json.dumps({**manifest, "protocol": "jsonl-v2"}), encoding="utf-8")
+    proc = run("pack_agent.py", "--agent", str(agent), "--out", str(tmp_path / "bad.zip"))
+    assert proc.returncode != 0 and "jsonl-v4" in proc.stderr
+    assert not (tmp_path / "bad.zip").exists()
+
+
+def test_kit_docs_and_layout():
+    for name in ("README.md", "SKILL.md", "local_runner.py", "pack_agent.py", "agent/baseline_agent.py",
+                 "agent/llm_hook.py", "agent/observer.project.json", "examples/idle_agent.py"):
+        assert (KIT / name).is_file(), name
+    readme = (KIT / "README.md").read_text(encoding="utf-8")
+    skill = (KIT / "SKILL.md").read_text(encoding="utf-8")
+    for text in (readme, skill):
+        assert "participant-agent-protocol-v4" in text and "until_utc" in text and "local_runner.py" in text
+        assert "Paranal" in text
