@@ -106,11 +106,24 @@ def scenarios(slugs):
     return found
 
 
+REQUIRED_SCHEMA = {'private.observer_phase_config_snapshots': '20260928004100_card_boards',
+                   'private.observer_scenario_public_files': '20260928004400_v4_public_card_files'}
+
+
+def missing_migrations():
+    rows = query('select ' + ','.join(f"to_regclass({q(t)}) is not null as \"{t}\"" for t in REQUIRED_SCHEMA))[0]
+    return sorted({m for t, m in REQUIRED_SCHEMA.items() if not rows[t]})
+
+
 def activity():
-    return query('select (select count(*) from private.observer_jobs where status in '+ACTIVE_JOBS+') as jobs,'
-                 "(select count(*) from public.observer_batches b join public.phases p on p.id=b.phase_id where b.status in"
-                 " ('queued','running') and p.slug in ("+','.join(map(q, (PRACTICE, FORMAL, FINAL)))+")) as batches,"
-                 "(select count(*) from private.observer_phase_config_snapshots where restored_at is null) as open_snapshots")[0]
+    missing = missing_migrations()
+    state = query('select (select count(*) from private.observer_jobs where status in '+ACTIVE_JOBS+') as jobs,'
+                  "(select count(*) from public.observer_batches b join public.phases p on p.id=b.phase_id where b.status in"
+                  " ('queued','running') and p.slug in ("+','.join(map(q, (PRACTICE, FORMAL, FINAL)))+")) as batches")[0]
+    state['open_snapshots'] = 0 if missing else query(
+        'select count(*) as n from private.observer_phase_config_snapshots where restored_at is null')[0]['n']
+    state['missing_migrations'] = missing
+    return state
 
 
 def guard_sql(phase_ids, forward):
@@ -250,6 +263,7 @@ def plan_forward(args):
     if int(state['jobs']): problems.append(f"{state['jobs']} evaluation job(s) queued, dispatched or claimed")
     if int(state['batches']): problems.append(f"{state['batches']} evaluation(s) active in the touched phases")
     if int(state['open_snapshots']): problems.append('phases are already switched (an unrestored snapshot exists); run --reverse first')
+    for m in state['missing_migrations']: problems.append(f'migration {m} is not applied')
 
     ids = lambda slugs: [cards[s]['id'] for s in slugs]
     target = {PRACTICE: (args.practice if args.practice_mode == 'replace' else
@@ -331,7 +345,8 @@ end $colocated$;
 
 
 def plan_reverse():
-    problems = []
+    problems = [f'migration {m} is not applied' for m in missing_migrations()]
+    if problems: return {'mode': 'reverse', 'problems': problems}, None
     snap = query('select id,label,taken_at,snapshot from private.observer_phase_config_snapshots where restored_at is null order by id desc')
     if len(snap) != 1: problems.append('no unrestored snapshot to restore' if not snap else 'more than one unrestored snapshot')
     state = activity()

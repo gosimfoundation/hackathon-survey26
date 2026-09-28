@@ -307,3 +307,18 @@ def test_card_files_open_for_practice_at_once_and_for_formal_cards_at_the_compet
     assert run(mod, '--reverse', '--apply', capsys=capsys)[0] == 0
     assert readable(uri) == before
     assert query(uri, 'select count(*) from private.observer_scenario_public_files') == [(0,)]
+
+
+def test_dry_run_reports_missing_migrations_instead_of_failing(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    real = mod.query
+    def without_tables(statement):
+        return [{k: (False if k.startswith('private.observer_') else v) for k, v in row.items()} for row in real(statement)] \
+            if 'to_regclass' in statement else real(statement)
+    mod.query = without_tables
+    code, out = run(mod, *FORWARD, capsys=capsys)
+    assert code == 2 and 'migration 20260928004100_card_boards is not applied' in out['problems']
+    assert 'migration 20260928004400_v4_public_card_files is not applied' in out['problems']
+    assert out['planned']['online']['scenarios'] == ['v4-a', 'v4-b', 'v4-c', 'v4-d']
+    code, out = run(mod, '--reverse', capsys=capsys)
+    assert code == 2 and len(out['problems']) == 2
