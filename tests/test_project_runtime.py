@@ -1,7 +1,120 @@
 """Trusted executor completion and private diagnostics regressions."""
+import json
 import os
+from pathlib import Path
 import pytest
 RUN="00000000-0000-4000-8000-000000000002"
+
+
+def _finished_session(monkeypatch, status_payload):
+    import project_platform.executor as executor
+    from project_platform.session import SessionError
+    events=[]
+    class Transport:
+        def publish_initial(self,publication):events.append('initial')
+        def finish(self,reason,sequence):events.append(('finish',reason,sequence))
+    class Runtime:
+        def __init__(self):self.transport=Transport()
+        def build(self):pass
+        def start(self,environment):return self.transport
+        def close(self):events.append('close')
+    class Client:
+        polls=0
+        def call(self,action,**kwargs):
+            if action=='poll':
+                self.polls+=1
+                if self.polls==1:return {'publication':{'schema_version':'initial-publication-v2'}}
+                raise SessionError('invalid_or_expired_capability')
+            if action=='ready':return {}
+            if action=='status':return status_payload
+            raise AssertionError(action)
+    return executor, events, Runtime(), Client()
+
+
+def test_execute_sends_one_finish_message_after_a_normally_scored_session(monkeypatch):
+    executor,events,runtime,client=_finished_session(monkeypatch,
+        {'status':'scored','expired':False,'termination_reason':'survey_complete'})
+    assert executor.execute(runtime,client,{})['status']=='scored'
+    assert events==['initial',('finish','survey_complete',0),'close','close']
+
+
+def test_execute_without_server_side_reason_keeps_the_old_immediate_close(monkeypatch):
+    # A server that predates termination_reason in the status payload: no
+    # finish message, the run result is unaffected.
+    executor,events,runtime,client=_finished_session(monkeypatch,{'status':'scored','expired':False})
+    assert executor.execute(runtime,client,{})['status']=='scored'
+    assert events==['initial','close','close']
+
+
+def test_colocated_run_session_sends_finish_once_the_score_is_final(tmp_path):
+    import sys
+    from datetime import datetime,timedelta,timezone
+    from project_platform.trusted_engine import ColocatedProvider,run_session
+    from project_platform.transport import JsonlTransport
+    scenario=Path(__file__).resolve().parents[1]/'starter_kit'/'scenarios'/'demo-week'
+    script=tmp_path/'agent.py'
+    script.write_text("""import json,sys
+for line in sys.stdin:
+ m=json.loads(line)
+ if m['message_type']=='initialize':continue
+ if m['message_type']=='finish':
+  sys.stderr.write('FINISH-MSG '+json.dumps(m['payload'],sort_keys=True)+'\\n');sys.stderr.flush();sys.exit(0)
+ print(json.dumps({'protocol_version':m['protocol_version'],'message_type':'decision_response',
+ 'decision_sequence':m['decision_sequence'],'action':'wait'}),flush=True)
+""")
+    class Client:
+        def __init__(self):self.actions=[]
+        def call(self,action,**kwargs):
+            self.actions.append(action)
+            if action=='begin':
+                return (datetime.now(timezone.utc)+timedelta(seconds=300)).isoformat().replace('+00:00','Z')
+            return {}
+    engine,participant=Client(),Client()
+    transport=JsonlTransport([sys.executable,'-u',str(script)],cwd=tmp_path,environment={'PATH':os.environ['PATH']})
+    provider=ColocatedProvider(transport,engine,participant)
+    try:
+        result,digest=run_session(scenario,tmp_path/'out',engine,provider=provider)
+    finally:
+        transport.close(force=True)
+    assert result['termination_reason']=='survey_complete'
+    markers=[line for line in transport.log.splitlines() if line.startswith('FINISH-MSG ')]
+    assert len(markers)==1
+    payload=json.loads(markers[0][len('FINISH-MSG '):])
+    assert payload['termination_reason']=='survey_complete'
+    assert payload['last_decision_sequence']==result['commit_log'][-1]['sequence']
+    assert payload['grace_seconds']==30
+    assert (tmp_path/'out'/'decisions.csv').is_file() and len(digest)==64
+
+
+def test_colocated_run_session_sends_no_finish_after_an_agent_error(tmp_path):
+    import sys
+    from datetime import datetime,timedelta,timezone
+    from project_platform.trusted_engine import ColocatedProvider,run_session
+    from project_platform.transport import JsonlTransport
+    scenario=Path(__file__).resolve().parents[1]/'starter_kit'/'scenarios'/'demo-week'
+    script=tmp_path/'agent.py'
+    script.write_text("""import json,sys
+for line in sys.stdin:
+ m=json.loads(line)
+ if m['message_type']=='initialize':continue
+ print('not a protocol answer',flush=True)
+""")
+    class Client:
+        def call(self,action,**kwargs):
+            if action=='begin':
+                return (datetime.now(timezone.utc)+timedelta(seconds=300)).isoformat().replace('+00:00','Z')
+            return {}
+    transport=JsonlTransport([sys.executable,'-u',str(script)],cwd=tmp_path,environment={'PATH':os.environ['PATH']})
+    provider=ColocatedProvider(transport,Client(),Client())
+    try:
+        result,_=run_session(scenario,tmp_path/'out',Client(),provider=provider)
+        assert result['termination_reason']=='agent_error'
+        # No finish message and no stdin EOF: the process is still running
+        # until the runtime's normal close() stops it.
+        assert transport.process is not None and transport.process.poll() is None
+    finally:
+        transport.close(force=True)
+    assert 'FINISH-MSG' not in transport.log
 
 
 def test_expired_participant_waits_for_trusted_result_and_cannot_decide_again(monkeypatch):

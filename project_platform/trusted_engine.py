@@ -13,6 +13,7 @@ from pathlib import Path
 from challenge.challenge_workflow import ChallengeWorkflow
 from .session import SessionClient, long_poll_seconds, wait_until
 from .scenario_instances import PANEL_VERSION, calibrated_score
+from .transport import NORMAL_TERMINATION_REASONS
 
 
 def result_summary(result: dict) -> dict:
@@ -136,6 +137,9 @@ class ColocatedProvider:
     def __call__(self, snapshot, deadline_monotonic):
         return self.transport(snapshot, min(deadline_monotonic, self.server_deadline or deadline_monotonic))
 
+    def finish(self, termination_reason: str, last_decision_sequence: int) -> None:
+        self.transport.finish(termination_reason, last_decision_sequence)
+
 
 COLOCATED_FORMAT = "observer-colocated-v1"
 
@@ -157,6 +161,16 @@ def run_session(scenario: Path, output: Path, client: SessionClient, *, wallcloc
         # instead of uploading an empty result and later reporting run_not_running.
         raise provider.initialization_error
     provider.flush()
+    if result["termination_reason"] in NORMAL_TERMINATION_REASONS:
+        # The score is final at this point. A colocated project gets one last
+        # finish message and a bounded grace period to write its summary; a
+        # failure here must never change the recorded result.
+        finish = getattr(provider, "finish", None)
+        if callable(finish):
+            try:
+                finish(result["termination_reason"], last_committed_sequence(result))
+            except Exception:
+                pass
     if instance_record is not None:
         difficulty = instance_record["difficulty"]
         result["calibration"] = {
@@ -168,3 +182,7 @@ def run_session(scenario: Path, output: Path, client: SessionClient, *, wallcloc
     workflow.write_outputs(output,result)
     digest=hashlib.sha256((output/"decisions.csv").read_bytes()).hexdigest()
     return result,digest
+
+
+def last_committed_sequence(result: dict) -> int:
+    return max((entry["sequence"] for entry in result["commit_log"] if entry.get("committed")), default=0)

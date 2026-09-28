@@ -19,6 +19,11 @@ MAX_INITIALIZATION_BYTES = 128 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024
 # The participant's own stderr, kept for the private result download as agent.log.
 AGENT_LOG_BYTES = 2 * 1024 * 1024
+# Graceful shutdown allowance after the final "finish" message: the score is
+# already fixed, so these seconds never count against the scenario clock.
+FINISH_GRACE_SECONDS = 30
+
+NORMAL_TERMINATION_REASONS = ("survey_complete", "global_wallclock_expired")
 
 
 class ExecutionError(RuntimeError):
@@ -142,6 +147,39 @@ class JsonlTransport:
         self.send({"protocol_version": PARTICIPANT_PROTOCOL_VERSION,
                    "message_type": "initialize", "payload": publication},
                   time.monotonic() + self.initialization_seconds, limit=MAX_INITIALIZATION_BYTES)
+
+    def finish(self, termination_reason: str, last_decision_sequence: int, *,
+               grace_seconds: float = FINISH_GRACE_SECONDS) -> None:
+        """End a normally finished run gracefully: one final "finish" line,
+        then stdin EOF, then up to grace_seconds for the process to exit on its
+        own before the usual terminate/kill. Best-effort and never raises: a
+        project that crashes on the message, ignores it or hangs must not turn
+        an already-scored run into a failure. Anything printed to stdout after
+        the message is ignored; stderr keeps flowing into the log."""
+        process = self.process
+        if process is None:
+            return
+        grace_deadline = time.monotonic() + grace_seconds
+        if process.poll() is None:
+            try:
+                self.send({"protocol_version": PARTICIPANT_PROTOCOL_VERSION,
+                           "message_type": "finish",
+                           "payload": {"termination_reason": termination_reason,
+                                       "last_decision_sequence": int(last_decision_sequence),
+                                       "grace_seconds": grace_seconds}}, grace_deadline)
+            except (ExecutionError, GlobalDeadlineExpired):
+                pass  # an unreadable or full pipe is handled by the kill below
+        if self.process is None:
+            return  # a failed send already force-closed the process
+        try:
+            process.stdin.close()
+        except OSError:
+            pass
+        try:
+            process.wait(timeout=max(0.0, grace_deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            pass
+        self.close()
 
     def __call__(self, snapshot: Mapping, deadline_monotonic: float) -> dict:
         sequence = snapshot["decision_sequence"]

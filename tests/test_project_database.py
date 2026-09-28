@@ -267,12 +267,15 @@ def test_trusted_finish_requires_matching_csv_and_keeps_partial_batches_off_boar
     rpc(uri,"observer_publish_initial",run,engine,{})
     rpc(uri,"observer_ready",run,participant)
     rpc(uri,"observer_begin",run,engine)
-    summary={"score":{"total":100.5}}
+    summary={"score":{"total":100.5},"termination_reason":"survey_complete"}
     with pytest.raises(psycopg.Error,match="invalid_or_expired_capability"):
         rpc(uri,"observer_finish_run",run,participant,summary,"f"*64,"private/artifact")
     rpc(uri,"observer_finish_run",run,engine,summary,"f"*64,"private/artifact")
     rpc(uri,"observer_finish_run",run,engine,summary,"f"*64,"private/artifact")
-    assert rpc(uri,"observer_run_status",run,participant)["status"]=="awaiting_csv"
+    status=rpc(uri,"observer_run_status",run,participant)
+    assert status["status"]=="awaiting_csv"
+    # The execute host reads the reason for the graceful finish message from here.
+    assert status["termination_reason"]=="survey_complete"
     assert query(uri,"select * from public.observer_leaderboard(%s)",(s["phase"],),role="anon")==[]
     with pytest.raises(psycopg.Error,match="csv_does_not_match_session"):
         rpc(uri,"observer_accept_csv",run,s["user"],"e"*64)
@@ -298,7 +301,7 @@ def test_reconciler_settles_unknown_usage_and_expires_missing_jobs(setup):
     query(uri,"update private.observer_sessions set expires_at=now()-interval '1 second' where run_id=%s",(run,))
     assert rpc(uri,"observer_reconcile_sessions")>=2
     assert query(uri,"select status,actual_tokens from private.observer_model_calls where id=%s",(call,))==[("settled",300)]
-    assert rpc(uri,"observer_run_status",run,participant)=={"status":"failed","expired":True}
+    assert rpc(uri,"observer_run_status",run,participant)=={"status":"failed","expired":True,"termination_reason":None}
     assert rpc(uri,"observer_reconcile_sessions")==0
 
 
@@ -316,4 +319,3 @@ def test_poll_does_not_wait_for_a_session_row_lock(setup):
     assert polled["sequence"] == state["sequence"] and state["answered"] is False
     with pytest.raises(psycopg.Error, match="invalid_or_expired_capability"):
         rpc(setup["uri"], "observer_poll", run, "wrong-token-" + "x" * 40)
-

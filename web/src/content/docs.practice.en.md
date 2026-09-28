@@ -43,6 +43,21 @@ Node.js: `"image": "node:22-slim", "run": ["node", "agent.js"]`. Rust: `"image":
 
 **Build and internet access:** the `build` commands run before your program starts, in the same image and with internet access, so package managers can download dependencies (pip, npm, cargo and others). The build runs as a non-root user on a read-only system with a 10-minute limit; only the project folder (`/workspace`) and `/tmp` (256 MB) are writable, so install into the project folder: pip with `--target .deps` plus `"environment": {"PYTHONPATH": ".deps"}`; npm with `"NPM_CONFIG_CACHE": "/tmp/npm-cache"` (`node_modules` stays in the project); cargo with `"CARGO_HOME": "/workspace/.cargo"`. Commit a lock file so every build uses the same dependency versions.
 
+### The finish message
+
+When an evaluation ends (all slots done, or the global time limit reached), the platform sends your program one last message:
+
+```json
+{"protocol_version": "…", "message_type": "finish", "payload": {"termination_reason": "survey_complete", "last_decision_sequence": 1234, "grace_seconds": 30}}
+```
+
+- Do not reply. Anything written to stdout after this message is ignored.
+- The platform then closes your program's stdin. Your program has 30 seconds to collect data and write a summary, and should then exit on its own. If it is still running after 30 seconds, the platform stops it.
+- These 30 seconds do not count against the scenario time limit and do not affect the score. The score is final before this message is sent.
+- Anything written to stderr during this time is saved in agent.log in your result ZIP.
+- termination_reason is survey_complete (all slots done) or global_wallclock_expired (time limit reached).
+- Programs that do not recognise this message keep working; even if one fails on it, the score is not affected.
+
 ## 5. Data and scoring
 
 `config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests. Public files are downloadable from Resources. Local runs of the current practice scenarios with the starter kit keep the original `participant-agent-protocol-v1` contract, so existing scores and replays are preserved. Complete-project cloud evaluations always use `participant-agent-protocol-v2` (the version in their logs): answer each request with the `protocol_version` it carries. The kit's agent accepts both.

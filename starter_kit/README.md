@@ -103,9 +103,11 @@ live run reports `survey_complete`, `global_wallclock_expired`, `agent_error` or
 3. The global wall clock starts. For every decision opportunity the platform writes one `decision_request`
    line and waits for one `decision_response` line with the same `decision_sequence`. Reading a snapshot never
    advances simulated time; a committed action does.
-4. The run ends when the survey is complete, when the wall clock expires (the process is killed; an
-   in-flight response is ignored), or when the agent exits / answers with something unparseable
+4. The run ends when the survey is complete, when the wall clock expires (an in-flight response is ignored),
+   or when the agent exits / answers with something unparseable
    (`agent_error`: the remaining survey stays unobserved, so every remaining REQUIRED tile counts as missed).
+   On the two normal endings the agent first receives one `finish` message and 30 grace seconds to write a
+   summary and exit on its own (see "The finish message" below); only then is a still-running process stopped.
 5. The platform replays `decisions.csv` with the public scorer and stores `score_report.json`.
 
 The wall clock is the only time rule: no per-decision timeout, no synthetic fallback action. The reference
@@ -169,6 +171,21 @@ reported on one tile). For faults: reporting while an unacknowledged fault is ac
 the `fault_status` publication and the repair clock); with no active fault it is a *misreport* — one misreport
 between two correct reports is free, each further one costs 100; re-reporting an acknowledged fault under
 repair is neutral.
+
+### The finish message
+
+When an evaluation ends (all slots done, or the global time limit reached), the platform sends your program one last message:
+
+```json
+{"protocol_version": "…", "message_type": "finish", "payload": {"termination_reason": "survey_complete", "last_decision_sequence": 1234, "grace_seconds": 30}}
+```
+
+- Do not reply. Anything written to stdout after this message is ignored.
+- The platform then closes your program's stdin. Your program has 30 seconds to collect data and write a summary, and should then exit on its own. If it is still running after 30 seconds, the platform stops it.
+- These 30 seconds do not count against the scenario time limit and do not affect the score. The score is final before this message is sent.
+- Anything written to stderr during this time is saved in agent.log in your result ZIP.
+- termination_reason is survey_complete (all slots done) or global_wallclock_expired (time limit reached).
+- Programs that do not recognise this message keep working; even if one fails on it, the score is not affected.
 
 ## Scoring (`challenge-score-v3`, public)
 

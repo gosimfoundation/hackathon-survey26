@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import zipfile
 from pathlib import Path
 
@@ -62,7 +63,10 @@ def test_baseline_completes_survey(baseline):
     workflow = json.loads((out / "workflow_result.json").read_text(encoding="utf-8"))
     assert "initial_publication" not in workflow  # stripped like the platform does
     assert workflow["score_report"]["score"]["total"] == summary["total"]
-    assert "provider=deterministic" in (out / "agent.log").read_text(encoding="utf-8")
+    agent_log = (out / "agent.log").read_text(encoding="utf-8")
+    assert "provider=deterministic" in agent_log
+    # The kit agent handles the platform's finish message: one stderr summary, then a self-exit.
+    assert "minimal-agent finished: termination_reason=survey_complete" in agent_log
     if (KIT / "challenge" / "replay.py").exists():
         html = out / "decision_replay.html"
         assert html.is_file() and html.stat().st_size > 10_000
@@ -117,6 +121,33 @@ def test_make_scenario_produces_valid_scenario(tmp_path):
                             "--quiet", "--no-replay"))
     assert result["termination_reason"] == "survey_complete"
     assert result["committed_actions"] > 0
+
+
+def test_local_runner_finish_message_eof_and_grace(tmp_path):
+    """The runner mirrors the platform: one finish line, stdin EOF, then a grace period.
+    An agent that ignores the message but exits on EOF ends quickly; the run and score stand."""
+    agent = tmp_path / "agent.py"
+    agent.write_text(
+        "import json, sys\n"
+        "for line in sys.stdin:\n"
+        "    m = json.loads(line)\n"
+        "    t = m.get('message_type')\n"
+        "    if t == 'decision_request':\n"
+        "        print(json.dumps({'protocol_version': m['protocol_version'], 'message_type': 'decision_response',\n"
+        "                          'decision_sequence': m['decision_sequence'], 'action': 'wait',\n"
+        "                          'reason': 'finish test'}), flush=True)\n"
+        "    elif t == 'finish':\n"
+        "        print('saw finish: ' + m['payload']['termination_reason'], file=sys.stderr, flush=True)\n"
+        "print('stdin closed', file=sys.stderr, flush=True)\n"
+    )
+    started = time.monotonic()
+    proc = run("local_runner.py", "--scenario", "scenarios/demo-week", "--agent", str(agent),
+               "--out", str(tmp_path / "out"), "--quiet", "--no-replay")
+    assert time.monotonic() - started < 120  # no 30 s grace wait: the agent exited on EOF
+    summary = summary_of(proc)
+    assert summary["termination_reason"] == "survey_complete"
+    agent_log = (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+    assert "saw finish: survey_complete" in agent_log and "stdin closed" in agent_log
 
 
 def test_pack_agent_builds_zip_with_entry_at_root(tmp_path):

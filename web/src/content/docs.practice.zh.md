@@ -43,6 +43,21 @@ Node.js：`"image": "node:22-slim", "run": ["node", "agent.js"]`。Rust：`"imag
 
 **构建与联网：**`build` 命令在程序启动前执行，使用同一个镜像，**可以访问互联网**，因此 pip、npm、cargo 等可以在构建时下载依赖。构建以非 root 用户运行，系统目录只读，时限 10 分钟；只有项目目录（`/workspace`）和 `/tmp`（256 MB）可写，请把依赖装进项目目录：pip 用 `--target .deps` 并设置 `"environment": {"PYTHONPATH": ".deps"}`；npm 设置 `"NPM_CONFIG_CACHE": "/tmp/npm-cache"`（`node_modules` 留在项目里）；cargo 设置 `"CARGO_HOME": "/workspace/.cargo"`。建议提交锁文件，保证每次构建使用相同版本的依赖。
 
+### 结束消息 finish
+
+评测结束时（全部时隙完成，或到达总时限），平台会给程序发最后一条消息：
+
+```json
+{"protocol_version": "…", "message_type": "finish", "payload": {"termination_reason": "survey_complete", "last_decision_sequence": 1234, "grace_seconds": 30}}
+```
+
+- 这条消息不需要回复，之后写到标准输出的内容会被忽略。
+- 发出后，平台会关闭程序的标准输入。程序有 30 秒整理数据、写总结，然后应自行退出；30 秒后仍未退出，平台会强制结束它。
+- 这 30 秒不计入场景时限，也不影响分数。分数在发出这条消息之前就已经确定。
+- 这段时间写到标准错误（stderr）的内容，会保存在结果包的 agent.log 里。
+- termination_reason 的取值：survey_complete（全部时隙完成）、global_wallclock_expired（到达总时限）。
+- 不认识这条消息的程序照常可用；即使程序因此出错，也不影响成绩。
+
 ## 5. 数据与评分
 
 `config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求。公开文件可从资源页下载。用入门包在本地运行当前练习场景时仍使用原有 `participant-agent-protocol-v1` 合约，已有成绩与回放保持不变；完整项目的云端评测一律使用 `participant-agent-protocol-v2`（日志里显示的就是这个版本），回答时沿用请求里的 `protocol_version` 即可。入门包自带的智能体两个版本都支持。
