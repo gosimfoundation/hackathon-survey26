@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pytest pgserver "psycopg[binary]"
-      - run: pytest challenge/tests tests/test_challenge_runner.py tests/test_starter_kit.py tests/test_worker_preflight.py -q
+      - run: pytest challenge/tests tests/test_challenge_runner.py tests/test_starter_kit.py tests/test_starter_kit_v4.py tests/test_worker_preflight.py -q
       - name: Fetch PostgREST
         run: |
           curl -sSL -o postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v16.2/postgrest-v16.2-linux-static-x86-64.tar.xz
