@@ -10,6 +10,8 @@ Organizer decisions 2026-09-28 (go/no-go for v4: 2026-10-02 12:00 UTC):
                      board, 900 s per card run, 4 evaluations per team per day;
   final-hidden       v4 hidden cards (E-H), sealed until results are published,
                      900 s per card run, boards per card plus overall.
+Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
+anything else: v4_requires_colocated); --reverse restores the previous value.
 
 Forward (default): python scripts/configure-v4-phases.py \\
     --practice v4-alpha,v4-beta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h [--apply]
@@ -226,10 +228,11 @@ def plan_forward(args):
     changes = {
         PRACTICE: {'scenarios': target[PRACTICE], 'board_layout': 'cards' if args.practice_mode != 'skip' else
                    phases[PRACTICE]['settings'].get('board_layout', 'overall'),
-                   'runtime_seconds': args.practice_runtime if args.practice_mode == 'replace' else phases[PRACTICE]['settings']['runtime_seconds']},
+                   'runtime_seconds': args.practice_runtime if args.practice_mode == 'replace' else phases[PRACTICE]['settings']['runtime_seconds'],
+                   'colocated': True if args.practice_mode != 'skip' else phases[PRACTICE]['settings'].get('colocated')},
         FORMAL: {'scenarios': args.formal, 'board_layout': 'cards_overall', 'runtime_seconds': args.runtime,
-                 'daily_batches': args.daily, 'daily_limit': args.daily},
-        FINAL: {'scenarios': args.final, 'board_layout': 'cards_overall', 'runtime_seconds': args.runtime, 'sealed': True},
+                 'daily_batches': args.daily, 'daily_limit': args.daily, 'colocated': True},
+        FINAL: {'scenarios': args.final, 'board_layout': 'cards_overall', 'runtime_seconds': args.runtime, 'sealed': True, 'colocated': True},
     }
     snapshot = f"""
 insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SNAPSHOT_LABEL)},jsonb_build_object(
@@ -247,16 +250,16 @@ insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SN
         body.append(f"delete from public.phase_scenarios where phase_id={q(p_id)} and not (scenario_id=any({uuids(ids(args.practice))}));\n")
     if args.practice_mode != 'skip':
         body.append(link(p_id, ids(args.practice), False))
-        body.append(f"update public.observer_phase_settings set board_layout='cards',runtime_seconds={int(changes[PRACTICE]['runtime_seconds'])}"
+        body.append(f"update public.observer_phase_settings set board_layout='cards',colocated=true,runtime_seconds={int(changes[PRACTICE]['runtime_seconds'])}"
                     f" where phase_id={q(p_id)};\n")
     body.append(f"delete from public.phase_scenarios where phase_id={q(f_id)} and not (scenario_id=any({uuids(ids(args.formal))}));\n")
     body.append(link(f_id, ids(args.formal), False))
-    body.append(f"update public.observer_phase_settings set board_layout='cards_overall',runtime_seconds={int(args.runtime)},"
+    body.append(f"update public.observer_phase_settings set board_layout='cards_overall',colocated=true,runtime_seconds={int(args.runtime)},"
                 f"daily_batches={int(args.daily)} where phase_id={q(f_id)};\n")
     body.append(f"update public.phases set daily_limit={int(args.daily)} where id={q(f_id)};\n")
     body.append(f"delete from public.phase_scenarios where phase_id={q(h_id)} and not (scenario_id=any({uuids(ids(args.final))}));\n")
     body.append(link(h_id, ids(args.final), True))
-    body.append(f"update public.observer_phase_settings set board_layout='cards_overall',runtime_seconds={int(args.runtime)}"
+    body.append(f"update public.observer_phase_settings set board_layout='cards_overall',colocated=true,runtime_seconds={int(args.runtime)}"
                 f" where phase_id={q(h_id)} and sealed;\n")
     if args.preview:
         body.append(f"update private.observer_preparation_config set scenario_id={q(cards[args.preview]['id'])} where id;\n")
@@ -268,13 +271,20 @@ insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SN
     then raise exception 'A formal or hidden card has no evaluation bundle';end if;
 end $bundles$;
 """)
+    colocated_phases = [f_id, h_id] + ([p_id] if args.practice_mode != 'skip' else [])
+    body.append(f"""do $colocated$ begin
+  if exists(select 1 from public.observer_phase_settings where phase_id=any({uuids(colocated_phases)}) and not colocated)
+    then raise exception 'A phase with v4 cards is not colocated';end if;
+end $colocated$;
+""")
     body.append(privacy_sql([FINAL, PARKING]))
     body.append(f"select private.audit('observer.v4_phases_switched',{q(json.dumps({'practice': target[PRACTICE], 'formal': args.formal, 'final_count': len(args.final), 'runtime_seconds': args.runtime, 'daily_batches': args.daily}))}::jsonb);\n")
     sql = 'begin;\n' + ''.join(body) + 'commit;\n'
     return {'mode': 'forward', 'problems': problems, 'warnings': warnings,
             'current': {s: {'scenarios': current[s], 'board_layout': (phases[s]['settings'] or {}).get('board_layout'),
                             'runtime_seconds': (phases[s]['settings'] or {}).get('runtime_seconds'),
-                            'daily_batches': (phases[s]['settings'] or {}).get('daily_batches')} for s in phases},
+                            'daily_batches': (phases[s]['settings'] or {}).get('daily_batches'),
+                            'colocated': (phases[s]['settings'] or {}).get('colocated')} for s in phases},
             'planned': changes, 'parked': parked,
             'preview': args.preview or (prep[0]['scenario'] if prep else None)}, sql
 
@@ -311,7 +321,7 @@ insert into public.phase_scenarios(phase_id,scenario_id)
   select p.id,v.scenario_id from v4_restore_scenarios v,public.phases p where p.slug={q(PARKING)}
     and not exists(select 1 from public.phase_scenarios ps where ps.scenario_id=v.scenario_id);
 update public.observer_phase_settings s set runtime_seconds=r.runtime_seconds,daily_batches=r.daily_batches,
-    board_layout=coalesce(r.board_layout,'overall'),sealed=r.sealed
+    board_layout=coalesce(r.board_layout,'overall'),sealed=r.sealed,colocated=r.colocated
   from jsonb_populate_recordset(null::public.observer_phase_settings,{snapshot}->'settings') r where s.phase_id=r.phase_id;
 update public.phases p set daily_limit=r.daily_limit
   from jsonb_populate_recordset(null::public.phases,{snapshot}->'phases') r where p.id=r.id;
@@ -327,7 +337,8 @@ def status():
     phases = {slug: phase(slug) for slug in (PRACTICE, FORMAL, FINAL)}
     out = {slug: {'scenarios': p['scenarios'] if slug != FINAL else f"{len(p['scenarios'])} (sealed, not printed)",
                   'board_layout': (p['settings'] or {}).get('board_layout'), 'runtime_seconds': (p['settings'] or {}).get('runtime_seconds'),
-                  'daily_batches': (p['settings'] or {}).get('daily_batches'), 'daily_limit': p['daily_limit']}
+                  'daily_batches': (p['settings'] or {}).get('daily_batches'), 'daily_limit': p['daily_limit'],
+                  'colocated': (p['settings'] or {}).get('colocated')}
            for slug, p in phases.items()}
     out['activity'] = activity()
     out['preview'] = query('select (select slug from public.scenarios where id=c.scenario_id) as scenario from private.observer_preparation_config c')

@@ -83,9 +83,10 @@ def world(database):
     playground = new_phase(uri, 'practice-projects', sort_order=50, daily_limit=5, starts_at='2026-09-25T15:17:29Z',
                            settings=dict(project, runtime_seconds=18000, daily_batches=5))
     online = new_phase(uri, 'online', sort_order=1, daily_limit=10, counts_for_final=True, starts_at='2026-10-04T16:00:00Z',
-                       ends_at='2026-10-07T15:59:00Z', settings=dict(project, runtime_seconds=3600, daily_batches=10))
+                       ends_at='2026-10-07T15:59:00Z', settings=dict(project, runtime_seconds=3600, daily_batches=10, colocated=False))
     hidden = new_phase(uri, 'final-hidden', sort_order=0, daily_limit=1, counts_for_final=True, leaderboard_mode='hidden',
-                       ends_at='2026-10-17T15:59:00Z', settings=dict(project, runtime_seconds=18000, daily_batches=1, sealed=True))
+                       ends_at='2026-10-17T15:59:00Z', settings=dict(project, runtime_seconds=18000, daily_batches=1, sealed=True,
+                                                                     colocated=False))
     user, team = identity(uri)
     rehearsal = new_phase(uri, 'rehearsal-formal', sort_order=10200, leaderboard_mode='hidden',
                           settings=dict(project, runtime_seconds=3600, daily_batches=20, access_team_id=team))
@@ -192,11 +193,12 @@ def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
     assert slugs_of(uri, 'final-hidden') == ['v4-e', 'v4-f', 'v4-g', 'v4-h']
     assert slugs_of(uri, 'scenario-parking') == ['eval-final', 'formal-a', 'formal-b', 'formal-c']
     assert slugs_of(uri, 'rehearsal-formal') == [] and slugs_of(uri, 'v4-staging-final') == []
-    settings = {r[0]: r[1:] for r in query(uri, 'select p.slug,s.board_layout,s.runtime_seconds,s.daily_batches,p.daily_limit,s.sealed'
-                                               ' from public.observer_phase_settings s join public.phases p on p.id=s.phase_id')}
-    assert settings['online'] == ('cards_overall', 900, 4, 4, False)
-    assert settings['final-hidden'] == ('cards_overall', 900, 1, 1, True)
-    assert settings['practice-projects'] == ('cards', 900, 5, 5, False)
+    settings = {r[0]: r[1:] for r in query(uri, 'select p.slug,s.board_layout,s.runtime_seconds,s.daily_batches,p.daily_limit,s.sealed,'
+                                               's.colocated from public.observer_phase_settings s join public.phases p on p.id=s.phase_id')}
+    # v4 runs are colocated only: every phase with v4 cards is switched to colocated (restored on reverse).
+    assert settings['online'] == ('cards_overall', 900, 4, 4, False, True)
+    assert settings['final-hidden'] == ('cards_overall', 900, 1, 1, True, True)
+    assert settings['practice-projects'] == ('cards', 900, 5, 5, False, True)
     assert settings['scenario-parking'][0] == 'overall' and settings['scenario-parking'][4] is True
     assert query(uri, 'select scenario_id from private.observer_preparation_config') == [(world['alpha'],)]
     # Hidden cards and parked v3 scenarios stay unnamed for anonymous and signed-in participants.
@@ -227,6 +229,8 @@ def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
     assert query(uri, "select runtime_seconds from public.observer_phase_settings where phase_id=%s", (world['playground'],)) == [(18000,)]
     assert run(mod, '--reverse', '--apply', capsys=capsys)[0] == 0
     assert state(uri) == before
+    assert query(uri, "select s.colocated from public.observer_phase_settings s join public.phases p on p.id=s.phase_id"
+                      " where p.slug in ('online','final-hidden')") == [(False,), (False,)]
     assert query(uri, 'select count(*) from private.observer_phase_config_snapshots where restored_at is null') == [(0,)]
 
 

@@ -15,10 +15,18 @@ def card(uri, phase, slug, name):
 
 
 def v4_summary(total, required_missing=1, targets=100):
-    return {'score': {'total': total, 'components': {'sum_best_scores': total + 10, 'required_penalty': -6,
-                                                     'uniformity_penalty': -4, 'report_settlement': 0}},
-            'required_missing': required_missing, 'targets_observed': targets,
-            'termination_reason': 'completed', 'seed_secret': 'never-returned'}
+    """The run summary the colocated v4 engine writes (observer-run-summary-v1, plan 'Protocol changes' 10)."""
+    return {'schema_version': 'observer-run-summary-v1', 'gameplay': 'v4',
+            'score': {'total': total, 'sum_best_scores': total + 10, 'required_penalty': -6,
+                      'uniformity_penalty': -4, 'report_settlement': 0},
+            'required_missing': required_missing, 'targets_observed': targets, 'observe_actions': 50,
+            'invalidated_observations': 0, 'termination_reason': 'survey_complete', 'committed_action_count': 80,
+            'accounted_wallclock_seconds': 812.5, 'seed_secret': 'never-returned'}
+
+
+def v4_nested_summary(total):
+    """The runner's score_report layout (components nested), also accepted."""
+    return {'score': {'total': total, 'components': {'sum_best_scores': total + 1, 'required_penalty': -1}}}
 
 
 def batch(uri, phase, user, scores, summary=v4_summary):
@@ -78,7 +86,7 @@ def test_cards_come_from_the_best_complete_batch(setup):
     assert per_card['scenario'] == slug['a']
     assert [(r['observer_batch_id'], r['rank'], r['total_score'], r['overall_score'], r['overall_rank'])
             for r in per_card['rows']] == [(str(rival), 1, 90, 35, 2), (str(best), 2, 40, 40, 1)]
-    assert per_card['rows'][0]['termination_reason'] == 'completed' and per_card['rows'][0]['required_missing'] == 1
+    assert per_card['rows'][0]['termination_reason'] == 'survey_complete' and per_card['rows'][0]['required_missing'] == 1
     text = str(result) + str(per_card)
     assert 'private-evidence' not in text and 'never-returned' not in text and str(first) not in text
     assert board(uri, s['phase'], 'no-such-card')['rows'] == []
@@ -146,3 +154,11 @@ def test_v3_score_summaries_still_fill_the_board_columns(setup):
     row = board(uri, s['phase'], 'second-' + str(s['phase'])[:8])['rows'][0]
     assert (row['total_score'], row['base_science'], row['penalty_total'], row['completed_tiles'], row['overall_score']) == (20, 25, 3, 4, 40)
     assert row['components'] == {'base_science': 25, 'program_bonus': 2}
+
+
+def test_nested_component_layout_is_read_too(setup):
+    s = setup; uri = s['uri']
+    cards = v4_phase(s, 'cards')
+    batch(uri, s['phase'], s['user'], {sid: 7 for sid in cards.values()}, v4_nested_summary)
+    slug = query(uri, 'select slug from public.scenarios where id=%s', (cards['b'],))[0][0]
+    assert board(uri, s['phase'], slug)['rows'][0]['components'] == {'sum_best_scores': 8, 'required_penalty': -1}
