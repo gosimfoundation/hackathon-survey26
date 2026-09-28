@@ -184,3 +184,21 @@ def test_colocated_public_test_with_one_engine_job_makes_the_version_reviewable(
     rpc(uri,'observer_finish_job',engine['id'],'600','1',{'finished':True},'')
     rpc(uri,'observer_reconcile_preparations')
     assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[('reviewable','true')]
+
+
+def test_v4_public_test_may_end_with_agent_finished(preparation):
+    """A v4 agent may stop the run itself; with committed actions its public test passes."""
+    from psycopg.types.json import Jsonb
+    s=preparation;uri=s['uri'];finish(s,start(s))
+    preview=query(uri,'select preview_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
+    selected=next(r for r in rpc(uri,'observer_pending_runs',10) if r['id']==str(preview))
+    jobs=[job('engine')]
+    query(uri,"update public.observer_phase_settings set colocated=true where phase_id=%s",(s['phase'],))
+    rpc(uri,'observer_schedule_run',preview,selected['lease'],'AGENTIC-OBSERVER26-runner-1',
+        secrets.token_urlsafe(32),secrets.token_urlsafe(32),None,jobs)
+    query(uri,"update public.observer_runs set status='scored',score=5,score_summary=%s,finished_at=now() where id=%s",
+          (Jsonb({'gameplay':'v4','termination_reason':'agent_finished','committed_action_count':3}),preview))
+    rpc(uri,'observer_claim_job',jobs[0]['id'],jobs[0]['nonce'],'601','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',jobs[0]['id'],'601','1',{'finished':True},'')
+    rpc(uri,'observer_reconcile_preparations')
+    assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[('reviewable','true')]
