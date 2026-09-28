@@ -1251,13 +1251,31 @@
       "evenness": "覆盖均匀度",
       "scored_at": "评分时间",
       "github": "队长 GitHub @{handle}",
-      "view_submission": "查看这次提交"
+      "view_submission": "查看这次提交",
+      "board_card": "榜单：{card}",
+      "board_overall": "榜单：总榜，各任务卡的平均"
     },
     "calibrated_score": "校准分",
     "raw_score": "原始分",
     "calibration_note": "排名使用难度校准后的分数，各项得分展示校准前的原始值。",
     "public_board": "线上榜：各队在三个固定正式场景上的最高分评测。榜单实时更新，但不决定最终排名——线上赛结束后，每队的最终版本会在一个隐藏场景上评测一次，只按这个成绩排名。",
-    "final_board": "最终排名：线上赛结束后，每队最终版本在隐藏场景上评测一次的成绩。"
+    "final_board": "最终排名：线上赛结束后，每队最终版本在隐藏场景上评测一次的成绩。",
+    "overall": "总榜",
+    "cards": "任务卡",
+    "overall_note": "总榜 = 每队最好的一次完整评测（每张任务卡都有计分运行）中各任务卡得分的平均。每张任务卡的榜单显示同一次评测在该卡上的成绩。",
+    "card_note": "本榜单按每队在这张任务卡上的成绩排名，成绩取自该队最好的一次完整评测（各任务卡平均分最高的那次）。",
+    "targets_observed": "观测目标",
+    "components": {
+      "sum_best_scores": "最佳得分",
+      "required_penalty": "必观测惩罚",
+      "uniformity_penalty": "均匀性惩罚",
+      "report_settlement": "报告结算",
+      "base_science": "基础科学分",
+      "program_bonus": "奖励",
+      "request_reward": "请求",
+      "report_reward": "报告",
+      "coverage_bonus": "覆盖"
+    }
   },
   "cta": {
     "title": "下一次观测，由你和智能体决定",

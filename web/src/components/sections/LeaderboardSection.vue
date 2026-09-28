@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { boardScenarios, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type LeaderboardEntry, type Phase } from '../../lib/data'
+import { boardScenarios, isProjectBoard, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
 import { useAuth } from '../../stores/auth'
 import { fmtUtc, num } from '../../lib/format'
 import UserAvatar from '../UserAvatar.vue'
@@ -11,8 +11,10 @@ import SkeletonRows from '../layout/SkeletonRows.vue'
 import CountUp from '../layout/CountUp.vue'
 import BoardScenarioTabs from '../leaderboard/BoardScenarioTabs.vue'
 import TeamDetailDialog from '../leaderboard/TeamDetailDialog.vue'
+import BoardCardTabs from '../leaderboard/BoardCardTabs.vue'
+import CardBoardTable from '../leaderboard/CardBoardTable.vue'
 
-const { t, pick } = useI18n()
+const { t, tf, pick } = useI18n()
 const { team } = useAuth()
 const phase = ref<Phase | null>(null)
 const entries = ref<LeaderboardEntry[]>([])
@@ -26,11 +28,21 @@ const selected = ref<LeaderboardEntry | null>(null)
 // Practice boards rank one scenario at a time; null on the final board, which averages its scenarios.
 const scenarioSlug = ref<string | null>(null)
 const scenarioTabs = computed(() => boardScenarios(phase.value))
+// Card boards (complete-project phases with board_layout 'cards' / 'cards_overall'): null is the overall tab.
+const cardBoard = ref<CardBoard | null>(null)
+const cardWanted = ref<string | null>(null)
+const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
+const cardTab = computed(() => cardBoard.value?.scenario ?? null)
+const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
+  : tf('leaderboard.detail.board_card', { card: cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value }))
 let timer: number | undefined
 
 const top = computed(() => entries.value.slice(0, 10))
 const scoredRuns = computed(() => entries.value.reduce((sum, row) => sum + row.submission_count, 0))
-const boardLink = computed(() => phase.value ? { path: `/leaderboard/${phase.value.slug}`, query: scenarioSlug.value ? { scenario: scenarioSlug.value } : {} } : '/leaderboard')
+const boardLink = computed(() => {
+  const scenario = cardMode.value ? cardTab.value : scenarioSlug.value
+  return phase.value ? { path: `/leaderboard/${phase.value.slug}`, query: scenario ? { scenario } : {} } : '/leaderboard'
+})
 
 async function load() {
   if (!isSupabaseConfigured) { loading.value = false; error.value = true; return }
@@ -40,8 +52,13 @@ async function load() {
     phase.value = homeBoardPhase(phases)
     hidden.value = phase.value?.leaderboard_mode === 'hidden'
     if (!scenarioTabs.value.some(s => s.slug === scenarioSlug.value)) scenarioSlug.value = scenarioTabs.value[0]?.slug ?? null
-    entries.value = phase.value && !hidden.value ? await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value,
-      phase.value.observer_settings?.projects_enabled || phase.value.observer_settings?.local_sessions_enabled ? phase.value.id : undefined) : []
+    if (phase.value && !hidden.value && isProjectBoard(phase.value)) {
+      cardBoard.value = await loadCardBoard(phase.value.id, cardWanted.value)
+      entries.value = cardBoard.value.rows
+    } else {
+      cardBoard.value = null
+      entries.value = phase.value && !hidden.value ? await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value) : []
+    }
     updatedAt.value = new Date()
     error.value = false
     loading.value = false
@@ -54,6 +71,7 @@ async function load() {
 }
 
 function pickScenario(slug: string) { scenarioSlug.value = slug; void load() }
+function pickCard(slug: string | null) { cardWanted.value = slug; void load() }
 
 onMounted(() => { load(); timer = window.setInterval(load, 60_000) })
 onUnmounted(() => { if (timer) window.clearInterval(timer) })
@@ -92,7 +110,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
             </div>
           </div>
 
-          <BoardScenarioTabs v-if="!hidden" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
+          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :model-value="cardTab" @update:model-value="pickCard" />
+          <BoardScenarioTabs v-if="!hidden && !cardMode" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <div v-if="loading" class="py-6"><SkeletonRows :rows="6" :cols="5" :label="t('leaderboard.loading')" /></div>
           <div v-else-if="!entries.length" class="grid min-h-80 place-items-center py-16 text-center">
             <div>
@@ -103,6 +122,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
             </div>
           </div>
 
+          <div v-else-if="cardMode" class="py-6"><CardBoardTable :entries="top" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :team-id="team?.id ?? null" @select="selected = $event" /></div>
           <template v-else>
             <div class="py-6"><ScoreBars :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" /></div>
             <div class="table-wrap">
@@ -128,7 +148,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
         </div>
       </div>
     </div>
-    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" @close="selected = null" />
+    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? cardBoard!.cards : undefined" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
   </section>
 </template>
 

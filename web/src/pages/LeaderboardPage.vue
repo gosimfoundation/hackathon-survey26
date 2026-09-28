@@ -4,7 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, isFinalBoard, isPublicFormalBoard, loadLeaderboard, phaseCopy, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -13,6 +13,8 @@ import ScoreBars from '../components/leaderboard/ScoreBars.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 import BoardScenarioTabs from '../components/leaderboard/BoardScenarioTabs.vue'
 import TeamDetailDialog from '../components/leaderboard/TeamDetailDialog.vue'
+import BoardCardTabs from '../components/leaderboard/BoardCardTabs.vue'
+import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
 
 const { t, tf, pick, locale } = useI18n()
 const route = useRoute()
@@ -38,19 +40,38 @@ const scenarioSlug = computed<string | null>(() => {
   return scenarioTabs.value.find(s => s.slug === wanted)?.slug ?? scenarioTabs.value[0]?.slug ?? null
 })
 function pickScenario(slug: string) { void router.replace({ query: { ...route.query, scenario: slug } }) }
+// Complete-project phases whose board_layout is 'cards' / 'cards_overall' rank per card (?scenario=<card>) and overall.
+const cardBoard = ref<CardBoard | null>(null)
+const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
+const cardTab = computed(() => cardBoard.value?.scenario ?? null)
+const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
+  : tf('leaderboard.detail.board_card', { card: cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value }))
+function pickCard(slug: string | null) {
+  const { scenario: _drop, ...rest } = route.query
+  void router.replace({ query: slug === null ? rest : { ...rest, scenario: slug } })
+}
 // The coverage term only exists where the scenario's score_config sets a weight, so keep the column out of practice phases.
 const showCoverage = computed(() => entries.value.some(e => (e.coverage_bonus ?? 0) !== 0))
 
 async function loadBoard() {
   if (!phase.value || !visible.value) { entries.value = []; return }
   boardLoading.value = true
-  try { entries.value = await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value,
-    phase.value.observer_settings?.projects_enabled || phase.value.observer_settings?.local_sessions_enabled ? phase.value.id : undefined); updatedAt.value = new Date() }
-  catch { entries.value = [] }
+  try {
+    if (isProjectBoard(phase.value)) {
+      const wanted = typeof route.query.scenario === 'string' ? route.query.scenario : null
+      cardBoard.value = await loadCardBoard(phase.value.id, wanted)
+      entries.value = cardBoard.value.rows
+    } else {
+      cardBoard.value = null
+      entries.value = await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value)
+    }
+    updatedAt.value = new Date()
+  }
+  catch { entries.value = []; cardBoard.value = null }
   finally { boardLoading.value = false }
 }
 
-watch(() => [phase.value?.slug, scenarioSlug.value], () => { void loadBoard() })
+watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario], () => { void loadBoard() })
 onMounted(async () => {
   await reload()
   await loadBoard()
@@ -79,16 +100,18 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
             <dd class="flex flex-wrap gap-2"><StatusPill :status="phase.status" ns="leaderboard.status" /><span class="pill" :class="phase.leaderboard_mode">{{ phase.leaderboard_mode }}</span></dd>
             <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
-            <dd class="flex flex-wrap gap-2"><span v-for="s in phase.scenarios" :key="s.id" class="pill" :title="s.name">{{ s.slug }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
+            <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ c.name }}</span></dd>
+            <dd v-else class="flex flex-wrap gap-2"><span v-for="s in phase.scenarios" :key="s.id" class="pill" :title="s.name">{{ s.slug }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
             <dt>{{ t('common.updated') }}</dt><dd class="m text-sm">{{ updatedAt ? fmtUtc(updatedAt.toISOString(), { seconds: true }) : '—' }} UTC</dd>
           </dl>
-          <p class="text3 mt-8 text-sm">{{ t('leaderboard.tie') }} <template v-if="scenarioTabs.length">{{ t('leaderboard.per_scenario_note') }}</template><template v-else-if="phase.scenarios.length > 1">{{ t('leaderboard.mean_note') }}</template></p>
+          <p class="text3 mt-8 text-sm">{{ t('leaderboard.tie') }} <template v-if="cardMode">{{ cardTab === null ? t('leaderboard.overall_note') : t('leaderboard.card_note') }}</template><template v-else-if="scenarioTabs.length">{{ t('leaderboard.per_scenario_note') }}</template><template v-else-if="phase.scenarios.length > 1">{{ t('leaderboard.mean_note') }}</template></p>
           <p class="mt-6"><button type="button" class="btn sm" :disabled="boardLoading" @click="loadBoard">↻ {{ t('leaderboard.refresh') }}</button></p>
         </div>
         <div class="min-w-0">
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
-          <BoardScenarioTabs v-if="visible" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
+          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :model-value="cardTab" @update:model-value="pickCard" />
+          <BoardScenarioTabs v-if="visible && !cardMode" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <p v-if="!visible" class="text2 py-12">{{ t('leaderboard.hidden') }}</p>
           <SkeletonRows v-else-if="boardLoading && !entries.length" :rows="8" :cols="6" :label="t('common.loading')" />
           <div v-else-if="!entries.length" class="py-16 text-center">
@@ -99,6 +122,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
             <p v-if="phase.leaderboard_mode === 'frozen'" class="notice">{{ t('leaderboard.frozen') }}</p>
             <p v-else-if="phase.leaderboard_mode === 'published'" class="notice">{{ t('leaderboard.published') }}</p>
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
+            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :team-id="team?.id ?? null" @select="selected = $event" />
+            <template v-else>
             <ScoreBars class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
               <table class="data-table">
@@ -120,11 +145,12 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
                 </tbody>
               </table>
             </div>
+            </template>
           </template>
         </div>
       </div>
     </div></section>
-    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" @close="selected = null" />
+    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? cardBoard!.cards : undefined" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
   </main>
 </template>
 

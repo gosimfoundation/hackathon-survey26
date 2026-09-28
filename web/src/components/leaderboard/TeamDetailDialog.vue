@@ -2,12 +2,13 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
-import type { LeaderboardEntry } from '../../lib/data'
+import type { BoardCard, LeaderboardEntry } from '../../lib/data'
 import { fmtUtc, num, pct } from '../../lib/format'
 
 // One team's line on the board, opened from the chart or the table. Only what the board already
 // publishes is shown: team names, scores and ranks are public; member details are not.
-const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean }>()
+// Card boards pass their cards and the current tab's label; their rows carry numeric score components.
+const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, tf, pick } = useI18n()
 const closeBtn = ref<HTMLButtonElement | null>(null)
@@ -16,6 +17,10 @@ const handle = computed(() => (props.entry?.leader_github || '').trim().replace(
 const parts = computed(() => {
   const e = props.entry
   if (!e) return []
+  if (e.components && Object.keys(e.components).length) return Object.entries(e.components).map(([key, value]) => {
+    const label = t(`leaderboard.components.${key}`)
+    return { key, label: typeof label === 'string' && label !== `leaderboard.components.${key}` ? label : key.replace(/_/g, ' '), value }
+  })
   const rows = [
     { key: 'base', label: t('leaderboard.base_science'), value: e.base_science },
     { key: 'bonus', label: t('leaderboard.chart.legend_bonus'), value: e.program_bonus },
@@ -27,7 +32,9 @@ const parts = computed(() => {
   return rows
 })
 const scale = computed(() => Math.max(1, ...parts.value.map(p => Math.abs(p.value))))
-const board = computed(() => props.entry?.scenario_slug ? tf('leaderboard.detail.board_scenario', { scenario: props.entry.scenario_slug }) : t('leaderboard.detail.board_mean'))
+const cardScores = computed(() => (props.cards ?? []).filter(c => props.entry?.card_scores?.[c.slug] != null)
+  .map(c => ({ ...c, score: props.entry!.card_scores![c.slug]! })))
+const board = computed(() => props.boardLabel ? props.boardLabel : props.entry?.scenario_slug ? tf('leaderboard.detail.board_scenario', { scenario: props.entry.scenario_slug }) : t('leaderboard.detail.board_mean'))
 
 function onKey(event: KeyboardEvent) { if (event.key === 'Escape') emit('close') }
 watch(() => props.entry, async (entry) => {
@@ -66,7 +73,10 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
       </ul>
 
       <dl class="team-detail-stats">
-        <div><dt>{{ t('leaderboard.tiles') }}</dt><dd>{{ entry.completed_tiles ?? '—' }}</dd></div>
+        <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.name }}</dt><dd>{{ num(c.score) }}</dd></div>
+        <div v-if="entry.overall_score != null && entry.scenario_slug"><dt>{{ t('leaderboard.overall') }}</dt><dd>{{ num(entry.overall_score) }}<template v-if="entry.overall_rank"> · #{{ entry.overall_rank }}</template></dd></div>
+        <div v-if="entry.completed_tiles != null || !entry.components"><dt>{{ t('leaderboard.tiles') }}</dt><dd>{{ entry.completed_tiles ?? '—' }}</dd></div>
+        <div v-if="entry.targets_observed != null"><dt>{{ t('leaderboard.targets_observed') }}</dt><dd>{{ entry.targets_observed }}</dd></div>
         <div><dt>{{ t('leaderboard.required_missing') }}</dt><dd :class="{ neg: Number(entry.required_missing) > 0 }">{{ entry.required_missing ?? '—' }}</dd></div>
         <div v-if="entry.kind !== 'observer'"><dt>{{ t('leaderboard.completion') }}</dt><dd>{{ pct(entry.completion_rate) }}</dd></div>
         <div v-if="entry.coverage_evenness != null"><dt>{{ t('leaderboard.detail.evenness') }}</dt><dd>{{ num(entry.coverage_evenness, 3) }}</dd></div>

@@ -1251,13 +1251,31 @@
       "evenness": "Coverage evenness",
       "scored_at": "Scored at",
       "github": "Leader on GitHub @{handle}",
-      "view_submission": "Open this submission"
+      "view_submission": "Open this submission",
+      "board_card": "Board: {card}",
+      "board_overall": "Board: overall, the mean of the cards"
     },
     "calibrated_score": "Calibrated score",
     "raw_score": "Raw score",
     "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
     "public_board": "Online board: each team’s best evaluation on the three fixed formal scenarios. It is live, but it does not decide the final ranking — after the online phase ends, each team’s final version is evaluated once on a hidden scenario, and only that score ranks.",
-    "final_board": "Final ranking: one evaluation of each team’s final version on the hidden scenario, run after the online phase ended."
+    "final_board": "Final ranking: one evaluation of each team’s final version on the hidden scenario, run after the online phase ended.",
+    "overall": "Overall",
+    "cards": "Cards",
+    "overall_note": "Overall = the mean of a team's card scores in its best complete evaluation (a scored run on every card). Each card tab shows the run on that card from the same evaluation.",
+    "card_note": "This board ranks each team's run on this card, taken from its best complete evaluation (the one with the highest mean over all cards).",
+    "targets_observed": "Targets",
+    "components": {
+      "sum_best_scores": "Best scores",
+      "required_penalty": "Required penalty",
+      "uniformity_penalty": "Uniformity penalty",
+      "report_settlement": "Reports",
+      "base_science": "Base science",
+      "program_bonus": "Bonus",
+      "request_reward": "Requests",
+      "report_reward": "Reports",
+      "coverage_bonus": "Coverage"
+    }
   },
   "cta": {
     "title": "The next observation, decided by you and your agent",

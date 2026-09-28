@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
+import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
 
 export type PhaseStatus = 'open' | 'upcoming' | 'closed' | 'disabled'
 export type LeaderboardMode = 'live' | 'frozen' | 'hidden' | 'published'
@@ -56,6 +57,9 @@ export interface LeaderboardEntry {
   scenario_slug: string | null
   observer_batch_id?: string | null; report_reward?: number
   calibrated?: boolean; raw_total_score?: number | null
+  /** Card boards (observer_card_board) only: per-card scores on the overall tab, the overall score and rank on a card tab. */
+  card_scores?: Record<string, number> | null; overall_score?: number | null; overall_rank?: number | null
+  targets_observed?: number | null; components?: Record<string, number> | null
 }
 
 export interface PhaseCopy {
@@ -209,35 +213,28 @@ export async function loadLeaderboard(phaseSlug: string | null, limit = 500, sce
     ? await supabase.rpc('observer_board', { p_phase: observerPhaseId, p_limit: limit })
     : await supabase.rpc('leaderboard', { p_phase_slug: phaseSlug, p_limit: limit, p_scenario_slug: scenarioSlug })
   if (error) throw error
-  return ((data ?? []) as any[]).map((row, index) => ({
-    rank: Number(row.rank ?? index + 1),
-    leader_github: row.leader_github ? String(row.leader_github) : null,
-    team_id: String(row.team_id),
-    team_name: String(row.team_name ?? '—'),
-    team_slug: String(row.team_slug ?? ''),
-    total_score: Number(row.total_score ?? 0),
-    science_score: Number(row.science_score ?? 0),
-    completion_rate: Number(row.completion_rate ?? 0),
-    uniformity_score: Number(row.uniformity_score ?? 0),
-    base_science: Number(row.base_science ?? 0),
-    program_bonus: Number(row.program_bonus ?? 0),
-    request_reward: Number(row.request_reward ?? 0),
-    coverage_bonus: row.coverage_bonus == null ? null : Number(row.coverage_bonus),
-    coverage_evenness: row.coverage_evenness == null ? null : Number(row.coverage_evenness),
-    penalty_total: Number(row.penalty_total ?? 0),
-    completed_tiles: row.completed_tiles == null ? null : Number(row.completed_tiles),
-    required_missing: row.required_missing == null ? null : Number(row.required_missing),
-    submission_count: Number(row.submission_count ?? 0),
-    best_submission_id: row.best_submission_id == null ? null : Number(row.best_submission_id),
-    kind: row.kind ?? null,
-    scored_at: row.scored_at ?? null,
-    scenario_slug: row.scenario_slug ? String(row.scenario_slug) : null,
-    observer_batch_id: row.observer_batch_id ?? null,
-    calibrated: row.calibrated === true,
-    raw_total_score: row.raw_total_score == null ? null : Number(row.raw_total_score),
-    report_reward: Number(row.report_reward ?? 0),
-  }))
+  return ((data ?? []) as any[]).map(toLeaderboardEntry)
 }
+
+export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, type BoardLayout, type BoardCard, type CardBoard } from './cardBoard'
+
+async function fetchCardBoard(phaseId: string, scenarioSlug: string | null, limit: number): Promise<CardBoard> {
+  const { data, error } = await supabase.rpc('observer_card_board', { p_phase: phaseId, p_scenario_slug: scenarioSlug, p_limit: limit })
+  // Until the card-board migration is deployed, complete-project phases keep the existing board.
+  if (error) return { layout: 'overall', cards: [], scenario: null, rows: await loadLeaderboard(null, limit, null, phaseId) }
+  return parseCardBoard(data)
+}
+
+/** A complete-project board, on the requested card tab when the phase has cards (see pickCardTab). */
+export async function loadCardBoard(phaseId: string, wanted: string | null = null, limit = 500): Promise<CardBoard> {
+  const board = await fetchCardBoard(phaseId, wanted, limit)
+  const tab = pickCardTab(board, wanted)
+  return board.layout !== 'overall' && tab !== (wanted ?? null) ? fetchCardBoard(phaseId, tab, limit) : board
+}
+
+/** Whether a phase ranks complete projects (the observer boards) rather than CSV submissions. */
+export const isProjectBoard = (phase: Pick<Phase, 'observer_settings'> | null) =>
+  !!(phase?.observer_settings?.projects_enabled || phase?.observer_settings?.local_sessions_enabled)
 
 export const SUBMISSION_SELECT = '*, phases(slug,name_en,name_zh), scenarios(slug,name), evaluations(*, scenarios(slug,name,tiles_public,weather_public,global_wallclock_seconds,n_tiles,n_nights))'
 export const PENDING_STATUSES = new Set(['queued', 'running'])
