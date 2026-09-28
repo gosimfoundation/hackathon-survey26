@@ -29,15 +29,16 @@ def script(monkeypatch):
     monkeypatch.setattr(module, 'phase', lambda slug: phases[slug])
     monkeypatch.setattr(module, 'scenarios', lambda slugs: {s: cards[s] for s in slugs})
     monkeypatch.setattr(module, 'activity', lambda: {'jobs': 0, 'batches': 0, 'open_snapshots': 0})
-    monkeypatch.setattr(module, 'query', lambda sql: [{'scenario': 'formal-a', 'phase': 'practice-projects', 'enabled': True}])
+    module.prep_fixture = {'scenario': 'formal-a', 'phase': 'practice-projects', 'enabled': True, 'phase_colocated': False}
+    monkeypatch.setattr(module, 'query', lambda sql: [module.prep_fixture])
     module.cards_fixture = cards
     return module
 
 
-def plan(script, preview):
+def plan(script, preview, practice_mode='replace'):
     parser_args = script.argparse.Namespace(
         practice=['v4-alpha', 'v4-beta'], formal=['v4-a', 'v4-b', 'v4-c', 'v4-d'], final=['v4-e', 'v4-f', 'v4-g', 'v4-h'],
-        practice_mode='replace', runtime=900, practice_runtime=900, daily=4, preview=preview)
+        practice_mode=practice_mode, runtime=900, practice_runtime=900, daily=4, preview=preview)
     return script.plan_forward(parser_args)
 
 
@@ -62,3 +63,13 @@ def test_a_non_public_card_is_refused_and_a_long_one_warned(script):
     result, _ = plan(script, 'v4-public-test')
     assert any('public weather, forecasts and events' in p for p in result['problems'])
     assert any('capped at 300 s' in w for w in result['warnings'])
+
+
+def test_the_public_test_phase_must_end_up_colocated(script):
+    # practice-projects is switched to colocated with the practice cards ...
+    assert plan(script, 'v4-public-test')[0]['problems'] == []
+    # ... but not when the practice phase is skipped and it is not colocated already.
+    result, _ = plan(script, 'v4-public-test', practice_mode='skip')
+    assert any('not colocated' in p for p in result['problems']), result['problems']
+    script.prep_fixture['phase_colocated'] = True
+    assert plan(script, 'v4-public-test', practice_mode='skip')[0]['problems'] == []

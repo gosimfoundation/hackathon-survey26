@@ -266,7 +266,15 @@ def plan_forward(args):
         if c['global_wallclock_seconds'] is not None and int(c['global_wallclock_seconds']) > 300:
             warnings.append(f"{args.preview} declares {c['global_wallclock_seconds']} s; public tests are capped at 300 s")
     prep = query('select (select slug from public.scenarios where id=c.scenario_id) as scenario,'
-                 '(select slug from public.phases where id=c.phase_id) as phase,c.enabled from private.observer_preparation_config c')
+                 '(select slug from public.phases where id=c.phase_id) as phase,c.enabled,'
+                 'coalesce((select colocated from public.observer_phase_settings where phase_id=c.phase_id),false) as phase_colocated'
+                 ' from private.observer_preparation_config c')
+    if args.preview and prep:
+        # The public test runs in the preparation config's phase; a v4 card runs only colocated.
+        switched = {FORMAL, FINAL} | ({PRACTICE} if args.practice_mode != 'skip' else set())
+        if prep[0]['phase'] not in switched and not prep[0]['phase_colocated']:
+            problems.append(f"the public test runs in phase {prep[0]['phase']}, which is not colocated; a v4 preview card"
+                            ' needs colocated=true there (v4_requires_colocated)')
     if not args.preview and prep and prep[0]['scenario'] not in all_cards:
         warnings.append(f"the preparation preview stays on {prep[0]['scenario']}; pass --preview <public test card> so the public"
                         ' test of new agent versions runs a v4 card')
