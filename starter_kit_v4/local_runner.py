@@ -14,8 +14,10 @@ Environment: the agent gets a clean environment (PATH, HOME/TMPDIR in <out>/scra
 block of <agent>/observer.project.json, then KEY=VALUE lines from <agent>/.env. On the platform
 OPENAI_BASE_URL / OPENAI_API_KEY are injected; put them in <agent>/.env to try the LLM hook locally.
 
+The engine is the platform's own adapter (challenge/v4_workflow.py, vendored unchanged).
+
 Outputs in --out: decisions.csv, observations.csv, messages.jsonl, score_report.json, workflow_result.json,
-agent.log. The last stdout line is a JSON summary. Exit code 0 = the run ended normally, 2 = agent error.
+actions.jsonl, agent.log. The last stdout line is a JSON summary. Exit code 0 = the run ended normally, 2 = agent error.
 Standard library only (Python 3.9+).
 """
 from __future__ import annotations
@@ -37,8 +39,8 @@ KIT_ROOT = Path(__file__).resolve().parent
 if str(KIT_ROOT) not in sys.path:
     sys.path.insert(0, str(KIT_ROOT))
 
-from challenge.v4_protocol_engine import (  # noqa: E402
-    PROTOCOL_VERSION, AgentProcess, effective_wallclock, load_card, run_card, scenario_path)
+from challenge.local_transport import AgentProcess, load_card, run_card, scenario_path  # noqa: E402
+from challenge.v4_workflow import PROTOCOL_VERSION, V4Workflow  # noqa: E402
 
 ENTRY_CANDIDATES = ("baseline_agent.py", "agent.py", "main.py")
 SAFE_ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
@@ -117,7 +119,7 @@ def main(argv=None) -> int:
     if args.wallclock <= 0:
         raise SystemExit("--wallclock must be positive")
     card = load_card(card_dir)
-    args.wallclock = effective_wallclock(card_dir, args.wallclock)
+    args.wallclock = V4Workflow(card_dir).wallclock_budget(args.wallclock)  # min(this, card limit, 900)
     entry = find_entry(args.agent)
     agent_dir = entry.parent
     out = args.out.resolve()

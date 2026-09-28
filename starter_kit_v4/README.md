@@ -13,7 +13,7 @@ This kit runs everything on your computer, exactly like the platform:
 | `cards/demo/` | A small public demo card: 7 nights, 2,400 targets. |
 | `local_runner.py` | Runs an agent against a card, like the platform, and prints the score. |
 | `pack_agent.py` | Zips `agent/` into a ZIP you can upload. |
-| `challenge/` | The simulator and scorer (read-only). |
+| `challenge/` | The simulator, scorer and the platform's own engine adapter `v4_workflow.py` (read-only). |
 | `SKILL.md` | Step-by-step instructions for coding agents. |
 
 Only the Python standard library is needed (Python 3.9 or newer; the platform uses 3.12).
@@ -34,7 +34,7 @@ Expected on the demo card (a few seconds):
 | `agent/` (baseline) | about +1,200 | 0–2 |
 
 The last line of the output is a JSON summary. Files are in `run_output/`: `decisions.csv`,
-`observations.csv`, `messages.jsonl`, `score_report.json`, `workflow_result.json`, `agent.log`
+`observations.csv`, `messages.jsonl`, `score_report.json`, `workflow_result.json`, `actions.jsonl`, `agent.log`
 (your agent's stderr).
 
 ## The task in 10 lines

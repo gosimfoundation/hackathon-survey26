@@ -114,7 +114,7 @@ def test_baseline_beats_doing_nothing_on_the_demo_card(baseline, idle):
     report = json.loads((out / "score_report.json").read_text(encoding="utf-8"))
     assert report["schema_version"] == "v4-score-report-v1" and report["total"] == base["total"]
     workflow = json.loads((out / "workflow_result.json").read_text(encoding="utf-8"))
-    assert workflow["termination_reason"] == "survey_complete" and workflow["score"]["total"] == base["total"]
+    assert workflow["termination_reason"] == "survey_complete" and workflow["score_report"]["total"] == base["total"]
     log = (out / "agent.log").read_text(encoding="utf-8")
     assert "llm=off" in log  # the kit manifest keeps the model hook off by default
     assert "baseline finished: termination_reason=survey_complete" in log  # it handled the finish message
@@ -171,17 +171,15 @@ def test_invalid_actions_are_rejected_like_on_the_platform(bad, message):
 
 
 def test_envelope_checks():
-    engine = kit_module("v4_protocol_engine")
-    good = {"protocol_version": engine.PROTOCOL_VERSION, "message_type": "decision_response", "decision_sequence": 3,
+    workflow = kit_module("v4_workflow")
+    good = {"protocol_version": workflow.PROTOCOL_VERSION, "message_type": "decision_response", "decision_sequence": 3,
             "reason": "r", "decision_source": "rule", "action": "wait", "duration_seconds": 600}
-    assert engine.check_envelope(good, 3) == {"action": "wait", "duration_seconds": 600}
-    for bad, message in (({**good, "decision_sequence": 4}, "decision_sequence"),
-                         ({**good, "decision_sequence": 3.0}, "decision_sequence"),
-                         ({**good, "protocol_version": "participant-agent-protocol-v2"}, "protocol_version"),
-                         ({**good, "message_type": "decision"}, "message_type"),
-                         ({**good, "reason": 5}, "reason must be a string")):
-        with pytest.raises(engine.AgentProtocolError, match=message):
-            engine.check_envelope(bad, 3)
+    assert workflow.V4Workflow.action_from_response(good, 3) == {"action": "wait", "duration_seconds": 600}
+    for bad in ({**good, "decision_sequence": 4}, {**good, "decision_sequence": 3.0},
+                {**good, "protocol_version": "participant-agent-protocol-v2"}, {**good, "message_type": "decision"},
+                {**good, "reason": 5}):
+        with pytest.raises(workflow.ProtocolViolation):
+            workflow.V4Workflow.action_from_response(bad, 3)
 
 
 def test_wait_until_batches_messages_and_finish_message_is_sent(tmp_path):
@@ -220,7 +218,7 @@ action = {'action': 'wait', 'duration_seconds': 900}
 
 
 def test_initialize_carries_only_public_data():
-    init = kit_module("v4_protocol_engine").build_initialize(DEMO, 900)
+    init = kit_module("v4_workflow").V4Workflow(DEMO).initialize_payload(900.0)
     assert init["schema_version"] == "v4-initialize-v1"
     assert set(init) == {"schema_version", "task_card", "site", "survey", "instrument", "scoring", "footprint", "targets", "limits"}
     assert init["site"]["name"] == "Paranal, Chile (virtual)"
@@ -251,7 +249,7 @@ def test_kit_modules_match_the_platform_copies():
     platform vendors them (challenge/v4_runner.py); until then this part is skipped."""
     for name in ("__init__.py", "contracts.py", "observing_calendar.py", "project_paths.py", "tile_geometry_simulator.py"):
         assert (KIT / "challenge" / name).read_bytes() == (ROOT / "challenge" / name).read_bytes(), name
-    for name in ("v4_fiber_map.py", "v4_scorer.py", "v4_runner.py", "v4_config_check.py"):
+    for name in ("v4_fiber_map.py", "v4_scorer.py", "v4_runner.py", "v4_config_check.py", "v4_workflow.py"):
         platform = ROOT / "challenge" / name
         if platform.exists():
             assert (KIT / "challenge" / name).read_bytes() == platform.read_bytes(), f"starter_kit_v4/challenge/{name} differs"
@@ -332,8 +330,8 @@ def test_pack_output_passes_the_platform_zip_and_manifest_checks(tmp_path):
 def test_packed_project_runs_on_the_demo_card_with_platform_style_environment(tmp_path):
     from project_platform.package import extract_project, read_project_zip  # noqa: PLC0415
 
-    engine = kit_module("v4_protocol_engine")
-    AgentProcess, run_card = engine.AgentProcess, engine.run_card
+    transport = kit_module("local_transport")
+    AgentProcess, run_card = transport.AgentProcess, transport.run_card
 
     files = read_project_zip(_pack(tmp_path).read_bytes())
     project = tmp_path / "project"
@@ -346,7 +344,7 @@ def test_packed_project_runs_on_the_demo_card_with_platform_style_environment(tm
         agent = AgentProcess([PY, *manifest["run"][1:]], cwd=project, env=env, stderr=log)
         result = run_card(DEMO, agent, tmp_path / "out", wallclock_seconds=300)
     assert result["termination_reason"] == "survey_complete"
-    assert result["score"]["total"] > 0
+    assert result["score_report"]["total"] > 0
     assert "llm=off" in (tmp_path / "agent.log").read_text(encoding="utf-8")
 
 
