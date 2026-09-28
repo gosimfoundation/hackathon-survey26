@@ -71,8 +71,11 @@ class ProjectManifest:
         image = raw.get("image")
         if not isinstance(image, str) or len(image) > 256 or not _IMAGE.fullmatch(image):
             raise ProjectError("image must be a container image reference.")
-        if raw.get("protocol", "jsonl-v2") != "jsonl-v2":
-            raise ProjectError("Projects must expose the jsonl-v2 interface, directly or through an adapter.")
+        # "jsonl-v4" names the same JSON-Lines transport; the gameplay version is chosen by
+        # the scenario and announced in each message's protocol_version. Normalized, so
+        # manifest digests and approvals are unchanged.
+        if raw.get("protocol", "jsonl-v2") not in ("jsonl-v2", "jsonl-v4"):
+            raise ProjectError("Projects must expose the jsonl-v2 (or jsonl-v4) interface, directly or through an adapter.")
         build = raw.get("build", [])
         if not isinstance(build, list) or len(build) > 16:
             raise ProjectError("build must contain at most 16 commands.")

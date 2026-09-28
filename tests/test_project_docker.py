@@ -150,3 +150,41 @@ def test_starter_kit_model_build_step_from_the_readme_installs_and_starts(tmp_pa
         runtime.close()
     assert result["termination_reason"] == "survey_complete", (result.get("commit_log"), transport.log)
     assert "minimal-agent provider=openai" in transport.log
+
+
+@pytest.mark.skipif(not os.environ.get("OBSERVER_TEST_PYTHON_IMAGE"), reason="Explicit container test image required")
+def test_v4_card_runs_colocated_in_the_container_without_seeing_the_bundle(tmp_path, monkeypatch):
+    """participant-agent-protocol-v4 end to end: container -> JSON Lines -> v4 engine -> score."""
+    import shutil
+    from datetime import datetime, timedelta, timezone
+
+    from project_platform.trusted_engine import ColocatedProvider, run_session
+    from v4_support import build_bundle
+
+    class Client:
+        def call(self, action, **kwargs):
+            if action == "begin":
+                return (datetime.now(timezone.utc) + timedelta(seconds=300)).isoformat().replace("+00:00", "Z")
+            return {}
+
+    bundle = build_bundle(tmp_path / "bundle", card_id="A", stress=True)
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    shutil.copyfile(Path(__file__).resolve().parent / "fixtures" / "v4_fake_agent.py", workspace / "agent.py")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "host-only-secret")
+    manifest = ProjectManifest.parse({
+        "schema_version": "observer-project-v1", "image": os.environ["OBSERVER_TEST_PYTHON_IMAGE"],
+        "protocol": "jsonl-v4", "run": ["python3", "-u", "agent.py", "greedy"],
+        "environment": {"PROBE": "1", "PROBE_PATH": str(bundle / "truth" / "v4_stress_events.csv")}})
+    with DockerWorkspace(workspace, manifest, manifest.image, limits=RuntimeLimits(build_seconds=90)) as runtime:
+        runtime.build()
+        transport = runtime.start({})
+        result, digest = run_session(bundle, tmp_path / "result", Client(), wallclock_seconds=120,
+                                     provider=ColocatedProvider(transport, Client(), Client()))
+        log = transport.log
+    assert result["termination_reason"] in ("survey_complete", "agent_finished"), (result, log)
+    assert result["score_report"]["counts"]["observations"] > 0
+    assert len(digest) == 64
+    probe = json.loads(next(line[len("PROBE "):] for line in log.splitlines() if line.startswith("PROBE ")))
+    assert probe == {"bundle_visible": False, "admin_key_visible": False, "docker_socket_visible": False}
+    assert any(line.startswith("FINISH-MSG ") for line in log.splitlines())
