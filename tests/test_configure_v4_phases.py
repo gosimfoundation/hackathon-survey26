@@ -74,7 +74,7 @@ def world(database):
     dev = [scenario(uri, s) for s in ('dev-fortnight', 'dev-reference')]
     formal = [scenario(uri, f'formal-{c}') for c in 'abc']
     final = scenario(uri, 'eval-final')
-    alpha, beta = scenario(uri, 'v4-alpha'), scenario(uri, 'v4-beta')
+    alpha, beta = scenario(uri, 'v4-alpha', public=True), scenario(uri, 'v4-beta', public=True)
     a_d = [scenario(uri, f'v4-{c}') for c in 'abcd']
     e_h = [scenario(uri, f'v4-{c}') for c in 'efgh']
     project = dict(projects_enabled=True, local_sessions_enabled=False, colocated=True,
@@ -90,8 +90,8 @@ def world(database):
     user, team = identity(uri)
     rehearsal = new_phase(uri, 'rehearsal-formal', sort_order=10200, leaderboard_mode='hidden',
                           settings=dict(project, runtime_seconds=3600, daily_batches=20, access_team_id=team))
-    staging_practice = new_phase(uri, 'v4-staging-practice', sort_order=10300, leaderboard_mode='hidden',
-                                 settings=dict(project, runtime_seconds=900, daily_batches=20, access_team_id=team))
+    staging_practice = new_phase(uri, 'v4-staging-practice', sort_order=10300, leaderboard_mode='hidden', counts_for_final=True,
+                                 settings=dict(project, runtime_seconds=900, daily_batches=20, sealed=True))
     # Sealed staging phases count for the final: a sealed phase that does not is 'started' for
     # public.observer_scenario_listed, which would name its scenarios to participants.
     staging_formal = new_phase(uri, 'v4-staging-formal', sort_order=10301, leaderboard_mode='hidden', counts_for_final=True,
@@ -102,6 +102,10 @@ def world(database):
     links(uri, rehearsal, *formal); links(uri, staging_practice, alpha, beta)
     links(uri, staging_formal, *a_d); links(uri, staging_final, *e_h)
     query(uri, "insert into private.observer_preparation_config values(true,%s,%s,'test-model',true)", (online, dev[0]))
+    # Files in the public 'scenarios' bucket, as registered by scenario-work (W2).
+    query(uri, "insert into storage.buckets(id,name) values('scenarios','scenarios') on conflict do nothing")
+    for name in CARD_FILES:
+        query(uri, "insert into storage.objects(bucket_id,name) values('scenarios',%s)", (name,))
     query(uri, "insert into private.observer_installations(organization,organization_id,installation_id,repository_id,approved_sha,enabled)"
                " values(%s,'101',202,'303',%s,true) on conflict(organization) do nothing", (ORG, 'a' * 40))
     return {'uri': uri, 'user': user, 'team': team, 'online': online, 'hidden': hidden, 'playground': playground,
@@ -128,6 +132,20 @@ def slugs_of(uri, phase_slug):
 
 def listed(uri, sid, role='anon', user=None):
     return query(uri, 'select id from public.scenarios where id=%s', (sid,), role=role, user=user) != []
+
+
+PRACTICE_FILES = [f'v4-{c}/{p}' for c in ('alpha', 'beta') for p in (
+    'config/v4_scenario.json', 'config/v4_score_config.json', 'public/targets.csv', 'public/v4_bulletins.jsonl',
+    'truth/v4_weather_truth.csv', 'truth/v4_events.csv')]
+FORMAL_FILES = [f'v4-{c}/{p}' for c in 'abcd' for p in (
+    'config/v4_fiber_config.json', 'config/v4_score_config.json', 'public/footprint.csv', 'public/targets.csv',
+    'public/v4_night_calendar.csv')]
+V3_FILES = ['formal-a/config/scenario_config.json', 'eval-final/config/scenario_config.json', 'dev-fortnight/config/scenario_config.json']
+CARD_FILES = PRACTICE_FILES + FORMAL_FILES + V3_FILES
+
+
+def readable(uri, role='anon', user=None):
+    return {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role, user=user)}
 
 
 FORWARD = ('--practice', 'v4-alpha,v4-beta', '--formal', 'v4-a,v4-b,v4-c,v4-d', '--final', 'v4-e,v4-f,v4-g,v4-h')
@@ -251,3 +269,56 @@ def test_cards_left_without_a_phase_are_parked_on_reverse(world, capsys):
         assert not listed(uri, sid)
     query(uri, "delete from public.phase_scenarios where phase_id=(select id from public.phases where slug='scenario-parking')")
     links(uri, world['staging_final'], *world['e_h'])
+
+
+def test_card_files_open_for_practice_at_once_and_for_formal_cards_at_the_competition_start(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    participant, _ = identity(uri)
+    before = readable(uri)
+    assert not any(n.startswith('v4-') for n in before)            # sealed staging: nothing
+    assert 'formal-a/config/scenario_config.json' not in before and 'dev-fortnight/config/scenario_config.json' in before
+    code, out = run(mod, *FORWARD, capsys=capsys)
+    assert out['released_files']['v4-alpha'] == {'release': 'practice', 'files': sorted(f.split('/', 1)[1] for f in PRACTICE_FILES if f.startswith('v4-alpha/'))}
+    assert out['released_files']['v4-a']['release'] == 'competition' and len(out['released_files']['v4-a']['files']) == 5
+    assert 'v4-e' not in out['released_files']
+    assert run(mod, *FORWARD, '--apply', capsys=capsys)[0] == 0
+    for role, user in (('anon', None), ('authenticated', participant)):
+        names = readable(uri, role, user)
+        assert set(PRACTICE_FILES) <= names                          # alpha/beta: full public set
+        assert not any(n.startswith(('v4-a/', 'v4-b/', 'v4-c/', 'v4-d/')) for n in names)   # before the competition
+        assert 'formal-a/config/scenario_config.json' not in names and 'eval-final/config/scenario_config.json' not in names
+    online = world['online']
+    # The phase has started but the site is still in practice mode: still closed.
+    query(uri, "update public.phases set starts_at=now()-interval '1 minute' where id=%s", (online,))
+    assert not any(n.startswith('v4-a/') for n in readable(uri))
+    # The automatic switch at the start: competition mode -> the 5 public inputs of A-D open, nothing else.
+    query(uri, "update private.observer_site_mode set mode='competition',phase_id=%s", (online,))
+    names = readable(uri)
+    assert set(FORMAL_FILES) <= names
+    query(uri, "insert into storage.objects(bucket_id,name) values('scenarios','v4-a/truth/v4_weather_truth.csv'),"
+               "('scenarios','v4-e/config/v4_score_config.json')")
+    names = readable(uri)
+    assert 'v4-a/truth/v4_weather_truth.csv' not in names and 'v4-e/config/v4_score_config.json' not in names
+    assert not any(n.startswith(('v4-e/', 'v4-f/', 'v4-g/', 'v4-h/', 'formal-', 'eval-final/')) for n in names)
+    query(uri, "delete from storage.objects where name in ('v4-a/truth/v4_weather_truth.csv','v4-e/config/v4_score_config.json')")
+    # Back to practice mode and reverse: everything v4 is private again.
+    query(uri, "update private.observer_site_mode set mode='practice',phase_id=null")
+    query(uri, "update public.phases set starts_at='2026-10-04T16:00:00Z' where id=%s", (online,))
+    assert run(mod, '--reverse', '--apply', capsys=capsys)[0] == 0
+    assert readable(uri) == before
+    assert query(uri, 'select count(*) from private.observer_scenario_public_files') == [(0,)]
+
+
+def test_dry_run_reports_missing_migrations_instead_of_failing(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    real = mod.query
+    def without_tables(statement):
+        return [{k: (False if k.startswith('private.observer_') else v) for k, v in row.items()} for row in real(statement)] \
+            if 'to_regclass' in statement else real(statement)
+    mod.query = without_tables
+    code, out = run(mod, *FORWARD, capsys=capsys)
+    assert code == 2 and 'migration 20260928004100_card_boards is not applied' in out['problems']
+    assert 'migration 20260928004400_v4_public_card_files is not applied' in out['problems']
+    assert out['planned']['online']['scenarios'] == ['v4-a', 'v4-b', 'v4-c', 'v4-d']
+    code, out = run(mod, '--reverse', capsys=capsys)
+    assert code == 2 and len(out['problems']) == 2
