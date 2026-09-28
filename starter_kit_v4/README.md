@@ -49,7 +49,9 @@ The last line of the output is a JSON summary. Files are in `run_output/`: `deci
 6. Longer exposures and better sky give a higher score per target, capped at 1 × weight × program bonus.
 7. Only each target's **best** exposure counts. Exposures do not add up.
 8. Every required target that never reaches an exposure factor of 0.5 costs **50 points**.
-9. Weather is hidden. You only get short bulletins and forecasts (event kind + compass direction).
+9. Your agent never sees the weather itself. During a run it only gets short bulletins and forecasts
+   (event kind + compass direction). Some cards publish their weather files for local scoring; your
+   agent must not read them.
 10. One wall clock per card (900 s on the platform). When it runs out, the survey stops there.
 
 ## Protocol: `participant-agent-protocol-v4`
