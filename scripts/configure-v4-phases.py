@@ -10,6 +10,11 @@ Organizer decisions 2026-09-28 (go/no-go for v4: 2026-10-02 12:00 UTC):
                      board, 900 s per card run, 4 evaluations per team per day;
   final-hidden       v4 hidden cards (E-H), sealed until results are published,
                      900 s per card run, boards per card plus overall.
+Card files in the public 'scenarios' bucket are released through
+private.observer_scenario_public_files: practice cards at once (config/, public/,
+truth/ when all their weather flags are public), formal cards' config/ and
+public/ only while 'online' is open and the site is in competition mode, hidden
+cards never. --reverse restores the previous list.
 Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
 anything else: v4_requires_colocated); --reverse restores the previous value.
 
@@ -43,6 +48,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import sys
 import uuid
 
@@ -82,9 +88,11 @@ def phase(slug):
 def scenarios(slugs):
     if not slugs: return {}
     rows = query('select s.id,s.slug,s.is_active,s.weather_public or s.forecasts_public or s.events_public as public_flags,'
+                 's.weather_public and s.forecasts_public and s.events_public as all_public,'
                  's.global_wallclock_seconds,exists(select 1 from private.observer_scenario_bundles b where b.scenario_id=s.id) as bundle,'
                  'public.observer_scenario_listed(s.id) as listed,'
-                 "(select count(*) from storage.objects o where o.bucket_id='scenarios' and o.name like s.slug||'/%') as public_files,"
+                 "coalesce((select jsonb_agg(substr(o.name,length(s.slug)+2) order by o.name) from storage.objects o"
+                 " where o.bucket_id='scenarios' and split_part(o.name,'/',1)=s.slug),'[]'::jsonb) as files,"
                  "coalesce((select jsonb_agg(jsonb_build_object('phase',p.slug,'sealed',coalesce(c.sealed,false)) order by p.slug)"
                  ' from public.phase_scenarios ps join public.phases p on p.id=ps.phase_id left join public.observer_phase_settings c'
                  " on c.phase_id=p.id where ps.scenario_id=s.id),'[]'::jsonb) as links"
@@ -92,6 +100,7 @@ def scenarios(slugs):
     found = {r['slug']: r for r in rows}
     for r in rows:
         if isinstance(r['links'], str): r['links'] = json.loads(r['links'])
+        if isinstance(r['files'], str): r['files'] = json.loads(r['files'])
     missing = [s for s in slugs if s not in found]
     if missing: raise RuntimeError('Unknown card scenarios: ' + ', '.join(missing))
     return found
@@ -128,6 +137,9 @@ do $privacy$ begin
         and (public.observer_scenario_listed(s.id) or not public.observer_formal_source(s.slug)
              or exists(select 1 from public.phase_scenarios o where o.scenario_id=s.id and o.phase_id<>p.id)))
     then raise exception 'A hidden scenario would become visible; nothing was changed';end if;
+  if exists(select 1 from private.observer_scenario_public_files f join public.phase_scenarios ps on ps.scenario_id=f.scenario_id
+      join public.observer_phase_settings c on c.phase_id=ps.phase_id where c.sealed)
+    then raise exception 'A file of a hidden scenario would be released; nothing was changed';end if;
   if exists(select 1 from public.phases p join public.observer_phase_settings c on c.phase_id=p.id
       where p.slug={q(FINAL)} and (not c.sealed or p.leaderboard_mode='published'))
     then raise exception 'The hidden final phase is not sealed; nothing was changed';end if;
@@ -175,6 +187,26 @@ def expect_links(phase_id, scenario_ids):
             " end if; end $x$;\n")
 
 
+def released_files(cards, args, problems):
+    """Files of the public 'scenarios' bucket that become downloadable (migration 20260928004400).
+    Practice cards: config/ and public/, plus truth/ when weather, forecasts and events are all public.
+    Formal cards: config/ and public/ only, released when the competition starts. Hidden cards: none."""
+    out = {}
+    for slug in args.practice if args.practice_mode != 'skip' else []:
+        c = cards[slug]
+        out[slug] = ('practice', [f for f in c['files'] if f.split('/')[0] in ('config', 'public')
+                                  or (f.split('/')[0] == 'truth' and c['all_public'])])
+    for slug in args.formal:
+        files = cards[slug]['files']
+        if any(f.split('/')[0] not in ('config', 'public') for f in files):
+            problems.append(f'{slug} has files outside config/ and public/ in the public scenario bucket')
+        out[slug] = ('competition', [f for f in files if f.split('/')[0] in ('config', 'public')])
+    for slug, (_, files) in out.items():
+        bad = [f for f in files if not re.fullmatch(r'(config|public|truth)/[A-Za-z0-9_.-]+', f) or '..' in f]
+        if bad: problems.append(f'{slug} has unexpected file names in the public scenario bucket')
+    return out
+
+
 def plan_forward(args):
     problems, warnings = [], []
     phases = {slug: phase(slug) for slug in (PRACTICE, FORMAL, FINAL)}
@@ -197,12 +229,13 @@ def plan_forward(args):
                 warnings.append(f'{slug} is readable by participants now (not in a private phase)')
             if group in ('formal', 'final') and c['public_flags']: problems.append(f'{slug} has public weather, forecasts or events')
             if group == 'final':
-                if int(c['public_files']): problems.append(f'{slug} has files in the public scenario bucket')
+                if c['files']: problems.append(f'{slug} has files in the public scenario bucket')
                 if any(l['phase'] not in (FINAL,) and not l['sealed'] for l in c['links']):
                     problems.append(f'{slug} is linked to an unsealed phase')
             if group == 'formal' and any(l['phase'] == FINAL for l in c['links']): problems.append(f'{slug} belongs to the hidden final')
             if group == 'practice' and any(l['phase'] in (FORMAL, FINAL) for l in c['links']):
                 problems.append(f'{slug} is formal material; refusing to use it for practice')
+    released = released_files(cards, args, problems)
     final = phases[FINAL]
     if not (final['settings'] or {}).get('sealed'): problems.append('final-hidden is not sealed')
     if final['leaderboard_mode'] == 'published': problems.append('final-hidden results are already published')
@@ -241,7 +274,9 @@ insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SN
   'links',(select coalesce(jsonb_agg(to_jsonb(ps) order by ps.phase_id,ps.scenario_id),'[]') from public.phase_scenarios ps
            where ps.phase_id=any({uuids(touched_phases)}) or ps.scenario_id=any({uuids(moved)})),
   'scenarios',to_jsonb({uuids(moved)}),
-  'preparation',(select to_jsonb(c) from private.observer_preparation_config c where c.id));
+  'preparation',(select to_jsonb(c) from private.observer_preparation_config c where c.id),
+  'public_files',(select coalesce(jsonb_agg(to_jsonb(f) order by f.scenario_id,f.path),'[]') from private.observer_scenario_public_files f
+                  where f.scenario_id=any({uuids(moved)})));
 """
     body = [guard_sql(touched_phases, True)] + [expect_links(phases[s]['id'], ids(current[s])) for s in (PRACTICE, FORMAL, FINAL)]
     body += [snapshot, parking_sql(), park(ids(parked))]
@@ -261,6 +296,11 @@ insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SN
     body.append(link(h_id, ids(args.final), True))
     body.append(f"update public.observer_phase_settings set board_layout='cards_overall',colocated=true,runtime_seconds={int(args.runtime)}"
                 f" where phase_id={q(h_id)} and sealed;\n")
+    body.append(f"delete from private.observer_scenario_public_files where scenario_id=any({uuids(moved)});\n")
+    for slug, (release, files) in released.items():
+        if files:
+            body.append('insert into private.observer_scenario_public_files(scenario_id,path,release) values'
+                        + ','.join(f"({q(cards[slug]['id'])},{q(f)},{q(release)})" for f in files) + ';\n')
     if args.preview:
         body.append(f"update private.observer_preparation_config set scenario_id={q(cards[args.preview]['id'])} where id;\n")
     for slug in (PRACTICE, FORMAL, FINAL):
@@ -286,6 +326,7 @@ end $colocated$;
                             'daily_batches': (phases[s]['settings'] or {}).get('daily_batches'),
                             'colocated': (phases[s]['settings'] or {}).get('colocated')} for s in phases},
             'planned': changes, 'parked': parked,
+            'released_files': {slug: {'release': r, 'files': f} for slug, (r, f) in released.items()},
             'preview': args.preview or (prep[0]['scenario'] if prep else None)}, sql
 
 
@@ -327,6 +368,10 @@ update public.phases p set daily_limit=r.daily_limit
   from jsonb_populate_recordset(null::public.phases,{snapshot}->'phases') r where p.id=r.id;
 update private.observer_preparation_config c set phase_id=r.phase_id,scenario_id=r.scenario_id,model=r.model,enabled=r.enabled
   from jsonb_populate_record(null::private.observer_preparation_config,{snapshot}->'preparation') r where c.id=r.id;
+delete from private.observer_scenario_public_files where scenario_id in (select scenario_id from v4_restore_scenarios);
+insert into private.observer_scenario_public_files(scenario_id,path,release)
+  select r.scenario_id,r.path,r.release
+  from jsonb_populate_recordset(null::private.observer_scenario_public_files,coalesce({snapshot}->'public_files','[]')) r;
 update private.observer_phase_config_snapshots set restored_at=now() where id={sid};
 """ + privacy_sql([FINAL, PARKING]) + \
         f"select private.audit('observer.v4_phases_reversed',jsonb_build_object('snapshot',{sid}));\n" + 'commit;\n'
