@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from challenge.challenge_workflow import GlobalDeadlineExpired
+from challenge.contracts import PARTICIPANT_PROTOCOL_VERSION
 from project_platform.adaptation import AdapterProposal
 from project_platform.docker_runtime import DockerWorkspace
 from project_platform.manifest import ProjectError, ProjectManifest
@@ -281,3 +282,139 @@ rl.on('line', line => {
             assert response["action"] == "wait" and response["reason"] == "JavaScript project"
     finally:
         p.close()
+
+
+# --- Graceful finish -------------------------------------------------------
+
+DEMO_SCENARIO = Path(__file__).resolve().parents[1] / "starter_kit" / "scenarios" / "demo-week"
+
+_WAIT_AGENT_HEAD = """import json,sys
+for line in sys.stdin:
+ m=json.loads(line)
+ t=m['message_type']
+ if t=='initialize': continue
+ if t=='finish':
+"""
+_WAIT_AGENT_TAIL = """ else:
+  print(json.dumps({'protocol_version':m['protocol_version'],'message_type':'decision_response',
+  'decision_sequence':m['decision_sequence'],'action':'wait','reason':'test agent'}),flush=True)
+"""
+
+# (a) handles finish: records the message on stderr and exits 0 on its own
+FINISH_AWARE_AGENT = _WAIT_AGENT_HEAD + """  sys.stderr.write('FINISH-MSG '+json.dumps(m,sort_keys=True)+'\\n')
+  sys.stderr.flush()
+  sys.exit(0)
+""" + _WAIT_AGENT_TAIL
+
+# (b) ignores finish and keeps running until the platform stops it
+FINISH_IGNORING_AGENT = _WAIT_AGENT_HEAD + """  sys.stderr.write('IGNORING-FINISH\\n')
+  sys.stderr.flush()
+  import time
+  time.sleep(120)
+""" + _WAIT_AGENT_TAIL
+
+# (c) crashes on the unknown message, with junk on stdout that must be ignored
+FINISH_CRASHING_AGENT = _WAIT_AGENT_HEAD + """  sys.stdout.write('junk after finish is ignored\\n')
+  sys.stdout.flush()
+  raise SystemExit(3)
+""" + _WAIT_AGENT_TAIL
+
+
+def wait_agent(tmp_path, name, code):
+    script = tmp_path / name
+    script.write_text(code)
+    return JsonlTransport([sys.executable, "-u", str(script)], cwd=tmp_path,
+                          environment={"PATH": os.environ["PATH"]})
+
+
+def run_demo(transport):
+    from challenge.challenge_workflow import ChallengeWorkflow
+    workflow = ChallengeWorkflow(DEMO_SCENARIO)
+    result = workflow.run(transport)
+    rows = [item.csv_row() for item in workflow.committed]
+    return result, rows
+
+
+def test_finish_message_lets_the_agent_write_a_summary_and_exit(tmp_path):
+    from project_platform.trusted_engine import last_committed_sequence
+    control = wait_agent(tmp_path, "control.py", FINISH_AWARE_AGENT)
+    control_result, control_rows = run_demo(control)
+    control.close()
+    assert control_result["termination_reason"] == "survey_complete"
+
+    transport = wait_agent(tmp_path, "aware.py", FINISH_AWARE_AGENT)
+    result, rows = run_demo(transport)
+    proc = transport.process
+    started = time.monotonic()
+    transport.finish(result["termination_reason"], last_committed_sequence(result), grace_seconds=10)
+    assert time.monotonic() - started < 10  # the agent exited well inside the grace period
+    assert proc.returncode == 0 and transport.process is None
+    markers = [line for line in transport.log.splitlines() if line.startswith("FINISH-MSG ")]
+    assert len(markers) == 1  # exactly one finish message, and its stderr reached the log
+    message = json.loads(markers[0][len("FINISH-MSG "):])
+    assert message["protocol_version"] == PARTICIPANT_PROTOCOL_VERSION
+    assert message["message_type"] == "finish"
+    assert message["payload"] == {"termination_reason": "survey_complete",
+                                  "last_decision_sequence": last_committed_sequence(result),
+                                  "grace_seconds": 10}
+    # The run result and the score are identical to a run without the finish message.
+    assert result["score_report"] == control_result["score_report"]
+    assert result["termination_reason"] == control_result["termination_reason"]
+    assert rows == control_rows
+
+
+def test_finish_message_ignoring_agent_is_stopped_after_the_grace_period(tmp_path):
+    control = wait_agent(tmp_path, "control.py", FINISH_AWARE_AGENT)
+    control_result, control_rows = run_demo(control)
+    control.close()
+
+    transport = wait_agent(tmp_path, "ignoring.py", FINISH_IGNORING_AGENT)
+    result, rows = run_demo(transport)
+    proc = transport.process
+    started = time.monotonic()
+    transport.finish("survey_complete", 7, grace_seconds=1)
+    elapsed = time.monotonic() - started
+    assert 1 <= elapsed < 10  # waited out the grace period, then terminate/kill
+    assert proc.returncode != 0 and transport.process is None
+    assert "IGNORING-FINISH" in transport.log
+    assert result["score_report"] == control_result["score_report"] and rows == control_rows
+
+
+def test_finish_message_crashing_agent_keeps_the_scored_result(tmp_path):
+    control = wait_agent(tmp_path, "control.py", FINISH_AWARE_AGENT)
+    control_result, control_rows = run_demo(control)
+    control.close()
+
+    transport = wait_agent(tmp_path, "crashing.py", FINISH_CRASHING_AGENT)
+    result, rows = run_demo(transport)
+    proc = transport.process
+    transport.finish("survey_complete", 7, grace_seconds=5)  # must not raise
+    assert proc.returncode == 3 and transport.process is None
+    assert result["score_report"] == control_result["score_report"] and rows == control_rows
+
+
+def test_finish_message_reports_global_wallclock_expiry(tmp_path):
+    from challenge.challenge_workflow import ChallengeWorkflow
+    transport = wait_agent(tmp_path, "aware.py", FINISH_AWARE_AGENT)
+    workflow = ChallengeWorkflow(DEMO_SCENARIO)
+    started = time.monotonic()
+    budget = 300.0
+    calls = []
+
+    def clock():
+        # One real decision, then the global clock jumps past the deadline, so
+        # the loop ends between decisions with the agent still alive.
+        calls.append(1)
+        return started if len(calls) <= 3 else started + budget + 1
+
+    workflow.clock = clock
+    result = workflow.run(transport, wallclock_seconds=budget)
+    assert result["termination_reason"] == "global_wallclock_expired"
+    proc = transport.process
+    transport.finish(result["termination_reason"], 1, grace_seconds=5)
+    assert proc.returncode == 0
+    markers = [line for line in transport.log.splitlines() if line.startswith("FINISH-MSG ")]
+    assert len(markers) == 1
+    message = json.loads(markers[0][len("FINISH-MSG "):])
+    assert message["payload"]["termination_reason"] == "global_wallclock_expired"
+    assert message["payload"]["last_decision_sequence"] == 1

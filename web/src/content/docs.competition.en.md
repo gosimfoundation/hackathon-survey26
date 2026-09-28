@@ -43,6 +43,21 @@ The server commits the current decision before releasing the next observation. F
 
 A 900-second calendar slot is not necessarily one decision: an exposure can span slots and several short exposures can begin in the same slot. Follow the returned sequence and cursor.
 
+### The finish message
+
+When an evaluation ends (all slots done, or the global time limit reached), the platform sends your program one last message:
+
+```json
+{"protocol_version": "…", "message_type": "finish", "payload": {"termination_reason": "survey_complete", "last_decision_sequence": 1234, "grace_seconds": 30}}
+```
+
+- Do not reply. Anything written to stdout after this message is ignored.
+- The platform then closes your program's stdin. Your program has 30 seconds to collect data and write a summary, and should then exit on its own. If it is still running after 30 seconds, the platform stops it.
+- These 30 seconds do not count against the scenario time limit and do not affect the score. The score is final before this message is sent.
+- Anything written to stderr during this time is saved in agent.log in your result ZIP.
+- termination_reason is survey_complete (all slots done) or global_wallclock_expired (time limit reached).
+- Programs that do not recognise this message keep working; even if one fails on it, the score is not affected.
+
 ## 4. Confirm and evaluate
 
 The platform records the source revision and launch configuration, tests the interface and shows them for your confirmation. Start an evaluation from the confirmed version. One batch runs all three formal scenarios; each run returns decisions to the server round by round. CSV upload is not accepted.

@@ -50,8 +50,10 @@ means the environment is broken; read `run_output/agent.log` first. Exit code 2 
    slot boundaries; `wait` consumes the rest of the current slot.
 4. Time: one global wall clock per scenario (`initialize.global_wallclock_seconds`, also `SAC_WALLCLOCK_SECONDS`
    in the environment; 7200 s on the local reference scenario; on the platform 3600 s per formal scenario and
-   18000 s per scenario on the Playground complete-project track). No per-decision limit. When it expires the process is
-   killed and everything not yet observed scores nothing — a slow agent that only reaches night 40 of 180 loses
+   18000 s per scenario on the Playground complete-project track). No per-decision limit. When the run ends normally
+   (survey complete or the clock expired) the process gets one final `finish` message and 30 free grace seconds to
+   write a summary before it is stopped (see "The finish message" below); everything not yet observed scores nothing —
+   a slow agent that only reaches night 40 of 180 loses
    1000 per unfinished REQUIRED tile. Budget roughly `wallclock / expected_decisions` per decision; the
    reference scenario has about 7,900 slots.
 5. Score (`challenge-score-v3`): per exposure `V_tile * A_used * (1 + bonus)` where
@@ -94,6 +96,21 @@ means the environment is broken; read `run_output/agent.log` first. Exit code 2 
 8. `agent/scoring_preview.py` (`preview_actions(snapshot, scoring_contract)`) computes the public estimate for every
    legal candidate, including terminal-penalty avoidance and request value; it is what the baseline ranks by.
    Pass a `tile_best_scores` map to value repeat observations by their real marginal gain.
+
+### The finish message
+
+When an evaluation ends (all slots done, or the global time limit reached), the platform sends your program one last message:
+
+```json
+{"protocol_version": "…", "message_type": "finish", "payload": {"termination_reason": "survey_complete", "last_decision_sequence": 1234, "grace_seconds": 30}}
+```
+
+- Do not reply. Anything written to stdout after this message is ignored.
+- The platform then closes your program's stdin. Your program has 30 seconds to collect data and write a summary, and should then exit on its own. If it is still running after 30 seconds, the platform stops it.
+- These 30 seconds do not count against the scenario time limit and do not affect the score. The score is final before this message is sent.
+- Anything written to stderr during this time is saved in agent.log in your result ZIP.
+- termination_reason is survey_complete (all slots done) or global_wallclock_expired (time limit reached).
+- Programs that do not recognise this message keep working; even if one fails on it, the score is not affected.
 
 ## 4. Generate more scenarios
 

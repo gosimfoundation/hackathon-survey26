@@ -8,6 +8,23 @@ from challenge.challenge_workflow import GlobalDeadlineExpired
 
 from .docker_runtime import DockerWorkspace
 from .session import SessionClient, SessionError, long_poll_seconds, wait_until
+from .transport import NORMAL_TERMINATION_REASONS
+
+
+def _graceful_finish(runtime, status: dict, last_sequence: int) -> dict:
+    """One last finish message after a normally ended session, then a bounded
+    grace period before the usual close. The score is already fixed on the
+    server; a project that crashes on or ignores the message changes nothing.
+    Servers predating termination_reason in the status payload skip this."""
+    transport = getattr(runtime, "transport", None)
+    reason = status.get("termination_reason")
+    if (transport is not None and status.get("status") in ("scored", "awaiting_csv")
+            and reason in NORMAL_TERMINATION_REASONS):
+        try:
+            transport.finish(reason, last_sequence)
+        except Exception:
+            pass
+    return status
 
 
 def execute(runtime: DockerWorkspace, client: SessionClient, environment: dict[str,str], *, startup_seconds: float = 1500):
@@ -57,7 +74,7 @@ def _execute(runtime: DockerWorkspace, client: SessionClient, environment: dict[
             if message is None:
                 message,finished=session_ended(lambda:client.call("poll",initialized=True,**wait))
                 if finished is not None:
-                    return finished
+                    return _graceful_finish(runtime,finished,last_sequence)
             snapshot=message["observation"]
             if snapshot is None:
                 message=None
@@ -80,7 +97,7 @@ def _execute(runtime: DockerWorkspace, client: SessionClient, environment: dict[
             message,finished=session_ended(lambda:client.call("respond",sequence=sequence,response=response,
                 deadline=deadline,wait=long_poll_seconds(deadline),wait_for="observation"))
             if finished is not None:
-                return finished
+                return _graceful_finish(runtime,finished,last_sequence)
             last_sequence,last_response=sequence,response
     finally:
         runtime.close()
