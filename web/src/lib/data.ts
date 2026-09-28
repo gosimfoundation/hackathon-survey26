@@ -141,6 +141,13 @@ export function mainPhase(phases: Phase[]): Phase | null {
     ?? phases[0] ?? null
 }
 
+/** Home page board: the main phase once the competition counts, otherwise the complete-project Playground board. */
+export function homeBoardPhase(phases: Phase[]): Phase | null {
+  const main = mainPhase(phases)
+  if (main?.counts_for_final) return main
+  return phases.find(p => p.slug === 'practice-projects' && p.status === 'open') ?? main
+}
+
 export async function loadScenarios(): Promise<Scenario[]> {
   const { data, error } = await supabase.from('scenarios').select(SCENARIO_PUBLIC_COLUMNS).order('slug')
   if (error) throw error

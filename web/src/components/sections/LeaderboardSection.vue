@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { boardScenarios, loadLeaderboard, loadParticipantsStats, loadPhases, mainPhase, type LeaderboardEntry, type Phase } from '../../lib/data'
+import { boardScenarios, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type LeaderboardEntry, type Phase } from '../../lib/data'
 import { useAuth } from '../../stores/auth'
 import { fmtUtc, num } from '../../lib/format'
 import UserAvatar from '../UserAvatar.vue'
@@ -37,7 +37,7 @@ async function load() {
   refreshing.value = true
   try {
     const phases = await loadPhases()
-    phase.value = mainPhase(phases)
+    phase.value = homeBoardPhase(phases)
     hidden.value = phase.value?.leaderboard_mode === 'hidden'
     if (!scenarioTabs.value.some(s => s.slug === scenarioSlug.value)) scenarioSlug.value = scenarioTabs.value[0]?.slug ?? null
     entries.value = phase.value && !hidden.value ? await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value,
