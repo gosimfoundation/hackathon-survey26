@@ -64,6 +64,8 @@ for (const source_kind of ["repository", "zip"]) {
               source_location,
               model_run_id: modelRun,
               model: "qwen-test",
+              // The ZIP case also covers a v4 public-test scenario.
+              gameplay: source_kind === "zip" ? "v4" : "v3",
             }]);
           }
           assertEquals(name, "observer_schedule_preparation");
@@ -79,6 +81,7 @@ for (const source_kind of ["repository", "zip"]) {
       assertEquals(input.repository, { full_name: privateRepo.full_name });
       assertEquals(input.run_credential, "obs_" + modelRun + "." + scheduled.p_participant_token);
       assertEquals(input.model, "qwen-test");
+      assertEquals(input.gameplay, source_kind === "zip" ? "v4" : undefined);
       assertEquals(input.scenario_ref, undefined);
       assertEquals(input.artifact_upload, { kind: "github" });
       assertEquals(input.archive_url, undefined);

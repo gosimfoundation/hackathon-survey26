@@ -88,6 +88,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "model_base_url",
       "run_credential",
       "model",
+      "gameplay",
     ],
   };
   if (
@@ -200,6 +201,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       throw new ProxyError(503, "invalid_job_payload");
     }
     validateArtifactUpload(value.artifact_upload, revision, "preview");
+    if (value.gameplay !== undefined && value.gameplay !== "v4") throw new ProxyError(503, "invalid_job_payload");
     if (value.model !== undefined || value.model_base_url !== undefined || value.run_credential !== undefined) {
       string("model");
       url("model_base_url");

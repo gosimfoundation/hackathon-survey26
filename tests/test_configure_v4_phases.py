@@ -43,10 +43,13 @@ def run(mod, *argv, capsys):
     return code, json.loads(capsys.readouterr().out)
 
 
-def scenario(uri, slug, *, bundle=True, public=False):
+V3 = 'challenge-score-v3'
+
+
+def scenario(uri, slug, *, bundle=True, public=False, contract='v4-score-v1', wallclock=900):
     sid = uuid.uuid4()
-    query(uri, "insert into public.scenarios(id,slug,name,weather_public,forecasts_public,events_public,global_wallclock_seconds)"
-               " values(%s,%s,%s,%s,%s,%s,900)", (sid, slug, 'Name of ' + slug, public, public, public))
+    query(uri, "insert into public.scenarios(id,slug,name,weather_public,forecasts_public,events_public,global_wallclock_seconds,contract)"
+               " values(%s,%s,%s,%s,%s,%s,%s,%s)", (sid, slug, 'Name of ' + slug, public, public, public, wallclock, contract))
     if bundle: query(uri, "insert into private.observer_scenario_bundles values(%s,%s,%s)", (sid, f'{sid}/b.zip', secrets.token_hex(32)))
     return sid
 
@@ -71,10 +74,11 @@ def links(uri, pid, *sids):
 def world(database):
     """The production phase layout of 2026-09-28 plus registered v4 cards in sealed staging phases."""
     uri = database
-    dev = [scenario(uri, s) for s in ('dev-fortnight', 'dev-reference')]
-    formal = [scenario(uri, f'formal-{c}') for c in 'abc']
-    final = scenario(uri, 'eval-final')
+    dev = [scenario(uri, s, contract=V3) for s in ('dev-fortnight', 'dev-reference')]
+    formal = [scenario(uri, f'formal-{c}', contract=V3) for c in 'abc']
+    final = scenario(uri, 'eval-final', contract=V3)
     alpha, beta = scenario(uri, 'v4-alpha', public=True), scenario(uri, 'v4-beta', public=True)
+    public_test = scenario(uri, 'v4-public-test', public=True, wallclock=300)  # the dedicated public test card
     a_d = [scenario(uri, f'v4-{c}') for c in 'abcd']
     e_h = [scenario(uri, f'v4-{c}') for c in 'efgh']
     project = dict(projects_enabled=True, local_sessions_enabled=False, colocated=True,
@@ -110,7 +114,7 @@ def world(database):
                " values(%s,'101',202,'303',%s,true) on conflict(organization) do nothing", (ORG, 'a' * 40))
     return {'uri': uri, 'user': user, 'team': team, 'online': online, 'hidden': hidden, 'playground': playground,
             'practice': practice, 'rehearsal': rehearsal, 'formal': formal, 'final': final, 'e_h': e_h, 'a_d': a_d,
-            'alpha': alpha, 'beta': beta, 'staging_formal': staging_formal, 'staging_final': staging_final}
+            'alpha': alpha, 'beta': beta, 'public_test': public_test, 'staging_formal': staging_formal, 'staging_final': staging_final}
 
 
 def state(uri):
@@ -203,7 +207,9 @@ def test_active_jobs_block_the_switch_even_after_planning(world, capsys):
 
 def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
     uri = world['uri']; mod = load(uri); before = state(uri)
-    code, out = run(mod, *FORWARD, '--preview', 'v4-alpha', '--apply', capsys=capsys)
+    code, out = run(mod, *FORWARD, '--preview', 'v4-alpha', capsys=capsys)
+    assert code == 2 and any('dedicated public test card' in p for p in out['problems'])  # never a practice card
+    code, out = run(mod, *FORWARD, '--preview', 'v4-public-test', '--apply', capsys=capsys)
     assert code == 0 and out['applied'], out
     assert slugs_of(uri, 'practice-projects') == ['v4-alpha', 'v4-beta']
     assert slugs_of(uri, 'practice') == ['dev-fortnight', 'dev-reference']
@@ -218,7 +224,7 @@ def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
     assert settings['final-hidden'] == ('cards_overall', 900, 1, 1, True, True)
     assert settings['practice-projects'] == ('cards', 900, 5, 5, False, True)
     assert settings['scenario-parking'][0] == 'overall' and settings['scenario-parking'][4] is True
-    assert query(uri, 'select scenario_id from private.observer_preparation_config') == [(world['alpha'],)]
+    assert query(uri, 'select scenario_id from private.observer_preparation_config') == [(world['public_test'],)]
     # Hidden cards and parked v3 scenarios stay unnamed for anonymous and signed-in participants.
     for sid in world['e_h'] + world['formal'] + [world['final']]:
         assert not listed(uri, sid) and not listed(uri, sid, 'authenticated', world['user'])
