@@ -1,5 +1,6 @@
 """Competition activation is additive, repeatable and preserves legacy results."""
 import importlib.util
+import json
 from pathlib import Path
 import uuid
 
@@ -31,9 +32,11 @@ def test_activation_preserves_old_rows_and_refuses_existing_competition_results(
         query(uri,'insert into private.observer_scenario_bundles values(%s,%s,%s)',(scenario,str(scenario)+'/bundle.zip','a'*64))
     query(uri,'update public.scenarios set weather_public=true,forecasts_public=true,events_public=true where id=%s',(s['scenario'],))
     query(uri,'insert into private.observer_scenario_bundles values(%s,%s,%s)',(s['scenario'],str(s['scenario'])+'/bundle.zip','a'*64))
-    for i in range(1,7):
+    # Activation requires every enabled runner in ops/github-installations.json.
+    runners=json.loads((ROOT/'ops/github-installations.json').read_text())['installations']
+    for i,row in enumerate(runners,1):
         query(uri,"insert into private.observer_installations(organization,organization_id,installation_id,repository_id,approved_sha,enabled) values(%s,%s,%s,%s,%s,true)",
-          ('AGENTIC-OBSERVER26-runner-'+str(i),str(i),i,str(i+10),'a'*40))
+          (row['organization'],str(i),i,str(i+100),'a'*40))
     query(uri,"insert into private.observer_dispatch_config(endpoint,secret_id,enabled) values('https://example.supabase.co/functions/v1/observer-dispatch',%s,true)",(uuid.uuid4(),))
     before=query(uri,"select row_to_json(p)::text from public.phases p order by id")
     query(uri,'update private.observer_providers set enabled=false')
