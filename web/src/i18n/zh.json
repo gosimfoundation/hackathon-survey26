@@ -78,8 +78,8 @@
         "description": "该页面不存在。"
       },
       "start": {
-        "title": "新手上路",
-        "description": "学员从注册、建队伍、跑通入门包到上传第一个成绩的完整步骤。"
+        "title": "3 步上手",
+        "description": "下载入门包、本地跑通、提交——第一次参赛按顺序做完这三步就行。"
       },
       "teammates": {
         "title": "找队友",
@@ -88,7 +88,7 @@
     }
   },
   "nav": {
-    "start": "新手上路",
+    "start": "上手",
     "brief": "完整赛事说明",
     "rules": "规则",
     "docs": "文档",
@@ -109,7 +109,7 @@
     "registration_closed": "报名已截止",
     "reset": "重置密码",
     "teammates": "找队友",
-    "handbook": "手册",
+    "more": "更多",
     "series": {
       "label": "深圳黑客松系列",
       "pick": "选择赛事",
@@ -233,7 +233,8 @@
       "top_score": "冠军本局 {score} 分",
       "lst": "望远镜此刻正对的方向 · 星空时间 {lst}"
     },
-    "pipeline_intro": "赛事节点"
+    "pipeline_intro": "赛事节点",
+    "cta_start": "3 步上手"
   },
   "home": {
     "vision": {
@@ -2389,13 +2390,7 @@
     "next_line": "下一阶段：{name} · {day} · {left}"
   },
   "start_page": {
-    "kicker": "新手上路",
-    "title": "从零到第一个成绩",
-    "lede": "不用懂命令行。跑起来、改一个函数、上传——大约 20 分钟。",
-    "cta_register": "先去报名",
-    "cta_dashboard": "去我的控制台",
-    "cta_kit": "下载入门包",
-    "cta_docs": "完整文档"
+    "title": "3 步上手"
   },
   "tiers": {
     "astro_label": "天文段位",
@@ -2461,6 +2456,54 @@
     "mid_autumn": {
       "title": "中秋快乐！",
       "close": "关闭"
+    }
+  },
+  "start3": {
+    "practice": {
+      "subtitle": "不需要天文背景。第一次参加，按顺序做完这三步就行。",
+      "s1_title": "第 1 步 · 下载入门包",
+      "s1_desc": "入门包里有示例程序、本地评测工具和公开题目。",
+      "s1_cta": "下载入门包",
+      "s2_title": "第 2 步 · 在本地跑通",
+      "s2_lead": "解压后在入门包文件夹里运行：",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑，让分数变高。",
+      "s2_link": "看任务说明",
+      "s3_title": "第 3 步 · 提交",
+      "s3_intro": "登录后进入「参赛」，两种方式选一种：",
+      "s3_points": [
+        "交 CSV：上传本地生成的 decisions.csv，马上出分。每队每天 50 次。",
+        "交完整项目：上传代码，平台在云端运行并打分。每队每天 5 次。"
+      ],
+      "s3_cta": "去参赛",
+      "help_prefix": "还有问题？看",
+      "help_faq": "「常见问题」",
+      "help_or": "或",
+      "help_rules": "「规则」",
+      "help_suffix": "。"
+    },
+    "competition": {
+      "subtitle": "不需要天文背景。按顺序做完这三步就能参赛。",
+      "s1_title": "第 1 步 · 下载入门包",
+      "s1_desc": "入门包里有示例程序和本地评测工具。",
+      "s1_cta": "下载入门包",
+      "s2_title": "第 2 步 · 在本地跑通",
+      "s2_lead": "解压后在入门包文件夹里运行：",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑。",
+      "s2_link": "看任务说明",
+      "s3_title": "第 3 步 · 提交完整项目",
+      "s3_intro": "登录后进入「参赛」：上传代码 → 确认版本 → 开始评测。",
+      "s3_points": [
+        "每队每天 10 批，每批在三个固定场景上运行，取平均分。",
+        "比赛结束前，选定你们的最终版本。"
+      ],
+      "s3_cta": "去参赛",
+      "help_prefix": "还有问题？看",
+      "help_faq": "「常见问题」",
+      "help_or": "或",
+      "help_rules": "「规则」",
+      "help_suffix": "。"
     }
   }
 }

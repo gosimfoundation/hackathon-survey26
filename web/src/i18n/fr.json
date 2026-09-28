@@ -2,7 +2,13 @@
   "meta": {
     "title": "Agent Observateur · Hackathon GOSIM",
     "brand": "Agent Observateur",
-    "description": "Hackathon GOSIM de relevé du ciel : écrivez un agent d'observation pour un observatoire — il voit l'état public du ciel mais jamais la vraie météo, et décide toutes les 15 minutes quelle zone photographier."
+    "description": "Hackathon GOSIM de relevé du ciel : écrivez un agent d'observation pour un observatoire — il voit l'état public du ciel mais jamais la vraie météo, et décide toutes les 15 minutes quelle zone photographier.",
+    "pages": {
+      "start": {
+        "title": "Démarrer en 3 étapes",
+        "description": "Téléchargez le kit, exécutez-le en local et soumettez — trois étapes pour un premier score."
+      }
+    }
   },
   "common": {
     "save": "Enregistrer",
@@ -78,7 +84,7 @@
     "registration_closed": "Inscriptions closes",
     "reset": "Réinitialiser le mot de passe",
     "teammates": "Coéquipiers",
-    "handbook": "Guide",
+    "more": "Plus",
     "series": {
       "label": "Série des hackathons de Shenzhen",
       "pick": "Choisir un événement",
@@ -359,7 +365,8 @@
       "top_score": "Partie du champion : {score} points",
       "lst": "Direction visée par le télescope · heure du ciel {lst}"
     },
-    "pipeline_intro": "Jalons"
+    "pipeline_intro": "Jalons",
+    "cta_start": "Démarrer en 3 étapes"
   },
   "home": {
     "vision": {
@@ -915,5 +922,56 @@
   },
   "resources": {
     "session_data": "Les données du concours sont fournies à chaque tour pendant l’évaluation. Les fichiers sources des scénarios ne sont pas téléchargeables."
+  },
+  "start_page": {
+    "title": "Démarrer en 3 étapes"
+  },
+  "start3": {
+    "practice": {
+      "subtitle": "Aucune connaissance en astronomie requise. Pour une première participation, suivez simplement ces trois étapes dans l’ordre.",
+      "s1_title": "Étape 1 · Télécharger le kit de démarrage",
+      "s1_desc": "Il contient un programme d’exemple, un outil de notation local et des scénarios publics.",
+      "s1_cta": "Télécharger le kit",
+      "s2_title": "Étape 2 · Exécuter en local",
+      "s2_lead": "Décompressez-le et lancez dans le dossier du kit :",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple pour l’améliorer.",
+      "s2_link": "Lire la description de la tâche",
+      "s3_title": "Étape 3 · Soumettre",
+      "s3_intro": "Connectez-vous et ouvrez Participer. Choisissez une option :",
+      "s3_points": [
+        "CSV : envoyez le decisions.csv généré en local, score immédiat. 50 par équipe et par jour.",
+        "Projet complet : envoyez votre code, la plateforme l’exécute et le note dans le cloud. 5 par équipe et par jour."
+      ],
+      "s3_cta": "Aller à Participer",
+      "help_prefix": "Des questions ? Voir la",
+      "help_faq": "FAQ",
+      "help_or": "ou le",
+      "help_rules": "Règlement",
+      "help_suffix": "."
+    },
+    "competition": {
+      "subtitle": "Aucune connaissance en astronomie requise. Suivez ces trois étapes dans l’ordre pour participer.",
+      "s1_title": "Étape 1 · Télécharger le kit de démarrage",
+      "s1_desc": "Il contient un programme d’exemple et un outil de notation local.",
+      "s1_cta": "Télécharger le kit",
+      "s2_title": "Étape 2 · Exécuter en local",
+      "s2_lead": "Décompressez-le et lancez dans le dossier du kit :",
+      "s2_cmd": "python3 local_runner.py",
+      "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple.",
+      "s2_link": "Lire la description de la tâche",
+      "s3_title": "Étape 3 · Soumettre un projet complet",
+      "s3_intro": "Connectez-vous et ouvrez Participer : envoyez votre code → confirmez la version → lancez une évaluation.",
+      "s3_points": [
+        "10 lots par équipe et par jour ; chaque lot s’exécute sur trois scénarios fixes et prend leur moyenne.",
+        "Choisissez votre version finale avant la fin."
+      ],
+      "s3_cta": "Aller à Participer",
+      "help_prefix": "Des questions ? Voir la",
+      "help_faq": "FAQ",
+      "help_or": "ou le",
+      "help_rules": "Règlement",
+      "help_suffix": "."
+    }
   }
 }
