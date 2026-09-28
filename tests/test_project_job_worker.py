@@ -317,3 +317,42 @@ def test_preparation_project_error_reaches_the_team_as_fixed_wording(monkeypatch
         run_claimed("prepare", client, tmp_path)
     assert client.receipts == [{"result": {'diagnostics': {'stage': 'prepare', 'code': 'project_error',
         'log': 'Automatic adaptation could not identify the entry point.'}}, "error": "prepare_job_failed"}]
+
+
+@pytest.mark.parametrize("gameplay", [None, "v3", "v4", "v5"])
+def test_preparation_passes_the_public_test_gameplay_to_the_adapter(server, monkeypatch, gameplay):
+    import project_platform.preparation as prepare
+    base, state = server
+    state["archive"] = pack_files((ProjectFile("agent.py", b"def choose(s):\n    return {}\n"),))
+    seen = []
+
+    class Repository:
+        def __init__(self, name, token):
+            pass
+
+        def store_revision(self, revision, source):
+            return "b" * 40, project_digest(source)
+
+    class Stop(Exception):
+        pass
+
+    def propose(source, model, client, *, gameplay="v3"):
+        seen.append(gameplay)
+        raise Stop()
+    monkeypatch.setattr(prepare, "SnapshotRepository", Repository)
+    monkeypatch.setattr(prepare, "propose_adapter", propose)
+    payload = {"revision_id": JOB, "archive_url": base + "/archive",
+               "source_digest": hashlib.sha256(state["archive"]).hexdigest(),
+               "repository": {"full_name": "AGENTIC-OBSERVER26-runner-1/participant-" + "a" * 32, "token": "t"},
+               "artifact_upload": {"url": base + "/upload", "path": RUN + "/" + JOB + "/preview.zip"},
+               "model": "m", "model_base_url": "https://model.test/v1", "run_credential": "obs_x"}
+    if gameplay is not None:
+        payload["gameplay"] = gameplay
+    if gameplay == "v5":
+        with pytest.raises(JobError, match="invalid_job_payload"):
+            prepare.prepare_project(payload, Http(local=True))
+        assert seen == []
+    else:
+        with pytest.raises(Stop):
+            prepare.prepare_project(payload, Http(local=True))
+        assert seen == [gameplay or "v3"]

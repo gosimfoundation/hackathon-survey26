@@ -4,6 +4,7 @@ import secrets
 import uuid
 
 import psycopg
+import psycopg.types.json
 import pytest
 
 from test_project_database import database, identity, query, rpc, setup  # noqa: F401
@@ -184,3 +185,37 @@ def test_colocated_public_test_with_one_engine_job_makes_the_version_reviewable(
     rpc(uri,'observer_finish_job',engine['id'],'600','1',{'finished':True},'')
     rpc(uri,'observer_reconcile_preparations')
     assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[('reviewable','true')]
+
+
+@pytest.mark.parametrize('contract,reason,actions,passed', [
+    ('v4-score-v1', 'agent_finished', 1, True),         # a v4 agent ended its own run with "finish"
+    ('v4-score-v1', 'survey_complete', 5, True),
+    ('v4-score-v1', 'global_wallclock_expired', 5, True),
+    ('v4-score-v1', 'agent_finished', 0, False),        # still needs one committed decision
+    ('v4-score-v1', 'agent_error', 5, False),
+    ('challenge-score-v3', 'agent_finished', 5, False),  # v3 public tests keep the old rule
+    ('challenge-score-v3', 'survey_complete', 1, True),
+])
+def test_v4_public_test_accepts_an_agent_finish(preparation, contract, reason, actions, passed):
+    s=preparation;uri=s['uri']
+    query(uri,'update public.scenarios set contract=%s where id=%s',(contract,s['scenario']))
+    started=start(s)
+    assert started['gameplay']==('v4' if contract=='v4-score-v1' else 'v3')
+    finish(s,started)
+    query(uri,'update public.observer_phase_settings set colocated=true')
+    preview=query(uri,'select preview_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
+    selected=next(r for r in rpc(uri,'observer_pending_runs',10) if r['id']==str(preview))
+    assert selected['runtime_seconds']==300  # the public-test cap is unchanged for v4
+    engine=job('engine')
+    rpc(uri,'observer_schedule_run',preview,selected['lease'],'AGENTIC-OBSERVER26-runner-1',
+        secrets.token_urlsafe(32),secrets.token_urlsafe(32),None,[engine])
+    summary={'schema_version':'observer-run-summary-v1','termination_reason':reason,'committed_action_count':actions,
+             'score':{'total':-100.0}}
+    query(uri,"update public.observer_runs set status='scored',score=-100,finished_at=now(),score_summary=%s where id=%s",
+          (psycopg.types.json.Jsonb(summary),preview))
+    rpc(uri,'observer_claim_job',engine['id'],engine['nonce'],'600','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',engine['id'],'600','1',{'finished':True},'')
+    rpc(uri,'observer_reconcile_preparations')
+    rpc(uri,'observer_reconcile_preparations')
+    assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[
+        ('reviewable','true') if passed else ('failed','false')]

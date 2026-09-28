@@ -56,3 +56,48 @@ def test_malformed_or_ambiguous_model_output_is_not_accepted():
     for text in (chr(96)*3+"json\n{}\n"+chr(96)*3,"not JSON",'{"manifest":{},"manifest":{}}'):
         with pytest.raises(ProjectError):
             propose_adapter(SOURCE,"test",lambda _:{"choices":[{"message":{"content":text}}]})
+
+
+V3_PROMPT_SHA256 = "186b2bfa3da956350af0fe679db504d6d8951255e25bbac475eb72c23705c833"
+
+
+def _system_prompt(**kwargs):
+    requests = []
+
+    def complete(request):
+        requests.append(request)
+        return model_response(proposal())
+    propose_adapter(SOURCE, "test-model", complete, **kwargs)
+    return requests[0]["messages"][0]["content"]
+
+
+def test_v3_adapter_prompt_is_unchanged_and_the_default():
+    import hashlib
+    prompt = _system_prompt()
+    assert prompt == _system_prompt(gameplay="v3")
+    assert hashlib.sha256(prompt.encode()).hexdigest() == V3_PROMPT_SHA256
+    assert "participant-agent-protocol-v2" in prompt and "protocol-v4" not in prompt
+
+
+def test_v4_adapter_prompt_describes_protocol_v4():
+    prompt = _system_prompt(gameplay="v4")
+    assert "participant-agent-protocol-v2" not in prompt and "tile_id" not in prompt
+    for needle in ('"protocol_version":"participant-agent-protocol-v4"', "v4-initialize-v1", "v4-decision-snapshot-v1",
+                   '"action":"observe","pointing"', "until_utc", '{"action":"finish"}', 'protocol:"jsonl-v4"',
+                   "message_type is finish", "TOP LEVEL"):
+        assert needle in prompt, needle
+    v4 = proposal()
+    v4["manifest"]["protocol"] = "jsonl-v4"  # what the v4 prompt asks for; accepted as the same transport
+    adapted = propose_adapter(SOURCE, "test", lambda _: model_response(v4), gameplay="v4")
+    assert adapted.manifest.protocol == "jsonl-v2"
+    with pytest.raises(ProjectError, match="Unknown gameplay"):
+        propose_adapter(SOURCE, "test", lambda _: model_response(proposal()), gameplay="v5")
+
+
+def test_large_project_still_fits_with_the_v4_prompt():
+    source = tuple(ProjectFile(f"src/module{i}.rs", b"x" * 20000) for i in range(100))
+
+    def complete(request):
+        assert len(json.dumps(request, ensure_ascii=False).encode()) < MAX_PROMPT_BYTES
+        return model_response(proposal())
+    propose_adapter(source, "test", complete, gameplay="v4")

@@ -44,6 +44,8 @@ export async function schedulePreparations(deps: {
         model: revision.model,
         model_base_url: base.href.replace(/\/$/, "") + "/functions/v1/observer-model/v1",
         run_credential: "obs_" + revision.model_run_id + "." + participant,
+        // Only v4 public-test scenarios add this key; v3 preparation input is unchanged.
+        ...(revision.gameplay === "v4" ? { gameplay: "v4" } : {}),
       };
       await deps.rpc("observer_schedule_preparation", {
         p_revision: revision.id,

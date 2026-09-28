@@ -108,8 +108,11 @@ Deno.test("preparation receives only its organization repository and a bounded p
     ).model,
     "test-model",
   );
+  assertEquals(validateJobPayload({ ...input, gameplay: "v4" }, expected, job).gameplay, "v4");
   for (
     const change of [
+      { gameplay: "v3" },
+      { gameplay: 4 },
       { repository: { ...input.repository, full_name: "AGENTIC-OBSERVER26-runner-2/participant-" + "a".repeat(32) } },
       { repository: { ...input.repository, full_name: expected.organization + "/observer-control" } },
       { repository: { ...input.repository, token: "bad\nheader" } },

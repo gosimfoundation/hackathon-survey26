@@ -68,7 +68,11 @@ def prepare_project(payload: dict, http: Http, *, repository_credentials=None) -
         if not all(payload.get(key) for key in ("model", "model_base_url", "run_credential")):
             raise JobError("project_interface_required")
         client = ModelClient(payload["model_base_url"], payload["run_credential"])
-        proposal = propose_adapter(source, payload["model"], client)
+        # The public-test scenario decides the protocol the adapter must speak.
+        gameplay = payload.get("gameplay", "v3")
+        if gameplay not in ("v3", "v4"):
+            raise JobError("invalid_job_payload")
+        proposal = propose_adapter(source, payload["model"], client, gameplay=gameplay)
     proposal = replace(proposal, manifest=replace(proposal.manifest, image=resolve_image(proposal.manifest.image)))
     # Materialization here is only for the public preview. It does not imply
     # participant approval and cannot enqueue a formal evaluation.

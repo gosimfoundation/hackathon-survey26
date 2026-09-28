@@ -19,7 +19,8 @@ Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
 anything else: v4_requires_colocated); --reverse restores the previous value.
 
 Forward (default): python scripts/configure-v4-phases.py \\
-    --practice v4-alpha,v4-beta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h [--apply]
+    --practice v4-alpha,v4-beta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h \\
+    --preview v4-public-test [--apply]
 Reverse:           python scripts/configure-v4-phases.py --reverse [--apply]
 Status:            python scripts/configure-v4-phases.py --status
 
@@ -88,7 +89,7 @@ def phase(slug):
 def scenarios(slugs):
     if not slugs: return {}
     rows = query('select s.id,s.slug,s.is_active,s.weather_public or s.forecasts_public or s.events_public as public_flags,'
-                 's.weather_public and s.forecasts_public and s.events_public as all_public,'
+                 's.weather_public and s.forecasts_public and s.events_public as all_public,s.contract,'
                  's.global_wallclock_seconds,exists(select 1 from private.observer_scenario_bundles b where b.scenario_id=s.id) as bundle,'
                  'public.observer_scenario_listed(s.id) as listed,'
                  "coalesce((select jsonb_agg(substr(o.name,length(s.slug)+2) order by o.name) from storage.objects o"
@@ -229,7 +230,7 @@ def plan_forward(args):
     if not args.formal or not args.final: problems.append('--formal and --final cards are required')
     if args.practice_mode != 'skip' and not args.practice: problems.append('--practice cards are required unless --practice-mode skip')
     current = {slug: p['scenarios'] for slug, p in phases.items()}
-    cards = scenarios(sorted(set(all_cards) | {s for v in current.values() for s in v}))
+    cards = scenarios(sorted(set(all_cards) | {s for v in current.values() for s in v} | ({args.preview} if args.preview else set())))
     for group, slugs in groups.items():
         for slug in slugs:
             c = cards[slug]
@@ -253,11 +254,21 @@ def plan_forward(args):
     if not (final['settings'] or {}).get('sealed'): problems.append('final-hidden is not sealed')
     if final['leaderboard_mode'] == 'published': problems.append('final-hidden results are already published')
     if not final['counts_for_final']: problems.append('final-hidden does not count for the final')
-    if args.preview and args.preview not in args.practice: problems.append('--preview must be one of the --practice cards')
+    if args.preview:
+        # The public test of every new agent version runs a small dedicated public v4 card
+        # (not alpha/beta and never formal or hidden material), within the 300 s preview cap.
+        c = cards[args.preview]
+        if args.preview in all_cards: problems.append('--preview must be a dedicated public test card, not a practice, formal or final card')
+        if not c['is_active'] or not c['bundle']: problems.append(f'{args.preview} is not active or has no evaluation bundle')
+        if not c['all_public']: problems.append(f'{args.preview} must have public weather, forecasts and events (a public test card)')
+        if c['contract'] != 'v4-score-v1': problems.append(f"{args.preview} is not a v4 card (contract {c['contract']})")
+        if any(l['phase'] in (FORMAL, FINAL) for l in c['links']): problems.append(f'{args.preview} is formal material')
+        if c['global_wallclock_seconds'] is not None and int(c['global_wallclock_seconds']) > 300:
+            warnings.append(f"{args.preview} declares {c['global_wallclock_seconds']} s; public tests are capped at 300 s")
     prep = query('select (select slug from public.scenarios where id=c.scenario_id) as scenario,'
                  '(select slug from public.phases where id=c.phase_id) as phase,c.enabled from private.observer_preparation_config c')
     if not args.preview and prep and prep[0]['scenario'] not in all_cards:
-        warnings.append(f"the preparation preview stays on {prep[0]['scenario']}; pass --preview <practice card> so the public"
+        warnings.append(f"the preparation preview stays on {prep[0]['scenario']}; pass --preview <public test card> so the public"
                         ' test of new agent versions runs a v4 card')
     state = activity()
     if int(state['jobs']): problems.append(f"{state['jobs']} evaluation job(s) queued, dispatched or claimed")
@@ -418,7 +429,8 @@ def main(argv=None):
     parser.add_argument('--runtime', type=int, default=900, help='Wall clock per card run in online and final-hidden (s)')
     parser.add_argument('--practice-runtime', type=int, default=900, help='Wall clock per run in practice-projects (replace mode)')
     parser.add_argument('--daily', type=int, default=4, help='Evaluations per team per day in online')
-    parser.add_argument('--preview', help='Practice card used for the public test when a new agent version is prepared')
+    parser.add_argument('--preview', help='Dedicated public v4 test card (e.g. v4-public-test) used for the public test'
+                        ' when a new agent version is prepared')
     parser.add_argument('--apply', action='store_true', help='Write the change (default: dry run)')
     parser.add_argument('--sql', action='store_true', help='Also print the transaction (dry run)')
     args = parser.parse_args(argv)

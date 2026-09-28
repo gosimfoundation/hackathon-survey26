@@ -255,3 +255,35 @@ def test_organizer_verification_replays_a_run_exactly(stress_bundle, tmp_path):
     code, report = _verify(stress_bundle, tmp_path / "tampered")
     assert code == 1 and report["checks"]["total"] is False
     assert "pointing_offset" not in json.dumps(report) and "seed" not in json.dumps(report)
+
+
+def _public_test_card(tmp_path):
+    import importlib.util
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "build-v4-public-test-card.py"
+    spec = importlib.util.spec_from_file_location("build_v4_public_test_card", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_public_test_card_is_small_reproducible_and_fits_the_preview_cap(tmp_path):
+    import time
+
+    module = _public_test_card(tmp_path)
+    first = module.build_card_bundle(tmp_path / "one", module.PUBLIC_TEST_SPEC)
+    second = module.build_card_bundle(tmp_path / "two", module.PUBLIC_TEST_SPEC)
+    assert module.pack(first) == module.pack(second)
+    workflow = v4_workflow.V4Workflow(first)
+    assert workflow.wallclock_budget(None) == 300 and workflow.wallclock_budget(900) == 300
+    assert workflow.config["task_card"]["scenario_slug"] == "v4-public-test"
+    assert not any(slug in json.dumps(workflow.config) for slug in ("v4-alpha", "v4-beta", "v4-a\"", "v4-e"))
+    # A public test with the preview cap: a trivial agent completes the whole season quickly,
+    # and an agent that ends its own run with "finish" still has committed decisions.
+    started = time.monotonic()
+    result, *_ = run_card(first, tmp_path / "greedy", wallclock_seconds=300)
+    assert result["termination_reason"] in ("survey_complete", "agent_finished")
+    assert time.monotonic() - started < 60
+    finished, *_ = run_card(first, tmp_path / "finish", "finish-after:3", wallclock_seconds=300)
+    assert finished["termination_reason"] == "agent_finished"
+    assert result_summary(finished)["committed_action_count"] >= 3
