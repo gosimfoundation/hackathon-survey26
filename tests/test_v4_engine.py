@@ -14,7 +14,7 @@ from challenge import v4_workflow
 from project_platform.manifest import ProjectManifest
 from project_platform.trusted_engine import ColocatedProvider, V4ColocatedOnly, result_summary, run_session
 from project_platform.transport import JsonlTransport
-from tests.v4_support import build_bundle
+from v4_support import build_bundle
 
 AGENT = Path(__file__).resolve().parent / "fixtures" / "v4_fake_agent.py"
 DEMO_V3 = Path(__file__).resolve().parents[1] / "starter_kit" / "scenarios" / "demo-week"

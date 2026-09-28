@@ -159,7 +159,7 @@ def test_v4_card_runs_colocated_in_the_container_without_seeing_the_bundle(tmp_p
     from datetime import datetime, timedelta, timezone
 
     from project_platform.trusted_engine import ColocatedProvider, run_session
-    from tests.v4_support import build_bundle
+    from v4_support import build_bundle
 
     class Client:
         def call(self, action, **kwargs):
