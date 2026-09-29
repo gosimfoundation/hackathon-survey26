@@ -103,7 +103,7 @@ WEATHER = {
 FIBER = {
     "schema_version": "v4-fiber-map-v1",
     "site": SITE,
-    "field": {"fiber_area_deg2": 0.4, "gap_deg": 0.05, "n_fibers": 16},
+    "field": {"fiber_area_deg2": 0.4, "gap_deg": 0.0, "n_fibers": 16},
     "exposure": {"min_duration_seconds": 60, "max_duration_seconds": 3600},
 }
 

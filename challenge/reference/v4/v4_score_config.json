@@ -25,6 +25,8 @@
   },
   "reporting": {
     "correct_reward": 100,
-    "false_penalty": -150
+    "false_penalty": -150,
+    "false_report_free_allowance": 2,
+    "max_consecutive_reports": 32
   }
 }

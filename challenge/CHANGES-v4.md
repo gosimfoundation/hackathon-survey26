@@ -59,7 +59,8 @@ Source: `mynamesnoname/agent-observer-0927` at `3bdc2e0` (2026-09-28). Vendored 
      ids, programs other than DARK/BRIGHT/BACKUP, and wait durations outside [60, 3600].
    - An invalid action ends the run with termination reason `agent_error`. The score is
      settled on the valid history, as in v3.
-   - Going over 32 consecutive `report` actions also ends as `agent_error` instead of raising.
+   - An over-limit `report` ends as `agent_error` instead of raising; the configured limit
+     applies to consecutive report actions.
    - `program` stays optional and defaults to `BACKUP`, as in the prototype.
 6. **Termination reasons.**
    - `score_report.json` has a new field, `termination: {reason, detail}`. The reason is one
@@ -76,5 +77,38 @@ Source: `mynamesnoname/agent-observer-0927` at `3bdc2e0` (2026-09-28). Vendored 
      delivered in the next request's `new_messages`.
 8. **Performance (R11).** `WeatherTruth` builds its slot-start list once, instead of on every
    `_slot_index` call. The results are unchanged.
+9. **Night-end exposure cutoff.** An observe action beginning inside a night may cross
+   ordinary slot boundaries, but stops at that night's final slot end. Geometry, weather,
+   program band and score use the actual elapsed duration. The requested duration still
+   obeys the existing 60–3600 s bounds; an interrupted exposure may be shorter than 60 s.
+10. **Exact altitude limit.** The runner now finds the full-interval altitude minimum
+    analytically for each candidate target. It checks eligible targets before fibre
+    classification and scoring. The old 120 s sampling parameter remains accepted by
+    the geometry helper for compatibility but does not change the result.
+11. **Target-only 30° limit.** The 30° scoring cutoff applies to each target throughout
+    its exposure, not to the field centre. The commanded pointing still uses the
+    action contract's 0–90° altitude range.
+12. **Contiguous fibre regions.** The official 4 × 4 grid now has `gap_deg=0`:
+    16 assignable regions of 0.4 deg² tile a 6.4 deg² field. A target at a shared
+    edge belongs to one region. The `gap_deg` protocol field remains for compatibility.
+13. **Separate report thresholds.** `reporting.false_report_free_allowance` in
+    `v4_score_config.json` is the number of false reports exempt from penalty after each
+    correct report (2 on the current reference card). Later false reports incur `false_penalty`.
+    `reporting.max_consecutive_reports` caps all consecutive report actions at 32; a further
+    report ends as `agent_error` without settlement. `observe` and `wait` reset only the
+    consecutive-action count; a correct report resets the false-report count and still counts
+    toward the action cap.
+    Older cards without these keys retain immediate false-report penalties and the 32-report cap.
+14. **Time-resolved airmass.** Target quality and program-band quality now evaluate
+    airmass from the target altitude at the midpoint of every integration piece of at
+    most 120 seconds. The earlier prototype used one airmass value from the exposure
+    midpoint even though lunar quality and directional coverage were time-resolved.
+15. **Participant guide and demo regression.** The Chinese v4 participant guide now lives at
+    `docs/v4-participant-guide-zh.md`, with its figures under
+    `docs/assets/v4-participant-guide/`. It describes the current protocol, geometry,
+    weather messages, event reporting and public score formula. The starter-kit demo baseline
+    is anchored at `849.000608`, with 3 of 120 required targets missing; the idle score remains
+    `-6200.0`.
 
-The prototype's regression anchors are unchanged (see the PR for the reproduced totals).
+The prototype regression anchors for the earlier changes remain in its source history.
+Runs with night-end observations may now produce different totals.

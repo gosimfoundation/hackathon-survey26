@@ -288,7 +288,7 @@ def test_night_calendar_matches_survey(tmp_path):
         assert int(night["slot_count"]) == per_night[night["night_id"]]
 
 
-def test_event_duration_counts_observing_slots_across_daylight():
+def test_weather_crosses_daylight_but_rocket_stops_at_night_end():
     config = _small_config()
     nights, slots = v4w.build_nights(config)
     last_first_night = next(i for i, slot in enumerate(slots) if slot.night_id != nights[0].night_id) - 1
@@ -304,10 +304,25 @@ def test_event_duration_counts_observing_slots_across_daylight():
     config["earthquake"]["count"] = 0
     config["instrument_fault"]["count"] = 0
     events, _ = v4w.generate_events(config, nights, slots)
-    for kind, expected in (("cloudy", 80), ("rocket_launch", 60)):
-        [event] = [item for item in events if item.event_type == kind]
-        affected = sum(event.overlaps(slot.timestamp_utc, slot.end_utc) for slot in slots)
-        assert affected == expected
+    [cloudy] = [item for item in events if item.event_type == "cloudy"]
+    assert sum(cloudy.overlaps(slot.timestamp_utc, slot.end_utc) for slot in slots) == 80
+
+    [rocket] = [item for item in events if item.event_type == "rocket_launch"]
+    rocket_start_slot = next(slot for slot in slots if slot.timestamp_utc == rocket.actual_start_utc)
+    rocket_night = next(night for night in nights if night.night_id == rocket_start_slot.night_id)
+    remaining_slots = sum(
+        slot.night_id == rocket_night.night_id and slot.timestamp_utc >= rocket.actual_start_utc
+        for slot in slots
+    )
+    assert remaining_slots < 60
+    assert rocket.actual_end_utc == rocket_night.observing_end_utc
+    assert sum(rocket.overlaps(slot.timestamp_utc, slot.end_utc) for slot in slots) == remaining_slots
+    forecasts = [json.loads(line) for line in v4w.generate_forecasts(config, nights, events)]
+    rocket_notices = [notice for record in forecasts for notice in record["notices"]
+                      if notice["event_kind"] == "rocket_launch"]
+    assert rocket_notices
+    assert all(notice["nights"] == [rocket_night.night_date.isoformat()]
+               for notice in rocket_notices)
 
 
 def test_weather_truth_has_no_global_lunar_component(tmp_path):

@@ -20,7 +20,7 @@ settings). During a run your agent receives a short bulletin every 15 minutes an
 | Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
 | Survey | {{START_DATE}} to {{END_DATE}}, {{NIGHTS}} nights. You observe when the sun is below −18°. |
 | Targets | {{TARGETS}} targets on {{AREA_DEG2}} deg² of sky, in {{COMPONENTS}} regions. {{REQUIRED}} are required. |
-| Instrument | 16 square fibres in a 4 × 4 grid. The field is 2.73° across. |
+| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
 | Time limit | {{WALLCLOCK}} s of wall-clock time for the whole survey. |
 | Weather | {{WEATHER}} |
 | Extra messages | {{EXTRA_MESSAGES}} |
@@ -53,12 +53,12 @@ One action per decision:
 |---|---|
 | `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
-| `report` | Say that the instrument is faulty now. Right: +100. Wrong: −150. |
+| `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |
 
 ## How the score works
 
-- A target scores only if it lands on the glass of the fibre you gave it, and stays above 30° altitude.
+- A target scores only if it falls in its assigned fibre's cell and stays at or above 30° altitude.
 - Its score grows with brightness, exposure time and sky quality, up to a cap.
 - A matching program adds 20% (DARK), 12% (BRIGHT) or 6% (BACKUP). A wrong program adds nothing.
 - Only the best exposure of each target counts.

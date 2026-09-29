@@ -31,7 +31,7 @@ Expected on the demo card (a few seconds):
 | Agent | `total` | Required missing |
 |---|---|---|
 | `examples/idle_agent.py` | −6200 | 120 of 120 |
-| `agent/` (baseline) | about +1,200 | 0–2 |
+| `agent/` (baseline) | 849.000608 | 3 of 120 |
 
 The last line of the output is a JSON summary. Files are in `run_output/`: `decisions.csv`,
 `observations.csv`, `messages.jsonl`, `score_report.json`, `workflow_result.json`, `actions.jsonl`, `agent.log`
@@ -44,8 +44,11 @@ The last line of the output is a JSON summary. Files are in `run_output/`: `deci
    and a `required` flag. About 5% of targets are required.
 3. At each decision you send one action: `observe`, `wait`, `report` or `finish`.
 4. `observe` = one pointing (alt/az) + up to 16 fibre assignments + a duration (60–3600 s) + a program.
-5. A target scores only if it is assigned to a fibre **and** lands on that fibre's glass at the start
-   of the exposure, and it stays above 30° altitude for the whole exposure.
+   It can cross weather slots within one night. At the final slot's end, an unfinished exposure
+   stops and scores using only its actual elapsed time, even if that is under 60 s.
+5. A target scores only if it is assigned to a fibre **and** falls in that fibre's cell at the start
+   of the exposure, and it stays at or above 30° altitude for the whole exposure. The 30° scoring
+   limit applies to each target, not to the field centre.
 6. Longer exposures and better sky give a higher score per target, capped at 1 × weight × program bonus.
 7. Only each target's **best** exposure counts. Exposures do not add up.
 8. Every required target that never reaches an exposure factor of 0.5 costs **50 points**.
@@ -70,14 +73,14 @@ One JSON object per line. The platform writes to your **stdin**; you answer on *
   "survey":{"start_utc":"2026-10-02T00:00:00Z","end_utc":"2026-10-08T08:45:00Z","slot_seconds":900,
             "nights":[{"night_id":"N20261001","night_date":"2026-10-01","observing_start_utc":"2026-10-02T00:00:00Z",
                        "observing_end_utc":"2026-10-02T09:00:00Z","slot_count":36}]},
-  "instrument":{"n_fibers":16,"grid_side":4,"fiber_area_deg2":0.4,"gap_deg":0.05,"glass_side_deg":0.632456,
-                "pitch_deg":0.682456,"fov_side_deg":2.729822,"layout":"row-major, fiber 0 bottom-left; ...",
+  "instrument":{"n_fibers":16,"grid_side":4,"fiber_area_deg2":0.4,"gap_deg":0.0,"glass_side_deg":0.632456,
+                "pitch_deg":0.632456,"fov_side_deg":2.529822,"layout":"row-major, fiber 0 bottom-left; ...",
                 "exposure":{"min_duration_seconds":60,"max_duration_seconds":3600}},
   "scoring":{"q0":0.68,"flux_zero_point":0.5,"exposure_zero_point_seconds":900,"...":"full public score config"},
   "footprint":[{"component_id":"C00","vertices":[[335.0,-5.2],[339.3,-6.3]]}],
   "targets":{"columns":["target_id","ra_deg","dec_deg","target_class","feature_flux","science_weight","required"],
              "rows":[["V4T000001",347.43,-35.96,"BGS",1.48,0.45,false]]},
-  "limits":{"global_wallclock_seconds":900,"max_consecutive_zero_time_actions":32,
+  "limits":{"global_wallclock_seconds":900,"max_consecutive_reports":32,
             "response_max_bytes":524288,"decision_timeout":"global only (no per-decision timeout)"}}}
 ```
 
@@ -98,8 +101,8 @@ One JSON object per line. The platform writes to your **stdin**; you answer on *
                  "hits":[{"target_id":"V4T001234","score":0.8123}]}}}
 ```
 
-- `new_messages`: bulletins and forecasts published since your last request (and, on some cards, one
-  `state_resync`, see below).
+- `new_messages`: bulletins and forecasts published since your last request, plus an immediate
+  `report_result` after a report (and, on some cards, one `state_resync`, see below).
 - `last_result.hits`: the targets of your previous observe that landed on their fibre, with their score
   (0 when the sky was closed or blocked there). Assigned targets that are missing were not hits.
   Fibre ids are not returned.
@@ -110,9 +113,9 @@ strings are only logged.
 
 | `action` | Fields | Time used |
 |---|---|---|
-| `observe` | `pointing: {"alt_deg": 0–90, "az_deg": [0, 360)}`, `assignments: {"0": "V4T000123", ..., "15": ...}` (fibre id → target id, each fibre and each target once), `duration_seconds` (whole number, 60–3600), `program` (`DARK`, `BRIGHT` or `BACKUP`; optional, default `BACKUP`) | the duration |
+| `observe` | `pointing: {"alt_deg": 0–90, "az_deg": [0, 360)}`, `assignments: {"0": "V4T000123", ..., "15": ...}` (fibre id → target id, each fibre and each target once), `duration_seconds` (whole number, 60–3600), `program` (`DARK`, `BRIGHT` or `BACKUP`; optional, default `BACKUP`) | the requested duration, capped at the current night's final slot end |
 | `wait` | `duration_seconds` (60–3600) **or** `until_utc` (a later UTC time ending in `Z`, e.g. the next night's start) | until then |
-| `report` | none: "the instrument has a fault now" | 0 s (at most 32 in a row) |
+| `report` | none: "the instrument has a fault now" | 0 s (up to the configured consecutive-report limit) |
 | `finish` | none: end the survey now | ends the run |
 
 ```json
@@ -129,7 +132,13 @@ strings are only logged.
 Send only the fields in the table (plus the envelope, `reason` and `decision_source`). A wrong answer
 ends the run as `agent_error`: bad JSON, a wrong `decision_sequence`, an unknown or extra field, an unknown
 target, a fibre used twice (`"5"` and `"05"` are the same fibre), a value out of range, a line over
-512 KiB, or more than 32 `report` actions in a row. The score still counts everything done before it.
+512 KiB, or another `report` after `scoring.reporting.max_consecutive_reports` consecutive reports.
+The demo card allows 32. An over-limit attempt ends as `agent_error` without a new report score.
+`observe` or `wait` resets the report count; a correct report still counts toward it. The separate
+`scoring.reporting.false_report_free_allowance` gives the number of false reports allowed without
+penalty after each correct report (2 on the demo card). `observe` and `wait` do not reset that count;
+only a correct report does.
+The score still counts everything done before termination.
 
 ### 3. `finish` (once, no reply)
 
@@ -147,9 +156,12 @@ If your agent is still computing when the wall clock runs out, it is stopped at 
 ## Geometry
 
 - Pointing is the field centre in alt/az (azimuth 0 = north, 90 = east).
-- 16 square fibres in a 4 × 4 grid. Each glass square is 0.632° wide; 0.05° gaps between them;
-  the field is 2.73° across.
-- Fibre 0 is bottom-left. Rows go up in altitude, columns go east in azimuth. Fibre id = row × 4 + column.
+- 16 square assignable regions in a 4 × 4 grid. Each region covers 0.4 deg² and is
+  about 0.632° wide. They touch without gaps, making the field 6.4 deg² and about
+  2.530° across. A region is a target-assignment rule, not a physical fibre aperture.
+- Fibre 0 is bottom-left. Rows follow increasing altitude; columns follow increasing azimuth
+  in the local tangent plane. These directions rotate with the pointing, so the diagram's
+  right side is not always geographic east. Fibre id = row × 4 + column.
 - Target positions are projected on a flat (gnomonic) plane centred on the pointing, at the start of the
   exposure. The telescope then tracks, so targets do not drift during the exposure.
 - `agent/skymath.py` has the exact formulas (sidereal time, alt/az, projection, fibre lookup).
@@ -159,10 +171,14 @@ If your agent is still computing when the wall clock runs out, it is stopped at 
 For each target *i* and exposure *e*:
 
 ```
-q      = instrument × transparency × sky × moon(i) / (seeing × airmass(i)^0.6) / q0     (hidden, per exposure)
+q      = time-average[instrument × transparency × sky × moon(i,t)
+                      / (seeing × airmass(i,t)^0.6)] / q0                 (hidden)
 factor = min( feature_flux × duration × q / (0.5 × 900), 1 )
 score  = science_weight × factor × program_bonus
 ```
+
+The time average is evaluated at the midpoints of pieces no longer than 120 seconds.
+Each piece uses that target's altitude-dependent airmass and lunar factor at its midpoint.
 
 - `program_bonus`: 1.20 (DARK), 1.12 (BRIGHT), 1.06 (BACKUP) when the declared program matches the
   sky's band for that target; 1.0 when it does not. The band comes from the sky quality (transparency,
@@ -177,11 +193,16 @@ Final total for the card:
 total = Σ best score
         − 50 × (required targets whose best factor < 0.5)
         − 200 × (1 − Jain index over 10° right-ascension bands of the fraction of targets with factor ≥ 0.5)
-        + reports (+100 if an instrument fault is active at that moment, −150 if not)
+        + reports (+100 if an unrepaired instrument fault is active; first 2 false reports after
+                   each correct report: 0, then −150 per false report on the demo card)
 ```
 
 The Jain index is 1 when every RA band is observed to the same fraction, so spread your effort.
-You are not told whether a report was right.
+After a `report`, the next request arrives at the same simulated time. Its `last_result` gives
+`correct`, `repaired`, and `score_delta`; `new_messages` also contains a `report_result` notice
+with those fields and `issued_at_utc`. A correct report repairs the fault immediately. A false
+or repeated report gives `correct: false` and `repaired: false`; `score_delta` is 0 within the
+free threshold and −150 afterward.
 
 **Worked example.** An ELG target with `feature_flux` 0.60 and `science_weight` 1.0. You expose 900 s
 and declare DARK. The sky gives q = 0.75 and the band is DARK.
@@ -198,6 +219,8 @@ With 300 s instead, factor = 0.30. That is below 0.5, so a required target would
 - The first bulletin (`"initial": true`) also lists directions with **terrain** that blocks low altitudes
   all survey long.
 - A **forecast** is published about once a week. It lists expected events and the nights they touch.
+- A `rocket_launch` closes its announced sector for a short time and ends no later than the last slot
+  of the night in which it starts. Any unused scheduled duration does not carry into the next night.
 - There are no numbers: no cloud cover, no seeing values. Learn the real quality from your own hits.
 - Some sky losses are never announced. Your scores are the ground truth.
 

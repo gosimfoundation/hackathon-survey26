@@ -539,14 +539,19 @@ def generate_events(
             )
 
     # Rocket launches: schedule-driven, short, directional, forecastable.
+    # A launch closure ends no later than the final slot of its starting night.
     rng = random.Random(stream_seed(config, "v4.rocket_launch", 2100))
     rocket = config["rocket_launch"]
+    night_end_by_id = {night.night_id: night.observing_end_utc for night in nights}
     for occurrence in range(int(rocket["count"])):
         nominal = int((occurrence + 1) * len(slots) / (int(rocket["count"]) + 1))
         start_index = max(0, min(len(slots) - 1, nominal + rng.randint(-120, 120)))
         start_slot = slots[start_index]
         duration_slots = rng.randint(*map(int, rocket["duration_slots"]))
-        end = _end_after_observing_slots(slots, start_index, duration_slots)
+        end = min(
+            _end_after_observing_slots(slots, start_index, duration_slots),
+            night_end_by_id[start_slot.night_id],
+        )
         az_start, az_end, min_alt, max_alt = _random_sector(
             rng, rocket["azimuth_sector_width_deg"], (0.0, 90.0)
         )

@@ -8,7 +8,7 @@
   },
   "field": {
     "fiber_area_deg2": 0.4,
-    "gap_deg": 0.05,
+    "gap_deg": 0.0,
     "n_fibers": 16
   },
   "exposure": {

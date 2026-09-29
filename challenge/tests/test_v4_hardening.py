@@ -128,6 +128,44 @@ def test_forecast_nights_stay_inside_the_coverage_window(tmp_path):
 # --- config cross-validation --------------------------------------------------------------
 
 
+@pytest.mark.parametrize("bad", [-1, True, 1.5, "2"])
+def test_false_report_free_allowance_must_be_a_non_negative_integer(bad):
+    score = _load("v4_score_config.json")
+    score["reporting"]["false_report_free_allowance"] = bad
+    with pytest.raises(ValueError, match="false_report_free_allowance"):
+        cc.validate_score_config(score)
+
+
+@pytest.mark.parametrize("bad", [0, -1, True, 1.5, "32"])
+def test_total_report_cap_must_be_a_positive_integer(bad):
+    score = _load("v4_score_config.json")
+    score["reporting"]["max_consecutive_reports"] = bad
+    with pytest.raises(ValueError, match="max_consecutive_reports"):
+        cc.validate_score_config(score)
+
+
+def test_legacy_score_config_without_false_report_limit_is_accepted():
+    score = _load("v4_score_config.json")
+    del score["reporting"]["false_report_free_allowance"]
+    del score["reporting"]["max_consecutive_reports"]
+    cc.validate_score_config(score)
+
+
+def test_legacy_card_load_publishes_the_default_false_report_limit(v4_reference_dir, tmp_path, monkeypatch):
+    score = _load("v4_score_config.json")
+    del score["reporting"]["false_report_free_allowance"]
+    del score["reporting"]["max_consecutive_reports"]
+    legacy_score_path = _write(tmp_path / "legacy_score.json", score)
+    resolve = vr._resolve
+    monkeypatch.setattr(
+        vr, "_resolve",
+        lambda base, value: legacy_score_path if value == "v4_score_config.json" else resolve(base, value),
+    )
+    scenario = vr.load_scenario(v4_reference_dir / "v4_scenario_default.json")
+    assert scenario.score_config["reporting"]["false_report_free_allowance"] == 0
+    assert scenario.score_config["reporting"]["max_consecutive_reports"] == 32
+
+
 def test_generator_configs_must_agree():
     catalog, weather = _small_catalog(), _small_weather()
     scenario, fiber = _load("v4_scenario_default.json"), _load("v4_fiber_config.json")
@@ -190,12 +228,12 @@ def default_scenario(v4_reference_dir):
     return v4_reference_dir / "v4_scenario_default.json"
 
 
-def _anchor_observe(scenario_path: Path) -> dict:
-    """One valid observe at survey start with a real target on fibre 5."""
+def _anchor_observe(scenario_path: Path, at: datetime | None = None, duration: int = 900) -> dict:
+    """One valid observe at the given time with a real target on fibre 5."""
     scenario = vr.load_scenario(scenario_path)
     grid = FiberGrid.from_config(scenario.fiber_config)
     lat, lon = float(scenario.site["latitude_deg"]), float(scenario.site["longitude_deg"])
-    start = scenario.survey_start
+    start = at or scenario.survey_start
     target = next(
         t for t in scenario.targets
         if 50.0 < radec_to_altaz(t["ra_deg"], t["dec_deg"], start, lat, lon)[0] < 70.0
@@ -207,7 +245,7 @@ def _anchor_observe(scenario_path: Path) -> dict:
         "action": "observe",
         "pointing": {"alt_deg": cmd_alt, "az_deg": (az - d_az / math.cos(math.radians(cmd_alt))) % 360.0},
         "assignments": {"5": target["target_id"]},
-        "duration_seconds": 900,
+        "duration_seconds": duration,
         "program": "BACKUP",
     }
 
@@ -308,6 +346,60 @@ def test_survey_complete_after_the_last_slot(default_scenario, tmp_path, monkeyp
     monkeypatch.setattr(vr, "load_scenario", lambda _: short)
     report = vr.run_scenario(default_scenario, _scripted([{"action": "wait", "duration_seconds": 3600}]), tmp_path / "s")
     assert report["termination"]["reason"] == "survey_complete"
+
+
+@pytest.mark.parametrize("remaining_seconds", [30, 300])
+def test_observe_stops_at_night_end_and_scores_actual_duration(
+    default_scenario, tmp_path, remaining_seconds
+):
+    scenario = vr.load_scenario(default_scenario)
+    final_slots = [
+        slot for index, slot in enumerate(scenario.slots[:-1])
+        if slot.slot_id.split("-S", 1)[0] != scenario.slots[index + 1].slot_id.split("-S", 1)[0]
+    ]
+    final_slot = next(slot for slot in final_slots if slot.is_observable)
+    start = final_slot.end_utc - timedelta(seconds=remaining_seconds)
+    until = start.strftime("%Y-%m-%dT%H:%M:%SZ")
+    observe = _anchor_observe(default_scenario, start, 900)
+    prefix = [{"action": "wait", "until_utc": until}]
+
+    clipped_dir = tmp_path / "clipped"
+    seen: list[dict] = []
+    clipped = vr.run_scenario(default_scenario, _scripted(prefix + [observe], seen), clipped_dir)
+    rows = list(csv.DictReader((clipped_dir / "decisions.csv").open()))
+    assert rows[-1]["action"] == "observe"
+    assert rows[-1]["end_utc"] == final_slot.end_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert rows[-1]["duration_seconds"] == str(remaining_seconds)
+    assert seen[-1]["now_utc"] == rows[-1]["end_utc"]
+    assert clipped["components"]["sum_best_scores"] > 0
+
+    if remaining_seconds < 60:
+        return  # a legal request can be cut below the minimum request duration
+
+    exact_dir = tmp_path / "exact"
+    exact = vr.run_scenario(
+        default_scenario,
+        _scripted(prefix + [dict(observe, duration_seconds=remaining_seconds)]),
+        exact_dir,
+    )
+    assert clipped["total"] == exact["total"]
+    for name in ("decisions.csv", "observations.csv", "score_report.json"):
+        assert (clipped_dir / name).read_bytes() == (exact_dir / name).read_bytes()
+
+
+def test_observe_still_crosses_internal_slot_boundary(default_scenario, tmp_path):
+    scenario = vr.load_scenario(default_scenario)
+    start = scenario.slots[0].end_utc - timedelta(seconds=300)
+    observe = _anchor_observe(default_scenario, start, 900)
+    out = tmp_path / "cross_slot"
+    vr.run_scenario(
+        default_scenario,
+        _scripted([{"action": "wait", "until_utc": start.strftime("%Y-%m-%dT%H:%M:%SZ")}, observe]),
+        out,
+    )
+    rows = list(csv.DictReader((out / "decisions.csv").open()))
+    assert rows[-1]["duration_seconds"] == "900"
+    assert rows[-1]["end_utc"] == (start + timedelta(seconds=900)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def test_wait_until_expands_without_round_trips_and_carries_messages(default_scenario, tmp_path):

@@ -7,18 +7,20 @@ stress truth (zero by default). At exposure start the actual center is converted
 RA/Dec and the telescope tracks sidereally, so a target stays fixed relative to its
 fiber for the whole exposure and the hit test runs once, at exposure start.
 
-Grid: `n_fibers` (a perfect square) square glass tiles of `fiber_area_deg2` each,
-separated by `gap_deg` frame width modeling the instrument's intrinsic angular
-resolution. The grid is aligned with the alt/az axes at exposure start (rows along
+Grid: `n_fibers` (a perfect square) square assignable regions of `fiber_area_deg2`
+each. The official 16-fiber configuration sets `gap_deg=0`, so the regions tile a
+6.4 deg2 field without blind strips. `gap_deg` remains in the public config for
+protocol compatibility; it does not represent optical resolution or physical fiber
+clearance. The grid is aligned with the alt/az axes at exposure start (rows along
 alt, columns along az; it does not rotate with parallactic angle). Fiber ids are
-row-major with fiber 0 at the lower-left corner (south, west on the local tangent
-plane). Target positions use a gnomonic projection centered on the actual pointing;
+row-major with fiber 0 at the lower-left corner (smaller local altitude and
+azimuth offsets). Target positions use a gnomonic projection centered on the actual pointing;
 the actual azimuth fixes the plane orientation when pointing at the zenith.
 
 Hit semantics (2026-09-27 ruling): only a target that is BOTH assigned to a fiber AND
-actually lands on that fiber's glass counts as a hit. Glass includes its boundary, and
-glass/frame ambiguities resolve to glass. Targets on the frame, on a different fiber,
-or outside the field are not hits — the geometry layer reports booleans only; scoring
+actually lands on that fiber's assignable region counts as a hit. Shared boundaries
+belong to one cell deterministically. Targets on a different fiber or outside the
+field are not hits — the geometry layer reports booleans only; scoring
 and penalties belong to the scorer.
 
 Pure standard library; the demo plot at the bottom uses matplotlib as a build-time-only
@@ -40,6 +42,7 @@ from .tile_geometry_simulator import _local_sidereal_deg
 
 
 SCHEMA_VERSION = "v4-fiber-map-v1"
+SIDEREAL_DEGREES_PER_DAY = 360.98564736629  # Same rate as _local_sidereal_deg.
 
 REGION_GLASS = "glass"
 REGION_FRAME = "frame"
@@ -65,7 +68,7 @@ ACTION_SCHEMA = {
     "semantics": (
         "The actual field center is pointing + (delta_alt, delta_az) from the stress "
         "truth. A target scores only when it is assigned to a fiber and lands on that "
-        "fiber's glass (boundary included) at exposure start. No fiber-id information "
+        "fiber's assignable region at exposure start. No fiber-id information "
         "is returned to the agent per ruling."
     ),
 }
@@ -174,19 +177,23 @@ class FiberGrid:
         return int(fiber_id) // self.n_side, int(fiber_id) % self.n_side
 
     def fiber_center_offset(self, fiber_id: int) -> tuple[float, float]:
-        """(north, east) offset of the fiber center on the tangent plane, in degrees."""
+        """(increasing-alt, increasing-az) tangent-plane offsets, in degrees."""
         row, col = self.fiber_row_col(fiber_id)
         middle = (self.n_side - 1) / 2.0
         return (row - middle) * self.pitch_deg, (col - middle) * self.pitch_deg
 
     def classify_offset(self, d_alt_deg: float, d_az_scaled_deg: float) -> tuple[int | None, str]:
-        """Grid-cell lookup in tangent-plane offsets; glass includes its boundary."""
+        """Grid-cell lookup in tangent-plane offsets; seams belong to one cell."""
         half = self.fov_side_deg / 2.0
         if abs(d_alt_deg) > half or abs(d_az_scaled_deg) > half:
             return None, REGION_OUTSIDE
         middle = self.n_side / 2.0
         row = min(max(int(math.floor(d_alt_deg / self.pitch_deg + middle)), 0), self.n_side - 1)
         col = min(max(int(math.floor(d_az_scaled_deg / self.pitch_deg + middle)), 0), self.n_side - 1)
+        if self.gap_deg == 0.0:
+            # Adjacent regions tile the whole field. Avoid a floating-point sliver
+            # classified as frame at a shared boundary.
+            return row * self.n_side + col, REGION_GLASS
         center_alt, center_az = self.fiber_center_offset(row * self.n_side + col)
         half_side = self.fiber_side_deg / 2.0
         if abs(d_alt_deg - center_alt) <= half_side and abs(d_az_scaled_deg - center_az) <= half_side:
@@ -204,7 +211,7 @@ class FiberGrid:
         target_alt_deg: float, target_az_deg: float,
         center_alt_deg: float, center_az_deg: float,
     ) -> tuple[float, float] | None:
-        """(north, east) gnomonic offsets in degrees; center azimuth orients zenith."""
+        """(increasing-alt, increasing-az) gnomonic offsets; az orients zenith."""
         alt = math.radians(target_alt_deg)
         az = math.radians(target_az_deg)
         center_alt = math.radians(center_alt_deg)
@@ -215,18 +222,18 @@ class FiberGrid:
             math.cos(center_alt) * math.sin(center_az),
             math.sin(center_alt),
         )
-        north = (
+        up = (
             -math.sin(center_alt) * math.cos(center_az),
             -math.sin(center_alt) * math.sin(center_az),
             math.cos(center_alt),
         )
-        east = (-math.sin(center_az), math.cos(center_az), 0.0)
+        right = (-math.sin(center_az), math.cos(center_az), 0.0)
         depth = sum(a * b for a, b in zip(target, center))
         if depth <= 0.0:
             return None
         return (
-            math.degrees(sum(a * b for a, b in zip(target, north)) / depth),
-            math.degrees(sum(a * b for a, b in zip(target, east)) / depth),
+            math.degrees(sum(a * b for a, b in zip(target, up)) / depth),
+            math.degrees(sum(a * b for a, b in zip(target, right)) / depth),
         )
 
     def classify_target(
@@ -295,20 +302,34 @@ def min_altitude_during(
     config: Mapping,
     step_seconds: int = 60,
 ) -> float:
-    """Minimum altitude of a target over [start, end] (sampled; scorer exposure check)."""
+    """Exact minimum altitude over [start, end] for the fixed-RA/Dec tracking model.
+
+    ``step_seconds`` is accepted for compatibility but does not affect the result.
+    """
     if end_utc <= start_utc:
         raise ValueError("end must follow start")
     if step_seconds <= 0:
         raise ValueError("step_seconds must be positive")
     latitude, longitude = _site(config)
-    minimum = float("inf")
-    moment = start_utc
-    while moment < end_utc:
-        altitude, _ = radec_to_altaz(ra_deg, dec_deg, moment, latitude, longitude)
-        minimum = min(minimum, altitude)
-        moment += timedelta(seconds=step_seconds)
+    start_altitude, _ = radec_to_altaz(ra_deg, dec_deg, start_utc, latitude, longitude)
     end_altitude, _ = radec_to_altaz(ra_deg, dec_deg, end_utc, latitude, longitude)
-    return min(minimum, end_altitude)
+    minimum = min(start_altitude, end_altitude)
+
+    # sin(alt) = sin(lat) sin(dec) + cos(lat) cos(dec) cos(hour_angle).
+    # Hour angle increases at a constant rate in our LST model. Its only
+    # interior minimum occurs at lower culmination (hour angle = 180 degrees).
+    start_hour_angle = (_local_sidereal_deg(start_utc, longitude) - ra_deg) % 360.0
+    swept_degrees = SIDEREAL_DEGREES_PER_DAY * (end_utc - start_utc).total_seconds() / 86400.0
+    if (180.0 - start_hour_angle) % 360.0 <= swept_degrees:
+        latitude_rad = math.radians(latitude)
+        declination_rad = math.radians(dec_deg)
+        lower_sin_altitude = (
+            math.sin(latitude_rad) * math.sin(declination_rad)
+            - math.cos(latitude_rad) * math.cos(declination_rad)
+        )
+        lower_altitude = math.degrees(math.asin(max(-1.0, min(1.0, lower_sin_altitude))))
+        minimum = min(minimum, lower_altitude)
+    return minimum
 
 
 def altitude_ok(
@@ -485,22 +506,20 @@ def _render_demo(grid, plotted, hit_ids, png_path, cmd_alt, cmd_az, moment) -> N
     ax.set_xlim(-half * 1.05, half * 1.05)
     ax.set_ylim(-half * 1.05, half * 1.05)
     ax.set_aspect("equal")
-    ax.set_xlabel("gnomonic east offset [deg]")
-    ax.set_ylabel("gnomonic north offset [deg]")
+    ax.set_xlabel("gnomonic offset toward increasing azimuth [deg]")
+    ax.set_ylabel("gnomonic offset toward increasing altitude [deg]")
     ax.set_title(
         f"v4 fiber grid demo \u2014 commanded ({cmd_alt}\u00b0, {cmd_az}\u00b0) at "
         f"{moment.strftime('%Y-%m-%dT%H:%M:%SZ')}\n"
-        "blue = fiber glass (grid aligned with alt/az axes at exposure start), "
-        "white dots = on-glass targets, gray = on-frame, red rings = assigned hits"
+        "blue = assignable regions (grid aligned with alt/az axes at exposure start), "
+        "white dots = targets in field, red rings = assigned hits"
     )
     ax.legend(
         handles=[
             Line2D([], [], marker="s", color="none", markerfacecolor="#2e5aac",
-                   markeredgecolor="#081f4e", markersize=10, label="fiber glass"),
+                   markeredgecolor="#081f4e", markersize=10, label="assignable region"),
             Line2D([], [], marker="o", color="none", markerfacecolor="white",
-                   markeredgecolor="#888888", markersize=5, label="on-glass target"),
-            Line2D([], [], marker="o", color="none", markerfacecolor="#333333",
-                   markersize=5, label="on-frame target (not recorded)"),
+                   markeredgecolor="#888888", markersize=5, label="target in field"),
             Line2D([], [], marker="o", color="none", markerfacecolor="none",
                    markeredgecolor="#e01515", markersize=8, label="assigned hit"),
         ],
