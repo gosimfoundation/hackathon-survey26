@@ -12,7 +12,7 @@ import { competition } from '../stores/competition'
 import PageHead from '../components/layout/PageHead.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
 
-const { t, pick } = useI18n()
+const { t } = useI18n()
 const flash = useFlash()
 // A signed-in download counts as the dashboard quest's kit step.
 const { remember } = useQuestFlags()
@@ -22,13 +22,13 @@ const busy = ref<string | null>(null)
 const GROUPS: ScenarioFileGroup[] = ['config', 'data', 'weather', 'forecasts', 'events']
 
 const kit = computed(() => [
-  { n: '01', title: 'resources.kit', desc: 'resources.kit_desc', href: competition.mode==='practice'?appUrl('/downloads/agent-observer-starter-kit.zip'):'https://github.com/BH3GEI/observer-project-example/archive/refs/heads/main.zip', primary: true, label: 'common.download' },
-  { n: '02', title: 'resources.reference', desc: 'resources.reference_desc', href: competition.mode==='practice'?'https://github.com/gosimfoundation/hackathon-survey26/tree/main/challenge/participant_agent':'https://github.com/BH3GEI/observer-project-example', primary: false, label: 'common.view', view: true },
+  { n: '01', title: 'resources.kit', desc: 'resources.kit_desc', href: appUrl('/downloads/agent-observer-starter-kit.zip'), primary: true, label: 'common.download' },
+  { n: '02', title: 'resources.reference', desc: 'resources.reference_desc', href: 'https://github.com/BH3GEI/observer-project-example', primary: false, label: 'common.view', view: true },
   { n: '03', title: 'resources.scorer', desc: 'resources.scorer_desc', href: appUrl('/downloads/scoring_core.py'), primary: false, label: 'common.download' },
-  { n: '04', title: 'resources.skill', desc: 'resources.skill_desc', href: competition.mode==='practice'?appUrl('/skill.md'):'https://github.com/gosimfoundation/hackathon-survey26/blob/main/docs/competition-format.md', primary: false, label: 'common.view', view: true },
+  { n: '04', title: 'resources.skill', desc: 'resources.skill_desc', href: appUrl('/skill.md'), primary: false, label: 'common.view', view: true },
   { n: '05', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
 ])
-const practiceCli = `# environment for sac_submit.py (also printed in SKILL.md inside the kit)
+const cli = `# environment for sac_submit.py (also printed in SKILL.md inside the kit)
 export SAC_URL=${import.meta.env.VITE_SUPABASE_URL || 'https://<ref>.supabase.co'}
 export SAC_KEY=${import.meta.env.VITE_SUPABASE_ANON_KEY || '<anon key>'}
 export SAC_EMAIL=you@example.org SAC_PASSWORD='...'
@@ -41,8 +41,6 @@ python3 make_scenario.py --out scenarios/mine --seed 7 --days 30      # more pra
 python3 fetch_scenario.py dev-fortnight                                # any published scenario -> scenarios/dev-fortnight/
 # submit the decisions.csv your local run produced
 python3 sac_submit.py --phase practice --kind results --scenario dev-reference --file run_output/decisions.csv --wait`
-
-const cli = computed(() => competition.mode==='practice' ? practiceCli : pick('Download the complete example and implement the JSONL interface.\nClick Submit to open Participate, upload your repository or ZIP, then review and confirm its version.\nBring your own model API if needed; model use is optional.','下载完整示例，实现 JSONL 接口。\n点击「提交」进入「参赛」，上传仓库或 ZIP，检查并确认版本。\n需要模型时请自备 API，模型调用不是必需的。'))
 const filesFor = (group: ScenarioFileGroup) => SCENARIO_FILES.filter(f => f.group === group)
 const groupVisible = (s: Scenario, group: ScenarioFileGroup) => filesFor(group).some(f => scenarioFileVisible(s, f))
 const fmtClock = (v: number | null | undefined) => v == null ? '—' : v >= 3600 ? `${(v / 3600).toFixed(v % 3600 ? 1 : 0)} h` : `${Math.round(v / 60)} min`

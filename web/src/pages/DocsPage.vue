@@ -4,14 +4,11 @@ import { useI18n } from '../composables/useI18n'
 import PageHead from '../components/layout/PageHead.vue'
 import MarkdownArticle, { type TocItem } from '../components/content/MarkdownArticle.vue'
 import ProtocolExplorer from '../components/docs/ProtocolExplorer.vue'
-import docsEn from '../content/docs.competition.en.md?raw'
-import docsZh from '../content/docs.competition.zh.md?raw'
-import practiceEn from '../content/docs.practice.en.md?raw'
-import practiceZh from '../content/docs.practice.zh.md?raw'
-import { competition } from '../stores/competition'
+import docsEn from '../content/docs.en.md?raw'
+import docsZh from '../content/docs.zh.md?raw'
 
 const { t, pick, locale } = useI18n()
-const source = computed(() => competition.mode==='practice' ? pick(practiceEn,practiceZh) : pick(docsEn, docsZh))
+const source = computed(() => pick(docsEn, docsZh))
 const toc = ref<TocItem[]>([])
 const chips = computed(() => toc.value.filter(item => item.level === 2))
 const activeId = ref('')
@@ -56,7 +53,7 @@ onUnmounted(() => observer?.disconnect())
         </aside>
         <div class="docs-body min-w-0">
           <MarkdownArticle :source="source" @toc="toc = $event" />
-          <ProtocolExplorer v-if="competition.mode==='competition'" class="mt-16" />
+          <ProtocolExplorer class="mt-16" />
         </div>
       </div>
     </div></section>
