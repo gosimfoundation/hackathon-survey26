@@ -118,6 +118,8 @@ class Planner:
         self.extra_avoid: set[str] = set()       # directions an advisor asked to avoid tonight
         self.duration_scale = 1.0
         self.fast_level = 0
+        self.request_bonus: dict[int, float] = {}
+        self.request_threshold: dict[int, float] = {}
 
     # --- precomputation --------------------------------------------------------------------------
 
@@ -182,6 +184,30 @@ class Planner:
         bulletin = latest_bulletin or {}
         self.notices = {(n.get("event_kind", ""), n.get("direction", "")) for n in bulletin.get("notices", [])
                         if n.get("event_kind") != "terrain_obstruction"}
+
+    def on_requests(self, requests: list) -> None:
+        """Turn the current all-or-nothing request rewards into per-target planning values."""
+        self.request_bonus = {}
+        self.request_threshold = {}
+        for request in requests:
+            # A request that already met its minimum still appears until its deadline
+            # with remaining_count 0; its reward is settled, so it adds no value.
+            remaining = int(request.get("remaining_count", request["minimum_completed"]))
+            if remaining <= 0:
+                continue
+            completed = set(request.get("completed_target_ids", []))
+            unit = 1.5 * float(request["completion_reward"]) / remaining
+            threshold = float(request["completion_factor_threshold"])
+            for target_id in request["target_ids"]:
+                if target_id in completed or target_id not in self.index_of:
+                    continue
+                i = self.index_of[target_id]
+                # Overlapping requests: the marginal rewards add up; the combined gain is
+                # only collectible at the highest threshold of the contributing requests.
+                self.request_bonus[i] = self.request_bonus.get(i, 0.0) + unit
+                self.request_threshold[i] = max(self.request_threshold.get(i, 0.0), threshold)
+                if self.hmax[i] > 0.0 and i not in self.active:
+                    self.active.append(i)
 
     def _resync(self, message: dict) -> None:
         """Part of the recent data was lost: restart the factor estimates from the engine's best scores."""
@@ -331,11 +357,16 @@ class Planner:
     def value(self, i: int) -> float:
         f = self.factor[i]
         damp = 0.6 ** self.misses[i]
+        request = self.request_bonus.get(i, 0.0)
         if self.required[i]:
             if f >= REQUIRED_SAFE_FACTOR:
-                return self.weight[i] * max(0.0, 1.0 - f * f) * damp
-            return (self.weight[i] * (1.0 - f * f) + REQUIRED_BONUS * (1.0 if f < 0.5 else 0.35)) * damp
-        return 0.0 if f >= DONE_FACTOR else self.weight[i] * (1.0 - f * f) * damp
+                return (self.weight[i] * max(0.0, 1.0 - f * f) + request) * damp
+            return (self.weight[i] * (1.0 - f * f) + REQUIRED_BONUS * (1.0 if f < 0.5 else 0.35) + request) * damp
+        return (0.0 if f >= DONE_FACTOR else self.weight[i] * (1.0 - f * f) + request) * damp
+
+    def _request_gain(self, i: int, _before: float, after: float) -> float:
+        threshold = self.request_threshold.get(i, 0.0)
+        return self.request_bonus.get(i, 0.0) if threshold <= after else 0.0
 
     def plan(self, now: datetime, night_end: datetime, night_index: int, hours: float):
         """Return an observe action dict, or None when nothing useful is up."""
@@ -390,6 +421,7 @@ class Planner:
                 gain = self.weight[i] * max(0.0, reach * reach - f * f)
                 if self.required[i] and f < 0.5 and reach >= 0.5:
                     gain += REQUIRED_BONUS
+                gain += self._request_gain(i, f, reach)
                 damp = 0.6 ** self.misses[i] * 0.7 ** self.attempts[i]
                 achievable_cache[i] = gain * damp * self._direction_factor(alt, az)
             return achievable_cache[i]
@@ -479,6 +511,7 @@ class Planner:
                 gain += self.weight[i] * max(0.0, reached * reached - f * f)
                 if self.required[i] and f < 0.5 and reached >= 0.5:
                     gain += REQUIRED_BONUS
+                gain += self._request_gain(i, f, reached)
             rate = gain / duration
             if best is None or rate > best[0]:
                 best = (rate, duration)
@@ -501,7 +534,9 @@ class Planner:
                 continue
             band = self._band(item["model"] * band_scale)
             i = item["i"]
-            votes[band] += self.weight[i] * min(1.0, item["k"] * duration) + (REQUIRED_BONUS * 0.02 if self.required[i] else 0.0)
+            votes[band] += (self.weight[i] * min(1.0, item["k"] * duration)
+                            + (REQUIRED_BONUS * 0.02 if self.required[i] else 0.0)
+                            + self.request_bonus.get(i, 0.0) * 0.02)
         program = max(votes, key=lambda name: (votes[name] * self.multipliers[name]
                                                + sum(v for k, v in votes.items() if k != name) * self.mismatch, name))
         if self.force_program:

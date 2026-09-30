@@ -27,6 +27,8 @@ PROGRAMS = ("DARK", "BRIGHT", "BACKUP")
 SCORE_SCHEMA_VERSION = "v4-score-v1"
 DEFAULT_FALSE_REPORT_FREE_ALLOWANCE = 0
 DEFAULT_MAX_CONSECUTIVE_REPORTS = 32
+DEFAULT_REQUEST_FACTOR_THRESHOLD = 0.5
+DEFAULT_REQUEST_MISS_PENALTY = 0.0
 
 
 def _site_tuple(site: Mapping, label: str) -> tuple[float, float, float]:
@@ -145,6 +147,13 @@ def validate_score_config(score: Mapping) -> None:
     max_reports = reporting.get("max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS)
     if isinstance(max_reports, bool) or not isinstance(max_reports, int) or max_reports < 1:
         raise ValueError("reporting.max_consecutive_reports must be a positive integer")
+    requests = score.get("observation_requests", {})
+    threshold = requests.get("completion_factor_threshold", DEFAULT_REQUEST_FACTOR_THRESHOLD)
+    if not 0.0 < _finite(threshold, "observation request threshold") <= 1.0:
+        raise ValueError("observation_requests.completion_factor_threshold must lie in (0, 1]")
+    miss_penalty = requests.get("miss_penalty", DEFAULT_REQUEST_MISS_PENALTY)
+    if _finite(miss_penalty, "observation request miss_penalty") != 0.0:
+        raise ValueError("observation_requests.miss_penalty must be 0 in v4")
 
 
 def validate_targets(targets: Sequence[Mapping]) -> None:
@@ -164,6 +173,46 @@ def validate_targets(targets: Sequence[Mapping]) -> None:
             raise ValueError(f"target {target_id}: negative feature_flux")
         if _finite(target["science_weight"], "science_weight") < 0.0:
             raise ValueError(f"target {target_id}: negative science_weight")
+
+
+def validate_observation_requests(scenario) -> None:
+    target_ids = {str(target["target_id"]) for target in scenario.targets}
+    seen: set[str] = set()
+    previous = None
+    public_threshold = float(
+        scenario.score_config["observation_requests"]["completion_factor_threshold"]
+    )
+    for request in scenario.observation_requests:
+        request_id = str(request.get("request_id", ""))
+        if not request_id or request_id in seen:
+            raise ValueError(f"duplicate or empty observation request id {request_id!r}")
+        seen.add(request_id)
+        if request.get("schema_version") != "v4-observation-request-v1":
+            raise ValueError(f"observation request {request_id}: unsupported schema_version")
+        if request.get("record_type") != "observation_request":
+            raise ValueError(f"observation request {request_id}: invalid record_type")
+        issued, deadline = request["issued_at_utc"], request["deadline_utc"]
+        if not scenario.survey_start <= issued < deadline <= scenario.survey_end:
+            raise ValueError(f"observation request {request_id}: time window is outside the survey")
+        if previous is not None and issued < previous:
+            raise ValueError("observation requests are not in chronological order")
+        previous = issued
+        requested = request.get("target_ids")
+        if not isinstance(requested, list) or not requested or len(set(requested)) != len(requested):
+            raise ValueError(f"observation request {request_id}: target_ids must be a non-empty unique list")
+        unknown = set(str(value) for value in requested) - target_ids
+        if unknown:
+            raise ValueError(f"observation request {request_id}: unknown target_id {sorted(unknown)[0]}")
+        minimum = request.get("minimum_completed")
+        if isinstance(minimum, bool) or not isinstance(minimum, int) or not 1 <= minimum <= len(requested):
+            raise ValueError(f"observation request {request_id}: invalid minimum_completed")
+        threshold = _finite(request.get("completion_factor_threshold"), "request threshold")
+        if threshold != public_threshold:
+            raise ValueError(f"observation request {request_id}: threshold differs from score config")
+        if _finite(request.get("completion_reward"), "request reward") < 0.0:
+            raise ValueError(f"observation request {request_id}: reward must be non-negative")
+        if not isinstance(request.get("reason"), str) or not request["reason"].strip():
+            raise ValueError(f"observation request {request_id}: reason must be non-empty")
 
 
 def _chronological(records: Sequence[Mapping], parse, label: str) -> None:
@@ -204,5 +253,6 @@ def validate_scenario(scenario) -> None:
             raise ValueError(f"directional event {event.event_id} lacks its sector")
     _chronological(scenario.bulletins, _parse_utc, "bulletins")
     _chronological(scenario.forecasts, _parse_utc, "forecasts")
+    validate_observation_requests(scenario)
     if scenario.stress_enabled and not scenario.stress_rows:
         raise ValueError("stress is enabled but the stress events table is empty")

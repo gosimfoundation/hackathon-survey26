@@ -15,7 +15,8 @@ Card layout (the v4 card bundle layout, integration plan "Protocol changes" item
   config/v4_fiber_config.json    instrument geometry
   config/v4_score_config.json    public score config
   public/targets.csv, footprint.csv, v4_night_calendar.csv, v4_bulletins.jsonl, v4_forecasts.jsonl
-  truth/v4_slots.csv, v4_weather_truth.csv, v4_events.csv, v4_earthquake_effects.csv (local scoring only)
+  truth/v4_slots.csv, v4_weather_truth.csv, v4_events.csv, v4_earthquake_effects.csv,
+        v4_observation_requests.jsonl (local scoring only)
 The generator configs use hashed per-stream seeds and pass v4_config_check. No seed or summary file is
 copied into the card.
 """
@@ -108,7 +109,8 @@ FIBER = {
 }
 
 PUBLIC = ("targets.csv", "footprint.csv", "v4_night_calendar.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl")
-TRUTH = ("v4_slots.csv", "v4_weather_truth.csv", "v4_events.csv", "v4_earthquake_effects.csv")
+TRUTH = ("v4_slots.csv", "v4_weather_truth.csv", "v4_events.csv", "v4_earthquake_effects.csv",
+         "v4_observation_requests.jsonl")
 
 
 def _find_source(explicit: str | None) -> Path:
@@ -127,6 +129,7 @@ def main(argv=None) -> int:
     sys.path.insert(0, str(source))
     from challenge.v4_catalog_generator import generate_catalog  # noqa: PLC0415
     from challenge.v4_config_check import cross_validate_generator_configs  # noqa: PLC0415
+    from challenge.v4_observation_requests import generate_requests  # noqa: PLC0415
     from challenge.v4_runner import load_scenario  # noqa: PLC0415
     from challenge.v4_weather_simulator import generate  # noqa: PLC0415
 
@@ -136,6 +139,35 @@ def main(argv=None) -> int:
         (work / "weather.json").write_text(json.dumps(WEATHER), encoding="utf-8")
         generate_catalog(work / "catalog.json", work)
         generate(work / "weather.json", work)
+        score_path = next((path for path in (source / "challenge" / "reference" / "v4" / "v4_score_config.json",
+                                             source / "config" / "v4_score_config.json") if path.is_file()), None)
+        if score_path is None:
+            raise SystemExit("v4_score_config.json not found in the v4 source")
+        score = json.loads(score_path.read_text(encoding="utf-8"))
+        generate_requests(
+            seed=DEMO_SEED,
+            targets_csv=work / "targets.csv",
+            night_calendar_csv=work / "v4_night_calendar.csv",
+            slots_csv=work / "v4_slots.csv",
+            site=SITE,
+            minimum_altitude_deg=30.0,
+            output_path=work / "v4_observation_requests.jsonl",
+            settings={
+                "count": 1,
+                "targets_per_request": 8,
+                "minimum_completion_fraction": 0.75,
+                "window_nights": 2,
+                "completion_reward": 100.0,
+                "completion_factor_threshold": score["observation_requests"]["completion_factor_threshold"],
+                "minimum_feature_flux": score["observation_requests"]["completion_factor_threshold"]
+                * score["flux_zero_point"] * score["exposure_zero_point_seconds"]
+                / FIBER["exposure"]["max_duration_seconds"],
+            },
+            flux_zero_point=float(score["flux_zero_point"]),
+            exposure_zero_point_seconds=float(score["exposure_zero_point_seconds"]),
+            min_duration_seconds=int(FIBER["exposure"]["min_duration_seconds"]),
+            max_duration_seconds=int(FIBER["exposure"]["max_duration_seconds"]),
+        )
         out = args.out.resolve()
         if out.exists():
             shutil.rmtree(out)
@@ -145,11 +177,6 @@ def main(argv=None) -> int:
             shutil.copyfile(work / name, out / "public" / name)
         for name in TRUTH:
             shutil.copyfile(work / name, out / "truth" / name)
-        score_path = next((path for path in (source / "challenge" / "reference" / "v4" / "v4_score_config.json",
-                                             source / "config" / "v4_score_config.json") if path.is_file()), None)
-        if score_path is None:
-            raise SystemExit("v4_score_config.json not found in the v4 source")
-        score = json.loads(score_path.read_text(encoding="utf-8"))
         scenario = {
             "schema_version": "v4-scenario-v1",
             "name": "demo",
@@ -169,6 +196,7 @@ def main(argv=None) -> int:
                 "weather_truth_csv": "../truth/v4_weather_truth.csv",
                 "events_csv": "../truth/v4_events.csv",
                 "earthquake_effects_csv": "../truth/v4_earthquake_effects.csv",
+                "observation_requests_jsonl": "../truth/v4_observation_requests.jsonl",
             },
             "stress": {"enabled": False},
         }
@@ -179,7 +207,8 @@ def main(argv=None) -> int:
         dump(out / "config" / "v4_scenario.json", scenario)
         (out / "truth" / "README.md").write_text(
             "Local scoring data for the public demo card. Your agent never receives these files:\n"
-            "the weather truth and events are only used by the local scorer. Do not read them from your agent.\n",
+            "weather truth, events, and future observation requests are only used by the local scorer. "
+            "Do not read them from your agent.\n",
             encoding="utf-8")
         load_scenario(out / "config" / "v4_scenario.json")  # the runner's own consistency checks
     print(f"wrote demo card to {out}")

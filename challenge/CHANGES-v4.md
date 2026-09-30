@@ -109,6 +109,25 @@ Source: `mynamesnoname/agent-observer-0927` at `3bdc2e0` (2026-09-28). Vendored 
     weather messages, event reporting and public score formula. The starter-kit demo baseline
     is anchored at `849.000608`, with 3 of 120 required targets missing; the idle score remains
     `-6200.0`.
+16. **Time-limited observation requests.** Cards now carry a hidden deterministic request stream.
+    Each published request names existing catalogue targets, a deadline, a factor threshold, a minimum
+    completion count, and a completion reward. Valid exposures are attributed automatically; the same
+    exposure keeps its ordinary science score, incomplete requests have no penalty, and data loss
+    recomputes request progress from the valid ledger. The request-aware demo baseline is anchored at
+    `1082.572141`, completes its one request, and leaves 1 of 120 required targets missing.
+17. **Request follow-up fixes (pre-merge review, 2026-10-01).**
+    - Request result revisions now settle differentially: a revised `observation_request_result`
+      carries `score_delta = R_new − R_previous`, so a data-loss revision that expires a completed
+      request withdraws the previously announced reward, and a revision that only changes the
+      completed-target list costs nothing.
+    - The request generator checks per-target achievability: each candidate needs a continuous
+      geometrically observable run of at least `threshold·f0·t0/f_i` seconds (clamped to the exposure
+      bounds) inside the request window, matching the bundle's `minimum_feature_flux` derivation.
+    - The starter-kit planner ignores fulfilled requests (`remaining_count <= 0`), scales request
+      value by the remaining completions, and sums the marginal value of overlapping requests.
+    - Regression tests: `challenge/tests/test_v4_observation_requests.py` (revision deltas,
+      deadline boundary, overlapping requests, generator window length) and
+      `tests/test_starter_kit_v4.py` (planner request values).
 
 The prototype regression anchors for the earlier changes remain in its source history.
 Runs with night-end observations may now produce different totals.

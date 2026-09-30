@@ -27,7 +27,7 @@ KIT = ROOT / "starter_kit_v4"
 DEMO = KIT / "cards" / "demo"
 PY = sys.executable
 IDLE_TOTAL = -6200.0  # 120 required targets x 50 missing + the full uniformity penalty (200)
-BASELINE_TOTAL = 849.000608
+BASELINE_TOTAL = 1082.572141
 
 
 def kit_module(name: str):
@@ -100,7 +100,9 @@ def test_baseline_beats_doing_nothing_on_the_demo_card(baseline, idle):
     assert base["error"] is None
     assert base["total"] == pytest.approx(BASELINE_TOTAL)
     assert base["total"] > 800 and base["total"] > IDLE_TOTAL + 5000, base
-    assert base["required_missing"] == 3
+    assert base["required_missing"] == 1
+    assert base["observation_request_reward"] == 100.0
+    assert base["observation_requests_completed"] == 1
     assert base["targets_observed"] > 600
     assert base["wall_seconds"] < 120
     out = baseline["out"]
@@ -376,3 +378,71 @@ def test_kit_docs_and_layout():
     for text in (readme, skill):
         assert "participant-agent-protocol-v4" in text and "until_utc" in text and "local_runner.py" in text
         assert "Paranal" in text
+
+
+# --- planner: observation-request planning values --------------------------------------
+
+
+def _planner(target_rows):
+    agent_dir = str(KIT / "agent")
+    if agent_dir not in sys.path:
+        sys.path.insert(0, agent_dir)
+    from planner import Planner  # noqa: PLC0415
+
+    init = {
+        "site": {"latitude_deg": -24.6157, "longitude_deg": -70.3976, "minimum_altitude_deg": 30.0},
+        "survey": {
+            "end_utc": "2026-10-03T09:00:00Z",
+            "slot_seconds": 900,
+            "nights": [{"night_id": "N20261001", "night_date": "2026-10-01",
+                        "observing_start_utc": "2026-10-02T00:00:00Z",
+                        "observing_end_utc": "2026-10-02T09:00:00Z", "slot_count": 36}],
+        },
+        "instrument": {"n_fibers": 16, "grid_side": 4, "glass_side_deg": 0.632456,
+                       "pitch_deg": 0.632456, "fov_side_deg": 2.529822,
+                       "exposure": {"min_duration_seconds": 60, "max_duration_seconds": 3600}},
+        "scoring": {"flux_zero_point": 0.5, "exposure_zero_point_seconds": 900, "q0": 0.68,
+                    "airmass_exponent": 0.6,
+                    "program": {"bands": {"DARK": 0.65, "BRIGHT": 0.4},
+                                "multipliers": {"DARK": 1.2, "BRIGHT": 1.12, "BACKUP": 1.06},
+                                "mismatch_multiplier": 1.0},
+                    "lunar_model": {"angular_decay_scale_deg": 35.0, "altitude_exponent": 1.0,
+                                    "maximum_penalty": 0.75}},
+        "targets": {"columns": ["target_id", "ra_deg", "dec_deg", "target_class", "feature_flux",
+                                "science_weight", "required"],
+                    "rows": target_rows},
+    }
+    return Planner(init)
+
+
+def _request_message(request_id, target_ids, *, reward, threshold, remaining, completed=(),
+                     minimum_completed=1):
+    return {
+        "request_id": request_id,
+        "target_ids": target_ids,
+        "minimum_completed": minimum_completed,
+        "completion_factor_threshold": threshold,
+        "completion_reward": reward,
+        "completed_target_ids": list(completed),
+        "remaining_count": remaining,
+    }
+
+
+def test_planner_ignores_a_request_that_is_already_fulfilled():
+    planner = _planner([["V4T000001", 337.0, -5.0, "BGS", 1.0, 1.0, False]])
+    open_request = _request_message("V4RQ0001", ["V4T000001"], reward=100.0, threshold=0.5, remaining=1)
+    planner.on_requests([open_request])
+    assert planner.request_bonus[0] == pytest.approx(150.0)  # 1.5 * reward / remaining
+    fulfilled = _request_message("V4RQ0001", ["V4T000001"], reward=100.0, threshold=0.5,
+                                 remaining=0, completed=["V4T000001"])
+    planner.on_requests([fulfilled])
+    assert planner.request_bonus == {} and planner.request_threshold == {}
+
+
+def test_planner_sums_marginal_value_for_overlapping_requests():
+    planner = _planner([["V4T000001", 337.0, -5.0, "BGS", 1.0, 1.0, False]])
+    first = _request_message("V4RQ0001", ["V4T000001"], reward=100.0, threshold=0.5, remaining=1)
+    second = _request_message("V4RQ0002", ["V4T000001"], reward=200.0, threshold=0.8, remaining=1)
+    planner.on_requests([first, second])
+    assert planner.request_bonus[0] == pytest.approx(150.0 + 300.0)  # marginal rewards add up
+    assert planner.request_threshold[0] == pytest.approx(0.8)  # collectible at the higher threshold

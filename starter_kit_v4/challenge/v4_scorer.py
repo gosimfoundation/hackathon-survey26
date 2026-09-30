@@ -10,7 +10,7 @@ Formula (2026-09-28 ruling; all constants live in config/v4_score_config.json):
     c(i,e)   = s(i,e) · prog_mult(i,e)
     best(i)  = max over valid exposures e of c(i,e)
     total    = sum best(i) - P_req·#(required with max valid factor < 0.5)
-               - U·(1 - Jain(r_1..r_K)) + report settlement
+               - U·(1 - Jain(r_1..r_K)) + request rewards + report settlement
 
 The starred weather components include applicable event multipliers. Site-level
 weather components are integrated over the exposure interval: each overlapped
@@ -408,6 +408,8 @@ class LedgerEntry:
     target_id: str
     factor: float
     score: float
+    start_utc: datetime | None = None
+    end_utc: datetime | None = None
     valid: bool = True
     invalidated_by: str = ""
 
@@ -418,8 +420,16 @@ class BestLedger:
     def __init__(self) -> None:
         self.entries: list[LedgerEntry] = []
 
-    def record(self, action_index: int, target_id: str, factor: float, score: float) -> None:
-        self.entries.append(LedgerEntry(action_index, target_id, factor, score))
+    def record(
+        self,
+        action_index: int,
+        target_id: str,
+        factor: float,
+        score: float,
+        start_utc: datetime | None = None,
+        end_utc: datetime | None = None,
+    ) -> None:
+        self.entries.append(LedgerEntry(action_index, target_id, factor, score, start_utc, end_utc))
 
     def invalidate_window(self, first: int, last_exclusive: int, event_id: str) -> int:
         count = 0
@@ -448,6 +458,47 @@ class BestLedger:
             if entry.valid:
                 factors[entry.target_id] = max(factors.get(entry.target_id, 0.0), entry.factor)
         return factors
+
+    def request_factors(self, available_from: datetime, deadline: datetime) -> dict[str, float]:
+        """Largest valid factors from exposures wholly contained in one request window."""
+        factors: dict[str, float] = {}
+        for entry in self.entries:
+            if (
+                entry.valid
+                and entry.start_utc is not None
+                and entry.end_utc is not None
+                and available_from <= entry.start_utc
+                and entry.end_utc <= deadline
+            ):
+                factors[entry.target_id] = max(factors.get(entry.target_id, 0.0), entry.factor)
+        return factors
+
+
+def observation_request_status(request: Mapping, ledger: BestLedger) -> dict:
+    """Compute one request's current completion and reward from the valid ledger."""
+    available = request["issued_at_utc"]
+    deadline = request["deadline_utc"]
+    factors = ledger.request_factors(available, deadline)
+    threshold = float(request["completion_factor_threshold"])
+    target_ids = [str(value) for value in request["target_ids"]]
+    completed = [target_id for target_id in target_ids if factors.get(target_id, 0.0) >= threshold]
+    success = len(completed) >= int(request["minimum_completed"])
+    return {
+        "request_id": str(request["request_id"]),
+        "target_ids": target_ids,
+        "completed_target_ids": completed,
+        "completed_count": len(completed),
+        "minimum_completed": int(request["minimum_completed"]),
+        "completion_factor_threshold": threshold,
+        "completion_reward": float(request["completion_reward"]),
+        "completed": success,
+        "reward": float(request["completion_reward"]) if success else 0.0,
+    }
+
+
+def settle_observation_requests(requests: Sequence[Mapping], ledger: BestLedger) -> tuple[list[dict], float]:
+    statuses = [observation_request_status(request, ledger) for request in requests]
+    return statuses, sum(item["reward"] for item in statuses)
 
 
 def required_penalty(

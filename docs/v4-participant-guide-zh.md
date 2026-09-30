@@ -1,6 +1,6 @@
 # GOSIM Agent Observer Challenge：v4 参赛者综合说明（草稿）
 
-本比赛要求参赛者提交一个能够自主决定天文观测计划的智能体。智能体需要在给定的观测时间内，模拟操作一台位于南半球的光谱巡天望远镜，选择每次曝光的时刻、指向、时长、观测程序，以及光纤与目标的对应关系。智能体需要合理规划时间分配，以尽可能提高最终的综合得分。
+本比赛要求参赛者提交一个能够自主决定天文观测计划的智能体。智能体需要在给定的观测时间内，模拟操作一台光谱巡天望远镜，选择每次曝光的时刻、指向、时长、观测程序，以及光纤与目标的对应关系。智能体需要合理规划时间分配，以尽可能提高最终的综合得分。
 
 本文将详细说明比赛版本的任务、公开评分规则，以及必要的数据结构和接口，供参赛者理解比赛的物理模型与设计策略；具体数值和交互协议仍须**以正式发布的任务卡为准**。文中的天区面积、目标数量、望远镜台址和观测周期是当前的**示例配置**，并不代表比赛实例。参赛者在比赛中无法获知观测过程中的天气真值、未来事件时刻或生成随机种子。
 
@@ -310,6 +310,7 @@ $$
       "coverage_end_utc": "2026-10-09T00:00:00Z",
       "notices": [{"event_kind": "overcast", "direction": "SW", "nights": ["2026-10-02"]}]
     },
+    "active_requests": [],
     "new_messages": [
       {
         "record_type": "bulletin",
@@ -339,10 +340,11 @@ $$
 - `payload.schema_version`：决策快照的结构版本，当前示例为 `v4-decision-snapshot-v1`。
 - `now_utc` 和 `survey_end_utc`：当前模拟时间和观测周期结束时间，均使用 UTC。示例中进行了一周观测（10月1日至8日）。
 - `observe_action_index`：截至当前已执行的观测动作数。
-- `running_total`：截至当前各目标最佳得分之和；它不包含 `required` 罚分、均匀度罚分或 `report` 奖惩，因此不等于此刻停止时的最终总分。
+- `running_total`：截至当前各目标最佳得分之和；它不包含 `required` 罚分、均匀度罚分、限时观测请求奖励或 `report` 奖惩，因此不等于此刻停止时的最终总分。
 - `wallclock`：智能体实际运行时间的已用量和剩余量。
 - `latest_bulletin` 和 `latest_forecast`：截至当前时刻最新发布的一条公告以及天气和时间预报。
-- `new_messages`：自上次决策请求以来新送达的完整消息对象，包括公告、天气和事件预报，以及适用时的举报结果或状态更正。一次动作若跨过多个发布时间，这些消息会在下次请求中一起送达。
+- `active_requests`：当前已经发布、尚未到期的限时观测请求及其实时进度；没有活动请求时为空数组。
+- `new_messages`：自上次决策请求以来新送达的完整消息对象，包括公告、天气和事件预报、限时观测请求，以及适用时的请求结算、举报结果或状态更正。一次动作若跨过多个发布时间，这些消息会在下次请求中一起送达。
 - `last_result`：上一动作的执行结果；首次决策时为空。
 
 若上一动作是一次观测时，下轮请求中的 `last_result` 可以是：
@@ -494,6 +496,52 @@ $$
 
 上述消息都不提供事件的精确空间边界、强度或数值乘子；智能体可结合公开消息、自行计算的天球位置，以及曝光后的命中与得分反馈判断实际条件。
 
+部分任务卡会在运行过程中发布限时观测请求。请求只引用初始化时已经公开的 target，不会临时增加新的天体。未来请求在发布时间之前不会出现在初始化消息或决策快照中；到达 `issued_at_utc` 后，请求作为 `new_messages` 中的 `observation_request` 发布：
+
+```json
+{
+  "schema_version": "v4-observation-request-v1",
+  "record_type": "observation_request",
+  "request_id": "V4RQ0001",
+  "issued_at_utc": "2026-10-05T00:00:00Z",
+  "deadline_utc": "2026-10-06T08:45:00Z",
+  "target_ids": ["V4T000160", "V4T002330", "V4T000311", "V4T001021"],
+  "minimum_completed": 3,
+  "completion_factor_threshold": 0.5,
+  "completion_reward": 100.0,
+  "reason": "time-critical follow-up"
+}
+```
+
+- `request_id`：请求标识，只用于追踪消息和结果；`observe` action 不需要、也不能填写该字段。
+- `issued_at_utc`、`deadline_utc`：请求的起止时刻。只有完整落在 $[\mathrm{issued\_at},\mathrm{deadline}]$ 内的有效曝光才参与请求判定。
+- `target_ids`：本次请求涉及的现有目标。
+- `minimum_completed`：获得奖励至少需要完成的不同目标数。
+- `completion_factor_threshold`：单个目标的完成因子门槛，按第 5 节的 $g_{i,e}$ 判定，不使用含 program 倍率的最终贡献。
+- `completion_reward`：达到最低完成数后一次性获得的分数。
+- `reason`：请求的简短公开说明。
+
+后端自动把时间窗内的有效曝光归入所有适用请求；同一次曝光仍按普通规则获得科学分，也可同时推进重叠请求。每个目标只需有一次符合门槛的曝光，同一目标的多次不足曝光不会叠加。请求未完成不扣分。
+
+请求有效期间，`active_requests` 会重复给出上述字段，并增加 `completed_target_ids`、`completed_count` 和 `remaining_count`。到达截止时刻后，请求从 `active_requests` 移除，并在 `new_messages` 中发送结果：
+
+```json
+{
+  "schema_version": "v4-observation-request-result-v1",
+  "record_type": "observation_request_result",
+  "issued_at_utc": "2026-10-06T08:45:00Z",
+  "request_id": "V4RQ0001",
+  "status": "completed",
+  "completed_target_ids": ["V4T000160", "V4T002330", "V4T000311"],
+  "completed_count": 3,
+  "minimum_completed": 3,
+  "score_delta": 100.0,
+  "revised": false
+}
+```
+
+`status` 为 `completed` 或 `expired`。若 Hard mode 的 `data_loss` 后来撤销了请求时间窗中的曝光，后端会从有效账本重新计算进度；已经公布的结果发生变化时，会再发一条 `revised: true` 的结果，并相应撤销或恢复奖励。
+
 仪器故障事件会使 `instrument_efficiency` 降低，但不会直接出现在公告或预报中。智能体可根据观测得分判断是否需要提交 `report`。若提交时确有尚未修复的仪器故障，后端立即修复该故障并在最终结算中奖励 100 分。提前、错误或重复举报都算误报：自上一次正确举报以来，前两次误报免罚，从第三次起每次扣 150 分；中间执行 `wait` 或 `observe` 不会重置这一计数。`report` 只修复仪器故障，不会消除地震造成的效率损失。
 
 `report` 不推进模拟时间。若运行仍在继续，后端会在同一模拟时刻发出下一条 `decision_request`。以下是一次正确举报后，请求中相关字段的示意节选：
@@ -601,12 +649,12 @@ J=\frac{\left(\sum_{b=1}^{N_{\mathrm{band}}}r_b\right)^2}
 $$
 所有条带的 $r_b$ 都为零时，定义 $J=0$。为了更具象地理解均匀性指标，我们假设全天区只有两个各有目标的条带，若完成比例分别是 0.6 和 0.2，则可以计算出 $J=0.8$；按当前示例的 $U=200$，对应的均匀度罚分为 $200\times(1-0.8)=40$。
 
-记每个未完成 `required` 目标的罚分为 $P_{\mathrm{req}}$，均匀度权重 `scoring.uniformity.weight` 为 $U$，所有 `report` 动作的奖惩之和为 $S_{\mathrm{report}}$。最终总分为
+记每个未完成 `required` 目标的罚分为 $P_{\mathrm{req}}$，均匀度权重 `scoring.uniformity.weight` 为 $U$，所有已完成限时观测请求的奖励之和为 $R_{\mathrm{request}}$，所有 `report` 动作的奖惩之和为 $S_{\mathrm{report}}$。最终总分为
 $$
 S=\sum_i\operatorname{best}_i-P_{\mathrm{req}}N_{\mathrm{required\ missing}}
--U(1-J)+S_{\mathrm{report}}.\tag{22}
+-U(1-J)+R_{\mathrm{request}}+S_{\mathrm{report}}.\tag{22}
 $$
-当前示例取 $P_{\mathrm{req}}=50$、$U=200$。仪器故障发生后，对当前尚未修复故障的首次正确举报奖励 100 分并立即修复该事件；自上次正确举报以来的误报超过免罚次数后，每次误报扣 150 分。`wait` 不产生单独罚分，时间成本体现在错过其他观测机会。最终策略需要在高权重目标、`required` 完成率、天区均匀度与有限夜晚之间权衡。
+当前示例取 $P_{\mathrm{req}}=50$、$U=200$。每条请求的奖励以消息中的 `completion_reward` 为准，未完成请求的贡献为 0。仪器故障发生后，对当前尚未修复故障的首次正确举报奖励 100 分并立即修复该事件；自上次正确举报以来的误报超过免罚次数后，每次误报扣 150 分。`wait` 不产生单独罚分，时间成本体现在错过其他观测机会。最终策略需要在高权重目标、`required` 完成率、临时请求、天区均匀度与有限夜晚之间权衡。
 
 ## 8. 智能体看到什么、需要决定什么
 
@@ -744,13 +792,22 @@ $$
   "best_scores": [
     {"target_id": "V4T000001", "best_score": 0.4321},
     {"target_id": "V4T000007", "best_score": 0.86}
-  ]
+  ],
+  "observation_requests": [{
+    "request_id": "V4RQ0001",
+    "target_ids": ["V4T000001", "V4T000007", "V4T000010"],
+    "completed_target_ids": ["V4T000007"],
+    "completed_count": 1,
+    "minimum_completed": 2,
+    "remaining_count": 1
+  }]
 }
 ```
 
 - `issued_at_utc` 是这条状态更正送达时的模拟时间；`trigger_event_id` 标识本次数据丢失事件。
 - `invalidated_window` 指出失效的观测动作区间。`action_count_at_trigger` 记为 $N$，`action_index_start` 含端点，`action_index_end_exclusive` 不含端点；对应的编号区间为 $[\lfloor iN\rfloor,\lfloor jN\rfloor)$，其中 $i$ 和 $j$ 分别由 `window_start_fraction` 和 `window_end_fraction` 给出。`window_max_fraction` 是该比例区间宽度的上限。
 - `observed_target_ids` 和 `best_scores` 给出失效处理后仍有有效观测记录的目标及其当前最高分。智能体应据此更新自己的已观测目标和最好得分记录；同一决策请求中的 `running_total` 也已按更正后的结果重新计算。这里不返回每个目标的最大完成因子或 `required` 完成状态；需要精确维护这些状态的智能体，应结合 `invalidated_window` 与自己保存的有效曝光历史重新计算。
+- `observation_requests` 给出数据失效后仍处于活动期的请求及其重算进度。它与同一决策快照中的 `active_requests` 一致；若已经到期的请求结算因此改变，`new_messages` 还会包含一条 `revised: true` 的 `observation_request_result`。
 
 ### 隐藏的指向偏差
 
@@ -794,6 +851,8 @@ $$
     - `reporting.correct_reward`、`reporting.false_penalty`：正确举报奖励和达到扣分条件后的单次误报罚分。
     - `reporting.false_report_free_allowance`：每次正确举报后重新计算的免罚误报次数。
     - `reporting.max_consecutive_reports`：连续 `report` 动作上限。
+    - `observation_requests.completion_factor_threshold`：限时观测请求中单个目标的公开完成因子门槛。
+    - `observation_requests.miss_penalty`：未完成请求的罚分；当前 v4 固定为 0。
 - `limits`
     - `global_wallclock_seconds`：整张任务卡的实际运行时间预算。
     - `max_consecutive_reports`：协议层重复给出的连续举报上限，与评分配置中的同名含义一致。

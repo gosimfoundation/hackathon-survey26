@@ -1270,6 +1270,7 @@
       "required_penalty": "必观测惩罚",
       "uniformity_penalty": "均匀性惩罚",
       "report_settlement": "报告结算",
+      "observation_request_reward": "限时观测请求",
       "base_science": "基础科学分",
       "program_bonus": "奖励",
       "request_reward": "请求",

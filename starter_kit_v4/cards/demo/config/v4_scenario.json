@@ -28,7 +28,8 @@
     "slots_csv": "../truth/v4_slots.csv",
     "weather_truth_csv": "../truth/v4_weather_truth.csv",
     "events_csv": "../truth/v4_events.csv",
-    "earthquake_effects_csv": "../truth/v4_earthquake_effects.csv"
+    "earthquake_effects_csv": "../truth/v4_earthquake_effects.csv",
+    "observation_requests_jsonl": "../truth/v4_observation_requests.jsonl"
   },
   "stress": {
     "enabled": false
