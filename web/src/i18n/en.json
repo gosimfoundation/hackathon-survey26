@@ -1999,7 +1999,7 @@
       },
       {
         "q": "Do I need an astronomy background?",
-        "a": "No. Your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear, and scoring_preview.py already turns a snapshot into a ranked list of candidates."
+        "a": "Not much, though it helps. Essentially, your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear, and scoring_preview.py already turns a snapshot into a ranked list of candidates. You could also team up with someone who has an astronomy background."
       },
       {
         "q": "Can I compete alone?",
@@ -2007,7 +2007,7 @@
       },
       {
         "q": "Which languages can I use?",
-        "a": "Any language is allowed. The Python runner exchanges JSONL messages with your project over stdin/stdout. Submit a public repository or private project ZIP; the formal competition accepts no CSV. The practice starter kit remains available."
+        "a": "The formal hackathon competition allows any implementation language. Submit your complete project as a ZIP file and it runs in the cloud."
       },
       {
         "q": "Can I use an LLM or a commercial API?",
