@@ -1,0 +1,7 @@
+{
+  "targets_csv": "card/public/targets.csv",
+  "footprint_csv": "card/public/footprint.csv",
+  "pdf_output": "sky_map.pdf",
+  "png_output": "sky_map.png",
+  "png_dpi": 200
+}

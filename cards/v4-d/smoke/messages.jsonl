@@ -1,0 +1,12 @@
+{"initial": true, "issued_at_utc": "2027-01-02T07:30:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S001"}
+{"coverage_end_utc": "2027-01-09T07:30:00Z", "coverage_start_utc": "2027-01-02T07:30:00Z", "issued_at_utc": "2027-01-02T07:30:00Z", "notices": [], "record_type": "forecast"}
+{"initial": false, "issued_at_utc": "2027-01-02T07:45:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S002"}
+{"initial": false, "issued_at_utc": "2027-01-02T08:00:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S003"}
+{"initial": false, "issued_at_utc": "2027-01-02T08:15:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S004"}
+{"initial": false, "issued_at_utc": "2027-01-02T08:30:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S005"}
+{"initial": false, "issued_at_utc": "2027-01-02T08:45:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S006"}
+{"initial": false, "issued_at_utc": "2027-01-02T09:00:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S007"}
+{"initial": false, "issued_at_utc": "2027-01-02T09:15:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S008"}
+{"initial": false, "issued_at_utc": "2027-01-02T09:30:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S009"}
+{"initial": false, "issued_at_utc": "2027-01-02T09:45:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S010"}
+{"initial": false, "issued_at_utc": "2027-01-02T10:00:00Z", "night_id": "N20270101", "notices": [], "record_type": "bulletin", "slot_id": "N20270101-S011"}

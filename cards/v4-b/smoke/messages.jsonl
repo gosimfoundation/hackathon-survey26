@@ -1,0 +1,12 @@
+{"initial": true, "issued_at_utc": "2027-06-01T17:15:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S001"}
+{"coverage_end_utc": "2027-06-08T17:15:00Z", "coverage_start_utc": "2027-06-01T17:15:00Z", "issued_at_utc": "2027-06-01T17:15:00Z", "notices": [{"direction": "SE", "event_kind": "overcast", "nights": ["2027-06-02", "2027-06-03"]}, {"direction": "ALL", "event_kind": "rain", "nights": ["2027-06-03", "2027-06-04"]}, {"direction": "SE", "event_kind": "overcast", "nights": ["2027-06-06"]}, {"direction": "ALL", "event_kind": "rain", "nights": ["2027-06-07"]}], "record_type": "forecast"}
+{"initial": false, "issued_at_utc": "2027-06-01T17:30:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S002"}
+{"initial": false, "issued_at_utc": "2027-06-01T17:45:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S003"}
+{"initial": false, "issued_at_utc": "2027-06-01T18:00:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S004"}
+{"initial": false, "issued_at_utc": "2027-06-01T18:15:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S005"}
+{"initial": false, "issued_at_utc": "2027-06-01T18:30:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S006"}
+{"initial": false, "issued_at_utc": "2027-06-01T18:45:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S007"}
+{"initial": false, "issued_at_utc": "2027-06-01T19:00:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S008"}
+{"initial": false, "issued_at_utc": "2027-06-01T19:15:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S009"}
+{"initial": false, "issued_at_utc": "2027-06-01T19:30:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S010"}
+{"initial": false, "issued_at_utc": "2027-06-01T19:45:00Z", "night_id": "N20270601", "notices": [], "record_type": "bulletin", "slot_id": "N20270601-S011"}

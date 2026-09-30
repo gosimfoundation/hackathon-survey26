@@ -1,0 +1,81 @@
+{
+  "accounted_wallclock_seconds": 3.47,
+  "agent_wallclock_seconds": 3.3,
+  "committed_action_count": 12,
+  "decision_requests": 13,
+  "global_wallclock_seconds": 120.0,
+  "ignored_in_flight_response": false,
+  "last_decision_sequence": 13,
+  "protocol_version": "participant-agent-protocol-v4",
+  "scenario": "v4-a",
+  "schema_version": "v4-workflow-result-v1",
+  "score_report": {
+    "by_class": {
+      "BGS": 14.522639,
+      "ELG": 46.989157,
+      "LRG": 23.786427,
+      "QSO": 30.310521,
+      "Star": 3.099701
+    },
+    "components": {
+      "observation_request_reward": 0,
+      "report_settlement": 0.0,
+      "required_penalty": -74700.0,
+      "sum_best_scores": 118.708445,
+      "uniformity_penalty": -176.201216
+    },
+    "counts": {
+      "decisions": 12,
+      "invalidated_observations": 0,
+      "observation_requests_completed": 0,
+      "observation_requests_issued": 0,
+      "observations": 155,
+      "observe_actions": 12,
+      "required_missing": 1494,
+      "targets_observed": 155
+    },
+    "invalidations": [],
+    "observation_requests": [],
+    "scenario": "v4-a",
+    "schema_version": "v4-score-report-v1",
+    "sha256": {
+      "decisions": "397ab7b7e1ff2649aff17944f9b0d1355bd687f59a46e691b20d3a65bbbd4e26",
+      "messages": "efbce471fa3cb7c95b3783eb64f7a6d6dfce1b53081fea39a2cdb8e52e07a745",
+      "observations": "49f0182d375f751a2c86ff9c5b0d2b482618d52e1cf90ced2f453a62367cccd7",
+      "scenario": "e865f42235439125b8726d8d9d8e94da65e50b7675ad461a2505d71463a29427"
+    },
+    "termination": {
+      "detail": "",
+      "reason": "agent_finished"
+    },
+    "total": -74757.492771,
+    "uniformity_bands": {
+      "ra_0_10": 0.0,
+      "ra_100_110": 0.0,
+      "ra_10_20": 0.0,
+      "ra_110_120": 0.0,
+      "ra_120_130": 0.0,
+      "ra_130_140": 0.0,
+      "ra_140_150": 0.0,
+      "ra_150_160": 0.0,
+      "ra_160_170": 0.0,
+      "ra_170_180": 0.0,
+      "ra_20_30": 0.0,
+      "ra_300_310": 0.0,
+      "ra_30_40": 0.0,
+      "ra_310_320": 0.02993,
+      "ra_320_330": 0.021354,
+      "ra_330_340": 0.017604,
+      "ra_340_350": 0.0,
+      "ra_350_360": 0.0,
+      "ra_40_50": 0.0,
+      "ra_50_60": 0.0,
+      "ra_60_70": 0.0,
+      "ra_70_80": 0.0,
+      "ra_80_90": 0.0,
+      "ra_90_100": 0.0
+    }
+  },
+  "termination_detail": "",
+  "termination_reason": "agent_finished"
+}
