@@ -5,11 +5,17 @@ import os
 import re
 import uuid
 import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright, expect, Error as PlaywrightError
 from test_project_http import edge_stack  # noqa: F401
 from test_project_portal_browser import portal_site  # noqa: F401
 from test_project_database import query, identity
 from test_scenario_instance_database import configure
+
+def goto(page,url):
+    # /submit client-redirects to /compete; a fast in-app navigation can abort the initial load.
+    try: page.goto(url)
+    except PlaywrightError as error:
+        if 'ERR_ABORTED' not in str(error): raise
 
 pytestmark=pytest.mark.skipif(not all(os.environ.get(k) for k in ('OBSERVER_DENO_BIN','SAC_POSTGREST_BIN','SAC_NODE_BIN')),
     reason='Local browser toolchain required')
@@ -86,7 +92,7 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         configure({'uri':uri,'phase':phase,'scenario':scenario})
         switch.click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to Playground',timeout=15000)
-        page.goto(portal_site+'/submit?lang=en')
+        goto(page,portal_site+'/submit?lang=en')
         expect(page.get_by_test_id('project-title')).to_be_visible(timeout=15000)
         assert page.locator('a[href="/projects"],a[href="/submit"]').count()==0
         expect(page.get_by_test_id('primary-submit')).to_have_attribute('href','/compete')
@@ -115,7 +121,7 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         page.goto(portal_site+'/admin/settings?lang=en')
         page.get_by_test_id('competition-mode-switch').click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to competition',timeout=15000)
-        page.goto(portal_site+'/submit?lang=en')
+        goto(page,portal_site+'/submit?lang=en')
         expect(page.locator('input[type=file]')).to_be_visible(timeout=15000)
         assert query(uri,'select phase_id from private.observer_site_mode')[0][0]==practice
         browser.close()
