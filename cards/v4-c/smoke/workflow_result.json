@@ -1,0 +1,73 @@
+{
+  "accounted_wallclock_seconds": 1.692,
+  "agent_wallclock_seconds": 1.515,
+  "committed_action_count": 14,
+  "decision_requests": 15,
+  "global_wallclock_seconds": 120.0,
+  "ignored_in_flight_response": false,
+  "last_decision_sequence": 15,
+  "protocol_version": "participant-agent-protocol-v4",
+  "scenario": "v4-c",
+  "schema_version": "v4-workflow-result-v1",
+  "score_report": {
+    "by_class": {
+      "BGS": 8.230185,
+      "ELG": 34.126684,
+      "LRG": 12.855504,
+      "QSO": 15.940716,
+      "Star": 2.259396
+    },
+    "components": {
+      "observation_request_reward": 0,
+      "report_settlement": 0.0,
+      "required_penalty": -74750.0,
+      "sum_best_scores": 73.412485,
+      "uniformity_penalty": -175.016071
+    },
+    "counts": {
+      "decisions": 14,
+      "invalidated_observations": 0,
+      "observation_requests_completed": 0,
+      "observation_requests_issued": 0,
+      "observations": 101,
+      "observe_actions": 12,
+      "required_missing": 1495,
+      "targets_observed": 101
+    },
+    "invalidations": [],
+    "observation_requests": [],
+    "scenario": "v4-c",
+    "schema_version": "v4-score-report-v1",
+    "sha256": {
+      "decisions": "e9794f5f6dc6a4b3b72566c36d6083a17c6bab087f45dc5adc349f578b3e13fc",
+      "messages": "c0733dbbca97f2e1ee6841a170aed1d023e174f1afa8543a41254a7456c6972c",
+      "observations": "3731c6f2d42c92e69b442ae41622f360482cc196b2b5e9c26b0a3c957f569531",
+      "scenario": "af450ec5cc2ccf71e4e493d06f4246d383c6acb92fafc6986e9f645323fe72ad"
+    },
+    "termination": {
+      "detail": "",
+      "reason": "agent_finished"
+    },
+    "total": -74851.603586,
+    "uniformity_bands": {
+      "ra_100_110": 0.0,
+      "ra_110_120": 0.0,
+      "ra_120_130": 0.0,
+      "ra_130_140": 0.0,
+      "ra_140_150": 0.0,
+      "ra_150_160": 0.0,
+      "ra_160_170": 0.0,
+      "ra_170_180": 0.0,
+      "ra_180_190": 0.0,
+      "ra_190_200": 0.0,
+      "ra_200_210": 0.0,
+      "ra_50_60": 0.037594,
+      "ra_60_70": 0.035734,
+      "ra_70_80": 0.0,
+      "ra_80_90": 0.0,
+      "ra_90_100": 0.0
+    }
+  },
+  "termination_detail": "",
+  "termination_reason": "agent_finished"
+}

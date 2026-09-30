@@ -1,0 +1,14 @@
+{"initial": true, "issued_at_utc": "2026-12-02T05:00:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S001"}
+{"coverage_end_utc": "2026-12-09T05:00:00Z", "coverage_start_utc": "2026-12-02T05:00:00Z", "issued_at_utc": "2026-12-02T05:00:00Z", "notices": [{"direction": "ALL", "event_kind": "rain", "nights": ["2026-12-05", "2026-12-06"]}, {"direction": "ALL", "event_kind": "rain", "nights": ["2026-12-06", "2026-12-07"]}], "record_type": "forecast"}
+{"initial": false, "issued_at_utc": "2026-12-02T05:15:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S002"}
+{"initial": false, "issued_at_utc": "2026-12-02T05:30:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S003"}
+{"initial": false, "issued_at_utc": "2026-12-02T05:45:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S004"}
+{"initial": false, "issued_at_utc": "2026-12-02T06:00:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S005"}
+{"initial": false, "issued_at_utc": "2026-12-02T06:15:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S006"}
+{"initial": false, "issued_at_utc": "2026-12-02T06:30:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S007"}
+{"initial": false, "issued_at_utc": "2026-12-02T06:45:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S008"}
+{"initial": false, "issued_at_utc": "2026-12-02T07:00:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S009"}
+{"initial": false, "issued_at_utc": "2026-12-02T07:15:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S010"}
+{"initial": false, "issued_at_utc": "2026-12-02T07:30:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S011"}
+{"initial": false, "issued_at_utc": "2026-12-02T07:45:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S012"}
+{"initial": false, "issued_at_utc": "2026-12-02T08:00:00Z", "night_id": "N20261201", "notices": [], "record_type": "bulletin", "slot_id": "N20261201-S013"}

@@ -1,0 +1,63 @@
+{
+  "by_class": {
+    "BGS": 13.221482,
+    "ELG": 29.392043,
+    "LRG": 11.679686,
+    "QSO": 49.507862,
+    "Star": 2.980578
+  },
+  "components": {
+    "observation_request_reward": 0,
+    "report_settlement": 0.0,
+    "required_penalty": -124350.0,
+    "sum_best_scores": 106.781651,
+    "uniformity_penalty": -186.907894
+  },
+  "counts": {
+    "decisions": 12,
+    "invalidated_observations": 0,
+    "observation_requests_completed": 0,
+    "observation_requests_issued": 0,
+    "observations": 133,
+    "observe_actions": 12,
+    "required_missing": 2487,
+    "targets_observed": 133
+  },
+  "invalidations": [],
+  "observation_requests": [],
+  "scenario": "v4-b",
+  "schema_version": "v4-score-report-v1",
+  "sha256": {
+    "decisions": "4fb584dec489eae538b47f06729e1771e307b8047d86c43baebc072aa5596900",
+    "messages": "49a2f91d099cd76483c7e7d376cdc9ad0287263551c2ad8db4829396998a0525",
+    "observations": "c02d6de608006aa4ca5e1bb4a02dd4c69e66785c5482ceb6f07fec4a4e65a875",
+    "scenario": "1d0c411483180fff5a41704a4e028542d899cfd47bf72f4aa37bc592de7012cb"
+  },
+  "termination": {
+    "detail": "",
+    "reason": "agent_finished"
+  },
+  "total": -124430.126243,
+  "uniformity_bands": {
+    "ra_0_10": 0.0,
+    "ra_100_110": 0.0,
+    "ra_10_20": 0.0,
+    "ra_110_120": 0.000767,
+    "ra_120_130": 0.004747,
+    "ra_130_140": 0.03568,
+    "ra_20_30": 0.0,
+    "ra_300_310": 0.0,
+    "ra_30_40": 0.0,
+    "ra_310_320": 0.0,
+    "ra_320_330": 0.0,
+    "ra_330_340": 0.0,
+    "ra_340_350": 0.0,
+    "ra_350_360": 0.0,
+    "ra_40_50": 0.0,
+    "ra_50_60": 0.0,
+    "ra_60_70": 0.0,
+    "ra_70_80": 0.0,
+    "ra_80_90": 0.0,
+    "ra_90_100": 0.0
+  }
+}
