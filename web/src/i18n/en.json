@@ -1999,7 +1999,7 @@
       },
       {
         "q": "Do I need an astronomy background?",
-        "a": "No. Your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear, and scoring_preview.py already turns a snapshot into a ranked list of candidates."
+        "a": "Not much, though it helps. Essentially, your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear, and scoring_preview.py already turns a snapshot into a ranked list of candidates. You could also team up with someone who has an astronomy background."
       },
       {
         "q": "Can I compete alone?",
