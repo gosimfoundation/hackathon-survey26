@@ -11,14 +11,18 @@ with one global wall clock).
 
 ```
 web/                 Vue 3 + Vite + Tailwind 4 + supabase-js site (GitHub Pages)
-supabase/migrations  Postgres schema, RLS, RPCs, storage policies (v3 columns in 20260910001000_challenge_v3.sql)
-supabase/functions   leaderboard (public JSON); scoring runs in the worker
-challenge/           the vendored v3 environment (unchanged modules, relative imports) + scenario_builder + replay generator + reference scenario + tests
-worker/              evaluation worker: sandboxed agent runs (challenge_runner.py), scoring, replay upload, scenario seeding/admin CLI
-starter_kit/         what participants download: agent/, challenge/ copy, dev-reference + demo-week scenarios, run_baseline / run_demo_week launchers, local_runner, make_scenario, pack_agent, sac_submit, SKILL.md
-tests/               pytest: runner sandbox, starter kit, platform integration on an embedded Postgres + real PostgREST harness; hosted_smoke.py for the live project
-docs/                competition-format.md (which submission route each phase uses and where it is implemented), example3-analysis-brief.md (engineering brief on the v3 package), ANOMALY_RELEASE_CHANGELOG_ZH.md (the anomaly/report release: what changed and what moved to decisions.csv, in Chinese)
-legacy/fastapi/      first self-hosted version (reference only)
+supabase/            Postgres schema/RLS/RPC/storage migrations (v3 columns in 20260910001000_challenge_v3.sql) + the public leaderboard edge function; scoring runs in the worker
+challenge/           the competition environment: vendored v3 modules (unchanged, relative imports) + the v4 engine (v4_*.py), scenario_builder, replay generator, reference scenario, tests
+worker/              v3 evaluation worker: sandboxed agent runs (challenge_runner.py), scoring, replay upload, scenario seeding/admin CLI
+project_platform/    complete-project platform: repo-URL/ZIP submissions snapshotted via a GitHub App and executed by a trusted job runner (docker workspace, session API, model adapters)
+scoring/             standalone stage-one survey-decision scorer (standard library only, frozen CSV contract), imported by worker/
+starter_kit_v4/      the v4 starter kit participants download: agent/, demo cards, local_runner.py, pack_agent.py, SKILL.md
+tests/               pytest: runner sandbox, starter kits, platform integration on an embedded Postgres + real PostgREST harness, browser e2e; hosted_smoke.py for the live project
+docs/                organizer and participant documentation: competition-format.md, project-platform-rollout.md, example3-analysis-brief.md, ANOMALY_RELEASE_CHANGELOG_ZH.md
+scripts/             one-off organizer scripts: phase/secrets/runner configuration, backend deploy, live tests, the release-site publisher
+ops/                 the "Agentic Observer 2026 Evaluator" GitHub App manifest/installations and the control-workflow YAMLs dispatched for project jobs
+archive/             old versions kept for reference: legacy/ (first self-hosted FastAPI platform), legacy-event/ (former event website), starter_kit/ (v3 starter kit)
+.github/workflows/   CI: tests.yml, the self-dispatching worker.yml evaluator, publish-site.yml (GitHub Pages deploy)
 ```
 
 ## Competition mechanics (as implemented)
