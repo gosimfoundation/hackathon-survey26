@@ -2,7 +2,7 @@
 """Build the home page's official demo replay: the baseline agent on the public dev-reference scenario.
 
 Same pipeline as a Playground results submission, end to end and untrimmed:
-  1. starter_kit/local_runner.py runs starter_kit/agent/minimal_agent.py on all 180 nights, as a
+  1. archive/starter_kit_v3/local_runner.py runs archive/starter_kit_v3/agent/minimal_agent.py on all 180 nights, as a
      participant would, and writes decisions.csv;
   2. the worker's scorer (challenge.scoring_core.score_files, termination "trace_complete") scores it;
   3. the worker's renderer (challenge.replay.write_replay_html, no decisions file, as in worker/main.py)
@@ -25,8 +25,8 @@ sys.path.insert(0, str(ROOT))
 from challenge.replay import write_replay_html  # noqa: E402
 from challenge.scoring_core import score_files  # noqa: E402
 
-SCENARIO = ROOT / "starter_kit" / "scenarios" / "dev-reference"
-AGENT = ROOT / "starter_kit" / "agent" / "minimal_agent.py"
+SCENARIO = ROOT / "archive" / "starter_kit_v3" / "scenarios" / "dev-reference"
+AGENT = ROOT / "archive" / "starter_kit_v3" / "agent" / "minimal_agent.py"
 OUT = ROOT / "web" / "public" / "demo"
 NAME = "baseline-dev-reference"
 
@@ -34,13 +34,13 @@ NAME = "baseline-dev-reference"
 def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         run = Path(tmp) / "run"
-        subprocess.run([sys.executable, str(ROOT / "starter_kit" / "local_runner.py"), "--scenario", str(SCENARIO),
-                        "--agent", str(AGENT), "--out", str(run), "--no-replay", "--quiet"], check=True, cwd=ROOT / "starter_kit")
+        subprocess.run([sys.executable, str(ROOT / "archive" / "starter_kit_v3" / "local_runner.py"), "--scenario", str(SCENARIO),
+                        "--agent", str(AGENT), "--out", str(run), "--no-replay", "--quiet"], check=True, cwd=ROOT / "archive" / "starter_kit_v3")
         decisions = run / "decisions.csv"
         report = score_files(SCENARIO, decisions, Path(tmp) / "score_report.json", "trace_complete")
         html = Path(tmp) / "decision_replay.html"
         write_replay_html(SCENARIO, report, html, title="dev-reference · official baseline",
-                          agent_label="official baseline · starter_kit/agent/minimal_agent.py")
+                          agent_label="official baseline · archive/starter_kit_v3/agent/minimal_agent.py")
         page = html.read_bytes()
         OUT.mkdir(parents=True, exist_ok=True)
         # mtime=0 keeps the file byte-identical across rebuilds of the same run
@@ -51,7 +51,7 @@ def main() -> None:
             "scenario": SCENARIO.name,
             "scenario_id": config["scenario_id"],
             "seed": config["seed"],
-            "agent": "starter_kit/agent/minimal_agent.py",
+            "agent": "archive/starter_kit_v3/agent/minimal_agent.py",
             "score": round(float(report["score"]["total"]), 3),
             "rounds": len(report["actions"]),
             "nights": len(nights),

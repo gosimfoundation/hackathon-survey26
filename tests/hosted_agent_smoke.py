@@ -5,7 +5,7 @@ dispatch the GitHub Actions worker (or wait for the cron), and wait until the ru
   set -a; source .secrets/supabase.env; set +a
   python tests/hosted_agent_smoke.py [--dispatch] [--keep] [--timeout 1500]
 
-Creates a throw-away user + team, uploads starter_kit/agent as a zip, calls create_submission(kind=agent, practice),
+Creates a throw-away user + team, uploads archive/starter_kit_v3/agent as a zip, calls create_submission(kind=agent, practice),
 then polls the submission until it is scored/failed. Everything it created is deleted at the end unless --keep.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "starter_kit"))
+sys.path.insert(0, str(ROOT / "archive" / "starter_kit_v3"))
 from pack_agent import collect  # noqa: E402
 
 URL = os.environ["SUPABASE_URL"].rstrip("/")
@@ -60,7 +60,7 @@ def check(cond, msg):
 
 
 def build_zip() -> bytes:
-    agent_dir = ROOT / "starter_kit" / "agent"
+    agent_dir = ROOT / "archive" / "starter_kit_v3" / "agent"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in collect(agent_dir, include_env=False):

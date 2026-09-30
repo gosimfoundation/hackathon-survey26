@@ -17,7 +17,7 @@ from project_platform.transport import JsonlTransport
 from v4_support import build_bundle
 
 AGENT = Path(__file__).resolve().parent / "fixtures" / "v4_fake_agent.py"
-DEMO_V3 = Path(__file__).resolve().parents[1] / "starter_kit" / "scenarios" / "demo-week"
+DEMO_V3 = Path(__file__).resolve().parents[1] / "archive" / "starter_kit_v3" / "scenarios" / "demo-week"
 
 
 class Client:

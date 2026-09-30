@@ -14,7 +14,7 @@ from challenge.challenge_workflow import ChallengeWorkflow
 from challenge.contracts import anomaly_mechanics_enabled
 from challenge.scoring_core import ChallengeScorer, Decision, load_decisions
 
-KIT_DEV_REFERENCE = Path(__file__).resolve().parents[2] / "starter_kit" / "scenarios" / "dev-reference"
+KIT_DEV_REFERENCE = Path(__file__).resolve().parents[2] / "archive" / "starter_kit_v3" / "scenarios" / "dev-reference"
 V2_REFERENCE = Path(__file__).resolve().parents[1] / "reference"
 
 

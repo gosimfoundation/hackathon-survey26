@@ -128,7 +128,7 @@ the `SAC_ANOMALY_*` environment variables documented in `agent/anomaly_detection
 | Agent transport | `challenge/run_challenge.py` (`JsonLineAgentProcess`), protocol `participant-agent-protocol-v2` |
 | Scoring | `challenge/scoring_core.py`, the science team's scorer plus one additive coverage-uniformity term (off by default); weights in `scoring/score_config.json` |
 | Replay visualization | `challenge/replay.py` + `challenge/templates/decision_replay.html`; produced for both kinds and uploaded as `decision_replay.html` |
-| Local equivalent of the hosted run | `starter_kit/local_runner.py` — same transport, same environment rules, same scorer |
+| Local equivalent of the hosted run | `archive/starter_kit_v3/local_runner.py` — same transport, same environment rules, same scorer |
 
 ## Scenario generation
 
@@ -152,7 +152,7 @@ every simulator stream (tiles, tile tags, weather slots/events/forecasts, reques
 reveals nothing about the weather or tag streams. The mode is recorded in the scenario, weather and request configs, the catalogue metadata and
 `scenario_manifest.json`; without it generation is byte-identical to before.
 
-The `demo-week` parameters above are the same ones that produced `starter_kit/scenarios/demo-week`, so the copy in
+The `demo-week` parameters above are the same ones that produced `archive/starter_kit_v3/scenarios/demo-week`, so the copy in
 the downloaded kit and the copy the platform publishes are the same scenario.
 
 ## Open operational items

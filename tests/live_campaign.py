@@ -28,7 +28,7 @@ from pathlib import Path
 from playwright.sync_api import Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-KIT = ROOT / "starter_kit"
+KIT = ROOT / "archive" / "starter_kit_v3"
 SHOTS = ROOT / "artifacts" / "screenshots-campaign"
 SHOTS.mkdir(parents=True, exist_ok=True)
 AXE = ROOT / "web" / "node_modules" / "axe-core" / "axe.min.js"
