@@ -76,6 +76,60 @@ def _densify_edges(vertices: list[tuple[float, float]], subdivisions: int = 16):
     return dense
 
 
+def _split_at_seam(dense: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
+    """Split a densified boundary loop at the RA=180 map seam.
+
+    The Mollweide map is continuous only for RA in [0, 180); a component whose
+    boundary crosses RA=180 would otherwise be filled across the whole map.
+    Each returned piece touches the seam at both ends (ra pinned just inside its
+    map half) and is closed along the ellipse rim so the fill follows the map edge.
+    A component that never crosses the seam yields a single unchanged piece.
+    """
+    import numpy as np
+
+    count = len(dense)
+    lons = [((ra + 180.0) % 360.0) - 180.0 for ra, _ in dense]
+    crossings = [
+        index for index in range(count)
+        if abs(lons[(index + 1) % count] - lons[index]) > 180.0
+    ]
+    if not crossings:
+        return [list(dense)]
+
+    def seam_point(index: int) -> tuple[float, float, float]:
+        """(ra_side_for_piece_left_of_crossing, ra_side_after, dec_at_seam)."""
+        lon0 = lons[index]
+        lon1 = lons[(index + 1) % count]
+        lon1_unwrapped = lon1 + (360.0 if lon0 > 0.0 else -360.0)
+        fraction = (180.0 - abs(lon0)) / (abs(lon1_unwrapped) - abs(lon0))
+        seam_dec = dense[index][1] + fraction * (dense[(index + 1) % count][1] - dense[index][1])
+        return (179.999999 if lon0 > 0.0 else 180.000001,
+                180.000001 if lon0 > 0.0 else 179.999999,
+                seam_dec)
+
+    before_ra, after_ra, first_seam_dec = seam_point(crossings[0])
+    order = [(crossings[0] + 1 + k) % count for k in range(count)]
+    pieces: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = [(after_ra, first_seam_dec)]
+    for index in order:
+        current.append(dense[index])
+        if index in crossings[1:]:
+            end_ra, next_ra, seam_dec = seam_point(index)
+            current.append((end_ra, seam_dec))
+            pieces.append(current)
+            current = [(next_ra, seam_dec)]
+    current.append((before_ra, first_seam_dec))
+    pieces.append(current)
+
+    # Close each piece along the ellipse rim instead of a straight chord.
+    closed = []
+    for piece in pieces:
+        rim_ra = piece[0][0]
+        arc = [(rim_ra, dec) for dec in np.linspace(piece[-1][1], piece[0][1], 33)]
+        closed.append(piece + arc)
+    return closed
+
+
 def render_sky_map(
     targets_path: Path,
     footprint_path: Path,
@@ -126,15 +180,16 @@ def render_sky_map(
         gx, gy = _mollweide_project(dense_ra, np.full_like(dense_ra, float(parallel)))
         ax.plot(gx, gy, color="#b9b9b9", linewidth=0.5, zorder=0)
 
-    # Footprint fill and boundary (geodesic edges).
+    # Footprint fill and boundary (geodesic edges, split at the RA=180 map seam).
     for component_id in sorted(components):
         dense = _densify_edges(components[component_id])
-        vx, vy = _mollweide_project(
-            np.array([point[0] for point in dense]),
-            np.array([point[1] for point in dense]),
-        )
-        ax.fill(vx, vy, facecolor=FOOTPRINT_FILL, edgecolor="none", zorder=1)
-        ax.plot(vx, vy, color=FOOTPRINT_EDGE, linewidth=1.6, zorder=3)
+        for piece in _split_at_seam(dense):
+            vx, vy = _mollweide_project(
+                np.array([point[0] for point in piece]),
+                np.array([point[1] for point in piece]),
+            )
+            ax.fill(vx, vy, facecolor=FOOTPRINT_FILL, edgecolor="none", zorder=1)
+            ax.plot(vx, vy, color=FOOTPRINT_EDGE, linewidth=1.6, zorder=3)
 
     # Targets: small translucent white dots keep 30k points readable as density.
     ordinary = ~required
