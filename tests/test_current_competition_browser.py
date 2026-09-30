@@ -38,7 +38,7 @@ def test_public_playground_pages_never_ask_participants_to_choose_a_stage(portal
                         'ja':'公式サンプルのリプレイ','fr':'Rejeu de l’exemple officiel'}[language])
                 text=page.locator('main').text_content()
                 # The single copy mentions both stages where relevant; retired wording must not come back.
-                match=re.search(r'官方本地会话|official local-session|local-session CSV|智能体项目页',text,re.I)
+                match=re.search(r'官方本地会话|official local-session|智能体项目页|Agent projects page',text,re.I)
                 if match:problems.append((language,path,text[max(0,match.start()-40):match.end()+100]))
         # One copy, both stages: the unified answers are present in practice mode too.
         page.goto(portal_site+'/faq?lang=zh')
@@ -108,7 +108,7 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
                     expect(demo_title).to_be_visible()
                     body=body.replace(demo_title.inner_text(),'',1)
                 # One copy, both stages: no stage-specific variant is swapped in.
-                match=re.search(r'官方本地会话|official local-session|local-session CSV|智能体项目页',body,re.I)
+                match=re.search(r'官方本地会话|official local-session|智能体项目页|Agent projects page',body,re.I)
                 if match:problems.append((language,path,body[max(0,match.start()-40):match.end()+100]))
         page.goto(portal_site+'/faq?lang=en')
         expect(page.locator('main')).to_contain_text('Submit your complete project as a ZIP file and it runs in the cloud.')
