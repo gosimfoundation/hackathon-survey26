@@ -1,10 +1,13 @@
 name: Publish event site
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+  # Publish only after the Tests workflow has completed successfully on main.
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,11 +18,14 @@ concurrency:
 
 jobs:
   build:
+    # Skip the whole pipeline when Tests finished with anything but success.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -43,7 +49,10 @@ jobs:
           path: release/
           retention-days: 14
   publish:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Only a green Tests run on main (or a manual dispatch from main) publishes.
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -57,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          REVISION: ${{ github.sha }}
+          REVISION: ${{ github.event.workflow_run.head_sha || github.sha }}
           RUN_ID: ${{ github.run_id }}
           ATTEMPT: ${{ github.run_attempt }}
         run: |
