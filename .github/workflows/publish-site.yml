@@ -41,8 +41,10 @@ jobs:
         run: node scripts/release-site.mjs
         env:
           # Public client settings are repository variables so fork PR builds work too.
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Fork pull requests do NOT receive repository variables, so fall back to
+          # placeholders there; on main the real variables are required as before.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || (github.event_name == 'pull_request' && 'https://placeholder.supabase.co') || '' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || (github.event_name == 'pull_request' && 'sb_publishable_placeholder') || '' }}
       - uses: actions/upload-artifact@v6
         with:
           name: event-site
