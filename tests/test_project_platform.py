@@ -287,7 +287,7 @@ rl.on('line', line => {
 
 # --- Graceful finish -------------------------------------------------------
 
-DEMO_SCENARIO = Path(__file__).resolve().parents[1] / "starter_kit" / "scenarios" / "demo-week"
+DEMO_SCENARIO = Path(__file__).resolve().parents[1] / "archive" / "starter_kit_v3" / "scenarios" / "demo-week"
 
 _WAIT_AGENT_HEAD = """import json,sys
 for line in sys.stdin:

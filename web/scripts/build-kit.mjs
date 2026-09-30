@@ -1,4 +1,4 @@
-// Assemble the public starter-kit downloads from ../starter_kit (challenge v3).
+// Assemble the public starter-kit downloads from ../archive/starter_kit_v3 (challenge v3).
 //   public/downloads/agent-observer-starter-kit.zip  (whole kit under agent-observer-starter-kit/)
 //   public/downloads/scoring_core.py, contracts.py, score_config.json  (public scorer + contracts + weights)
 //   public/skill.md
@@ -11,7 +11,7 @@ import { zipSync } from 'fflate'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
-const kitDir = process.env.STARTER_KIT_DIR || resolve(root, '..', 'starter_kit')
+const kitDir = process.env.STARTER_KIT_DIR || resolve(root, '..', 'archive', 'starter_kit_v3')
 const outDir = resolve(root, 'public', 'downloads')
 const zipFolder = 'agent-observer-starter-kit'
 

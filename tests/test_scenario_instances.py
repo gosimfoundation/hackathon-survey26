@@ -13,7 +13,7 @@ from project_platform.scenario_instances import (
     prepare_instance, benchmark_policy,
 )
 
-TEMPLATE = Path(__file__).resolve().parents[1] / "starter_kit/scenarios/finals-preview"
+TEMPLATE = Path(__file__).resolve().parents[1] / "archive/starter_kit_v3/scenarios/finals-preview"
 
 
 @pytest.fixture(scope="module")
@@ -136,7 +136,7 @@ def test_outliers_are_skipped_deterministically_and_never_silently_served(tmp_pa
 
 
 def test_organizer_replay_verifies_generated_files_calibration_and_committed_csv(generated, tmp_path):
-    script = TEMPLATE.parents[2] / 'scripts/replay-observer-instance.py'
+    script = TEMPLATE.parents[3] / 'scripts/replay-observer-instance.py'
     spec = importlib.util.spec_from_file_location('replay_instance', script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -179,7 +179,7 @@ def test_panel_never_repeats_completed_tiles_without_anomaly_mechanics():
     # Playground scenarios (no anomaly mechanics) reject repeat observations of a
     # completed tile. The panel must not offer them, or it scores below waiting
     # and the scenario cannot be calibrated at all (invalid_calibration_span).
-    pre_anomaly = Path(__file__).resolve().parents[1] / "starter_kit/scenarios/demo-week"
+    pre_anomaly = Path(__file__).resolve().parents[1] / "archive/starter_kit_v3/scenarios/demo-week"
     assert not ChallengeWorkflow(pre_anomaly).scorer.mechanics
     wait = benchmark_policy(pre_anomaly, "wait")["score"]
     assert all(benchmark_policy(pre_anomaly, name)["score"] > wait for name in POLICIES)

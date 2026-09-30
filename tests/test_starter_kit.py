@@ -1,4 +1,4 @@
-"""End-to-end checks for the participant starter kit (starter_kit/).
+"""End-to-end checks for the participant starter kit (archive/starter_kit_v3/).
 
 Runs the kit's own scripts as a participant would: baseline run on the public reference scenario, re-scoring,
 scenario generation, packaging. Also guards that the vendored environment copies stay identical to challenge/.
@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-KIT = ROOT / "starter_kit"
+KIT = ROOT / "archive" / "starter_kit_v3"
 PY = sys.executable
 BASELINE_TOTAL = 12287.478365  # deterministic minimal agent, scenarios/dev-reference, survey_complete
 
@@ -242,7 +242,7 @@ def test_kit_environment_matches_vendored_modules():
     for name in kit_modules:
         if name == "project_paths.py":
             continue
-        assert (ROOT / "challenge" / name).read_bytes() == (KIT / "challenge" / name).read_bytes(), f"starter_kit/challenge/{name} differs from challenge/{name}"
+        assert (ROOT / "challenge" / name).read_bytes() == (KIT / "challenge" / name).read_bytes(), f"archive/starter_kit_v3/challenge/{name} differs from challenge/{name}"
     for template in (ROOT / "challenge" / "templates").glob("*.html"):
         assert (KIT / "challenge" / "templates" / template.name).read_bytes() == template.read_bytes()
     for path in (ROOT / "challenge" / "participant_agent").iterdir():
@@ -251,15 +251,15 @@ def test_kit_environment_matches_vendored_modules():
         kit_bytes = (KIT / "agent" / path.name).read_bytes()
         if path.name == "README_ZH.md":
             # the kit README carries a short preface about the kit layout, followed by the upstream text verbatim
-            assert path.read_bytes() in kit_bytes, "starter_kit/agent/README_ZH.md no longer embeds the upstream README"
+            assert path.read_bytes() in kit_bytes, "archive/starter_kit_v3/agent/README_ZH.md no longer embeds the upstream README"
             continue
-        assert kit_bytes == path.read_bytes(), f"starter_kit/agent/{path.name} differs"
+        assert kit_bytes == path.read_bytes(), f"archive/starter_kit_v3/agent/{path.name} differs"
     assert (KIT / "agent" / "scoring_preview.py").read_bytes() == (ROOT / "challenge" / "scoring_preview.py").read_bytes()
     # challenge/reference is the finals-generation template (anomaly mechanics on); the kit's
     # dev-reference stays frozen on the pre-anomaly scenario the platform's practice phase stores.
     # The pinned digest guards against an accidental regeneration of the shipped copy.
     frozen = hashlib.sha256((KIT / "scenarios" / "dev-reference" / "outputs/reference/scenario_manifest.json").read_bytes()).hexdigest()
-    assert frozen == "62db767360818a750ca9154ade11b1baf9b2aa3e2cd03c6408c7533a089535e8", "starter_kit/scenarios/dev-reference must stay the frozen pre-anomaly scenario"
+    assert frozen == "62db767360818a750ca9154ade11b1baf9b2aa3e2cd03c6408c7533a089535e8", "archive/starter_kit_v3/scenarios/dev-reference must stay the frozen pre-anomaly scenario"
     kit_score_config = json.loads((KIT / "scenarios" / "dev-reference" / "config/score_config.json").read_text(encoding="utf-8"))
     assert not any(key in kit_score_config for key in ("repeat_observation", "reporting", "anomaly_tags", "fault_response"))
 
@@ -306,7 +306,7 @@ def test_demo_week_matches_the_scenario_the_platform_seeds(tmp_path):
     re-seeds its stored scenarios). Two guards replace the old regeneration equality:
     the shipped copy is pinned by digest, and the generator stays deterministic."""
     frozen = hashlib.sha256((KIT / "scenarios" / "demo-week" / "outputs/reference/scenario_manifest.json").read_bytes()).hexdigest()
-    assert frozen == "4e3aa9b965186159e75fec76540da2cbc6858f8ad8181f8518ff5222d8fb605e", "starter_kit/scenarios/demo-week must stay the frozen pre-anomaly scenario"
+    assert frozen == "4e3aa9b965186159e75fec76540da2cbc6858f8ad8181f8518ff5222d8fb605e", "archive/starter_kit_v3/scenarios/demo-week must stay the frozen pre-anomaly scenario"
     assert not (KIT / "scenarios" / "demo-week" / "outputs/reference/tile_anomalies.csv").exists()
 
     sys.path.insert(0, str(ROOT))

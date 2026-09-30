@@ -16,7 +16,7 @@ web/dist/
 web/.env
 supabase/.temp/
 supabase/.branches/
-legacy/fastapi/data/
+archive/legacy/fastapi/data/
 
 .site/
 release/

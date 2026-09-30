@@ -75,7 +75,7 @@ replay.
   with the `survey-agent` conda Python 3.12; byte-lock, determinism, replay
   equivalence, and anchor tests all green.
 - Web `npm ci && npm run build` (vue-tsc + vite + kit bundling) passes.
-- demo-week smoke via `starter_kit/local_runner.py`: survey_complete, total
+- demo-week smoke via `archive/starter_kit_v3/local_runner.py`: survey_complete, total
   8547.99, all 4 tag reports correct (+400), 1 correct fault report, 0
   misreports, report.csv (5 rows) and replay HTML produced.
 - Anchor `23451.354778` consistent in all four coupled places; stale

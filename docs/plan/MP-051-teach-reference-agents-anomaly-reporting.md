@@ -6,7 +6,7 @@ parent: "MP-045"
 depends_on: ["MP-050"]
 updated: "2026-09-18"
 summary: "Extend the reference and minimal participant agents to compare realized feedback against the public baseline and emit fault/nova/reddening reports."
-artifacts: ["../agent-observer/challenge/participant_agent/", "../agent-observer/starter_kit/agent/"]
+artifacts: ["../agent-observer/challenge/participant_agent/", "../agent-observer/archive/starter_kit_v3/agent/"]
 ---
 
 # MP-051: Teach the reference agents anomaly detection and reporting

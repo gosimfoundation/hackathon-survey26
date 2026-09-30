@@ -28,7 +28,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-KIT = REPO / "starter_kit"
+KIT = REPO / "archive" / "starter_kit_v3"
 OUT_DEFAULT = REPO / "web" / "src" / "content" / "demo" / "replay.json"
 
 # 7 nights x 256 tiles keeps observations flowing every night (measured: 21/50/36/10/19/3/28 per night).
