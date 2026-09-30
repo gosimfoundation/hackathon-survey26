@@ -21,7 +21,8 @@ tests/               pytest: runner sandbox, starter kits, platform integration 
 docs/                organizer and participant documentation: competition-format.md, project-platform-rollout.md, example3-analysis-brief.md, ANOMALY_RELEASE_CHANGELOG_ZH.md
 scripts/             one-off organizer scripts: phase/secrets/runner configuration, backend deploy, live tests, the release-site publisher
 ops/                 the "Agentic Observer 2026 Evaluator" GitHub App manifest/installations and the control-workflow YAMLs dispatched for project jobs
-archive/             old versions kept for reference: legacy/ (first self-hosted FastAPI platform), legacy-event/ (former event website), starter_kit/ (v3 starter kit)
+legacy-event/        the former event website; still built by the site publisher to serve the /survey26/ event root page (which redirects to the platform)
+archive/             old versions kept for reference: starter_kit_v3/ (v3 starter kit, still packaged into the Playground download), legacy/ (first self-hosted FastAPI platform)
 .github/workflows/   CI: tests.yml, the self-dispatching worker.yml evaluator, publish-site.yml (GitHub Pages deploy)
 ```
 
