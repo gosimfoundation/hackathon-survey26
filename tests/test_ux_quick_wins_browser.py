@@ -170,7 +170,7 @@ def test_dashboard_quest_and_one_click_solo_team(portal_site, schedule):
         expect(quest.get_by_test_id('quest-next')).to_have_class(re.compile(r'\bprimary\b'))
         expect(quest.get_by_test_id('quest-next')).to_contain_text('下一步：组队')
         # The quest leads the page: the phase table no longer comes first, and no other primary competes.
-        phases = page.locator('.panel', has_text='当前比赛').first
+        phases = page.locator('.panel', has_text='阶段').first
         assert quest.bounding_box()['y'] < phases.bounding_box()['y']
         assert page.locator('main .btn.primary').count() == 1
         shot(page, 'dashboard-quest-start.zh.desktop')
