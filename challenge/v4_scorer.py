@@ -3,11 +3,12 @@
 
 Formula (2026-09-28 ruling; all constants live in config/v4_score_config.json):
 
-    q_exp(i) = q0^-1 · eff* · transp* · sky_quality* · lunar(i)
-               / (seeing* · airmass(i)^0.6)
+    q_exp(i) = q0^-1 · mean_t[eff* · transp* · sky_quality* · lunar(i)
+               / (seeing* · airmass(i,t)^0.6)]
     g(i,e)   = min( f(i)·t·q_exp(i) / (f0·t0), 1 )        # obstruction/miss/altitude -> 0
-    s(i,e)   = weight(i) · g(i,e) · prog_mult(e)
-    best(i)  = max over valid exposures e of s(i,e)
+    s(i,e)   = weight(i) · g(i,e)
+    c(i,e)   = s(i,e) · prog_mult(i,e)
+    best(i)  = max over valid exposures e of c(i,e)
     total    = sum best(i) - P_req·#(required with max valid factor < 0.5)
                - U·(1 - Jain(r_1..r_K)) + report settlement
 
@@ -16,10 +17,10 @@ weather components are integrated over the exposure interval: each overlapped
 slot contributes its truth values weighted by overlap seconds, and closed slots or
 daytime gaps contribute zero. Directional (HORIZON_SECTOR) event multipliers and
 closures are applied per target only while they are active and cover the target.
-The airmass uses the target altitude at the exposure midpoint. The program
-band is derived per target from site weather and that target's own lunar
-quality and airmass, without instrument efficiency (v3 convention) or
-directional-event multipliers.
+Airmass, lunar quality, and directional-event coverage use the target position
+at each integration-piece midpoint. The program band is derived per target from
+site weather and that target's own time-resolved lunar quality and airmass,
+without instrument efficiency (v3 convention) or directional-event multipliers.
 
 The BestLedger keeps every raw per-target contribution with its observe-action index so
 best scores are always replayable: invalidating an action window (data loss) is a flag
@@ -165,6 +166,7 @@ class WeatherTruth:
         ):
             raise ValueError("instrument fault events must not overlap")
         self.fault_repairs: dict[str, datetime] = {}
+        self.false_reports_since_correct = 0
 
     @property
     def fault_repair_utc(self) -> datetime | None:
@@ -212,10 +214,20 @@ class WeatherTruth:
             cursor = piece_end
             index += 1
 
+    def reset_false_report_count(self) -> None:
+        """Start a new false-report allowance after a correct report."""
+        self.false_reports_since_correct = 0
+
     def report_fault(self, moment: datetime, score_config: Mapping) -> float:
-        """Settle one report at its decision time and repair only an active fault."""
+        """Repair a correct report; penalize false reports after the free threshold."""
         if self.repair_fault(moment):
+            self.reset_false_report_count()
             return float(score_config["reporting"]["correct_reward"])
+        self.false_reports_since_correct += 1
+        if self.false_reports_since_correct <= int(
+            score_config["reporting"].get("false_report_free_allowance", 0)
+        ):
+            return 0.0
         return float(score_config["reporting"]["false_penalty"])
 
     def _apply_fault(self, truth: SlotTruth, moment: datetime) -> float:
@@ -237,29 +249,41 @@ class WeatherTruth:
         self,
         start: datetime,
         end: datetime,
-        airmass: float,
         score_config: Mapping,
+        target_altitude_at: Callable[[datetime], float],
         lunar_factor_at: Callable[[datetime], float] | None = None,
     ) -> float:
-        """Program-band quality: site weather with the caller's lunar factor and airmass, no efficiency.
+        """Program-band quality with time-resolved target lunar factor and airmass.
 
         The runner passes per-target values, so one exposure may split across bands.
         """
         total = 0.0
         weight = 0.0
+        airmass_exponent = float(score_config["airmass_exponent"])
         cursor = start
         for seconds, truth in self.segments(start, end):
             weight += seconds
-            if truth is not None and truth.is_observable:
-                sample = cursor + timedelta(seconds=seconds / 2)
-                lunar = lunar_factor_at(sample) if lunar_factor_at else 1.0
-                total += seconds * truth.transparency * truth.sky_quality * lunar / truth.seeing_arcsec
-            cursor += timedelta(seconds=seconds)
+            segment_end = cursor + timedelta(seconds=seconds)
+            piece = cursor
+            while piece < segment_end:
+                piece_end = min(segment_end, piece + timedelta(seconds=120))
+                sample = piece + (piece_end - piece) / 2
+                if truth is not None and truth.is_observable:
+                    lunar = lunar_factor_at(sample) if lunar_factor_at else 1.0
+                    airmass = _normalized_airmass(target_altitude_at(sample))
+                    total += (
+                        (piece_end - piece).total_seconds()
+                        * truth.transparency
+                        * truth.sky_quality
+                        * lunar
+                        / truth.seeing_arcsec
+                        / airmass**airmass_exponent
+                    )
+                piece = piece_end
+            cursor = segment_end
         if weight <= 0.0:
             return 0.0
-        return (total / weight) / float(score_config["q0"]) / airmass ** float(
-            score_config["airmass_exponent"]
-        )
+        return (total / weight) / float(score_config["q0"])
 
 
 def program_band(q_band: float, score_config: Mapping) -> str:
@@ -284,30 +308,27 @@ class TargetScore:
     target_id: str
     factor: float  # g(i,e) in [0, 1]
     quality: float  # q_exp before capping
-    score: float  # s(i,e) = weight * factor * prog_mult
+    score: float  # c(i,e) = s(i,e) * prog_mult
 
 
 def score_target_exposure(
     target: Mapping,
-    target_alt_deg: float,
-    target_az_deg: float,
     segments: Sequence[tuple[float, SlotTruth | None]],
     events: Sequence[ScoreEvent],
     weather: WeatherTruth,
     duration_seconds: int,
-    airmass: float,
     prog_mult: float,
     score_config: Mapping,
     exposure_start_utc: datetime,
-    target_altaz_at: Callable[[datetime], tuple[float, float]] | None = None,
+    target_altaz_at: Callable[[datetime], tuple[float, float]],
     site: Mapping | None = None,
 ) -> TargetScore:
     """One target's capped contribution for one exposure.
 
     `segments` are the exposure's slot overlaps. Event start/end boundaries split
-    each segment before integration. When a trajectory is supplied, the target's
-    horizon position is refreshed in at most 120-second pieces. The runner checks
-    fiber assignment and the altitude limit before calling this function.
+    each segment before integration. The target's horizon position and airmass are
+    refreshed in at most 120-second pieces. The runner checks fiber assignment and
+    the altitude limit before calling this function.
     """
     lunar_enabled = "lunar_model" in score_config
     if lunar_enabled and site is None:
@@ -315,6 +336,7 @@ def score_target_exposure(
     zero = TargetScore(str(target["target_id"]), 0.0, 0.0, 0.0)
     total = 0.0
     weight_sum = 0.0
+    airmass_exponent = float(score_config["airmass_exponent"])
     cursor = exposure_start_utc
     for seconds, truth in segments:
         weight_sum += seconds
@@ -329,9 +351,9 @@ def score_target_exposure(
         for left, right in zip(boundaries, boundaries[1:]):
             piece = left
             while piece < right:
-                piece_end = min(right, piece + timedelta(seconds=120)) if target_altaz_at else right
+                piece_end = min(right, piece + timedelta(seconds=120))
                 sample = piece + (piece_end - piece) / 2
-                alt, az = target_altaz_at(sample) if target_altaz_at else (target_alt_deg, target_az_deg)
+                alt, az = target_altaz_at(sample)
                 active = [
                     event for event in events
                     if event.actual_start_utc <= sample < event.actual_end_utc
@@ -354,14 +376,21 @@ def score_target_exposure(
                     lunar = lunar_quality_factor(
                         float(target["ra_deg"]), float(target["dec_deg"]), sample, site, score_config
                     ) if lunar_enabled else 1.0
-                    total += (piece_end - piece).total_seconds() * efficiency * transparency * sky * lunar / seeing
+                    airmass = _normalized_airmass(alt)
+                    total += (
+                        (piece_end - piece).total_seconds()
+                        * efficiency
+                        * transparency
+                        * sky
+                        * lunar
+                        / seeing
+                        / airmass**airmass_exponent
+                    )
                 piece = piece_end
         cursor = segment_end
     if weight_sum <= 0.0:
         return zero
-    quality = (total / weight_sum) / float(score_config["q0"]) / airmass ** float(
-        score_config["airmass_exponent"]
-    )
+    quality = (total / weight_sum) / float(score_config["q0"])
     factor = min(
         float(target["feature_flux"])
         * duration_seconds

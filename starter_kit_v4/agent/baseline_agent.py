@@ -11,7 +11,7 @@ Strategy in one paragraph: sleep through the day with one `wait` + `until_utc`; 
 most urgent visible target, fill the other fibres with the most valuable neighbours, and expose just
 long enough (planner.py). Close the shutter (wait one slot) while a bulletin says rain or storm over the
 whole sky. Report an instrument problem only after a large, lasting drop in quality that no bulletin
-explains, at most twice per run (a false report costs points).
+explains, at most twice per run.
 """
 from __future__ import annotations
 

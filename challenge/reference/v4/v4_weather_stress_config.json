@@ -63,7 +63,7 @@
   },
   "instrument_fault": {
     "count": 1,
-    "instrument_efficiency_multiplier_range": [0.4, 0.7]
+    "instrument_efficiency_multiplier_range": [0.3, 0.5]
   },
   "publication": {
     "forecast_interval_days": 7,

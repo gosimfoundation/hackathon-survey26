@@ -44,7 +44,8 @@ SCORE_CONFIG = {
     },
     "required": {"penalty_per_missing": 50, "observed_factor_threshold": 0.5},
     "uniformity": {"weight": 200.0, "ra_band_width_deg": 10.0, "observed_factor_threshold": 0.5},
-    "reporting": {"correct_reward": 100, "false_penalty": -150},
+    "reporting": {"correct_reward": 100, "false_penalty": -150,
+                  "false_report_free_allowance": 2, "max_consecutive_reports": 32},
 }
 
 SITE = {"latitude_deg": -24.6157, "longitude_deg": -70.3976}
@@ -88,7 +89,7 @@ def test_segments_weighting_and_closure():
     assert all(seconds == 900 for seconds, _ in segments)
     assert segments[2][1].is_observable is False
     # Band quality: transparency/(sky*seeing) weighted; the closed slot contributes 0.
-    q = weather.band_quality(T0, T0 + timedelta(minutes=60), 1.0, SCORE_CONFIG)
+    q = weather.band_quality(T0, T0 + timedelta(minutes=60), SCORE_CONFIG, lambda _: 90.0)
     expected = ((0.9 / 1.0) + (0.9 / 2.0) + 0.0 + (0.9 / 1.0)) / 4 / SCORE_CONFIG["q0"]
     assert q == pytest.approx(expected, rel=1e-9)
 
@@ -126,9 +127,10 @@ def _score(flux=0.5, events=(), slots=None, mult=1.0, weight=1.0, alt=60.0, az=1
     # The scorer expects the caller to pass only events overlapping the exposure.
     end = T0 + timedelta(seconds=duration)
     active = [event for event in events if event.overlaps(T0, end)]
+    trajectory = trajectory or (lambda _: (alt, az))
     return vs.score_target_exposure(
-        _target(flux=flux, weight=weight), alt, az, segments, active, weather,
-        duration, 1.0, mult, SCORE_CONFIG, T0, trajectory,
+        _target(flux=flux, weight=weight), segments, active, weather,
+        duration, mult, SCORE_CONFIG, T0, trajectory,
     )
 
 
@@ -184,17 +186,17 @@ def test_lunar_factor_applies_per_target_and_program_center():
     def scored(ra):
         target = _target(flux=0.1, ra=ra, dec=moon_dec)
         return vs.score_target_exposure(
-            target, 60.0, 180.0, segments, [], weather, 900, 1.0, 1.0,
-            config, moment, site=SITE,
+            target, segments, [], weather, 900, 1.0,
+            config, moment, lambda _: (60.0, 180.0), site=SITE,
         )
 
     assert scored(moon_ra).quality < scored((moon_ra + 90.0) % 360.0).quality
     near_band = weather.band_quality(
-        moment, moment + timedelta(seconds=900), 1.0, config,
+        moment, moment + timedelta(seconds=900), config, lambda _: 90.0,
         lambda when: vs.lunar_quality_factor(moon_ra, moon_dec, when, SITE, config),
     )
     far_band = weather.band_quality(
-        moment, moment + timedelta(seconds=900), 1.0, config,
+        moment, moment + timedelta(seconds=900), config, lambda _: 90.0,
         lambda when: vs.lunar_quality_factor((moon_ra + 90.0) % 360.0, moon_dec, when, SITE, config),
     )
     assert near_band < far_band
@@ -308,19 +310,21 @@ def test_report_settlement_and_repair():
     assert first == 100.0
     # After repair the fault multiplier is undone in the site factor.
     assert weather._apply_fault(weather.slots[0], T0 + timedelta(minutes=1)) == pytest.approx(1.0)
-    assert vs.settle_reports([T0], weather, SCORE_CONFIG) == -150.0  # already repaired
+    assert vs.settle_reports([T0], weather, SCORE_CONFIG) == 0.0  # first false report is free
     no_fault = vs.WeatherTruth([_slot(0)], None)
+    assert vs.settle_reports([T0, T0], no_fault, SCORE_CONFIG) == 0.0
     assert vs.settle_reports([T0], no_fault, SCORE_CONFIG) == -150.0
 
 
 def test_report_before_fault_is_false_and_later_report_repairs():
     fault = _event("instrument_fault", 10, 120, scope="ALL", eff=0.6)
     weather = vs.WeatherTruth([_slot(0, eff=0.6)], fault)
-    assert weather.report_fault(T0, SCORE_CONFIG) == -150.0
+    assert weather.report_fault(T0, SCORE_CONFIG) == 0.0
     assert weather.fault_repair_utc is None
     after_start = T0 + timedelta(minutes=10)
     assert weather.report_fault(after_start, SCORE_CONFIG) == 100.0
     assert weather._apply_fault(weather.slots[0], after_start) == pytest.approx(1.0)
+    assert weather.report_fault(after_start, SCORE_CONFIG) == 0.0  # correct report reset the false streak
 
 
 def test_runner_report_repairs_before_next_exposure(tmp_path, monkeypatch):
@@ -352,7 +356,42 @@ def test_runner_report_repairs_before_next_exposure(tmp_path, monkeypatch):
     assert after["components"]["report_settlement"] == 100.0
 
 
-def test_runner_checks_actual_field_center_altitude(tmp_path, monkeypatch):
+def test_report_result_is_announced_immediately_and_repeated_report_is_false(tmp_path, monkeypatch):
+    scenario = vr.load_scenario(DEFAULT_SCENARIO)
+    fault = next(event for event in scenario.events if event.event_type == "instrument_fault")
+    slot = next(item for item in scenario.slots if item.start_utc == fault.actual_start_utc)
+    short = replace(scenario, slots=[slot], survey_start=slot.start_utc,
+                    survey_end=slot.end_utc, bulletins=[], forecasts=[])
+    monkeypatch.setattr(vr, "load_scenario", lambda _: short)
+    actions = iter([{"action": "report"}, {"action": "report"}])
+    snapshots = []
+
+    def factory(_context):
+        def agent(snapshot):
+            snapshots.append(snapshot)
+            return next(actions, None)
+        return agent
+
+    out = tmp_path / "report_feedback"
+    result = vr.run_scenario(DEFAULT_SCENARIO, factory, out)
+    assert len(snapshots) == 3
+    assert all(snapshot["now_utc"] == snapshots[0]["now_utc"] for snapshot in snapshots)
+    assert snapshots[1]["last_result"] == {
+        "action": "report", "correct": True, "repaired": True, "score_delta": 100.0,
+    }
+    assert snapshots[2]["last_result"] == {
+        "action": "report", "correct": False, "repaired": False, "score_delta": 0.0,
+    }
+    assert [snapshot["new_messages"][0]["correct"] for snapshot in snapshots[1:]] == [True, False]
+    assert all(snapshot["new_messages"][0]["record_type"] == "report_result"
+               for snapshot in snapshots[1:])
+    assert all(snapshot["latest_bulletin"] is None for snapshot in snapshots)
+    assert result["components"]["report_settlement"] == 100.0
+    messages = [json.loads(line) for line in (out / "messages.jsonl").read_text().splitlines()]
+    assert messages == [snapshot["new_messages"][0] for snapshot in snapshots[1:]]
+
+
+def test_runner_limits_target_altitude_without_a_field_center_cutoff(tmp_path, monkeypatch):
     scenario = vr.load_scenario(DEFAULT_SCENARIO)
     slot = next(item for item in scenario.slots if item.is_observable)
     short = replace(scenario, slots=[slot], survey_start=slot.start_utc,
@@ -367,9 +406,8 @@ def test_runner_checks_actual_field_center_altitude(tmp_path, monkeypatch):
         and min_altitude_during(t["ra_deg"], t["dec_deg"], slot.start_utc,
                                 slot.end_utc, scenario.config, 120) >= 30.0
     )
-    alt, az = radec_to_altaz(target["ra_deg"], target["dec_deg"], slot.start_utc, lat, lon)
-
-    def action(fiber_id):
+    def action(target, fiber_id):
+        alt, az = radec_to_altaz(target["ra_deg"], target["dec_deg"], slot.start_utc, lat, lon)
         d_alt, d_az = grid.fiber_center_offset(fiber_id)
         cmd_alt = alt - d_alt
         cmd_az = (az - d_az / math.cos(math.radians(cmd_alt))) % 360.0
@@ -377,10 +415,23 @@ def test_runner_checks_actual_field_center_altitude(tmp_path, monkeypatch):
                 "assignments": {fiber_id: target["target_id"]},
                 "duration_seconds": 900, "program": "BACKUP"}
 
-    valid = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([action(5)]), tmp_path / "above")
-    invalid = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([action(9)]), tmp_path / "below")
-    assert valid["counts"]["observations"] == 1
-    assert invalid["counts"]["observations"] == 0
+    high_center = action(target, 5)
+    low_center = action(target, 9)
+    assert high_center["pointing"]["alt_deg"] > 30.0
+    assert low_center["pointing"]["alt_deg"] < 30.0
+    high = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([high_center]), tmp_path / "high_center")
+    low = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([low_center]), tmp_path / "low_center")
+    assert high["counts"]["observations"] == low["counts"]["observations"] == 1
+    assert high["components"]["sum_best_scores"] == low["components"]["sum_best_scores"]
+
+    below_target = next(
+        t for t in scenario.targets
+        if 29.6 < radec_to_altaz(t["ra_deg"], t["dec_deg"], slot.start_utc, lat, lon)[0] < 29.9
+    )
+    below_action = action(below_target, 5)
+    assert below_action["pointing"]["alt_deg"] > 30.0
+    below = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([below_action]), tmp_path / "low_target")
+    assert below["counts"]["observations"] == 0
 
 
 # --- runner-level -------------------------------------------------------------------------
@@ -496,13 +547,70 @@ def test_runner_context_exposes_only_public_scenario_fields(tmp_path):
     vr.run_scenario(DEFAULT_SCENARIO, factory, tmp_path / "public_context")
 
 
-def test_consecutive_zero_time_reports_are_bounded(tmp_path):
-    actions = [{"action": "report"}] * (vr.MAX_CONSECUTIVE_ZERO_TIME_ACTIONS + 1)
-    # Platform hardening: the run is no longer aborted; it ends as agent_error and settles.
+def test_false_report_allowance_persists_across_observe_and_wait(tmp_path, monkeypatch):
+    scenario = vr.load_scenario(DEFAULT_SCENARIO)
+    slot = scenario.slots[0]
+    score_config = {**scenario.score_config, "reporting": {
+        **scenario.score_config["reporting"],
+        "false_report_free_allowance": 2, "max_consecutive_reports": 32,
+    }}
+    short = replace(scenario, score_config=score_config, slots=[slot], events=[],
+                    survey_start=slot.start_utc, survey_end=slot.end_utc,
+                    bulletins=[], forecasts=[])
+    monkeypatch.setattr(vr, "load_scenario", lambda _: short)
+    actions = [
+        {"action": "report"},
+        {"action": "observe", "pointing": {"alt_deg": 60, "az_deg": 0},
+         "assignments": {}, "duration_seconds": 60, "program": "BACKUP"},
+        {"action": "report"},
+        {"action": "wait", "duration_seconds": 60},
+        {"action": "report"},
+    ]
     report = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory(actions), tmp_path / "reports")
+    assert report["termination"]["reason"] == "agent_finished"
+    assert report["counts"]["decisions"] == 5
+    assert report["components"]["report_settlement"] == -150.0
+    messages = [json.loads(line) for line in (tmp_path / "reports" / "messages.jsonl").read_text().splitlines()]
+    report_messages = [item for item in messages if item["record_type"] == "report_result"]
+    assert [item["score_delta"] for item in report_messages] == [0.0, 0.0, -150.0]
+
+
+def test_correct_report_counts_toward_total_report_cap(tmp_path, monkeypatch):
+    scenario = vr.load_scenario(DEFAULT_SCENARIO)
+    fault = next(event for event in scenario.events if event.event_type == "instrument_fault")
+    slot = next(item for item in scenario.slots if item.start_utc == fault.actual_start_utc)
+    score_config = {**scenario.score_config, "reporting": {
+        **scenario.score_config["reporting"],
+        "false_report_free_allowance": 0, "max_consecutive_reports": 1,
+    }}
+    short = replace(scenario, score_config=score_config, slots=[slot],
+                    survey_start=slot.start_utc, survey_end=slot.end_utc,
+                    bulletins=[], forecasts=[])
+    monkeypatch.setattr(vr, "load_scenario", lambda _: short)
+    report = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([
+        {"action": "report"}, {"action": "report"},
+    ]), tmp_path / "correct_then_over_cap")
     assert report["termination"]["reason"] == "agent_error"
-    assert "too many consecutive zero-time report actions" in report["termination"]["detail"]
-    assert report["counts"]["decisions"] == vr.MAX_CONSECUTIVE_ZERO_TIME_ACTIONS
+    assert report["counts"]["decisions"] == 1
+    assert report["components"]["report_settlement"] == 100.0
+
+
+def test_legacy_score_config_keeps_immediate_penalty_and_32_report_cap(tmp_path, monkeypatch):
+    scenario = vr.load_scenario(DEFAULT_SCENARIO)
+    slot = scenario.slots[0]
+    reporting = dict(scenario.score_config["reporting"])
+    del reporting["false_report_free_allowance"]
+    del reporting["max_consecutive_reports"]
+    score_config = {**scenario.score_config, "reporting": reporting}
+    short = replace(scenario, score_config=score_config, slots=[slot], events=[],
+                    survey_start=slot.start_utc, survey_end=slot.end_utc,
+                    bulletins=[], forecasts=[])
+    monkeypatch.setattr(vr, "load_scenario", lambda _: short)
+    actions = [{"action": "report"}] * 33
+    report = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory(actions), tmp_path / "legacy_reports")
+    assert report["termination"]["reason"] == "agent_error"
+    assert report["counts"]["decisions"] == 32
+    assert report["components"]["report_settlement"] == -4800.0
 
 
 def test_data_loss_trigger_resync(tmp_path):
@@ -586,8 +694,8 @@ def test_pointing_offset_moves_hits(tmp_path):
         if radec_to_altaz(t["ra_deg"], t["dec_deg"], start, lat, lon)[0] > 50.0
     )
     anchor_alt, anchor_az = radec_to_altaz(anchor["ra_deg"], anchor["dec_deg"], start, lat, lon)
-    # Put the anchor right at the top glass edge of fiber 5 (minus 0.01 deg margin):
-    # offset delta_alt = -0.0317 deg then pushes it onto the frame in the stress run.
+    # Put the anchor near the top edge of fiber 5. The stress offset shifts
+    # it into a neighboring cell, so assigning fiber 5 no longer hits it.
     center_alt, center_az = grid.fiber_center_offset(5)
     edge_alt = center_alt + grid.fiber_side_deg / 2.0 - 0.01
     cmd_alt = round(anchor_alt - edge_alt, 4)
@@ -602,5 +710,5 @@ def test_pointing_offset_moves_hits(tmp_path):
     report_default = vr.run_scenario(DEFAULT_SCENARIO, _scripted_factory([dict(action)]), tmp_path / "off")
     report_stress = vr.run_scenario(STRESS_SCENARIO, _scripted_factory([dict(action)]), tmp_path / "on")
     assert report_default["counts"]["observations"] == 1  # on glass without offset
-    assert report_stress["counts"]["observations"] == 0  # offset pushed it to the frame
+    assert report_stress["counts"]["observations"] == 0  # offset changed its cell
     assert report_stress["organizer_only"]["pointing_offset_deg"]["alt"] == pytest.approx(-0.031697, abs=1e-4)

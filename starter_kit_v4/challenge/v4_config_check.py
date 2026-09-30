@@ -25,6 +25,8 @@ from .contracts import SEED_DERIVATION_HASHED, SEED_DERIVATION_KEY
 SITE_KEYS = ("latitude_deg", "longitude_deg", "utc_offset_hours")
 PROGRAMS = ("DARK", "BRIGHT", "BACKUP")
 SCORE_SCHEMA_VERSION = "v4-score-v1"
+DEFAULT_FALSE_REPORT_FREE_ALLOWANCE = 0
+DEFAULT_MAX_CONSECUTIVE_REPORTS = 32
 
 
 def _site_tuple(site: Mapping, label: str) -> tuple[float, float, float]:
@@ -134,8 +136,15 @@ def validate_score_config(score: Mapping) -> None:
         raise ValueError("uniformity weight must be non-negative")
     if _finite(score["uniformity"]["ra_band_width_deg"], "ra band width") <= 0.0:
         raise ValueError("uniformity ra_band_width_deg must be positive")
-    _finite(score["reporting"]["correct_reward"], "correct_reward")
-    _finite(score["reporting"]["false_penalty"], "false_penalty")
+    reporting = score["reporting"]
+    _finite(reporting["correct_reward"], "correct_reward")
+    _finite(reporting["false_penalty"], "false_penalty")
+    free_allowance = reporting.get("false_report_free_allowance", DEFAULT_FALSE_REPORT_FREE_ALLOWANCE)
+    if isinstance(free_allowance, bool) or not isinstance(free_allowance, int) or free_allowance < 0:
+        raise ValueError("reporting.false_report_free_allowance must be a non-negative integer")
+    max_reports = reporting.get("max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS)
+    if isinstance(max_reports, bool) or not isinstance(max_reports, int) or max_reports < 1:
+        raise ValueError("reporting.max_consecutive_reports must be a positive integer")
 
 
 def validate_targets(targets: Sequence[Mapping]) -> None:

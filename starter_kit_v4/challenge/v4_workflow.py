@@ -30,10 +30,10 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from .contracts import write_text_lf
+from .v4_config_check import DEFAULT_MAX_CONSECUTIVE_REPORTS
 from .v4_fiber_map import FiberGrid
 from .v4_runner import (
     AgentTermination,
-    MAX_CONSECUTIVE_ZERO_TIME_ACTIONS,
     TERMINATION_AGENT_ERROR,
     TERMINATION_WALLCLOCK,
     load_scenario,
@@ -171,7 +171,9 @@ class V4Workflow:
             },
             "limits": {
                 "global_wallclock_seconds": wallclock_seconds,
-                "max_consecutive_zero_time_actions": MAX_CONSECUTIVE_ZERO_TIME_ACTIONS,
+                "max_consecutive_reports": scenario.score_config["reporting"].get(
+                    "max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS
+                ),
                 "response_max_bytes": RESPONSE_MAX_BYTES,
                 "decision_timeout": "global only (no per-decision timeout)",
             },

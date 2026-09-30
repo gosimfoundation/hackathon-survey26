@@ -27,6 +27,7 @@ KIT = ROOT / "starter_kit_v4"
 DEMO = KIT / "cards" / "demo"
 PY = sys.executable
 IDLE_TOTAL = -6200.0  # 120 required targets x 50 missing + the full uniformity penalty (200)
+BASELINE_TOTAL = 849.000608
 
 
 def kit_module(name: str):
@@ -97,8 +98,9 @@ def test_baseline_beats_doing_nothing_on_the_demo_card(baseline, idle):
     assert nothing["required_missing"] == 120 and nothing["targets_observed"] == 0
     assert base["termination_reason"] == "survey_complete"
     assert base["error"] is None
-    assert base["total"] > 900 and base["total"] > IDLE_TOTAL + 5000, base
-    assert base["required_missing"] <= 3
+    assert base["total"] == pytest.approx(BASELINE_TOTAL)
+    assert base["total"] > 800 and base["total"] > IDLE_TOTAL + 5000, base
+    assert base["required_missing"] == 3
     assert base["targets_observed"] > 600
     assert base["wall_seconds"] < 120
     out = baseline["out"]
@@ -223,6 +225,9 @@ def test_initialize_carries_only_public_data():
     assert set(init) == {"schema_version", "task_card", "site", "survey", "instrument", "scoring", "footprint", "targets", "limits"}
     assert init["site"]["name"] == "Paranal, Chile (virtual)"
     assert init["limits"]["global_wallclock_seconds"] == 900
+    assert init["limits"]["max_consecutive_reports"] == 32
+    assert init["scoring"]["reporting"]["false_report_free_allowance"] == 2
+    assert init["scoring"]["reporting"]["max_consecutive_reports"] == 32
     assert len(init["targets"]["rows"]) == 2400 and len(init["survey"]["nights"]) == 7
     text = json.dumps(init)
     for hidden in ("is_observable", "seeing_arcsec", "transparency\"", "instrument_fault", "instrument_efficiency",

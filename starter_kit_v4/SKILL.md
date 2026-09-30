@@ -12,7 +12,7 @@ python3 local_runner.py --agent examples/idle_agent.py --quiet
 ```
 
 Expected on `cards/demo` (the public demo card at Paranal, Chile (virtual), 7 nights, 2,400 targets):
-baseline `"termination_reason": "survey_complete"`, `"total"` about +1,200, `"required_missing"` 0–2;
+baseline `"termination_reason": "survey_complete"`, `"total": 849.000608`, `"required_missing": 3`;
 idle agent `"total": -6200.0`. Exit code 2 means `agent_error`: read `"error"` and `run_output/agent.log`.
 
 ## 2. Know the contract (`participant-agent-protocol-v4`)
@@ -25,10 +25,18 @@ idle agent `"total": -6200.0`. Exit code 2 means `agent_error`: read `"error"` a
 - Actions:
   - `observe`: `pointing {alt_deg, az_deg}`, `assignments {"<fibre 0-15>": "<target_id>"}` (each target
     once, each fibre once), `duration_seconds` 60–3600 (integer), `program` `DARK|BRIGHT|BACKUP` (optional,
-    default `BACKUP`). No other keys.
+    default `BACKUP`). No other keys. The exposure may cross slots within a night, but stops at
+    that night's final slot end; its score uses the actual elapsed seconds, even if fewer than 60.
   - `wait`: `duration_seconds` 60–3600, or `until_utc` (UTC ending in `Z`, later than `now_utc`). Use
     `until_utc` for daytime.
-  - `report`: the instrument has a fault now (+100 if true, −150 if not; you are not told which).
+  - `report`: the instrument has an unrepaired fault now (+100 if true; the first 2 false reports
+    after each correct report are free on the demo card, then −150 each). The next request arrives
+    at the same simulated time and gives `correct`, `repaired`, and `score_delta` in `last_result`
+    and a `report_result` notice in `new_messages`. Read the free threshold from
+    `scoring.reporting.false_report_free_allowance` and the action cap from
+    `scoring.reporting.max_consecutive_reports`. A further report after the cap ends as
+    `agent_error`. `observe` or `wait` resets only the consecutive-action count; only a correct
+    report resets the false-report count.
   - `finish`: end the survey.
 - Any invalid reply (including an unknown key) ends the run as `agent_error` (the score so far still
   counts). Validate before sending.

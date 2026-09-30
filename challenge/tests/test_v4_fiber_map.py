@@ -27,17 +27,19 @@ def config():
 
 @pytest.fixture(scope="module")
 def grid():
-    return fm.FiberGrid(fiber_area_deg2=0.4, gap_deg=0.05, n_fibers=16)
+    return fm.FiberGrid(fiber_area_deg2=0.4, gap_deg=0.0, n_fibers=16)
 
 
-def test_derived_quantities(grid):
+def test_derived_quantities(grid, config):
     derived = grid.derived()
+    assert config["field"] == {"fiber_area_deg2": 0.4, "gap_deg": 0.0, "n_fibers": 16}
     side = math.sqrt(0.4)
     assert grid.fiber_side_deg == pytest.approx(side)
-    assert grid.pitch_deg == pytest.approx(side + 0.05)
+    assert grid.pitch_deg == pytest.approx(side)
     assert grid.n_side == 4
-    assert grid.fov_side_deg == pytest.approx(4 * (side + 0.05))
-    assert derived["glass_fill_fraction"] == pytest.approx(16 * 0.4 / grid.fov_side_deg**2)
+    assert grid.fov_side_deg == pytest.approx(4 * side)
+    assert derived["fov_area_deg2"] == pytest.approx(6.4)
+    assert derived["glass_fill_fraction"] == pytest.approx(1.0)
     # fiber ids are row-major, fiber 0 at lower-left (lowest alt, smallest az).
     assert grid.fiber_row_col(0) == (0, 0)
     assert grid.fiber_row_col(15) == (3, 3)
@@ -76,33 +78,30 @@ def _radec_for_plane_offset(center_alt, center_az, north_deg, east_deg):
     return _radec_for_altaz(target_alt, target_az)
 
 
-def test_hit_three_states(grid):
+def test_hit_and_outside_field(grid):
     cmd_alt, cmd_az = 60.0, 180.0
     center_alt, center_az = grid.fiber_center_offset(0)  # lower-left fiber
     # Glass: target exactly at fiber 0's center.
     ra, dec = _radec_for_altaz(cmd_alt + center_alt, cmd_az + center_az / math.cos(math.radians(cmd_alt)))
     assert _classify_radec(grid, ra, dec, cmd_alt, cmd_az).region == fm.REGION_GLASS
     assert _classify_radec(grid, ra, dec, cmd_alt, cmd_az).fiber_id == 0
-    # Frame: half a gap beyond the glass edge of an interior fiber (fiber 5), so the
-    # frame band lies fully inside the field.
-    f5_alt, f5_az = grid.fiber_center_offset(5)
-    frame_alt = f5_alt - (grid.fiber_side_deg / 2 + grid.gap_deg / 2)
-    ra, dec = _radec_for_altaz(cmd_alt + frame_alt, cmd_az + f5_az / math.cos(math.radians(cmd_alt)))
-    result = _classify_radec(grid, ra, dec, cmd_alt, cmd_az)
-    assert result.region == fm.REGION_FRAME
-    assert result.fiber_id == 5  # frame belongs to the cell but is not recorded
     # Outside the field entirely.
     ra, dec = _radec_for_altaz(cmd_alt + grid.fov_side_deg, cmd_az)
     assert _classify_radec(grid, ra, dec, cmd_alt, cmd_az).region == fm.REGION_OUTSIDE
 
 
-def test_glass_includes_boundary(grid):
+def test_contiguous_regions_assign_shared_boundary_once(grid):
     cmd_alt, cmd_az = 60.0, 180.0
-    center_alt, center_az = grid.fiber_center_offset(5)
-    edge_alt = center_alt + grid.fiber_side_deg / 2 - 1e-9
-    ra, dec = _radec_for_plane_offset(cmd_alt, cmd_az, edge_alt, center_az)
-    result = _classify_radec(grid, ra, dec, cmd_alt, cmd_az)
-    assert result.region == fm.REGION_GLASS
+    _, center_az = grid.fiber_center_offset(5)
+    # Exact tangent-plane seam uses the upper row; celestial coordinate
+    # round-trips are checked a small distance to either side of it.
+    assert grid.classify_offset(0.0, center_az) == (9, fm.REGION_GLASS)
+    for north_deg, expected_fiber in ((-1e-6, 5), (1e-6, 9)):
+        ra, dec = _radec_for_plane_offset(cmd_alt, cmd_az, north_deg, center_az)
+        result = _classify_radec(grid, ra, dec, cmd_alt, cmd_az)
+        assert (result.fiber_id, result.region) == (expected_fiber, fm.REGION_GLASS)
+    assert grid.classify_offset(grid.fov_side_deg / 2, 0)[1] == fm.REGION_GLASS
+    assert grid.classify_offset(grid.fov_side_deg / 2 + 1e-9, 0)[1] == fm.REGION_OUTSIDE
 
 
 def test_tangent_projection_works_at_zenith_and_elsewhere(grid):
@@ -138,7 +137,7 @@ def test_azimuth_wrap(grid):
     # A target 0.4 deg east of the center crosses az=360; the wrap must not fling it outside.
     ra, dec = _radec_for_altaz(cmd_alt, 359.9)
     result = _classify_radec(grid, ra, dec, cmd_alt, cmd_az)
-    assert result.region in (fm.REGION_GLASS, fm.REGION_FRAME)
+    assert result.region == fm.REGION_GLASS
     assert result.fiber_id is not None
 
 
@@ -181,13 +180,29 @@ def test_altitude_queries(config):
     assert fm.min_altitude_during(ra, dec, start, end, config) == pytest.approx(alt, abs=0.2)
 
 
-def test_altitude_query_includes_short_exposure_endpoint(config, monkeypatch):
+def test_altitude_query_includes_short_exposure_endpoint(config):
     start = MOMENT
     end = start + timedelta(seconds=60)
-    monkeypatch.setattr(fm, "radec_to_altaz", lambda ra, dec, moment, lat, lon:
-                        (31.0 - 2.0 * (moment - start).total_seconds() / 60.0, 180.0))
-    assert fm.min_altitude_during(0.0, 0.0, start, end, config, step_seconds=120) == 29.0
-    assert not fm.altitude_ok(0.0, 0.0, start, end, 30.0, config, step_seconds=120)
+    ra, dec = fm.altaz_to_radec(30.1, 270.0, start, LAT, LON)
+    end_altitude, _ = fm.radec_to_altaz(ra, dec, end, LAT, LON)
+    assert end_altitude < 30.0
+    assert fm.min_altitude_during(ra, dec, start, end, config, step_seconds=120) == pytest.approx(end_altitude)
+    assert not fm.altitude_ok(ra, dec, start, end, 30.0, config, step_seconds=120)
+
+
+def test_analytic_altitude_minimum_catches_dip_between_samples():
+    # Lower culmination occurs 60 s into this 120 s exposure. Checking only
+    # the two endpoints would incorrectly accept the 30-degree limit.
+    config = {"site": {"latitude_deg": 80.0, "longitude_deg": LON}}
+    start = MOMENT
+    middle = start + timedelta(seconds=60)
+    end = start + timedelta(seconds=120)
+    ra, dec = fm.altaz_to_radec(29.99998, 0.0, middle, 80.0, LON)
+    for moment in (start, end):
+        altitude, _ = fm.radec_to_altaz(ra, dec, moment, 80.0, LON)
+        assert altitude > 30.0
+    assert fm.min_altitude_during(ra, dec, start, end, config, step_seconds=120) == pytest.approx(29.99998)
+    assert not fm.altitude_ok(ra, dec, start, end, 30.0, config, step_seconds=120)
 
 
 def _valid_action():
@@ -242,7 +257,7 @@ def test_demo_cli_smoke(tmp_path, v4_reference_dir):
     assert result["grid"]["n_side"] == 4
     demo = result["demo"]
     assert demo["on_glass"] > 0
-    assert demo["on_frame"] > 0
+    assert demo["on_frame"] == 0
     assert demo["assigned_hits"] == demo["assigned"] > 0
     assert demo["on_glass"] + demo["on_frame"] + demo["outside_field"] == demo["targets_total"]
     assert png.is_file() and png.stat().st_size > 0

@@ -28,14 +28,18 @@ import csv
 import importlib
 import json
 import math
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from .contracts import sha256_file, write_exact_csv, write_text_lf
-from .v4_config_check import validate_scenario
-from .tile_geometry_simulator import _normalized_airmass
+from .v4_config_check import (
+    DEFAULT_FALSE_REPORT_FREE_ALLOWANCE,
+    DEFAULT_MAX_CONSECUTIVE_REPORTS,
+    validate_scenario,
+)
 from .v4_fiber_map import (
     FiberGrid,
     altaz_to_radec,
@@ -62,7 +66,6 @@ from .v4_scorer import (
 )
 
 
-MAX_CONSECUTIVE_ZERO_TIME_ACTIONS = 32
 PROGRAMS = ("DARK", "BRIGHT", "BACKUP")
 DEFAULT_PROGRAM = "BACKUP"
 
@@ -182,6 +185,12 @@ def load_scenario(path: Path) -> Scenario:
     base = path.parent
     fiber_config = json.loads(_resolve(base, config["fiber_config"]).read_text(encoding="utf-8"))
     score_config = json.loads(_resolve(base, config["score_config"]).read_text(encoding="utf-8"))
+    score_config["reporting"].setdefault(
+        "false_report_free_allowance", DEFAULT_FALSE_REPORT_FREE_ALLOWANCE
+    )
+    score_config["reporting"].setdefault(
+        "max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS
+    )
     validate_lunar_model(score_config)
     products = config["products"]
 
@@ -350,6 +359,10 @@ def run_scenario(
 
     faults = [event for event in scenario.events if event.event_type == FAULT_TYPE]
     weather = WeatherTruth(scenario.slots, faults)
+    slot_starts = [slot.start_utc for slot in scenario.slots]
+    night_ends = {
+        slot.slot_id.split("-S", 1)[0]: slot.end_utc for slot in scenario.slots
+    }
     directional_events = [
         event for event in scenario.events if event.scope_type == "HORIZON_SECTOR"
     ]
@@ -401,8 +414,12 @@ def run_scenario(
     observe_index = 0
     decision_id = 0
     last_result: dict | None = None
+    pending_report_result: dict | None = None
     loss_triggered = False
-    consecutive_zero_time_actions = 0
+    consecutive_reports = 0
+    max_consecutive_reports = score_config["reporting"].get(
+        "max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS
+    )
     termination_reason = TERMINATION_SURVEY_COMPLETE
     termination_detail = ""
     pending_until: datetime | None = None  # active wait-until expansion
@@ -416,7 +433,7 @@ def run_scenario(
         termination_reason, termination_detail = stop.reason, stop.detail
 
     while agent is not None and now < scenario.survey_end:
-        # Deliver newly published bulletins/forecasts and (once) the state_resync.
+        # Deliver newly published bulletins/forecasts, report results, and state resyncs.
         new_messages: list[dict] = []
         while bulletin_cursor < len(scenario.bulletins) and bulletin_times[bulletin_cursor] <= now:
             new_messages.append(scenario.bulletins[bulletin_cursor])
@@ -426,6 +443,10 @@ def run_scenario(
             new_messages.append(scenario.forecasts[forecast_cursor])
             messages.append(scenario.forecasts[forecast_cursor])
             forecast_cursor += 1
+        if pending_report_result is not None:
+            new_messages.append(pending_report_result)
+            messages.append(pending_report_result)
+            pending_report_result = None
         # Contract: process a data-loss trigger at the first decision after its
         # event time. An exposure already in progress completes before N is frozen.
         if loss_plan is not None and not loss_triggered and now >= loss_plan.trigger_utc:
@@ -513,8 +534,8 @@ def run_scenario(
             break
         try:
             action = normalize_action(raw_action, scenario, targets_by_id, now)
-            if action["action"] == "report" and consecutive_zero_time_actions >= MAX_CONSECUTIVE_ZERO_TIME_ACTIONS:
-                raise InvalidAgentAction("too many consecutive zero-time report actions")
+            if action["action"] == "report" and consecutive_reports >= max_consecutive_reports:
+                raise InvalidAgentAction("too many consecutive report actions")
         except InvalidAgentAction as exc:
             termination_reason = TERMINATION_AGENT_ERROR
             termination_detail = str(exc)[:500]
@@ -526,7 +547,7 @@ def run_scenario(
             break
 
         if kind == "wait":
-            consecutive_zero_time_actions = 0
+            consecutive_reports = 0
             if "until_utc" in action:
                 pending_until = action["until_utc"]
                 continue
@@ -539,8 +560,18 @@ def run_scenario(
 
         decision_id += 1
         if kind == "report":
-            consecutive_zero_time_actions += 1
-            report_settlement += weather.report_fault(now, score_config)
+            consecutive_reports += 1
+            active_fault = weather.active_fault(now)
+            repaired = active_fault is not None and active_fault.event_id not in weather.fault_repairs
+            score_delta = weather.report_fault(now, score_config)
+            report_settlement += score_delta
+            pending_report_result = {
+                "record_type": "report_result",
+                "issued_at_utc": _format_utc(now),
+                "correct": repaired,
+                "repaired": repaired,
+                "score_delta": score_delta,
+            }
             decisions.append(
                 {
                     "decision_id": decision_id,
@@ -558,29 +589,34 @@ def run_scenario(
                     "invalidated_by": "",
                 }
             )
-            last_result = {"action": "report"}
+            last_result = {
+                "action": "report",
+                "correct": repaired,
+                "repaired": repaired,
+                "score_delta": score_delta,
+            }
             continue
 
-        consecutive_zero_time_actions = 0
+        consecutive_reports = 0
         program = action["program"]
         cmd_alt = float(action["pointing"]["alt_deg"])
         cmd_az = float(action["pointing"]["az_deg"])
         duration = int(action["duration_seconds"])
         start = now
         end = min(start + timedelta(seconds=duration), scenario.survey_end)
+        slot_index = bisect_right(slot_starts, start) - 1
+        if slot_index >= 0 and start < scenario.slots[slot_index].end_utc:
+            # An exposure may cross weather slots, but stops at the end of its night.
+            night_id = scenario.slots[slot_index].slot_id.split("-S", 1)[0]
+            end = min(end, night_ends[night_id])
         duration = int((end - start).total_seconds())
-        midpoint = start + timedelta(seconds=duration / 2)
-
         # Hit classification happens ONCE at exposure start (2026-09-28 ruling): the
         # actual center is converted to RA/Dec at start and tracked sidereally, so the
-        # target stays fixed relative to its fiber for the whole exposure. Airmass
-        # uses the midpoint; directional events follow their actual time overlap.
+        # target stays fixed relative to its fiber for the whole exposure. Airmass and
+        # directional events follow the target's position through the exposure.
         actual_alt, actual_az = grid.actual_center(cmd_alt, cmd_az, offset_alt, offset_az)
         center_ra, center_dec = altaz_to_radec(actual_alt, actual_az, start, lat, lon)
         center_in_range = 0.0 <= actual_alt <= 90.0
-        field_altitude_ok = center_in_range and min_altitude_during(
-            center_ra, center_dec, start, end, scenario.config, 120
-        ) >= min_alt
         ra_r = math.radians(center_ra)
         dec_r = math.radians(center_dec)
         center_vec = (math.cos(dec_r) * math.cos(ra_r), math.cos(dec_r) * math.sin(ra_r), math.sin(dec_r))
@@ -591,6 +627,10 @@ def run_scenario(
         for target in candidate_targets:
             vx, vy, vz = target_vectors[target["target_id"]]
             if vx * center_vec[0] + vy * center_vec[1] + vz * center_vec[2] < cos_fov_radius:
+                continue
+            if min_altitude_during(
+                target["ra_deg"], target["dec_deg"], start, end, scenario.config
+            ) < min_alt:
                 continue
             result = grid.classify_target(
                 target["ra_deg"], target["dec_deg"], start, cmd_alt, cmd_az,
@@ -606,27 +646,20 @@ def run_scenario(
         ]
         hit_rows: list[tuple[dict, int, TargetScore, float]] = []
         for fiber_id, target_id in assignments.items():
-            if not field_altitude_ok:
-                continue  # the actual, offset-applied pointing is below the telescope limit
             if on_glass.get(target_id) != fiber_id:
                 continue  # assigned but not on this fiber's glass: no score, no penalty
             target = targets_by_id[target_id]
-            if (
-                min_altitude_during(
-                    target["ra_deg"], target["dec_deg"], start, end, scenario.config, 120
+
+            def target_altaz_at(moment: datetime, target=target) -> tuple[float, float]:
+                return radec_to_altaz(
+                    target["ra_deg"], target["dec_deg"], moment, lat, lon
                 )
-                < min_alt
-            ):
-                continue  # does not stay above the altitude limit: whole exposure void
-            target_alt, target_az = radec_to_altaz(
-                target["ra_deg"], target["dec_deg"], midpoint, lat, lon
-            )
-            airmass = _normalized_airmass(target_alt)
+
             q_band = weather.band_quality(
                 start,
                 end,
-                airmass,
                 score_config,
+                lambda moment: target_altaz_at(moment)[0],
                 lambda moment, target=target: lunar_quality_factor(
                     target["ra_deg"], target["dec_deg"], moment, site, score_config
                 ),
@@ -634,19 +667,14 @@ def run_scenario(
             mult = program_multiplier(program, program_band(q_band, score_config), score_config)
             scored = score_target_exposure(
                 target,
-                target_alt,
-                target_az,
                 segments,
                 active_directional,
                 weather,
                 duration,
-                airmass,
                 mult,
                 score_config,
                 start,
-                lambda moment, target=target: radec_to_altaz(
-                    target["ra_deg"], target["dec_deg"], moment, lat, lon
-                ),
+                target_altaz_at,
                 site,
             )
             hit_rows.append((target, fiber_id, scored, mult))
