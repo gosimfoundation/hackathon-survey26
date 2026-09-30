@@ -12,10 +12,20 @@ All participants use the same Participate page; the platform selects the active 
 
 | Stage | Time (UTC+8) | What happens |
 |---|---|---|
+| Playground practice | Open until the competition starts | Practice on public scenarios: upload decisions.csv, or submit a complete project for cloud evaluation; boards are for practice only |
+| Online training | Oct 2–3 | Introduces the simulator and participant protocol; details in announcements |
 | Competition | Oct 5 00:00 – Oct 7 23:59 | Submit and evaluate projects on the three formal scenarios A, B and C; the online board updates live; choose your final version |
 | Hidden final evaluation | After Oct 7 23:59 | Organizers evaluate each team's final version once on one hidden scenario |
 | Verification and results | After the hidden evaluation | Organizers verify the top teams, then publish the final standings (hidden-scenario scores only) |
 | Awards Day | Oct 17 | GOSIM Shenzhen |
+
+### Playground rules
+
+1. Run your algorithm locally and upload its `decisions.csv` through Participate. Any language or algorithm is allowed, and practice runs need no model call. Note that awards require agent (LLM-driven) techniques in at least two of these stages: natural-language understanding, data parsing, task planning, action decisions, tool calling and plan adaptation. It is worth preparing for this now.
+2. Required columns: `decision_id, slot_id, action, tile_id, program, request_id, reason`. Maximum file size: 20 MB. Each team may submit up to 50 times per day, subject to the displayed quota.
+3. You can also submit a complete project (public GitHub repository or ZIP) on Participate: the "Playground · complete projects" track. The platform runs it round by round in the cloud (same evaluation flow as the competition) on the public scenarios, with a runtime limit of 5 hours (18000 seconds) per scenario. Each team gets 5 evaluations per day, reset at 00:00 UTC (08:00 Beijing time); evaluations that fail because of the platform are not counted. Model calls may only use the team's own model API key. Scores go to a separate complete-project board that does not decide awards.
+4. The Playground ranks each scenario separately and each team keeps its best score per scenario; exact ties favor the earlier submission. Practice scenarios do not enable hidden anomaly reports, and the coverage-evenness reward weight is zero. The platform and the starter kit use the same published scorer, so a submitted CSV's score can be reproduced with the same scenario and the official scorer.
+5. Kimi Coding Plan: each team that runs through the Playground (at least one successful score: a scored CSV submission or a scored complete-project evaluation) receives one Kimi Coding Plan code. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
 
 ## 3. What you submit
 

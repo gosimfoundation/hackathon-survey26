@@ -1,6 +1,10 @@
-## 1. Complete projects, one submission page
+## 1. Registration and teams
 
-Open [Participate](/compete) to upload a complete project. Submissions accept a public GitHub repository URL or a private ZIP up to 50 MB. Any language is allowed. The platform's Python runner connects to your program; it does not require your project to be Python.
+Register, then create a team in Find teammates or click a team to request membership. The captain accepts or declines. Team members may also invite participants. Both sides can track progress through Team notifications in the top right. Teams have up to 3 members, and solo participants create a team too. Registration, teaming, submission and scores all happen on this site; the platform selects the current competition automatically.
+
+## 2. Complete projects, one submission page
+
+Open [Participate](/compete) to upload a complete project. Submissions accept a public GitHub repository URL or a private ZIP up to 50 MB. Any language is allowed. The platform's Python runner connects to your program; it does not require your project to be Python. The Playground and the formal competition share the same cloud evaluation flow.
 
 The source revision, launch configuration and any adapter are fixed and tested. You review them before confirming the version. Adaptation proposes interface files; it does not silently replace your algorithm. The platform does not require a model call in every round, but awards require agent (LLM-driven) techniques in at least two stages; see [Rules](/rules), section 3.
 
@@ -8,7 +12,7 @@ The source revision, launch configuration and any adapter are fixed and tested. 
 
 The starter kit uploads as is: run `python3 pack_agent.py` in the kit folder; the resulting `my-agent.zip` already has `observer.project.json` at its root. Upload it as a private ZIP on Participate. The bundled deterministic agent needs no model key; it is fine for trying the flow, but on its own it does not meet the agent requirement for awards.
 
-## 2. Launch configuration
+## 3. Launch configuration
 
 Place `observer.project.json` at the project root. For example:
 
@@ -23,15 +27,17 @@ Place `observer.project.json` at the project root. For example:
 }
 ```
 
-Use a suitable container image and build command for your language. `run` and each `build` command are arrays of arguments (`build` is a list of command arrays). The evaluated container image is pinned to a digest. Do not put credentials in the manifest or project files. A Rust example:
+Use a suitable container image and build command for your language. `run` and each `build` command are arrays of arguments (`build` is a list of command arrays). The evaluated container image is pinned to a digest. Do not put credentials in the manifest or project files. A Node.js example: `"image": "node:22-slim", "run": ["node", "agent.js"]`. A Rust example:
 
 ```json
 {"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
 ```
 
+**Without `observer.project.json`**, the platform tries to generate an adapter with the model you set under Model API; with no model set, or a failing model call, preparation fails. ZIPs made by the starter kit's `pack_agent.py` already include the file.
+
 **Build and internet access:** the `build` commands run before your program starts, in the same image and with internet access, so package managers can download dependencies (pip, npm, cargo and others). The build runs as a non-root user on a read-only system with a 10-minute limit; only the project folder (`/workspace`) and `/tmp` (256 MB) are writable, so install into the project folder: pip with `--target .deps` plus `"environment": {"PYTHONPATH": ".deps"}`; npm with `"NPM_CONFIG_CACHE": "/tmp/npm-cache"` (`node_modules` stays in the project); cargo with `"CARGO_HOME": "/workspace/.cargo"`. Commit a lock file so every build uses the same dependency versions.
 
-## 3. One decision per request
+## 4. One decision per request
 
 The project is a persistent process. Standard input and standard output carry one JSON object per line. Send diagnostic logs to standard error; flush each response immediately.
 
@@ -58,15 +64,34 @@ When an evaluation ends (all slots done, or the global time limit reached), the 
 - termination_reason is survey_complete (all slots done) or global_wallclock_expired (time limit reached).
 - Programs that do not recognise this message keep working; even if one fails on it, the score is not affected.
 
-## 4. Confirm and evaluate
+## 5. Confirm and evaluate
 
-The platform records the source revision and launch configuration, tests the interface and shows them for your confirmation. Start an evaluation from the confirmed version. One batch runs all three formal scenarios; each run returns decisions to the server round by round. CSV upload is not accepted.
+The platform records the source revision and launch configuration, tests the interface and shows them for your confirmation. Start an evaluation from the confirmed version. Each run returns decisions to the server round by round.
 
 Uploading and confirming do not use evaluations (up to 10 uploads per team per day). A version that was never evaluated can be withdrawn: it is hidden and can no longer be confirmed or evaluated. A version still being prepared can be withdrawn once preparation finishes.
 
-Each click on "Evaluate this version" uses one of the day's evaluations (one batch). One evaluation runs each of the three formal scenarios once, with a runtime limit of 3600 seconds per scenario; its score is the average of the three, and the online board keeps the team's best complete evaluation. Each team has 10 evaluations per day. Within the daily limit you may evaluate as often as you like; choose your final version (section 6) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
+Each click on "Evaluate this version" uses one of the day's evaluations. In the formal competition one evaluation is one batch: it runs each of the three formal scenarios once, with a runtime limit of 3600 seconds per scenario; its score is the average of the three, the online board keeps the team's best complete evaluation, and each team has 10 evaluations per day. On the Playground, complete-project evaluations use the public scenarios with a runtime limit of 5 hours per scenario, 5 evaluations per team per day, and scores go to a separate complete-project board. Within the daily limit you may evaluate as often as you like; competition participants should choose a final version (section 8) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
 
-## 5. Optional personal model APIs
+## 6. Playground: local runs and decisions.csv
+
+Before the formal competition (and throughout the Playground), you can practice locally with the starter kit and upload result files.
+
+Download and extract the kit from [Resources](/resources). Double-click `run_baseline`, or run:
+
+```sh
+python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py --wallclock 600 --out run_output
+python3 score_decisions.py --scenario scenarios/dev-reference --decisions run_output/decisions.csv
+```
+
+Use `scenarios/demo-week` for a shorter demonstration. Edit `choose_action(candidates, snapshot, memory)` in `agent/my_strategy.py`, rerun and compare scores. Any implementation language is allowed. Custom programs exchange JSON messages over standard input/output following the kit's protocol; write ordinary logs to standard error. Model calls are optional — the deterministic baseline needs no key — and credentials must never appear in result files or public code.
+
+Open [Participate](/compete), choose the scenario you used locally and upload `run_output/decisions.csv`. The columns are `decision_id, slot_id, action, tile_id, program, request_id, reason`. Maximum file size is 20 MB; each team can submit up to 50 times per day, subject to the displayed quota. After submission, inspect evaluation status, score components, completion and replay. The Playground ranks each scenario separately on the team's best score; its boards are for practice and do not decide awards.
+
+`config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests; public files are downloadable from Resources. Local runs of the practice scenarios with the starter kit keep the original `participant-agent-protocol-v1` contract, so existing scores and replays are preserved. Complete-project cloud evaluations always use `participant-agent-protocol-v2` (the version in their logs): answer each request with the `protocol_version` it carries. The kit's agent accepts both. The platform and the kit use the same scorer; the published scorer and scenario configuration define the exact formulas and constants.
+
+Read `agent.log` after a program error. Check the scenario, CSV columns, file size and daily quota. The scoring command above independently reproduces the score. The kit's `SKILL.md`, `QUICKSTART.md` and `README.md` contain full command and field references.
+
+## 7. Optional personal model APIs
 
 Bring your own API and quota if your algorithm needs a model. The platform does not provide model credits. Do not commit keys to your repository or ZIP.
 
@@ -81,7 +106,7 @@ Your program calls the model through the environment variables `OPENAI_BASE_URL`
 
 Deterministic algorithms do not need a key, but awards require agent techniques in at least two stages (Rules, section 3). Explanation length does not increase the performance score.
 
-## 6. Fixed scenarios, final version and the hidden final
+## 8. Fixed scenarios, final version and the hidden final
 
 The online competition evaluates on three **fixed** formal scenarios (A, B and C). They are the same for every team and every evaluation: there is no per-team randomization. Their files, weather, forecasts and events are not published; your project receives observations one step at a time during an evaluation. The score is the total defined in [Rules](/rules); the batch score is the mean over the three scenarios. The result ZIP of each of your own evaluations can be downloaded as before.
 
@@ -91,7 +116,7 @@ A batch includes all three scenarios and ranks only when they all finish. The **
 
 **Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on one hidden scenario that nobody has seen. It does not use your daily evaluations. Its data, run logs and results stay private until the organizers publish the final results, and **only this hidden score decides the final ranking**. No team page is open during it: **if your program calls a large model, switch the model API to “Save encrypted” before the competition ends; otherwise model calls will fail in the hidden final evaluation.** Teams that do not use a model are unaffected. Exact ties on the hidden score are settled by the organizers and announced with the results.
 
-## 7. Results and reproduction
+## 9. Results and reproduction
 
 The result records decisions, scores, runtime status and logs; download it from Participate. Results of the hidden final evaluation become available only after the final results are published. The platform's private audit record retains the source revision and file digests so organizers can re-score the decisions. Future data and private credentials are never included in participant downloads.
 

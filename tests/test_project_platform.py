@@ -278,7 +278,8 @@ rl.on('line', line => {
     try:
         p.publish_initial({"schema_version": "initial-publication-v2"})
         for sequence in [1, 2, 3]:
-            response = p({"decision_sequence": sequence}, time.monotonic() + 5)
+            # Generous per-response budget: node startup on a loaded CI runner can take seconds.
+            response = p({"decision_sequence": sequence}, time.monotonic() + 30)
             assert response["action"] == "wait" and response["reason"] == "JavaScript project"
     finally:
         p.close()

@@ -5,15 +5,12 @@ import { usePhases } from '../composables/usePhases'
 import PageHead from '../components/layout/PageHead.vue'
 import PhaseTable from '../components/content/PhaseTable.vue'
 import MarkdownArticle from '../components/content/MarkdownArticle.vue'
-import rulesEn from '../content/rules.competition.en.md?raw'
-import rulesZh from '../content/rules.competition.zh.md?raw'
-import practiceEn from '../content/rules.practice.en.md?raw'
-import practiceZh from '../content/rules.practice.zh.md?raw'
-import { competition } from '../stores/competition'
+import rulesEn from '../content/rules.en.md?raw'
+import rulesZh from '../content/rules.zh.md?raw'
 
 const { t, pick } = useI18n()
 const { phases, loading } = usePhases()
-const source = computed(() => competition.mode==='practice' ? pick(practiceEn,practiceZh) : pick(rulesEn, rulesZh))
+const source = computed(() => pick(rulesEn, rulesZh))
 </script>
 
 <template>
