@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import PurePosixPath
 from typing import Callable
 
@@ -176,11 +177,38 @@ def propose_adapter(files: tuple[ProjectFile,...], model: str,
         "max_tokens":4096,"temperature":0,"response_format":{"type":"json_object"}}
     if len(json.dumps(request,ensure_ascii=False).encode())>MAX_PROMPT_BYTES:
         raise ProjectError("Project context is too large for automatic adaptation.")
-    response=completion(request)
+    try:
+        return _read_proposal(completion(request),files)
+    except _ManualInterfaceRequired:
+        raise
+    except ProjectError as error:
+        rejected=str(error)
+    # Models sometimes return malformed JSON or a manifest that breaks a rule. Ask
+    # once more as a new call, naming the rule that failed (fixed platform wording).
+    retry={**request,"messages":[*request["messages"],{"role":"user","content":
+        "Your previous answer was rejected: "+rejected[:300]+" Reply again with ONLY one JSON object "
+        "with exactly manifest, files and explanation, following every requirement above."}]}
+    if len(json.dumps(retry,ensure_ascii=False).encode())>MAX_PROMPT_BYTES:
+        retry=request
+    return _read_proposal(completion(retry),files)
+
+
+class _ManualInterfaceRequired(ProjectError):
+    pass
+
+
+_FENCED=re.compile(r"\s*```(?:json|JSON)?[ \t]*\n(.*)\n[ \t]*```\s*",re.DOTALL)
+
+
+def _read_proposal(response: dict, files: tuple[ProjectFile,...]) -> AdapterProposal:
     try:
         text=response["choices"][0]["message"]["content"]
         if not isinstance(text,str) or len(text.encode())>MAX_RESPONSE_BYTES:
             raise ValueError()
+        # A single Markdown fence around the whole answer is unambiguous; anything else is not unwrapped.
+        fenced=_FENCED.fullmatch(text)
+        if fenced:
+            text=fenced.group(1)
         def unique_object(pairs):
             result={}
             for key,value in pairs:
@@ -191,5 +219,5 @@ def propose_adapter(files: tuple[ProjectFile,...], model: str,
     except (KeyError,IndexError,TypeError,ValueError) as exc:
         raise ProjectError("The adaptation model did not return a valid interface proposal.") from exc
     if isinstance(value,dict) and value.get("error")=="manual_interface_required":
-        raise ProjectError("Automatic adaptation could not identify the entry point. Supply observer.project.json and an interface adapter.")
+        raise _ManualInterfaceRequired("Automatic adaptation could not identify the entry point. Supply observer.project.json and an interface adapter.")
     return AdapterProposal.parse(value,files)

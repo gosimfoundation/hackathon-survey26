@@ -189,6 +189,39 @@ def test_model_provider_errors_are_explained_and_not_retried():
     assert len(calls) == 1
 
 
+
+@pytest.mark.parametrize("statuses,succeeds", [((502,), True), ((429,), True), ((503, 503), False)])
+def test_transient_provider_errors_are_retried_once_as_a_new_call(monkeypatch, statuses, succeeds):
+    import io, json, time, urllib.error
+    from project_platform.model_client import ModelClient, PROVIDER_RETRY_DELAY
+    from project_platform.manifest import ProjectError
+    sleeps, keys = [], []
+    monkeypatch.setattr(time, "sleep", sleeps.append)
+
+    class Response(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *_): self.close()
+
+    class Opener:
+        def open(self, request, timeout):
+            keys.append(request.get_header("Idempotency-key"))
+            if len(keys) <= len(statuses):
+                body = json.dumps({"error": {"code": "model_provider_error",
+                                             "provider_status": statuses[len(keys) - 1]}}).encode()
+                raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, io.BytesIO(body))
+            return Response(b'{"choices":[]}')
+
+    client = ModelClient("https://platform.test/functions/v1/observer-model/v1", "obs_x.y")
+    client.opener = Opener()
+    if succeeds:
+        assert client({"messages": []}) == {"choices": []}
+    else:
+        with pytest.raises(ProjectError, match=r"rejected the request \(HTTP 503\)"):
+            client({"messages": []})
+    # One retry only, after a pause, with a fresh idempotency key (never a 409 duplicate).
+    assert len(keys) == 2 and keys[0] != keys[1] and sleeps == [PROVIDER_RETRY_DELAY]
+
+
 def test_model_retry_after_a_lost_answer_reports_the_timeout_not_the_duplicate(monkeypatch):
     import io, json, time, urllib.error
     from project_platform.model_client import ModelClient
