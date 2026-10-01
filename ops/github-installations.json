@@ -88,6 +88,13 @@
       "installation_id": 165802042,
       "repository_id": "1391007748",
       "approved_sha": "3f7508c7619c2bfbe272fa46bf8efbc332d7ed6d"
+    },
+    {
+      "organization": "AGENTIC-OBSERVER26-runner-13",
+      "organization_id": "336376701",
+      "installation_id": 166758323,
+      "repository_id": "1399205505",
+      "approved_sha": "2a1d3694f2e3eca623e4ee298185a268b0dc0b4c"
     }
   ]
 }

@@ -136,7 +136,7 @@ Deno.test("added runner organizations prepare into their own repository only", (
       artifact_upload: { url: "https://storage.test/signed", path: job + "/" + payload.run_id + "/preview.zip" },
     };
     assertEquals(validateJobPayload(input, expected, job), input);
-    for (const other of ["AGENTIC-OBSERVER26-runner-1", "AGENTIC-OBSERVER26-runner-13"]) {
+    for (const other of ["AGENTIC-OBSERVER26-runner-1", "AGENTIC-OBSERVER26-runner-36"]) {
       const moved = {
         ...input,
         repository: { ...input.repository, full_name: other + "/participant-" + "a".repeat(32) },

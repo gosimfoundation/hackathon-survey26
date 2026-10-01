@@ -1,8 +1,10 @@
-"""Checks for the v4 participant task cards (web/src/content/taskcard.*.v4.*.md).
+"""Checks for the v4 participant task cards (web/src/content/taskcard.*.v4.*.md) and the rules page.
 
-The pages are drafts behind the v4 switch; no page imports them yet. These checks keep them ready:
-matching zh/en pairs, stage separation (the same patterns as tests/test_current_competition_browser.py),
-the fixed facts, and no hidden-truth vocabulary.
+The practice card pages ship with the site (/cards, web/src/lib/taskCardSource.ts); the hackathon cards
+A-D are read from the scenarios bucket once released, and the hidden cards E-H never reach the site.
+These checks keep the pages consistent: matching zh/en pairs, stage separation (the same patterns as
+tests/test_current_competition_browser.py), the fixed facts, no hidden-truth vocabulary, and rules that
+state the v4 numbers.
 """
 from __future__ import annotations
 
@@ -62,3 +64,33 @@ def test_template_is_stage_neutral(language):
 def test_no_hidden_truth_vocabulary(name):
     match = HIDDEN_WORDS.search(body(name))
     assert match is None, f"{name}: {match.group(0)!r}"
+
+
+def test_only_practice_card_pages_live_in_the_site_sources():
+    # Everything in web/src/content can end up in the public bundle: A-D come from the bucket at the start,
+    # E-H never. A formal or hidden card page here would publish it early.
+    stems = {p.name.split(".")[1] for p in CONTENT.glob("taskcard.*.v4.*.md")}
+    assert stems <= {"template", "alpha", "beta", "gamma", "delta"}, sorted(stems)
+
+
+RULES_V4_FACTS = ("900", "1.20", "1.12", "1.06", "α", "β", "γ", "δ", "E–H", "A–D", "/cards", "50", "200", "+100", "−150")
+RULES_V3_LEFTOVERS = re.compile(r"18000|5 小时|5 hours|0\.25|0\.15|0\.08|时限 3600|limit of 3600|三个正式场景|three formal scenarios"
+                                r"|一个隐藏场景|one hidden scenario|10 个批次|10 batches|challenge-score-v3|每天 5 次|5 evaluations per day", re.I)
+
+
+@pytest.mark.parametrize("language", ["en", "zh"])
+def test_rules_state_the_v4_cards(language):
+    text = (CONTENT / f"rules.{language}.md").read_text(encoding="utf-8")
+    for fact in RULES_V4_FACTS:
+        assert fact in text, f"rules.{language}.md lacks {fact!r}"
+    # The decisions.csv warm-up still names the v3 scoring once; nothing else of v3 remains.
+    match = RULES_V3_LEFTOVERS.search(text)
+    assert match is None, f"v3 rule left in rules.{language}.md: {match.group(0)!r}"
+    assert HIDDEN_WORDS.search(text) is None
+
+
+def test_rules_have_the_same_shape_in_both_languages():
+    en, zh = ((CONTENT / f"rules.{lang}.md").read_text(encoding="utf-8") for lang in ("en", "zh"))
+    assert headings(en) and len(headings(en)) == len(headings(zh))
+    assert en.count("|") == zh.count("|")
+    assert re.findall(r"^\d+\.", en, re.M) == re.findall(r"^\d+\.", zh, re.M)

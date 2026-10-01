@@ -37,7 +37,7 @@ from playwright.sync_api import Page, expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "starter_kit"))
+sys.path.insert(0, str(ROOT / "archive" / "starter_kit_v3"))
 from challenge.scenario_builder import CONFIG_FILES, HIDDEN_BY_FLAG, PUBLIC_ALWAYS  # noqa: E402
 from pack_agent import collect  # noqa: E402
 
@@ -100,7 +100,7 @@ def watch(page: Page):
 
 
 def build_zip() -> bytes:
-    agent_dir = ROOT / "starter_kit" / "agent"
+    agent_dir = ROOT / "archive" / "starter_kit_v3" / "agent"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in collect(agent_dir, include_env=False):
@@ -235,7 +235,7 @@ def register_and_submit(page: Page, base: str, email: str, results_csv: Path, zi
         import shutil
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
-    for f in (ROOT / "starter_kit" / "agent").glob("*.py"):
+    for f in (ROOT / "archive" / "starter_kit_v3" / "agent").glob("*.py"):
         (folder / f.name).write_bytes(f.read_bytes())
     (folder / "__pycache__").mkdir()
     (folder / "__pycache__" / "junk.pyc").write_bytes(b"\x00")

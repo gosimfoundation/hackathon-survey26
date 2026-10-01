@@ -107,7 +107,7 @@ function backend() {
   };
 }
 
-Deno.test("placement uses the recorded organization and accepts only the twelve runner organizations", async () => {
+Deno.test("placement uses the recorded organization and accepts only runner organizations 1-99", async () => {
   assertEquals(await placement(user, locate), assigned);
   assertEquals(assigned.organization, "AGENTIC-OBSERVER26-runner-12");
   assertEquals(assigned.privateRepository, "participant-" + user.replaceAll("-", ""));
@@ -118,7 +118,7 @@ Deno.test("placement uses the recorded organization and accepts only the twelve 
     return Promise.resolve("AGENTIC-OBSERVER26-runner-1");
   });
   assertEquals(asked, [user]);
-  for (const answer of ["AGENTIC-OBSERVER26-runner-13", "AGENTIC-OBSERVER26-runner-0", "outsider", null, 7]) {
+  for (const answer of ["AGENTIC-OBSERVER26-runner-100", "AGENTIC-OBSERVER26-runner-0", "outsider", null, 7]) {
     await assertRejects(() => placement(user, () => Promise.resolve(answer)), GitHubError, "invalid_placement");
   }
   await assertRejects(
@@ -126,8 +126,15 @@ Deno.test("placement uses the recorded organization and accepts only the twelve 
     GitHubError,
     "placement_unavailable",
   );
-  for (let i = 1; i <= 12; i++) assert(isRunnerOrganization("AGENTIC-OBSERVER26-runner-" + i));
-  for (const name of ["AGENTIC-OBSERVER26-runner-13", "AGENTIC-OBSERVER26-runner-01", "AGENTIC-OBSERVER26-runner-1x"]) {
+  for (const i of [1, 7, 12, 13, 36, 99]) assert(isRunnerOrganization("AGENTIC-OBSERVER26-runner-" + i));
+  for (
+    const name of [
+      "AGENTIC-OBSERVER26-runner-100",
+      "AGENTIC-OBSERVER26-runner-0",
+      "AGENTIC-OBSERVER26-runner-01",
+      "AGENTIC-OBSERVER26-runner-1x",
+    ]
+  ) {
     assert(!isRunnerOrganization(name));
   }
 });

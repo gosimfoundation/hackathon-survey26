@@ -51,7 +51,7 @@ def test_colocated_run_session_sends_finish_once_the_score_is_final(tmp_path):
     from datetime import datetime,timedelta,timezone
     from project_platform.trusted_engine import ColocatedProvider,run_session
     from project_platform.transport import JsonlTransport
-    scenario=Path(__file__).resolve().parents[1]/'starter_kit'/'scenarios'/'demo-week'
+    scenario=Path(__file__).resolve().parents[1]/'archive'/'starter_kit_v3'/'scenarios'/'demo-week'
     script=tmp_path/'agent.py'
     script.write_text("""import json,sys
 for line in sys.stdin:
@@ -91,7 +91,7 @@ def test_colocated_run_session_sends_no_finish_after_an_agent_error(tmp_path):
     from datetime import datetime,timedelta,timezone
     from project_platform.trusted_engine import ColocatedProvider,run_session
     from project_platform.transport import JsonlTransport
-    scenario=Path(__file__).resolve().parents[1]/'starter_kit'/'scenarios'/'demo-week'
+    scenario=Path(__file__).resolve().parents[1]/'archive'/'starter_kit_v3'/'scenarios'/'demo-week'
     script=tmp_path/'agent.py'
     script.write_text("""import json,sys
 for line in sys.stdin:

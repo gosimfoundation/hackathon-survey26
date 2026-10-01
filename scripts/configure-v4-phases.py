@@ -14,7 +14,11 @@ Card files in the public 'scenarios' bucket are released through
 private.observer_scenario_public_files: practice cards at once (config/, public/,
 truth/ when all their weather flags are public), formal cards' config/ and
 public/ only while 'online' is open and the site is in competition mode, hidden
-cards never. --reverse restores the previous list.
+cards never. --reverse restores the previous list. Files that reveal the season's
+weather and event timeline (bulletins, forecasts, truth tables: TIMELINE_FILES) are
+never released for a formal card, nor for a practice card whose weather is not
+fully public, whatever directory they are in; a formal card that has one in the
+public bucket is refused.
 Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
 anything else: v4_requires_colocated); --reverse restores the previous value.
 
@@ -201,20 +205,41 @@ def expect_links(phase_id, scenario_ids):
             " end if; end $x$;\n")
 
 
+# Files from which the season's weather and event timeline can be read (the forecasts and
+# bulletins issued ahead of each night, and every truth table). Denied by file name in any
+# directory: a formal card never releases them, a practice card only when its weather,
+# forecasts and events are all public.
+TIMELINE_FILES = frozenset({
+    'v4_bulletins.jsonl', 'v4_forecasts.jsonl', 'v4_weather_truth.csv', 'v4_events.csv', 'v4_slots.csv',
+    'v4_earthquake_effects.csv', 'v4_stress_events.csv', 'bulletins.jsonl', 'forecasts.jsonl', 'weather.csv',
+    'weather_truth.csv', 'events.csv'})
+TIMELINE_MARKERS = ('bulletin', 'forecast', 'truth', 'event', 'weather', 'slots')
+
+
+def timeline_file(path):
+    name = path.rsplit('/', 1)[-1].lower()
+    return name in TIMELINE_FILES or any(m in name for m in TIMELINE_MARKERS)
+
+
 def released_files(cards, args, problems):
     """Files of the public 'scenarios' bucket that become downloadable (migration 20260928004400).
     Practice cards: config/ and public/, plus truth/ when weather, forecasts and events are all public.
-    Formal cards: config/ and public/ only, released when the competition starts. Hidden cards: none."""
+    Formal cards: config/ and public/ only, released when the competition starts. Hidden cards: none.
+    Timeline files (timeline_file) are denied unless the card's weather is fully public, i.e. never
+    for a formal card."""
     out = {}
     for slug in args.practice if args.practice_mode != 'skip' else []:
         c = cards[slug]
-        out[slug] = ('practice', [f for f in c['files'] if f.split('/')[0] in ('config', 'public')
-                                  or (f.split('/')[0] == 'truth' and c['all_public'])])
+        out[slug] = ('practice', [f for f in c['files'] if (f.split('/')[0] in ('config', 'public')
+                                  or (f.split('/')[0] == 'truth' and c['all_public']))
+                                  and (c['all_public'] or not timeline_file(f))])
     for slug in args.formal:
         files = cards[slug]['files']
         if any(f.split('/')[0] not in ('config', 'public') for f in files):
             problems.append(f'{slug} has files outside config/ and public/ in the public scenario bucket')
-        out[slug] = ('competition', [f for f in files if f.split('/')[0] in ('config', 'public')])
+        if any(timeline_file(f) for f in files):
+            problems.append(f'{slug} has weather or event timeline files in the public scenario bucket (never released)')
+        out[slug] = ('competition', [f for f in files if f.split('/')[0] in ('config', 'public') and not timeline_file(f)])
     for slug, (_, files) in out.items():
         bad = [f for f in files if not re.fullmatch(r'(config|public|truth)/[A-Za-z0-9_.-]+', f) or '..' in f]
         if bad: problems.append(f'{slug} has unexpected file names in the public scenario bucket')
@@ -334,6 +359,11 @@ insert into private.observer_phase_config_snapshots(label,snapshot) select {q(SN
         if files:
             body.append('insert into private.observer_scenario_public_files(scenario_id,path,release) values'
                         + ','.join(f"({q(cards[slug]['id'])},{q(f)},{q(release)})" for f in files) + ';\n')
+    # In-transaction backstop: no formal card file from which the weather timeline can be read is ever released.
+    body.append("do $timeline$ begin if exists(select 1 from private.observer_scenario_public_files"
+                f" where release='competition' and lower(path) ~ {q('(' + '|'.join(TIMELINE_MARKERS) + ')')})"
+                " then raise exception 'A formal card would release a weather or event timeline file'; end if;"
+                " end $timeline$;\n")
     if args.preview:
         body.append(f"update private.observer_preparation_config set scenario_id={q(cards[args.preview]['id'])} where id;\n")
     for slug in (PRACTICE, FORMAL, FINAL):

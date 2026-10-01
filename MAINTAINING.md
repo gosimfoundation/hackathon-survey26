@@ -14,7 +14,7 @@ Use Node.js 22. Run `npm ci --prefix web` and
 The live Survey site is in `web/` and is served at `/survey26/platform/`.
 `legacy-event/` preserves the old event website, assets, database migrations,
 and its Git history. The event root still redirects to the platform.
-`supabase/`, `worker/`, `scoring/`, and `starter_kit/` retain their existing roles.
+`supabase/`, `worker/`, and `scoring/` retain their existing roles. The old v3 starter kit lives at `archive/starter_kit_v3/` (still packaged into the Playground download), and the retired FastAPI backend at `archive/legacy/`; `legacy-event/` still builds the event root page.
 The original upstream is https://github.com/BH3GEI/agent-observer.
 Future production changes must be merged into this GOSIM repository; upstream
 changes do not go live until reviewed and merged here. This migration does not

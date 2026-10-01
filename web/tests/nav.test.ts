@@ -9,9 +9,9 @@ test('the header keeps three main links plus the prominent Participate button', 
 
 test('every former header page stays reachable under More', () => {
   assert.deepEqual(moreNavItems.map(item => item.to),
-    ['/brief', '/docs', '/resources', '/faq', '/announcements', '/teammates'])
+    ['/brief', '/cards', '/docs', '/resources', '/faq', '/announcements', '/teammates'])
   const all = new Set([...mainNavItems, participateItem, ...moreNavItems].map(item => item.to))
-  for (const path of ['/start', '/brief', '/rules', '/docs', '/resources', '/faq', '/leaderboard', '/announcements', '/teammates', '/compete']) {
+  for (const path of ['/start', '/brief', '/rules', '/cards', '/docs', '/resources', '/faq', '/leaderboard', '/announcements', '/teammates', '/compete']) {
     assert.ok(all.has(path), `${path} must stay reachable from the header`)
   }
 })

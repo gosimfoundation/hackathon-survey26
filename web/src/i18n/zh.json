@@ -17,6 +17,10 @@
         "title": "规则",
         "description": "参赛资格、提交次数、评分与行为规范。"
       },
+      "cards": {
+        "title": "任务卡",
+        "description": "v4 练习卡与黑客松任务卡：每张卡的任务说明、时间限制与卡片文件下载。"
+      },
       "docs": {
         "title": "文档",
         "description": "participant-agent-protocol-v1/v2 消息、challenge-score-v3 评分器、场景文件与入门套件。"
@@ -91,6 +95,7 @@
     "start": "上手",
     "brief": "完整赛事说明",
     "rules": "规则",
+    "cards": "任务卡",
     "docs": "文档",
     "resources": "资源",
     "leaderboard": "排行榜",
@@ -231,7 +236,8 @@
       "weather_help": "视宁度：星点有多糊，越小越清晰（角秒）。透过率：大气有多通透，越大越好。天光：夜空本身的亮度。效率：这一刻设备的有效出力。",
       "seek": "拖动回放进度",
       "top_score": "冠军本局 {score} 分",
-      "lst": "望远镜此刻正对的方向 · 星空时间 {lst}"
+      "lst": "望远镜此刻正对的方向 · 星空时间 {lst}",
+      "tour_close": "关闭讲解"
     },
     "pipeline_intro": "赛事节点",
     "cta_start": "3 步上手"
@@ -323,7 +329,7 @@
         {
           "n": "03",
           "title": "提交评测",
-          "desc": "练习赛上传本地生成的 decisions.csv，或提交完整项目（单独排名）；正式赛支持完整项目与官方本地会话 CSV，所有队伍由同一个冻结的评分器评分。"
+          "desc": "练习赛上传本地运行生成的 decisions.csv，或提交完整项目云端评测（单独榜单）；正式比赛只接受完整项目（公开仓库或私有 ZIP）。所有队伍由同一个冻结的评分器评分。"
         }
       ],
       "timeline": [
@@ -367,7 +373,7 @@
     "leaderboard": {
       "kicker": "05 / 排行榜",
       "title": "实时排名",
-      "lede": "提交评分完成后榜单即时更新。练习榜仅供参考，线上比赛榜决定奖项。",
+      "lede": "评分完成后榜单即时更新：练习榜按场景分别取各队最高分，比赛榜取每队最高分的完整批次（三个正式场景的平均分），都只作反馈；最终排名只看隐藏决赛场景的成绩。",
       "signal_live": "榜单在线",
       "signal_waiting": "等待基准信号",
       "feed": "实时评测数据"
@@ -411,11 +417,11 @@
       "items": [
         {
           "title": "项目与 CSV",
-          "desc": "练习赛可上传 decisions.csv，也可提交完整项目（单独榜单，每队每天 5 次）。正式赛可提交公开仓库链接或私有 ZIP 完整项目，也可提交官方本地会话导出的 CSV。"
+          "desc": "练习赛可上传 decisions.csv（每队每天 50 次，各场景分别取最高分），也可提交完整项目（每队每天 5 次，单独榜单）；正式比赛只接受完整项目——公开仓库链接或私有 ZIP，平台在云端逐轮评测。"
         },
         {
           "title": "限制",
-          "desc": "项目语言不限，不强制调用模型。项目 ZIP 不超过 50 MB，CSV 不超过 20 MB；每个场景有统一运行时限，正式赛每队每天 10 个完整批次。"
+          "desc": "语言不限，不强制调用模型。decisions.csv 不超过 20 MB，项目 ZIP 不超过 50 MB；正式比赛每队每天 10 个完整批次，每个场景运行时限 3600 秒。"
         }
       ],
       "link": "提交文档"
@@ -547,7 +553,7 @@
           "desc": "10 月 5–7 日举行：提交完整项目，在三个固定正式场景上评测并选定最终版本；最终排名由隐藏决赛场景决定。",
           "desc_gated": "10 月 5–7 日举行：只接受完整项目，每批取三个正式场景的平均分；最终排名由隐藏决赛场景决定。",
           "time": "10 月 5 日",
-          "to": "/brief#section-7"
+          "to": "/compete"
         }
       ]
     },
@@ -714,9 +720,9 @@
         "kicker": "05 / 参赛任务",
         "title": "构建可复现运行的观测智能体项目",
         "paragraphs": [
-          "项目语言不限。练习赛上传 decisions.csv；正式赛支持完整项目与官方本地会话 CSV，接口约定见文档页。",
+          "语言不限。练习赛上传本地运行生成的 decisions.csv；正式比赛提交完整项目（公开仓库或私有 ZIP），平台在云端逐轮评测。接口约定见文档页。",
           "服务器逐步提供当前观测信息，并对实际执行的决策评分；未来天气与异常答案不公开。",
-          "下载入门包，研究公开开发场景与回放，用 CSV 提交练习；正式赛可确认完整项目，或连接官方本地运行器。",
+          "下载入门包，运行公开场景，研究回放并改进策略；准备好后在「参赛」页上传 decisions.csv 或提交完整项目。",
           "每次评测的完整运行记录——决策文件、运行日志与逐时隙回放——平台都会保留，供主办方复核，也供你自己检查每一步为什么这么走。"
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -759,7 +765,7 @@
         "title": "从培训到颁奖的三阶段",
         "paragraphs": [
           "赛事分为三个阶段：10 月 2–3 日线上培训、10 月 5–7 日线上比赛，以及 10 月 17 日 GOSIM 深圳大会颁奖。",
-          "培训将介绍模拟器与参赛协议，具体安排另行通知。正式赛支持完整项目和官方本地会话 CSV，服务器逐步提供当前信息，按同一批全部场景的平均分更新排名。"
+          "培训将介绍模拟器与参赛协议，具体安排另行通知。正式比赛提交完整项目，服务器逐步提供当前信息，同一批全部场景的平均分决定线上榜排名。"
         ],
         "rounds": [
           {
@@ -775,7 +781,7 @@
             "name": "线上比赛",
             "dates": "10 月 5–7 日",
             "format": "线上",
-            "challenge": "提交完整项目或官方本地会话 CSV，未来天气保留在服务器，同一批全部场景取平均分。",
+            "challenge": "提交完整项目，未来天气保留在服务器，同一批全部场景取平均分。",
             "participants": "所有完成报名的参赛队伍。"
           },
           {
@@ -1169,7 +1175,7 @@
         "name": "线上比赛",
         "dates": "10 月 5–7 日",
         "format": "线上",
-        "challenge": "提交完整项目或官方本地会话 CSV，未来天气保留在服务器，同一批全部场景取平均分。",
+        "challenge": "提交完整项目，未来天气保留在服务器，同一批全部场景取平均分。",
         "participants": "所有完成报名的参赛队伍。"
       },
       {
@@ -1708,7 +1714,7 @@
       "phase_closed": "该阶段未开放提交。",
       "bad_kind": "提交类型无效。",
       "results_not_allowed": "该阶段不接受结果文件。",
-      "agents_not_allowed": "这个 CSV 提交入口不接收项目，请在智能体项目页提交正式赛项目。",
+      "agents_not_allowed": "此入口只接收 decisions.csv；完整项目请在「参赛」页提交。",
       "bad_scenario": "请选择该阶段的场景。",
       "scenario_hidden": "这个场景的天气还没公开，开赛后才能提交。",
       "daily_limit": "已达到该阶段每日 {n} 次提交上限。",
@@ -1732,7 +1738,7 @@
       "完全自写的智能体：根目录含 minimal_agent.py、agent.py 或 main.py 的 .zip，通过 stdin/stdout 使用 participant-agent-protocol-v1/v2。",
       "限制：单次 20 MB、2,000 个文件、解压后 50 MB、不含符号链接。缓存、scratch/ 与 run_output/ 会自动剔除。"
     ],
-    "results_public_only": "练习场景天气公开，可在本地复现评分。正式赛项目与本地会话 CSV 请在智能体项目页提交。",
+    "results_public_only": "练习场景天气公开，可在本地复现评分。完整项目请在「参赛」页提交。",
     "wallclock": "总时长",
     "wallclock_note": "每个场景给你一个总时长，从 initialize 消息发出时开始倒数；单步不限时。倒计时归零前提交的动作照常算分。",
     "wallclock_results_note": "结果文件是离线回放，不占用总时长；总时长只在平台上跑智能体时才计。",
@@ -1744,7 +1750,7 @@
     "packed": "已在浏览器内打包 {n} 个文件",
     "model_api": {
       "title": "模型 API（可选）",
-      "intro": "平台不提供模型额度。平台不强制调用模型，但评奖要求至少两个环节采用智能体（大模型驱动）技术。请选择平台如何处理你的密钥：",
+      "intro": "平台不提供模型额度。平台不强制调用模型，但评奖要求至少两个环节采用智能体（大模型驱动）技术。如果你的项目完全不调用大模型，这一节不用配置。否则请选择平台如何处理你的密钥：",
       "choice": "模型密钥的处理方式",
       "tradeoff": "不保存：评测时需保持页面打开；保存：加密存储，成绩核实后自动删除。",
       "stored": "加密保存在服务器上",
@@ -1780,13 +1786,14 @@
       "connected": "已连接，仅本页会话有效。",
       "working": "正在调用你的 API…",
       "call_failed": "模型调用失败，请检查 API 和额度。",
-      "invalid": "请检查 API 地址、模型和密钥。"
+      "invalid": "请检查 API 地址、模型和密钥。",
+      "collapsed_hint": "只有会调用大模型的项目才需要在这里配置密钥；纯代码项目可以跳过这一节。"
     },
     "track": {
       "lede": "练习赛有两种参加方式，排行榜分开：",
       "csv": "上传 CSV 结果",
       "project": "提交完整项目",
-      "csv_help": "在自己电脑上跑完，上传 decisions.csv。成绩进练习赛榜。",
+      "csv_help": "在自己电脑上跑完，上传 decisions.csv。成绩进练习赛榜。CSV 上传即将下线，建议改用提交完整项目。",
       "project_help": "提交公开 GitHub 仓库或 ZIP，平台在云端逐轮运行你的程序（和比赛相同的评测流程），使用公开场景 dev-fortnight 和 dev-reference（每个场景 5 小时），成绩进\"完整项目\"单独的榜。每队每天 5 次，UTC 0 点重置；调用模型只能用本队自己的 API 密钥。"
     }
   },
@@ -1940,14 +1947,27 @@
   "resources": {
     "kicker": "资源",
     "title": "入门包与数据",
-    "lede": "在本地运行和评分智能体所需的全部内容：入门包，以及平台使用的各场景配置与参考文件。",
-    "kit": "入门包（zip）",
+    "lede": "在本地运行和评分智能体所需的全部内容：v4 入门包、任务卡说明与卡片文件，以及旧版 v3 热身资料。",
+    "kit": "v3 入门包（zip）",
     "kit_desc": "agent/（最小智能体，可通过 .env 启用大模型）、challenge/（workflow、评分器、preview、模拟器、回放）、scenarios/dev-reference、local_runner.py、score_decisions.py、make_scenario.py、pack_agent.py、sac_submit.py、SKILL.md。",
-    "reference": "参考实现（GitHub）",
-    "reference_desc": "一份写完整、能直接跑通的示范策略 reference_strategy.py：只用快照里的公开信息和标准库，复制成 my_strategy.py 就能跑。实测与贪心基线打平，可作为修改的起点。",
-    "skill": "SKILL.md",
+    "kit_v4": "v4 入门包（zip）",
+    "kit_v4_desc": "agent/（可运行的基线智能体、规划器、天球几何、可选大模型钩子与 observer.project.json）、examples/idle_agent.py、cards/demo（公开示例卡）、local_runner.py、pack_agent.py、challenge/（模拟器与 v4 评分器）、README.md、SKILL.md。只需 Python 3.9+ 标准库。",
+    "skill_v4": "SKILL.md（v4）",
+    "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：检查入门包、协议、计分、改进、打包提交。",
+    "cards": "任务卡",
+    "cards_desc": "每张卡的站点、巡天时间、目标数量、时间限制、天气是否公开，以及智能体收发的消息。",
+    "flow_cards": "第二步 · 拿一张练习卡",
+    "flow_cards_hint": "练习卡的文件（含天气）全部公开，本地得分与平台一致。黑客松任务卡 A–D 在比赛开始时公开卡片说明和公开输入。",
+    "card_view": "看说明",
+    "card_zip": "下载 ZIP",
+    "card_pending": "文件尚未上线",
+    "card_locked": "开赛时公开",
+    "card_formal_title": "黑客松任务卡 {card}",
+    "reference": "v3 完整项目示例（GitHub）",
+    "reference_desc": "一个实现逐轮 JSONL 接口的最小完整项目，可直接打包上传；参考它准备你自己的项目。",
+    "skill": "SKILL.md（v3）",
     "skill_desc": "AI 编程助手可直接照做的单文件说明：构建、测试、提交。",
-    "scenarios": "场景",
+    "scenarios": "v3 场景",
     "hidden": "不提供公开下载",
     "nights": "夜",
     "slots": "时隙",
@@ -1959,7 +1979,7 @@
     "cli": "命令行",
     "kit_file": "agent-observer-starter-kit.zip",
     "docs": "参赛文档",
-    "docs_desc": "带精确列的数据格式、三种协议消息、评分公式与全部惩罚、打包规则与限制。",
+    "docs_desc": "报名组队、完整项目提交、启动配置、模型 API、评测次数与最终版本。",
     "scenarios_note": "一个场景包含 config/*.json 和 outputs/reference/*.csv，文件按此处的可见性标记提供下载。公开练习数据保持可下载；正式赛未来天气与异常答案保留在服务器。",
     "weather_public": "天气公开",
     "weather_hidden": "未来天气不公开",
@@ -1984,11 +2004,11 @@
     "scorer": "scoring_core.py",
     "scorer_desc": "冻结的 challenge-score-v3 评分器（旁边还有 contracts.py 与 score_config.json）。仅标准库，Python 3.12。",
     "flow1": "第一步 · 拿包就跑",
-    "flow1_hint": "只需要这一个下载：解压、双击、十几秒出分。",
-    "flow2": "第二步 · 写你自己的策略",
-    "flow2_hint": "改一个函数就能上榜；这些是抄作业和查手册的地方。",
-    "flow3": "第三步 · 需要数据再来拿",
-    "flow3_hint": "这里列出每个场景已公开的文件；正式赛通过会话逐步提供当前信息。"
+    "flow1_hint": "只需要这一个下载：解压后运行 python3 local_runner.py，几秒内在示例卡上出分。",
+    "flow2": "第三步 · 写你自己的策略",
+    "flow2_hint": "改 agent/planner.py，再运行、再比较；这些是查手册的地方。",
+    "flow3": "旧版 v3 · decisions.csv 热身",
+    "flow3_hint": "v3 场景与 v3 评分规则，只用于 decisions.csv 热身，与本次比赛的 v4 任务卡不同。"
   },
   "faq": {
     "kicker": "常见问题",
@@ -1996,7 +2016,7 @@
     "items": [
       {
         "q": "我编程基础一般，最少要做什么？",
-        "a": "下载入门包，双击 run_baseline，然后只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。改完再双击 run_baseline，把生成的 run_output/decisions.csv 拖到「提交」页即可。macOS 自带的 Python 就够用，Windows 从 python.org 装 Python 3.12。"
+        "a": "下载入门包，双击 run_baseline，然后只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。重新运行即得成绩，把生成的 run_output/decisions.csv 上传到「参赛」页即可在练习榜上见分。想走云端评测：运行 python3 pack_agent.py，生成根目录带 observer.project.json 的 my-agent.zip，在「参赛」页作为私有 ZIP 上传、确认版本并开始评测。macOS 自带的 Python 就够用，Windows 从 python.org 装 Python 3.12。"
       },
       {
         "q": "需要天文背景吗？",
@@ -2012,11 +2032,11 @@
       },
       {
         "q": "可以使用大模型或商业 API 吗？",
-        "a": "可以。智能体在你自己的电脑上运行，决策时也可以调用模型，使用自己的密钥。180 晚场景约 8,000 次决策，每次都调用模型会很慢；把显而易见的等待交给确定性代码。"
+        "a": "可以，评奖还要求至少两个环节采用智能体（大模型驱动）技术。请自备 API 和额度。可在「参赛」页选择将密钥加密保存在服务器上（只用于评测和核验，隐藏决赛成绩核实后删除），或不保存密钥、评测期间保持该页面打开。隐藏决赛评测时无人打开页面：程序会调用大模型的队伍，须在线上赛结束前改为「加密保存」。"
       },
       {
         "q": "什么是全局时钟？",
-        "a": "每个场景有一个总时长（global_wallclock_seconds，随 initialize 消息下发）：参考场景 7200 秒，短场景更少；完整项目云端评测时每个场景 5 小时。它在 initialize 消息后开始并覆盖全部决策——包括快照序列化、你的思考时间与解析。没有单次决策限制。到期时进程被停止，已提交动作照常评分，并适用未完成 必做天区、可选天区缺额与到期请求的终局惩罚。"
+        "a": "每个场景有一个总时长（global_wallclock_seconds，随 initialize 消息下发）：正式比赛每个场景 3600 秒，练习赛完整项目云端评测每个场景 5 小时，本地练习由 --wallclock 参数自定。它在 initialize 消息后开始并覆盖全部决策——包括快照序列化、你的思考时间与解析，没有单次决策限制。到期时进程被停止，已提交动作照常评分，并适用未完成必做天区、可选天区缺额与到期请求的终局惩罚。"
       },
       {
         "q": "比赛场景隐藏了什么？",
@@ -2024,7 +2044,7 @@
       },
       {
         "q": "可以提交多少次？",
-        "a": "练习赛 CSV 每队每天 50 次，完整项目每队每天 5 次（单独榜单）；正式赛每队每天 10 个完整批次，每批包含全部场景，取最高分的完整批次。练习榜仍按场景分开排名。"
+        "a": "练习赛 decisions.csv 每队每天 50 次，完整项目每队每天 5 次（单独榜单）；正式比赛每队每天 10 个完整批次，每批覆盖全部三个正式场景，线上榜取最高分的完整批次。每日次数按 UTC 0 点（北京时间 8 点）重置，因平台原因失败的不计次数。练习榜按场景分别排名。"
       },
       {
         "q": "排行榜分数就是最终成绩吗？",
@@ -2069,7 +2089,7 @@
   "rules_page": {
     "kicker": "规则",
     "title": "比赛规则与评分",
-    "version": "规则版本 1.1 · 2026-09-27",
+    "version": "规则版本 2.0 · 2026-10-01 · v4 任务卡",
     "phases_title": "阶段配置（实时）",
     "daily": "次/天",
     "board": "榜单",
@@ -2079,6 +2099,20 @@
       "hidden": "隐藏",
       "published": "已公布"
     }
+  },
+  "cards_page": {
+    "kicker": "任务卡",
+    "title": "v4 任务卡",
+    "lede": "每张任务卡是一季完整的模拟巡天。练习卡 α–δ 现在公开；黑客松任务卡 A–D 在比赛开始时公开；隐藏任务卡 E–H 不公开。",
+    "practice": "练习卡",
+    "formal": "黑客松任务卡",
+    "hidden_note": "隐藏任务卡 E–H 不公开，只用于比赛截止后对各队最终版本的决赛评测，决定最终排名（见规则第 5 节）。",
+    "download": "下载卡片文件（ZIP）",
+    "files": "{n} 个文件",
+    "kit_hint": "解压到 v4 入门包的 cards/ 目录，运行 python3 local_runner.py --card cards/<卡片>。",
+    "files_pending": "卡片文件尚未上线，上线后可在这里和资源页下载。",
+    "locked_title": "尚未公开",
+    "locked": "黑客松任务卡 {card} 在比赛开始时（10 月 5 日 00:00，UTC+8）公开：卡片说明和公开输入（目标、天区轮廓、站点、望远镜与光纤、观测日程、计分参数）。天气、预报与事件不公开。"
   },
   "docs_page": {
     "kicker": "文档",
@@ -2370,7 +2404,7 @@
     "bad_phase": "没有这个比赛阶段。",
     "phase_closed": "这个阶段现在不接受提交。",
     "results_not_allowed": "这个阶段不接受结果文件。",
-    "agents_not_allowed": "这个 CSV 提交入口不接收项目，请在智能体项目页提交正式赛项目。",
+    "agents_not_allowed": "此入口只接收 decisions.csv；完整项目请在「参赛」页提交。",
     "bad_scenario": "请选择这个阶段里的场景。",
     "bad_storage_path": "文件没有传到正确的位置。请刷新页面后重新提交。",
     "daily_limit": "今天的提交次数已经用完。",
@@ -2382,7 +2416,7 @@
     "unknown_scenario": "没有这个场景。",
     "job_already_pending": "这个场景已经有一个任务在进行中。",
     "banned": "这个账号已被停用。",
-    "online_session_required": "请在智能体项目页提交完整项目，或上传官方本地会话导出的 CSV。",
+    "online_session_required": "请在「参赛」页提交完整项目。",
     "team_limit_reached": "参赛队伍已满，报名已关闭，不能再创建新队伍。你仍可以用邀请码加入已有队伍。"
   },
   "a11y": {

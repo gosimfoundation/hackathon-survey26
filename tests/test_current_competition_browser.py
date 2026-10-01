@@ -1,15 +1,21 @@
-"""Public pages describe one current competition, without stage selection."""
+"""Public pages carry one unified copy that covers both the Playground and the competition."""
 import hashlib
 from psycopg.types.json import Jsonb
 import os
 import re
 import uuid
 import pytest
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright, expect, Error as PlaywrightError
 from test_project_http import edge_stack  # noqa: F401
 from test_project_portal_browser import portal_site  # noqa: F401
 from test_project_database import query, identity
 from test_scenario_instance_database import configure
+
+def goto(page,url):
+    # /submit client-redirects to /compete; a fast in-app navigation can abort the initial load.
+    try: page.goto(url)
+    except PlaywrightError as error:
+        if 'ERR_ABORTED' not in str(error): raise
 
 pytestmark=pytest.mark.skipif(not all(os.environ.get(k) for k in ('OBSERVER_DENO_BIN','SAC_POSTGREST_BIN','SAC_NODE_BIN')),
     reason='Local browser toolchain required')
@@ -36,9 +42,19 @@ def test_public_playground_pages_never_ask_participants_to_choose_a_stage(portal
                     expect(page.locator('.sky-live-title')).to_contain_text({
                         'zh':'官方示例回放','en':'Official example replay',
                         'ja':'公式サンプルのリプレイ','fr':'Rejeu de l’exemple officiel'}[language])
-                text=page.locator('main').inner_text()
-                match=re.search(r'正式赛|正式比赛|线上比赛|online competition|finals-preview|competition scenarios|正式大会|オンライン大会|compétition en ligne',text,re.I)
+                text=page.locator('main').text_content()
+                # The single copy mentions both stages where relevant; retired wording must not come back.
+                match=re.search(r'官方本地会话|official local-session|智能体项目页|Agent projects page',text,re.I)
                 if match:problems.append((language,path,text[max(0,match.start()-40):match.end()+100]))
+        # One copy, both stages: the unified answers are present in practice mode too.
+        page.goto(portal_site+'/faq?lang=zh')
+        expect(page.locator('main')).to_contain_text('黑客松正式比赛实现语言不限')
+        expect(page.locator('main')).to_contain_text('练习赛 decisions.csv 每队每天 50 次')
+        page.goto(portal_site+'/docs?lang=zh')
+        expect(page.locator('main')).to_contain_text('练习赛：本地运行与 decisions.csv')
+        expect(page.locator('main')).to_contain_text('确认版本并评测')
+        page.goto(portal_site+'/faq?lang=en')
+        expect(page.locator('main')).to_contain_text('Submit your complete project as a ZIP file and it runs in the cloud.')
         browser.close()
     assert not errors,errors
     assert not private_requests,private_requests
@@ -76,32 +92,36 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         configure({'uri':uri,'phase':phase,'scenario':scenario})
         switch.click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to Playground',timeout=15000)
-        page.goto(portal_site+'/submit?lang=en')
+        goto(page,portal_site+'/submit?lang=en')
         expect(page.get_by_test_id('project-title')).to_be_visible(timeout=15000)
         assert page.locator('a[href="/projects"],a[href="/submit"]').count()==0
         expect(page.get_by_test_id('primary-submit')).to_have_attribute('href','/compete')
         expect(page.get_by_role('button',name='Start local CSV session')).to_have_count(0)
         page.goto(portal_site+'/resources?lang=en')
-        expect(page.locator('a[download][href$="main.zip"]')).to_be_visible()
+        # Stage-neutral resources: the starter kit and the complete-project example are always offered.
+        expect(page.locator('a[download][href$="agent-observer-starter-kit.zip"]')).to_be_visible()
+        expect(page.locator('a[href="https://github.com/BH3GEI/observer-project-example"]')).to_be_visible()
         expect(page.locator('[data-testid^="dl-"]')).to_have_count(0)
         expect(page.get_by_text("Competition data is supplied round by round during evaluation. Source bundles cannot be downloaded.").first).to_be_visible()
         for language in ('zh','en','ja','fr'):
             for path in ('/','/start','/brief','/rules','/docs','/resources','/faq','/leaderboard'):
                 page.goto(portal_site+path+'?lang='+language)
                 page.locator('main').wait_for()
-                body=page.locator('main').inner_text()
-                # The official demo truthfully identifies its public practice data;
-                # that source label is not a choice of competition stage.
+                body=page.locator('main').text_content()
+                # The official demo truthfully identifies its public practice data.
                 if path=='/':
                     demo_title=page.locator('.demo-title')
                     expect(demo_title).to_be_visible()
                     body=body.replace(demo_title.inner_text(),'',1)
-                match=re.search(r'练习赛|练习场景|Playground|\bpractice\b|練習|entraînement',body,re.I)
+                # One copy, both stages: no stage-specific variant is swapped in.
+                match=re.search(r'官方本地会话|official local-session|智能体项目页|Agent projects page',body,re.I)
                 if match:problems.append((language,path,body[max(0,match.start()-40):match.end()+100]))
+        page.goto(portal_site+'/faq?lang=en')
+        expect(page.locator('main')).to_contain_text('Submit your complete project as a ZIP file and it runs in the cloud.')
         page.goto(portal_site+'/admin/settings?lang=en')
         page.get_by_test_id('competition-mode-switch').click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to competition',timeout=15000)
-        page.goto(portal_site+'/submit?lang=en')
+        goto(page,portal_site+'/submit?lang=en')
         expect(page.locator('input[type=file]')).to_be_visible(timeout=15000)
         assert query(uri,'select phase_id from private.observer_site_mode')[0][0]==practice
         browser.close()

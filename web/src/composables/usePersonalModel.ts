@@ -3,8 +3,14 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { portal } from '../lib/observerPortal'
 /** No localStorage, cookies, database writes or project-file credentials. */
+/** Remembers only "a key was connected in this tab" (sessionStorage), so evaluation reminders
+ *  target teams that actually use a model and survive a mid-evaluation page reload. */
+const CONFIGURED_KEY='sac.model-relay.configured'
 export function usePersonalModel(){
   const endpoint=ref(''),model=ref(''),key=ref(''),connected=ref(false),status=ref<'idle'|'connected'|'working'|'failed'>('idle')
+  const everConfigured=ref(false)
+  try{everConfigured.value=window.sessionStorage.getItem(CONFIGURED_KEY)==='1'}catch{/* private mode */}
+  function markConfigured(value:boolean){everConfigured.value=value;try{value?window.sessionStorage.setItem(CONFIGURED_KEY,'1'):window.sessionStorage.removeItem(CONFIGURED_KEY)}catch{/* private mode */}}
   const channels=new Map<string,RealtimeChannel>(),seen=new Set<string>()
   let fetching=false,disposed=false
   async function refresh(){
@@ -32,12 +38,12 @@ export function usePersonalModel(){
       }
     }finally{fetching=false}
   }
-  async function connect(){connected.value=true;status.value='connected';await refresh()}
+  async function connect(){connected.value=true;status.value='connected';markConfigured(true);await refresh()}
   function clear(){
-    connected.value=false;key.value='';status.value='idle'
+    connected.value=false;key.value='';status.value='idle';markConfigured(false)
     for(const channel of channels.values())void supabase.removeChannel(channel)
     channels.clear();seen.clear()
   }
   onUnmounted(()=>{disposed=true;clear()})
-  return {endpoint,model,key,connected,status,refresh,connect,clear}
+  return {endpoint,model,key,connected,status,everConfigured,refresh,connect,clear}
 }

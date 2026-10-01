@@ -17,6 +17,10 @@
         "title": "Rules",
         "description": "Eligibility, submission limits, scoring and conduct rules for the Agentic Observer hackathon."
       },
+      "cards": {
+        "title": "Task cards",
+        "description": "v4 practice cards and hackathon cards: each card’s task, time limit and file downloads."
+      },
       "docs": {
         "title": "Docs",
         "description": "The participant-agent-protocol-v1/v2 messages, the challenge-score-v3 scorer, scenario files and the starter kit."
@@ -91,6 +95,7 @@
     "start": "Get started",
     "brief": "Full event brief",
     "rules": "Rules",
+    "cards": "Task cards",
     "docs": "Docs",
     "resources": "Resources",
     "leaderboard": "Leaderboard",
@@ -231,7 +236,8 @@
       "weather_help": "Seeing: how blurred stars are, lower is sharper (arcseconds). Transparency: how clear the atmosphere is, higher is better. Sky: how bright the night sky itself is. Instrument: how much the equipment is delivering right now.",
       "seek": "Drag the replay position",
       "top_score": "Champion's run: {score}",
-      "lst": "Where the telescope points right now · sky time {lst}"
+      "lst": "Where the telescope points right now · sky time {lst}",
+      "tour_close": "Close walkthrough"
     },
     "pipeline_intro": "Milestones",
     "cta_start": "Get started in 3 steps"
@@ -323,7 +329,7 @@
         {
           "n": "03",
           "title": "Submit for evaluation",
-          "desc": "Practice accepts locally generated decisions.csv, or a complete project ranked on its own board. Competition accepts complete projects and official local-session CSVs; all teams use the same frozen scorer."
+          "desc": "Practice accepts a locally generated decisions.csv, or a complete project evaluated in the cloud on a separate board. The formal competition accepts complete projects only (public repository or private ZIP). Every team is scored by the same frozen scorer."
         }
       ],
       "timeline": [
@@ -367,7 +373,7 @@
     "leaderboard": {
       "kicker": "05 / Leaderboard",
       "title": "Live standings",
-      "lede": "The board updates as soon as a submission is scored. Practice standings are informational; the online competition board decides the awards.",
+      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per scenario, and the competition board keeps each team's best complete batch (the mean of the three formal scenarios). Both are feedback only; the final ranking uses only the hidden final scenario.",
       "signal_live": "Board live",
       "signal_waiting": "Awaiting benchmark signal",
       "feed": "Live evaluation feed"
@@ -411,11 +417,11 @@
       "items": [
         {
           "title": "Projects and CSV",
-          "desc": "Practice accepts decisions.csv, or a complete project on a separate board (5 per team per day). Competition accepts a complete project from a public repository or private ZIP, or the CSV exported by an official local session."
+          "desc": "Practice accepts decisions.csv (50 per team per day, best score per scenario) or a complete project (5 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
         },
         {
           "title": "Limits",
-          "desc": "Any project language; models are optional. Project ZIP: 50 MB; CSV: 20 MB. Each scenario has a shared runtime limit. Competition: 10 complete batches per team per day."
+          "desc": "Any language; model calls are optional. decisions.csv up to 20 MB, project ZIP up to 50 MB. Competition: 10 complete batches per team per day, 3600 s per scenario."
         }
       ],
       "link": "Submission docs"
@@ -547,7 +553,7 @@
           "desc": "October 5–7: submit a complete project, evaluate it on three fixed formal scenarios and choose your final version; the hidden final scenario decides the ranking.",
           "desc_gated": "October 5–7: complete projects only. A batch scores the mean of the three formal scenarios; the hidden final scenario decides the ranking.",
           "time": "Oct 5",
-          "to": "/brief#section-7"
+          "to": "/compete"
         }
       ]
     },
@@ -714,9 +720,9 @@
         "kicker": "05 / Participant Job",
         "title": "Build a reproducibly runnable observer project",
         "paragraphs": [
-          "Build a complete project in any language. Practice uses decisions.csv; competition supports project uploads and official local-session CSVs. See Docs for the interface.",
+          "Any language is allowed. Practice submits a locally generated decisions.csv; the formal competition submits a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
           "The server reveals current observations step by step and scores the actual decisions. Future weather and anomaly answers remain private.",
-          "Download the starter kit, study public development scenarios and replays, and practice with CSV submissions. For competition, confirm your complete project or connect the official local runner.",
+          "Download the starter kit, run the public scenarios, study replays and improve your strategy; when ready, upload decisions.csv or submit a complete project on Participate.",
           "The platform keeps the full record of every evaluation — the decisions file, the run log, and a slot-by-slot replay — for organizer review, and for you to inspect why each step went the way it did."
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -759,7 +765,7 @@
         "title": "Three stages from training to awards",
         "paragraphs": [
           "The event has three stages: online training from October 2–3, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17.",
-          "Training covers the simulator and participant protocol; details will be announced. Competition accepts complete projects and official local-session CSVs. The server reveals current information step by step and scores each complete multi-scenario batch."
+          "Training covers the simulator and participant protocol; details will be announced. The competition accepts complete projects. The server reveals current information step by step and scores each complete multi-scenario batch."
         ],
         "rounds": [
           {
@@ -775,7 +781,7 @@
             "name": "Online Competition",
             "dates": "Oct 5–7",
             "format": "Online",
-            "challenge": "Submit a complete project or an official local-session CSV. Future weather stays private; all scenarios in the same batch contribute to the mean score.",
+            "challenge": "Submit a complete project. Future weather stays private; all scenarios in the same batch contribute to the mean score.",
             "participants": "All registered teams."
           },
           {
@@ -1169,7 +1175,7 @@
         "name": "Online Competition",
         "dates": "Oct 5–7",
         "format": "Online",
-        "challenge": "Submit a complete project or an official local-session CSV. Future weather stays private; all scenarios in the same batch contribute to the mean score.",
+        "challenge": "Submit a complete project. Future weather stays private; all scenarios in the same batch contribute to the mean score.",
         "participants": "All registered teams."
       },
       {
@@ -1708,7 +1714,7 @@
       "phase_closed": "This phase is not open for submissions.",
       "bad_kind": "Unknown submission type.",
       "results_not_allowed": "This phase does not accept results files.",
-      "agents_not_allowed": "This CSV submission route does not accept projects. Use Agent projects for competition project uploads.",
+      "agents_not_allowed": "This route accepts decisions.csv only; submit complete projects on the Participate page.",
       "bad_scenario": "Choose a scenario of this phase.",
       "scenario_hidden": "This scenario's weather is not published yet; submissions open when the competition starts.",
       "daily_limit": "Daily limit of {n} submissions reached for this phase.",
@@ -1732,7 +1738,7 @@
       "For a fully self-written agent: a .zip with minimal_agent.py, agent.py or main.py at the root, speaking participant-agent-protocol-v1/v2 over stdin/stdout.",
       "Limits: 20 MB per upload, 2,000 files, 50 MB uncompressed, no symlinks. Caches, scratch/ and run_output/ are left out automatically."
     ],
-    "results_public_only": "Practice scenarios publish their weather, allowing you to reproduce the score locally. Competition projects and session CSVs use the Agent projects page.",
+    "results_public_only": "Practice scenarios publish their weather, so scores can be reproduced locally. Submit complete projects on the Participate page.",
     "wallclock": "Time budget",
     "wallclock_note": "Each scenario gives you one time budget, counting down from the initialize message; no per-step timeout. Anything committed before it runs out still scores.",
     "wallclock_results_note": "A results file is replayed offline and costs no budget; the budget only applies to agents running on the platform.",
@@ -1744,7 +1750,7 @@
     "packed": "Packed {n} file(s) in the browser",
     "model_api": {
       "title": "Model API (optional)",
-      "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. Choose how the platform handles your key:",
+      "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. If your project never calls a model, skip this section entirely. Otherwise choose how the platform handles your key:",
       "choice": "How your model key is handled",
       "tradeoff": "Not saved: keep this page open during evaluations. Saved: stored encrypted and deleted automatically after the results are verified.",
       "stored": "Save encrypted on the server",
@@ -1780,13 +1786,14 @@
       "connected": "Connected for this page session.",
       "working": "Calling your API…",
       "call_failed": "The model call failed. Check your API and quota.",
-      "invalid": "Check the endpoint, model and key."
+      "invalid": "Check the endpoint, model and key.",
+      "collapsed_hint": "Only projects that call a model need a key here; pure-code projects can skip this section."
     },
     "track": {
       "lede": "The Playground has two ways to take part, with separate boards:",
       "csv": "Upload a CSV result",
       "project": "Submit a complete project",
-      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board.",
+      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board. The CSV upload is being phased out — prefer a complete project.",
       "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
@@ -1940,14 +1947,27 @@
   "resources": {
     "kicker": "Resources",
     "title": "Starter kit and data",
-    "lede": "Everything needed to run and score an agent locally: the starter kit and, per scenario, the configuration and reference files the platform uses.",
-    "kit": "Starter kit (zip)",
+    "lede": "Everything needed to run and score an agent locally: the v4 starter kit, the task card pages and card files, and the earlier v3 warm-up material.",
+    "kit": "v3 starter kit (zip)",
     "kit_desc": "agent/ (minimal agent, optional LLM via .env), challenge/ (workflow, scorer, preview, simulators, replay), scenarios/dev-reference, local_runner.py, score_decisions.py, make_scenario.py, pack_agent.py, sac_submit.py, SKILL.md.",
-    "reference": "Reference implementation (GitHub)",
-    "reference_desc": "A complete, runnable example strategy, reference_strategy.py: public snapshot fields and the standard library only — copy it to my_strategy.py and it runs. It matches the greedy baseline; use it as a starting point.",
-    "skill": "SKILL.md",
+    "kit_v4": "v4 starter kit (zip)",
+    "kit_v4_desc": "agent/ (a working baseline agent, its planner, sky maths, an optional LLM hook and observer.project.json), examples/idle_agent.py, cards/demo (a public demo card), local_runner.py, pack_agent.py, challenge/ (simulator and v4 scorer), README.md, SKILL.md. Python 3.9+ standard library only.",
+    "skill_v4": "SKILL.md (v4)",
+    "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: check the kit, the protocol, the score, improve, pack and submit.",
+    "cards": "Task cards",
+    "cards_desc": "Each card’s site, survey dates, number of targets, time limit, whether its weather is public, and what the agent receives and sends.",
+    "flow_cards": "Step 2 · Take a practice card",
+    "flow_cards_hint": "Every file of a practice card is public (weather included), so your local score matches the platform. Hackathon cards A–D publish their card page and public inputs when the competition starts.",
+    "card_view": "Read the card",
+    "card_zip": "Download ZIP",
+    "card_pending": "files not online yet",
+    "card_locked": "published at the start",
+    "card_formal_title": "Hackathon card {card}",
+    "reference": "v3 complete project example (GitHub)",
+    "reference_desc": "A minimal complete project implementing the round-by-round JSONL interface, ready to pack and upload; use it as the starting point for your own project.",
+    "skill": "SKILL.md (v3)",
     "skill_desc": "One-file instructions an AI coding agent can follow to build, test and submit.",
-    "scenarios": "Scenarios",
+    "scenarios": "v3 scenarios",
     "hidden": "not publicly downloadable",
     "nights": "nights",
     "slots": "slots",
@@ -1959,7 +1979,7 @@
     "cli": "Command line",
     "kit_file": "agent-observer-starter-kit.zip",
     "docs": "Documentation",
-    "docs_desc": "Data formats with exact columns, the three protocol envelopes, the scoring formula and every penalty, packaging rules and limits.",
+    "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
     "scenarios_note": "A scenario contains config/*.json and outputs/reference/*.csv. Files follow the visibility flags shown here. Public practice data remains downloadable; future competition weather and anomaly answers stay on the server.",
     "weather_public": "weather public",
     "weather_hidden": "future weather stays private",
@@ -1984,11 +2004,11 @@
     "scorer": "scoring_core.py",
     "scorer_desc": "The frozen challenge-score-v3 scorer (with contracts.py and score_config.json next to it). Standard library only, Python 3.12.",
     "flow1": "Step 1 · Grab the kit and run",
-    "flow1_hint": "The only download you need: unzip, double-click, a score in seconds.",
-    "flow2": "Step 2 · Write your own strategy",
-    "flow2_hint": "Editing one function gets you on the board; these are the reference and the manual.",
-    "flow3": "Step 3 · Fetch data when you need it",
-    "flow3_hint": "Published files are listed for each scenario. Competition sessions reveal current information step by step."
+    "flow1_hint": "This one download is all you need: unzip it and run python3 local_runner.py for a score on the demo card in seconds.",
+    "flow2": "Step 3 · Write your own strategy",
+    "flow2_hint": "Change agent/planner.py, run again and compare; these are the references.",
+    "flow3": "Earlier v3 · decisions.csv warm-up",
+    "flow3_hint": "The v3 scenarios and v3 scoring rules, kept only for the decisions.csv warm-up; they differ from the v4 task cards of this competition."
   },
   "faq": {
     "kicker": "FAQ",
@@ -1996,7 +2016,7 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Download the kit, double-click run_baseline, and edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. Double-click run_baseline again and drop the run_output/decisions.csv it writes onto the Submit page. macOS's built-in Python is enough; Windows needs Python 3.12 from python.org."
+        "a": "Download the kit, double-click run_baseline, and edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. Rerun to get a score, then upload the run_output/decisions.csv it writes on Participate to appear on the practice board. To try cloud evaluation: run python3 pack_agent.py to build my-agent.zip (observer.project.json included at its root), upload it as a private ZIP on Participate, confirm the version and start an evaluation. macOS's built-in Python is enough; Windows needs Python 3.12 from python.org."
       },
       {
         "q": "Do I need an astronomy background?",
@@ -2012,11 +2032,11 @@
       },
       {
         "q": "Can I use an LLM or a commercial API?",
-        "a": "Yes. Your agent runs on your own machine and may call a model at decision time too, with your own key. A 180-night scenario has about 8,000 decisions, and a model call for each is slow; let deterministic code answer the obvious waits."
+        "a": "Yes, and awards require agent (LLM-driven) techniques in at least two stages. Bring your own API and quota. In Participate, either save the key encrypted on the server (used only for evaluation and verification, deleted after the hidden final results are verified) or do not save it and keep that page open during evaluations. The hidden final runs with no page open: if your program calls a model, switch to saving the key before the online phase ends."
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message): 7200 s on the reference scenario, less on short ones; cloud runs of complete projects get 5 hours per scenario. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
+        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message): 3600 s per scenario in the formal competition, 5 hours per scenario for complete-project cloud evaluations on the Playground, and your own --wallclock choice for local practice. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
       },
       {
         "q": "What is hidden on the competition scenarios?",
@@ -2024,7 +2044,7 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 50 CSV submissions and 5 complete-project evaluations per team per day (separate boards). Competition: 10 complete batches per team per day, each covering every scenario. The best complete batch counts; practice continues to rank each scenario separately."
+        "a": "Practice: 50 decisions.csv submissions and 5 complete-project evaluations per team per day (separate board). Competition: 10 complete batches per team per day, each covering all three formal scenarios, and the online board keeps your best complete batch. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2069,7 +2089,7 @@
   "rules_page": {
     "kicker": "Rules",
     "title": "Competition rules and scoring",
-    "version": "Rules version 1.1 · 2026-09-27",
+    "version": "Rules version 2.0 · 2026-10-01 · v4 task cards",
     "phases_title": "Phase configuration (live)",
     "daily": "submissions/day",
     "board": "board",
@@ -2079,6 +2099,20 @@
       "hidden": "hidden",
       "published": "published"
     }
+  },
+  "cards_page": {
+    "kicker": "Task cards",
+    "title": "v4 task cards",
+    "lede": "Each task card is one complete simulated survey season. Practice cards α–δ are public now; hackathon cards A–D are published when the competition starts; hidden cards E–H are never published.",
+    "practice": "Practice cards",
+    "formal": "Hackathon cards",
+    "hidden_note": "The hidden cards E–H are never published. They are only used for the final evaluation of each team’s final version after the deadline, which decides the final ranking (rules, section 5).",
+    "download": "Download card files (ZIP)",
+    "files": "{n} files",
+    "kit_hint": "Unzip into the v4 starter kit’s cards/ folder and run python3 local_runner.py --card cards/<card>.",
+    "files_pending": "The card files are not online yet; once they are, download them here or on Resources.",
+    "locked_title": "Not published yet",
+    "locked": "Hackathon card {card} is published when the competition starts (Oct 5 00:00, UTC+8): the card page and the public inputs (targets, sky footprint, site, telescope and fibres, observing calendar, score settings). Weather, forecasts and events stay private."
   },
   "docs_page": {
     "kicker": "Docs",
@@ -2370,7 +2404,7 @@
     "bad_phase": "There is no such phase.",
     "phase_closed": "This phase is not taking submissions right now.",
     "results_not_allowed": "This phase does not accept results files.",
-    "agents_not_allowed": "This CSV submission route does not accept projects. Use Agent projects for competition project uploads.",
+    "agents_not_allowed": "This route accepts decisions.csv only; submit complete projects on the Participate page.",
     "bad_scenario": "Choose a scenario from this phase.",
     "bad_storage_path": "The file did not upload to the right place. Reload the page and submit again.",
     "daily_limit": "Today's submissions are used up.",
@@ -2382,7 +2416,7 @@
     "unknown_scenario": "There is no such scenario.",
     "job_already_pending": "A job is already running for this scenario.",
     "banned": "This account is suspended.",
-    "online_session_required": "Use Agent projects to submit a complete project or the CSV exported by your official local session.",
+    "online_session_required": "Submit a complete project on the Participate page.",
     "team_limit_reached": "All team places are taken and registration is closed, so no new team can be created. You can still join an existing team with an invite code."
   },
   "a11y": {

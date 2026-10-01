@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/brief', component: () => import('./pages/VisionPage.vue') , meta: { page: 'brief' }},
     { path: '/vision', redirect: '/brief' },
     { path: '/rules', component: () => import('./pages/RulesPage.vue') , meta: { page: 'rules' }},
+    { path: '/cards/:card?', component: () => import('./pages/TaskCardsPage.vue') , meta: { page: 'cards' }},
     { path: '/docs', component: () => import('./pages/DocsPage.vue') , meta: { page: 'docs' }},
     { path: '/faq', component: () => import('./pages/FaqPage.vue') , meta: { page: 'faq' }},
     { path: '/resources', component: () => import('./pages/ResourcesPage.vue') , meta: { page: 'resources' }},

@@ -278,7 +278,8 @@ rl.on('line', line => {
     try:
         p.publish_initial({"schema_version": "initial-publication-v2"})
         for sequence in [1, 2, 3]:
-            response = p({"decision_sequence": sequence}, time.monotonic() + 5)
+            # Generous per-response budget: node startup on a loaded CI runner can take seconds.
+            response = p({"decision_sequence": sequence}, time.monotonic() + 30)
             assert response["action"] == "wait" and response["reason"] == "JavaScript project"
     finally:
         p.close()
@@ -286,7 +287,7 @@ rl.on('line', line => {
 
 # --- Graceful finish -------------------------------------------------------
 
-DEMO_SCENARIO = Path(__file__).resolve().parents[1] / "starter_kit" / "scenarios" / "demo-week"
+DEMO_SCENARIO = Path(__file__).resolve().parents[1] / "archive" / "starter_kit_v3" / "scenarios" / "demo-week"
 
 _WAIT_AGENT_HEAD = """import json,sys
 for line in sys.stdin:

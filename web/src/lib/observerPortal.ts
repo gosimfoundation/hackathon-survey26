@@ -44,14 +44,39 @@ export async function portal<T>(action: string, fields: Record<string, unknown> 
   return data.data as T
 }
 
-export async function uploadProjectFile(file: File, purpose: 'source' | 'csv') {
+export async function uploadProjectFile(file: File, purpose: 'source' | 'csv', onProgress?: (percent: number) => void) {
   const ext = purpose === 'source' ? '.zip' : '.csv'
   if (!file.name.toLowerCase().endsWith(ext)) throw new Error('wrong_file_type')
   if (!file.size || file.size > (purpose === 'source' ? 50 : 20) * 1024 * 1024) throw new Error('file_too_large')
   const slot = await portal<{ id: string; path: string; token: string }>('upload', { purpose })
+  // With a progress listener the upload goes through XHR: supabase-js fetch uploads
+  // never report upload progress. Same endpoint and payload as uploadToSignedUrl.
+  if (onProgress) {
+    await uploadWithProgress(slot.path, slot.token, file, onProgress)
+    return slot.id
+  }
   const { error } = await supabase.storage.from('observer-staging').uploadToSignedUrl(slot.path, slot.token, file, {
     contentType: purpose === 'source' ? 'application/zip' : 'text/csv',
   })
   if (error) throw new Error('upload_failed')
   return slot.id
+}
+
+/** PUT the file to the signed upload URL with progress events (mirrors StorageFileApi.uploadToSignedUrl). */
+function uploadWithProgress(path: string, token: string, file: File, onProgress: (percent: number) => void) {
+  const api = supabase.storage.from('observer-staging') as unknown as { url: string; headers: Record<string, string> }
+  const url = `${api.url}/object/upload/sign/observer-staging/${path}?token=${encodeURIComponent(token)}`
+  return new Promise<void>((resolve, reject) => {
+    const body = new FormData()
+    body.append('cacheControl', '3600')
+    body.append('', file)
+    const xhr = new XMLHttpRequest()
+    xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100)) }
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error('upload_failed')))
+    xhr.onerror = () => reject(new Error('upload_failed'))
+    xhr.open('PUT', url)
+    for (const [name, value] of Object.entries(api.headers)) xhr.setRequestHeader(name, value)
+    xhr.setRequestHeader('x-upsert', 'false')
+    xhr.send(body)
+  })
 }

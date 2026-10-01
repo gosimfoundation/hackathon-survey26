@@ -53,8 +53,8 @@
 
 基线锚点 = `scenarios/dev-reference` 上确定性 minimal agent 的 `total`
 （`termination_reason = survey_complete`）：`tests/test_starter_kit.py` 与工作区根
-`AGENTS.md` 写入精确值 `23430.568406`，`starter_kit/README.md` 与
-`starter_kit/SKILL.md` 写作"约 23430.57"，四处一致。
+`AGENTS.md` 写入精确值 `23430.568406`，`archive/starter_kit_v3/README.md` 与
+`archive/starter_kit_v3/SKILL.md` 写作"约 23430.57"，四处一致。
 
 ## 分节点修改记录
 
@@ -110,7 +110,7 @@
   故障账本与修复截断（scorer 侧 end_overrides，不改真相文件）；finalize
   tag 结算。（同批的 `load_reports` 与 `apply_decision_stream` 双文件归并
   已随 report 并入 decisions.csv 移除。）
-- `challenge/score_decisions.py` 与 `starter_kit/score_decisions.py`：曾新增
+- `challenge/score_decisions.py` 与 `archive/starter_kit_v3/score_decisions.py`：曾新增
   `--reports`（已随 report 并入 decisions.csv 移除，复放回归单文件）。
 - 新增 test_report_settlement.py（当前 11 例）。
 
@@ -121,7 +121,7 @@
   （畸形条目单独丢弃、合法 action 保留、重复容忍）；当时恒写 report.csv
   （已移除：接受的上报改为展平进 decisions.csv）。
 - `challenge/participant_agent/protocol.py`：`decision_response(..., reports=None)`。
-- `starter_kit/local_runner.py`：当时额外产出 report.csv 并纳入复放
+- `archive/starter_kit_v3/local_runner.py`：当时额外产出 report.csv 并纳入复放
   （已移除，复放只看 decisions.csv）。
 - `worker/main.py`：当时上传 report.csv 到 results 并纳入结算
   （已移除，scorer 直接读 decisions.csv 里的 `report_*` 行）。
@@ -130,7 +130,7 @@
 ### MP-051 参考 agent 异常检测
 
 - 新增 `challenge/participant_agent/anomaly_detection.py`（镜像
-  `starter_kit/agent/`）：偏差比值检测、`SAC_ANOMALY_*` 可调阈值、
+  `archive/starter_kit_v3/agent/`）：偏差比值检测、`SAC_ANOMALY_*` 可调阈值、
   占比确认规则、故障证据窗口、fault_status 状态机、维修期避让、
   嫌疑确认观测；`decision_graph.py`/`minimal_agent.py`/`state.py` 接入；
   `reference_strategy.py` 教学段。

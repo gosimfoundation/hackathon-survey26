@@ -19,7 +19,7 @@ from test_project_http import edge_stack  # noqa: F401
 
 pytestmark = pytest.mark.skipif(not os.environ.get('OBSERVER_DENO_BIN') or not os.environ.get('SAC_POSTGREST_BIN'),
                                reason='Local Edge toolchain required')
-TEMPLATE = Path(__file__).resolve().parents[1] / 'starter_kit/scenarios/finals-preview'
+TEMPLATE = Path(__file__).resolve().parents[1] / 'archive/starter_kit_v3/scenarios/finals-preview'
 
 
 def test_private_instance_rounds_and_official_replay(edge_stack, tmp_path):

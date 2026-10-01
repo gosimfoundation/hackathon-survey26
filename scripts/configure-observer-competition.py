@@ -55,7 +55,7 @@ def configured_runners():
     # (for example a newly added organization still being verified) is not required.
     config=json.loads((ROOT/'ops/github-installations.json').read_text())
     orgs=[r['organization'] for r in config['installations'] if r.get('enabled',True)]
-    if not orgs or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])',o) for o in orgs):
+    if not orgs or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|[1-9][0-9])',o) for o in orgs):
         raise ValueError('Invalid runner configuration')
     return orgs
 

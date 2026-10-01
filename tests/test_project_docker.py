@@ -108,7 +108,7 @@ def _packed_kit(tmp_path: Path) -> Path:
     from project_platform.package import extract_project, read_project_zip
     root = Path(__file__).resolve().parents[1]
     out = tmp_path / "my-agent.zip"
-    subprocess.run([sys.executable, str(root / "starter_kit" / "pack_agent.py"), "--out", str(out)], check=True,
+    subprocess.run([sys.executable, str(root / "archive" / "starter_kit_v3" / "pack_agent.py"), "--out", str(out)], check=True,
                    capture_output=True)
     workspace = tmp_path / "kit-project"
     extract_project(read_project_zip(out.read_bytes()), workspace)

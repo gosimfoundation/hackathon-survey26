@@ -12,6 +12,7 @@ export const participateItem: NavItem = { key: 'nav.submit', to: '/compete' }
 
 export const moreNavItems: NavItem[] = [
   { key: 'nav.brief', to: '/brief' },
+  { key: 'nav.cards', to: '/cards' },
   { key: 'nav.docs', to: '/docs' },
   { key: 'nav.resources', to: '/resources' },
   { key: 'nav.faq', to: '/faq' },
