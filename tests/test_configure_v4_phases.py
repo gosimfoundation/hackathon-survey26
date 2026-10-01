@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 import pytest
 
 from test_project_database import database, identity, query, rpc  # noqa: F401
+from test_publish_v4_card_pages import *  # noqa: F401,F403  (the A-D card page publisher, run in the same CI step)
 
 ROOT = Path(__file__).resolve().parents[1]
 ORG = 'AGENTIC-OBSERVER26-runner-1'
