@@ -551,7 +551,6 @@
         {
           "title": "Enter the online competition",
           "desc": "October 5–7: submit a complete project, evaluate it on three fixed formal scenarios and choose your final version; the hidden final scenario decides the ranking.",
-          "desc_gated": "October 5–7: complete projects only. A batch scores the mean of the three formal scenarios; the hidden final scenario decides the ranking.",
           "time": "Oct 5",
           "to": "/compete"
         }
@@ -739,19 +738,7 @@
         "formula": "total = base_science + program_bonus + request_reward\n      - unsafe_observation - invalid_action - avoidable_wait\n      - required_miss - flexible_shortfall - request_miss"
       },
       {
-        "kicker": "07 / Finals mechanics",
-        "title": "Anomalies hidden in the survey: find them, report them",
-        "paragraphs": [
-          "The competition scenarios hide three kinds of anomaly. A few tiles carry hidden tags: a nova tile's realized score is 1.5× the public estimate, a reddening tile only 0.8×. Once during the survey an unannounced instrument fault drops the instrument efficiency of one region to 40–70% — no forecast will show it. Nightly instrument efficiency also jitters slightly on its own, so a single deviation proves nothing; a persistent one is the signal.",
-          "You find anomalies by reconciliation. After every exposure the snapshot's tile_last_finished reports the realized score; estimate the same exposure with the public scoring formula and compare. A tile that keeps coming in high is probably a nova; consistently low, reddening; a whole region collapsing at once, an instrument fault. Any tile may be re-observed (the per-tile maximum is banked), so spending a slot on a confirmation repeat is a legitimate move.",
-          "Once confirmed, report it. Attach a reports array to a decision response — reports never consume slot time. A correct tag report is +100, a wrong one −150. A correct fault report gets the affected region published in the night bulletin one day later and repaired after two — the only way a fault ends early; excess false alarms cost −100 each. Reading your own data and daring to call it is exactly where the finals separate the field.",
-          "Practice is untouched: practice scenarios contain no anomalies, their rules and scores are exactly what they were at launch. To rehearse, download the starter kit and double-click run_finals_preview — seven nights with the full mechanics on, where the sample agent performs the complete find-fault → report → publication loop in front of you, at a baseline around 8214."
-        ],
-        "highlight": "The new mechanics run only on the competition scenarios; practice rules and scores are unchanged, byte for byte.",
-        "gated": true
-      },
-      {
-        "kicker": "08 / Glossary",
+        "kicker": "07 / Glossary",
         "title": "A little astronomy is enough",
         "paragraphs": [
           "You do not need an astronomy background to read the state dictionary and reason about it. A Tile is a patch of sky observed in one pointing; the Footprint is the full survey area; Targets are the object counts inside each tile. High-priority tiles carry extra scientific weight, nearly complete tiles are one exposure from completion, and under-covered regions are lagging behind the rest of the footprint.",
@@ -761,7 +748,7 @@
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
       },
       {
-        "kicker": "09 / Timeline",
+        "kicker": "08 / Timeline",
         "title": "Three stages from training to awards",
         "paragraphs": [
           "The event has three stages: online training from October 2–3, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17.",
@@ -794,8 +781,7 @@
           }
         ]
       }
-    ],
-    "intro_gated": "This participant briefing explains why survey operations need agent observers, what a human leading observer does, how the challenge works across three planning horizons, what you submit, how scoring works, the astronomy you need, and the event schedule."
+    ]
   },
   "about": {
     "kicker": "01 / Why",
@@ -2073,16 +2059,6 @@
       {
         "q": "Does the platform provide API credits?",
         "a": "The platform does not provide model credits. Cloud runs of complete projects use your own API key, set on the Participate page. Teams that complete the practice round (at least one successful practice score) each get one sponsor code, such as Kimi Coding Plan. Codes are coming soon; the captain claims it on the dashboard."
-      },
-      {
-        "q": "What is anomaly reporting? What if I get one wrong?",
-        "a": "On the competition scenarios a few tiles carry hidden tags (nova ×1.5 / reddening ×0.8) and one unannounced instrument fault occurs. An agent reports by attaching a reports array to a decision response — no slot time consumed. A correct tag report is +100, a wrong one −150; a correct fault report triggers publication and repair, and false alarms beyond the allowance cost −100 each. See the finals-mechanics section of the Brief and the Rules page.",
-        "gated": true
-      },
-      {
-        "q": "Where do I rehearse the finals mechanics?",
-        "a": "Re-download the starter kit and double-click run_finals_preview (or run local_runner --scenario scenarios/finals-preview). This seven-night scenario has the full mechanics on and ships its anomaly-tag file so local scoring works; the sample agent scores about 8214 and finds and reports the instrument fault on its own. Practice scenarios (demo-week, dev-reference…) keep the old rules — nothing to re-adapt. To try the full submission and cloud run, submit a complete project on the Playground (its scenarios have no anomaly mechanics).",
-        "gated": true
       }
     ]
   },
@@ -2353,7 +2329,6 @@
       "credits_note_hint": "Shown at the top of the dashboard credits panel. Leave empty to hide.",
       "credits_note_en": "note (en)",
       "credits_note_zh": "note (zh)",
-      "mechanics_public": "Show the finals mechanics on the site (tutorial section / FAQ / walkthrough step)",
       "registration_deadline": "Registration deadline (new sign-ups stop automatically; existing logins unaffected; empty = none)"
     },
     "worker": {

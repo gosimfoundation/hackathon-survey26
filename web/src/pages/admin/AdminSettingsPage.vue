@@ -26,7 +26,6 @@ const { reload } = useRegistrationOpen()
 const { reload: reloadCapacity } = useTeamCapacity()
 const registrationOpen = ref(true)
 const registrationDeadline = ref('')
-const mechanicsPublic = ref(true)
 const teamLimit = ref(150)
 const creditsNote = ref({ en: '', zh: '' })
 
@@ -50,7 +49,6 @@ onMounted(async () => {
   const limit = Number((raw.data ?? []).find(row => row.key === 'team_limit')?.value)
   if (Number.isInteger(limit) && limit >= 0) teamLimit.value = limit
   registrationDeadline.value = toLocalInput(settings.registrationDeadline)
-  mechanicsPublic.value = settings.mechanicsPublic
   creditsNote.value = note
 })
 async function save() {
@@ -59,7 +57,6 @@ async function save() {
     const { error } = await supabase.from('site_settings').upsert([
       { key: 'registration_open', value: registrationOpen.value },
       { key: 'registration_deadline', value: deadline },
-      { key: 'mechanics_public', value: mechanicsPublic.value },
       { key: 'team_limit', value: Math.max(0, Math.floor(Number(teamLimit.value) || 0)) },
     ], { onConflict: 'key' })
     if (error) throw error
@@ -89,7 +86,6 @@ async function saveCreditsNote() {
       <label class="field mt-4"><span>{{ t('admin.settings.registration_deadline') }}</span>
         <input v-model="registrationDeadline" type="datetime-local" data-testid="settings-deadline">
       </label>
-      <label class="check"><input v-model="mechanicsPublic" type="checkbox" data-testid="settings-mechanics"> {{ t('admin.settings.mechanics_public') }}</label>
       <label class="field mt-4"><span>{{ pick('Team limit (hidden teams do not count; admins bypass)', '队伍上限（隐藏队伍不计；管理员不受限）') }}</span>
         <input v-model.number="teamLimit" type="number" min="0" step="1" data-testid="settings-team-limit">
       </label>

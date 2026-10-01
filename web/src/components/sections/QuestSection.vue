@@ -2,13 +2,11 @@
 import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
-import { usePublicSettings } from '../../composables/usePublicSettings'
 
 const { t } = useI18n()
 const { isLoggedIn, me } = useAuth()
-const { mechanicsPublic } = usePublicSettings()
 
-type Level = { title: string; desc: string; time: string; to: string; desc_gated?: string }
+type Level = { title: string; desc: string; time: string; to: string }
 const levels = computed(() => t('home.quest.levels') as Level[])
 
 // The furthest step the site can verify: registration, then a team. Local runs
@@ -35,7 +33,7 @@ const current = computed(() => (!isLoggedIn.value ? 0 : !me.value?.team ? 1 : 2)
           <span class="quest-step">STEP 0{{ i + 1 }}</span>
           <span class="quest-time">{{ level.time }}</span>
           <h3>{{ level.title }}</h3>
-          <p>{{ !mechanicsPublic && level.desc_gated ? level.desc_gated : level.desc }}</p>
+          <p>{{ level.desc }}</p>
           <span class="quest-chip">{{ i < current ? t('home.quest.done_chip') : i === current ? '▶ ' + t('home.quest.current_chip') : t('home.quest.locked_chip') }}</span>
         </router-link>
       </div>
