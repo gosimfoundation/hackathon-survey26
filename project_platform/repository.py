@@ -18,8 +18,8 @@ import uuid
 from .manifest import ProjectError
 from .package import ProjectFile, extract_project, project_digest
 
-# Runner organizations 1-12; the backend decides which are enabled.
-REPOSITORY = re.compile(r"^AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])/participant-[0-9a-f]{32}$")
+# Runner organizations 1-99; the backend decides which are enabled.
+REPOSITORY = re.compile(r"^AGENTIC-OBSERVER26-runner-(?:[1-9]|[1-9][0-9])/participant-[0-9a-f]{32}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
