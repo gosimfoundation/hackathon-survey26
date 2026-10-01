@@ -4,7 +4,7 @@ import { useI18n } from '../composables/useI18n'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../lib/data'
 import { fmtUtc } from '../lib/format'
-import { linkSegments } from '../lib/linkify'
+import AnnouncementBody from '../components/content/AnnouncementBody.vue'
 import PageHead from '../components/layout/PageHead.vue'
 
 const { t, pick } = useI18n()
@@ -32,7 +32,7 @@ onMounted(async () => {
           <span class="pill" :class="a.level">{{ t(`ann.levels.${a.level}`) }}</span>
         </div>
         <h2 class="mt-3 text-2xl font-semibold tracking-[-.03em] text-text-primary">{{ pick(a.title_en, a.title_zh) || a.title_en }}</h2>
-        <div class="text2 mt-3 whitespace-pre-line leading-relaxed"><template v-for="(seg, i) in linkSegments(pick(a.body_en, a.body_zh) || a.body_en)" :key="i"><template v-if="seg.kind === 'text'">{{ seg.text }}</template><a v-else-if="seg.kind === 'link'" class="accent-l break-all underline underline-offset-2" :href="seg.href" target="_blank" rel="noopener noreferrer">{{ seg.href }}</a><a v-else :href="seg.href" target="_blank" rel="noopener noreferrer" class="mt-4 block max-w-md"><img :src="seg.href" alt="" loading="lazy" class="w-full rounded border border-border"></a></template></div>
+        <AnnouncementBody class="text2 mt-3" :text="pick(a.body_en, a.body_zh) || a.body_en" />
       </article>
     </div></section>
   </main>
