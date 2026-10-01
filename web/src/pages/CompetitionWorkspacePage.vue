@@ -10,8 +10,8 @@ import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 const {t,pick}=useI18n(),{team,refreshMe}=useAuth()
 const phase=ref<Phase|null>(null),projectPhase=ref<Phase|null>(null),loading=ref(true),failed=ref(false)
-// Playground with a complete-project board: participants choose CSV or a complete project.
-const track=ref<'csv'|'project'>('csv')
+// Playground with a complete-project board: participants choose a complete project (default) or the legacy CSV upload.
+const track=ref<'csv'|'project'>('project')
 // The current phase and its database settings decide the available workflow.
 const interactive=computed(()=>phase.value?.observer_settings?.projects_enabled||phase.value?.observer_settings?.local_sessions_enabled)
 onMounted(async()=>{try{await refreshMe()
@@ -24,7 +24,8 @@ onMounted(async()=>{try{await refreshMe()
   const global=phases.find(p=>competition.phaseId?p.id===competition.phaseId:p.slug===(competition.mode==='practice'?'practice':'online'))
   phase.value=phases.find(p=>p.id===competition.betaPhaseId)??global??null
   projectPhase.value=competition.betaPhaseId?null:phases.find(p=>p.id===competition.projectPhaseId&&p.is_active)??null
-  if(projectPhase.value&&new URLSearchParams(location.search).get('track')==='project')track.value='project'
+  const wanted=new URLSearchParams(location.search).get('track')
+  if(projectPhase.value&&(wanted==='project'||wanted==='csv'))track.value=wanted
 }catch{failed.value=true}finally{loading.value=false}})
 </script>
 <template>

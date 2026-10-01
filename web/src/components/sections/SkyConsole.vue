@@ -163,6 +163,7 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect() })
           ></div>
         </div>
         <div class="sky-tour-card" :class="`at-${currentStep}`">
+          <button type="button" class="sky-tour-close" :aria-label="t('hero.console.tour_close')" data-testid="sky-tour-close" @click="endTour">×</button>
           <p class="sky-tour-step">{{ tourStep + 1 }} / {{ TOUR_STEPS.length }}</p>
           <p class="sky-tour-text">{{ t(`hero.console.tour.${currentStep}`) }}</p>
           <p class="sky-tour-actions">
@@ -281,6 +282,15 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect() })
   font-size: .6rem; letter-spacing: .12em; color: #78a6ff;
 }
 .sky-tour-text { margin: 0; font-size: .82rem; line-height: 1.65; color: #f5f5f5; }
+/* An always-visible close control: the plain "skip" link was easy to miss. */
+.sky-tour-close {
+  position: absolute; top: .35rem; right: .5rem;
+  width: 1.6rem; height: 1.6rem; padding: 0;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 50%;
+  background: rgba(255,255,255,.08); color: #f5f5f5;
+  font-size: 1rem; line-height: 1; cursor: pointer;
+}
+.sky-tour-close:hover { border-color: #78a6ff; color: #78a6ff; }
 .sky-tour-actions { display: flex; align-items: center; gap: .9rem; margin: .7rem 0 0; }
 
 .sky-narration {

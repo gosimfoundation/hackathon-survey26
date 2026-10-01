@@ -23,6 +23,8 @@ const locked = ref(new Set<string>()), showWithdrawn = ref(false), targetBatch =
 const pending = ref('')
 const form = ref({ title: '', kind: 'repository', url: '' })
 const selectedFile = ref<File | null>(null), review = ref<ProjectRevision | null>(null)
+/** 0–100 while a ZIP is uploading; null the rest of the time. */
+const uploadPercent = ref<number | null>(null)
 const reviewPanel = ref<HTMLElement | null>(null)
 const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref('')
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
@@ -32,6 +34,8 @@ const diagnostics = ref<{ kind: string; status: string; code: string; log: strin
 const modelMode = computed(() => teamModelMode(data.value?.team_model))
 const savedModel = computed(() => data.value?.team_model?.saved ?? null)
 const modeChoice = ref<ModelKeyMode>(DEFAULT_MODEL_KEY_MODE), replacingKey = ref(false)
+// Collapsed by default; teams that use a model (saved key or a key connected in this tab) always see it open.
+const modelOpen = ref(false)
 const modelForm = ref({ base_url: '', model: '', key: '' })
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
@@ -63,6 +67,8 @@ const words = computed(() => pick({
   refresh: 'Refresh', review: 'Review interface', explain: 'Adapter explanation', original: 'Original source fingerprint',
   manifest: 'Execution settings', changes: 'Added adapter files', unchanged: 'This project supplies its own interface; no adapter files were added.',
   check: 'I reviewed the execution settings and adapter code, and confirm this exact version.', approve: 'Confirm version',
+  approveHint: 'Tick the self-check box above to enable the confirmation button.', fileSelected: 'Selected file',
+  uploading: 'Uploading {n}%',
   testPassed: 'Public scenario test passed', testResult: 'Download public test result', projectDownload: 'Download this project version', phase: 'Evaluation phase', evaluate: 'Evaluate this version',
   batches: 'Evaluations', local: 'Start local CSV session', localHelp: 'Run locally with the same step-by-step information. Upload the resulting decisions.csv after the session.',
   download: 'Download private result', uploadCsv: 'Upload matching CSV', average: 'Combined score',
@@ -71,7 +77,7 @@ const words = computed(() => pick({
   apiName: 'API name', edit: 'Edit', limit: 'Daily token limit', saveKey: 'Save encrypted key', disable: 'Disable', enabled: 'Enabled', disabled: 'Disabled',
   evidence: 'Design award evidence', evidenceHelp: 'Describe the architecture and reproducible steps. This does not change performance scores.',
   codeUrl: 'Code or documentation URL (optional)', saveEvidence: 'Save evidence', notes: 'Architecture and reproduction notes',
-  close: 'Close review', done: 'Saved.', prepared: 'Project queued for preparation.', confirmed: 'Version confirmed.',
+  close: 'Close review', done: 'Saved.', prepared: 'Project queued for preparation. When it is ready, open the review in step 2 below.', confirmed: 'Version confirmed. Start it in step 3 below.',
   queued: 'Evaluation queued.', failed: 'This request could not be completed. Refresh and try again.', working: 'Working…',
   team: 'Join or create a team first.', phaseUnavailable: 'No evaluation phase is open.',
   final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version once on a hidden scenario. Only that hidden score decides the final ranking; the online board does not.',
@@ -105,15 +111,17 @@ const words = computed(() => pick({
   privacy: '公开仓库 Fork 后仍然公开；ZIP 项目和详细结果只供本队与主办方查看。', file: '完整项目 ZIP · 最大 50 MB',
   submit: '上传并准备', projects: '我的项目', empty: '还没有项目。', refresh: '刷新', review: '检查接口', explain: '适配说明',
   original: '原始代码指纹', manifest: '运行设置', changes: '新增的适配文件', unchanged: '项目自带接口，没有新增适配文件。',
-  check: '我已检查运行设置和适配代码，确认使用这个版本。', approve: '确认版本', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
+  check: '我已检查运行设置和适配代码，确认使用这个版本。', approve: '确认版本',
+  approveHint: '先勾选上面的自查框，才能点确认版本。', fileSelected: '已选文件',
+  uploading: '正在上传 {n}%', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
   phase: '评测赛程', evaluate: '评测此版本', batches: '评测记录', local: '启动本地 CSV 会话',
   localHelp: '在本机运行，按步骤获得相同信息；运行结束后上传生成的 decisions.csv。', download: '下载私有结果',
   uploadCsv: '上传匹配的 CSV', average: '综合成绩', api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
   shared: '主办方接口', own: '队伍接口', modelNames: '模型名称，用逗号分隔', endpoint: 'API 地址', key: 'API 密钥',
   apiName: '接口名称', edit: '修改', limit: '每天最多使用的 token 数', saveKey: '加密保存密钥', disable: '停用', enabled: '已启用', disabled: '已停用',
   evidence: '设计奖材料', evidenceHelp: '说明项目架构和复现步骤；这里不影响实际成绩。', codeUrl: '代码或文档链接（选填）',
-  saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。',
-  confirmed: '已确认版本。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
+  saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。准备好后请到下方第2步点“检查接口”。',
+  confirmed: '已确认版本。请到下方第3步开始评测。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
   team: '请先加入或创建队伍。', phaseUnavailable: '当前没有开放的评测赛程。',
   final: '最终版本', finalIntro: '线上赛结束后，主办方会在一个隐藏场景上对每队的最终版本评测一次。最终排名只看这个隐藏场景的成绩，线上榜不决定最终排名。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
@@ -195,6 +203,7 @@ async function reload() {
   void loadScenarioNames().catch(() => {})
   locked.value = new Set()
   modeChoice.value = modelMode.value
+  if (!modelOpen.value && (savedModel.value || personal.everConfigured.value)) modelOpen.value = true
   await personal.refresh()
   // Bind evaluations to the entry phase (beta entry first), never to whatever
   // order the database happened to return.
@@ -217,12 +226,18 @@ function submit() {
     if (url !== null) await portal('submit_repository', { title: form.value.title, url })
     else {
       if (!selectedFile.value) throw new Error('wrong_file_type')
-      const upload_id = await uploadProjectFile(selectedFile.value, 'source')
+      uploadPercent.value = 0
+      let upload_id: string
+      try { upload_id = await uploadProjectFile(selectedFile.value, 'source', p => { uploadPercent.value = p }) }
+      finally { uploadPercent.value = null }
       await portal('submit_zip', { title: form.value.title, upload_id })
     }
     form.value = { title: '', kind: form.value.kind, url: '' }; selectedFile.value = null
     const file = document.querySelector<HTMLInputElement>('[data-testid="project-zip"]'); if (file) file.value = ''
-  }, words.value.prepared, 'submit')
+  }, words.value.prepared, 'submit').then(() => {
+    // Point at step 2 after a successful upload; on failure the error banner stays in view instead.
+    if (!error.value) document.querySelector('[data-testid="project-versions"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 // Resubmits the same public repository through the ordinary upload action (a new revision).
 function prepareAgain(title: string, r: ProjectRevision) {
@@ -235,7 +250,9 @@ function openReview(r: ProjectRevision) {
 }
 function approve() { if (review.value && confirmed.value) { const id = review.value.id; void action(async () => {
   await portal('approve', { revision_id: id, digest: review.value!.approval_digest }); review.value = null
-}, words.value.confirmed, 'approve:' + id) } }
+}, words.value.confirmed, 'approve:' + id).then(() => {
+  if (!error.value) document.querySelector('[data-testid="project-evaluate"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}) } }
 const repeatQuestion = () => sentences(words.value.repeat + (quota.value ? pick(` (${quota.value.remaining} ${words.value.repeatLeft}).`, `（${words.value.repeatLeft} ${quota.value.remaining} 次）。`) : pick('.', '。')), words.value.proceed)
 function evaluate(revision_id: string) {
   const phase_id = phaseId.value
@@ -310,8 +327,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
       <p v-if="notice" role="status" class="mb-4">{{ notice }}</p>
       <p v-if="!projectsOpen" class="panel">{{ words.closed }}</p>
-      <section class="panel mb-6" data-testid="model-api-settings">
-        <h2 id="model-api">{{ t('submit.model_api.title') }}</h2>
+      <details class="panel mb-6 model-api" data-testid="model-api-settings" :open="modelOpen" @toggle="modelOpen = ($event.target as HTMLDetailsElement).open">
+        <summary class="model-api-summary" data-testid="model-api-toggle">
+          <span id="model-api" class="model-api-title" role="heading" aria-level="2">{{ t('submit.model_api.title') }}</span>
+          <span class="help model-api-hint" data-testid="model-api-hint">{{ t('submit.model_api.collapsed_hint') }}</span>
+        </summary>
+        <div class="model-api-body">
         <p class="help mt-3">{{ t('submit.model_api.intro') }}</p>
         <p class="help" data-testid="model-mode-tradeoff">{{ t('submit.model_api.tradeoff') }}</p>
         <p v-if="relayFinalRisk" class="errors" role="note" data-testid="model-mode-final-note">{{ words.apiFinalNote }}</p>
@@ -348,7 +369,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </form>
         </template>
         <form v-else class="mt-4" data-testid="personal-model-settings" autocomplete="off" @submit.prevent="action(personal.connect)">
-          <p v-if="relayRunning && !personal.connected.value" class="errors" role="alert">{{ t('submit.model_api.relay_running') }}</p>
+          <p v-if="relayRunning && !personal.connected.value && personal.everConfigured.value" class="errors" role="alert">{{ t('submit.model_api.relay_running') }}</p>
           <p class="help">{{ t('submit.model_api.keep_open') }}</p>
           <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="personal.endpoint.value" type="url" name="observer-relay-endpoint" :disabled="personal.connected.value" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" aria-describedby="personal-model-endpoint-help" data-testid="personal-model-endpoint"></label>
           <p id="personal-model-endpoint-help" class="help">{{ t('submit.model_api.endpoint_hint') }}</p>
@@ -359,7 +380,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="personal.connected.value" class="help mt-3" role="status">{{ personal.status.value==='failed'?t('submit.model_api.call_failed'):personal.status.value==='working'?t('submit.model_api.working'):t('submit.model_api.connected') }}</p>
         </form>
         <datalist id="model-base-suggestions"><option v-for="base in personalBases" :key="base" :value="base"></option></datalist>
-      </section>
+        </div>
+      </details>
       <p class="mb-5"><button type="button" class="btn sm" :disabled="busy" @click="action(reload)">{{ words.refresh }}</button></p>
       <form v-if="projectsOpen" class="panel mb-6" @submit.prevent="submit">
         <h2 id="prepare">{{ words.step1 }}</h2><p class="help mb-4">{{ words.step1Note }}</p>
@@ -368,6 +390,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <label class="check"><input v-model="form.kind" type="radio" value="zip">{{ words.zip }}</label>
         <label v-if="form.kind === 'repository'" class="field"><span>{{ words.repository }}</span><input v-model="form.url" type="url" required placeholder="https://github.com/owner/project" data-testid="project-url"></label>
         <label v-else class="field border border-dashed border-border-subtle p-5"><span>{{ words.file }}</span><input type="file" accept=".zip,application/zip" required data-testid="project-zip" @change="selectedFile = ($event.target as HTMLInputElement).files?.[0] ?? null"></label>
+        <p v-if="form.kind === 'zip' && selectedFile" class="help mt-2" data-testid="project-zip-selected">{{ words.fileSelected }}: {{ selectedFile.name }} · {{ (selectedFile.size / 1048576).toFixed(1) }} MB</p>
+        <p v-if="uploadPercent != null" class="help mt-2" role="status" data-testid="project-upload-progress">
+          {{ words.uploading.replace('{n}', String(uploadPercent)) }}
+          <progress class="upload-progress" :value="uploadPercent" max="100"></progress>
+        </p>
         <p class="help mb-4">{{ words.privacy }}</p>
         <button class="btn primary" :disabled="busy || locked.has('submit')" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
       </form>
@@ -402,6 +429,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <h3 class="mt-5">{{ words.changes }}</h3><p v-if="!Object.keys(review.adapter_files).length" class="help">{{ words.unchanged }}</p>
         <div v-for="(code, path) in review.adapter_files" :key="path"><h4 class="break-all">{{ path }}</h4><pre>{{ code }}</pre></div>
         <template v-if="review.status === 'reviewable' && !review.archived_at"><label class="check mt-4"><input v-model="confirmed" type="checkbox" data-testid="project-confirm">{{ words.check }}</label>
+          <p v-if="!confirmed" class="help mt-2" data-testid="project-approve-hint">{{ words.approveHint }}</p>
           <button class="btn primary mt-3" :disabled="busy || !confirmed || !review.public_test.passed || locked.has('approve:'+review.id)" data-testid="project-approve" @click="approve">{{ words.approve }}</button></template>
         <form class="mt-6" @submit.prevent="action(async () => { await portal('evidence', { revision_id: review!.id, notes, code_url: codeUrl }) })">
           <h3>{{ words.evidence }}</h3><p class="help">{{ words.evidenceHelp }}</p>
@@ -486,6 +514,14 @@ h2 { font-size: 1.2rem; font-weight: 600; } h3 { font-weight: 600; }
 /* Logs are secondary to the step actions: a quiet text link at the end of a row. */
 .log-link { margin-left: auto; background: none; border: 0; padding: .25rem 0; font-size: .75rem; color: #858585; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .meta { font-size: .8rem; color: #858585; }
+.model-api > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; }
+.model-api > summary::-webkit-details-marker { display: none; }
+.model-api > summary::after { content: '+'; margin-left: auto; color: #78a6ff; }
+.model-api[open] > summary::after { content: '–'; }
+.model-api-title { font-size: 1.2rem; font-weight: 600; }
+.model-api-hint { margin: 0; }
+.model-api-body { margin-top: .75rem; }
+.upload-progress { display: block; width: 100%; max-width: 24rem; height: .5rem; margin-top: .35rem; accent-color: #315efb; }
 .log-link:hover { color: #bdbdbd; } .log-link:disabled { opacity: .5; cursor: default; }
 pre { max-height: 24rem; overflow: auto; padding: 1rem; margin-top: .5rem; background: #0b0b0b; font-size: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
