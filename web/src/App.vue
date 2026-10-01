@@ -9,6 +9,7 @@ import RegisterFloat from './components/layout/RegisterFloat.vue'
 import ScrollProgress from './components/layout/ScrollProgress.vue'
 import BrowserNotice from './components/layout/BrowserNotice.vue'
 import MidAutumnEgg from './components/layout/MidAutumnEgg.vue'
+import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
 
 const { t } = provideI18n()
 provideTheme()
@@ -33,4 +34,5 @@ provideTheme()
   <RegisterFloat />
   <FlashContainer />
   <MidAutumnEgg />
+  <PinnedAnnouncementDialog />
 </template>

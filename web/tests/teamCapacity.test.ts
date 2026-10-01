@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseTeamCapacity, teamCreationBlocked } from '../src/lib/teamCapacity.ts'
+import { parseTeamCapacity, showsTeamPlaces, teamCreationBlocked } from '../src/lib/teamCapacity.ts'
 
 test('capacity is derived from the limit and the visible team count', () => {
   assert.deepEqual(parseTeamCapacity({ limit: 150, teams: 94, remaining: 56, full: false }), { limit: 150, teams: 94, remaining: 56, full: false })
@@ -22,4 +22,14 @@ test('only non-admins are blocked when every place is taken', () => {
   assert.equal(teamCreationBlocked(full, undefined), true)
   assert.equal(teamCreationBlocked(full, true), false)
   assert.equal(teamCreationBlocked(open, false), false)
+})
+
+test('the places line shows for a real limit and hides when the limit means "no limit"', () => {
+  assert.equal(showsTeamPlaces(parseTeamCapacity({ limit: 150, teams: 94 })), true)
+  assert.equal(showsTeamPlaces(parseTeamCapacity({ limit: 9999, teams: 0 })), true)
+  assert.equal(showsTeamPlaces(parseTeamCapacity({ limit: 100000, teams: 150 })), false)
+  assert.equal(showsTeamPlaces(parseTeamCapacity({ limit: 10000, teams: 3 })), false)
+  // A full real limit shows the "full" notice instead; unknown capacity shows nothing.
+  assert.equal(showsTeamPlaces(parseTeamCapacity({ limit: 150, teams: 150 })), false)
+  assert.equal(showsTeamPlaces(null), false)
 })

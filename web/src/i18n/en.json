@@ -2142,7 +2142,11 @@
       "info": "info",
       "warning": "warning",
       "success": "success"
-    }
+    },
+    "popup_close": "Close announcement",
+    "popup_all": "See all announcements",
+    "popup_ok": "Got it",
+    "popup_more": "{n} more pinned"
   },
   "admin": {
     "title": "Admin",

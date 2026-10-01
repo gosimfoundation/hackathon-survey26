@@ -17,3 +17,11 @@ export function parseTeamCapacity(value: unknown): TeamCapacity | null {
 export function teamCreationBlocked(capacity: TeamCapacity | null, isAdmin: boolean | null | undefined): boolean {
   return Boolean(capacity?.full && !isAdmin)
 }
+
+/** A team limit this high means "no limit" (organizers set 100000): the places line is not shown then. */
+export const UNLIMITED_TEAM_LIMIT = 10000
+
+/** Show "Team places: X of Y left" only for a real, not yet reached limit. */
+export function showsTeamPlaces(capacity: TeamCapacity | null): boolean {
+  return Boolean(capacity && !capacity.full && capacity.limit < UNLIMITED_TEAM_LIMIT)
+}
