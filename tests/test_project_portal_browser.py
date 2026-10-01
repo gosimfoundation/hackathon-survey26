@@ -30,6 +30,13 @@ pytestmark=pytest.mark.skipif(not os.environ.get('OBSERVER_DENO_BIN') or not os.
     not os.environ.get('SAC_NODE_BIN'),reason='Explicit local browser test toolchain required')
 
 
+def ensure_model_panel(page):
+    """The model API panel starts collapsed for teams that never configured a key; open it when closed."""
+    panel = page.get_by_test_id('model-api-settings')
+    if panel.get_attribute('open') is None:
+        panel.get_by_test_id('model-api-toggle').click()
+
+
 @pytest.fixture(scope='module')
 def portal_site(edge_stack):
     port=free_port();base=f'http://127.0.0.1:{port}'
@@ -146,6 +153,7 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         expect(page.get_by_role('heading',name='ZIP project',exact=True)).to_be_visible(timeout=15000)
         expect(page.get_by_role('button',name='Start local CSV session',exact=True)).to_have_count(0)
         models=page.get_by_test_id('model-api-settings')
+        ensure_model_panel(page)
         expect(models.get_by_role('heading',name='Model API (optional)',exact=True)).to_be_visible()
         # Default: the key is not saved; the page relay is shown and saving is an opt-in.
         expect(models.get_by_test_id('model-mode-relay')).to_be_checked()
@@ -177,6 +185,7 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         assert len(stored)==1 and stored[0][0].startswith('v1.') and key not in stored[0][0]
         page.reload()
         models=page.get_by_test_id('model-api-settings')
+        # A saved key reopens the panel on its own.
         expect(models.get_by_test_id('team-model-hint')).to_contain_text('Key ending in 4Kd9',timeout=15000)
         # Choosing not to save deletes the saved key at once and shows the page relay.
         expect(models).to_contain_text('Choosing this deletes the saved key.')
@@ -196,6 +205,7 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         assert 'in-memory-browser-fixture' not in page.evaluate('JSON.stringify({...localStorage,...sessionStorage})')
         assert query(uri,"select count(*) from private.observer_providers where team_id=%s and encrypted_key<>''",(s['team'],))==[(0,)]
         page.reload()
+        # The key connected earlier in this tab reopens the panel (session marker, no key material stored).
         expect(page.get_by_test_id('personal-api-key')).to_have_value('',timeout=15000)
         expect(page.get_by_test_id('model-mode-relay')).to_be_checked()
         # Opting in again: the relay form and its keep-open message disappear.
@@ -206,8 +216,10 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         expect(page.get_by_role('status').filter(has_text='Keys will be saved encrypted on the server.')).to_be_visible(timeout=15000)
         for lang,title in (('fr','API de modèle (facultatif)'),('ja','モデル API（任意）'),('zh','模型 API（可选）')):
             page.goto(portal_site+'/projects?lang='+lang)
+            ensure_model_panel(page)
             expect(page.get_by_test_id('model-api-settings').get_by_role('heading',name=title,exact=True)).to_be_visible(timeout=15000)
         page.goto(portal_site+'/projects?lang=en')
+        ensure_model_panel(page)
         expect(page.get_by_test_id('model-api-settings').get_by_role('heading',name='Model API (optional)')).to_be_visible(timeout=15000)
         # A version that was never evaluated can be withdrawn after a confirmation.
         page.get_by_test_id('project-title').fill('Withdrawn project')

@@ -231,7 +231,8 @@
       "weather_help": "Seeing: how blurred stars are, lower is sharper (arcseconds). Transparency: how clear the atmosphere is, higher is better. Sky: how bright the night sky itself is. Instrument: how much the equipment is delivering right now.",
       "seek": "Drag the replay position",
       "top_score": "Champion's run: {score}",
-      "lst": "Where the telescope points right now · sky time {lst}"
+      "lst": "Where the telescope points right now · sky time {lst}",
+      "tour_close": "Close walkthrough"
     },
     "pipeline_intro": "Milestones",
     "cta_start": "Get started in 3 steps"
@@ -1743,7 +1744,7 @@
     "packed": "Packed {n} file(s) in the browser",
     "model_api": {
       "title": "Model API (optional)",
-      "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. Choose how the platform handles your key:",
+      "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. If your project never calls a model, skip this section entirely. Otherwise choose how the platform handles your key:",
       "choice": "How your model key is handled",
       "tradeoff": "Not saved: keep this page open during evaluations. Saved: stored encrypted and deleted automatically after the results are verified.",
       "stored": "Save encrypted on the server",
@@ -1779,13 +1780,14 @@
       "connected": "Connected for this page session.",
       "working": "Calling your API…",
       "call_failed": "The model call failed. Check your API and quota.",
-      "invalid": "Check the endpoint, model and key."
+      "invalid": "Check the endpoint, model and key.",
+      "collapsed_hint": "Only projects that call a model need a key here; pure-code projects can skip this section."
     },
     "track": {
       "lede": "The Playground has two ways to take part, with separate boards:",
       "csv": "Upload a CSV result",
       "project": "Submit a complete project",
-      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board.",
+      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board. The CSV upload is being phased out — prefer a complete project.",
       "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
