@@ -301,8 +301,9 @@ def test_organizer_script_dry_run_and_apply(hidden, monkeypatch, capsys):
         return capsys.readouterr().out
     with pytest.raises(SystemExit):
         main('--before-freeze')
-    with pytest.raises(psycopg.Error, match='source_phase_not_finished'):
+    with pytest.raises(SystemExit):
         main()
+    assert 'has not ended yet' in capsys.readouterr().err
     out = main('--team', team_slug, '--before-freeze')
     assert 'DRY RUN' in out and 'would_create' in out and 'relay model mode: model calls will fail' in out
     assert 'scenario(s) per batch' in out and 'colocated=false' in out and 'v4_requires_colocated' in out

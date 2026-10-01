@@ -92,7 +92,7 @@ def summarize(result):
     for t in teams:
         key = t['action'] if t['action'] != 'skip' else 'skip:' + (t['reason'] or '')
         counts[key] = counts.get(key, 0) + 1
-    lines.append('  totals: ' + ', '.join(f'{k}={v}' for k, v in sorted(counts.items())) + f", created={result['created']}")
+    lines.append('  totals: ' + ', '.join(f'{k}={v}' for k, v in sorted(counts.items())) + f"; batches created now: {result['created']}")
     return '\n'.join(lines)
 
 
@@ -278,7 +278,12 @@ def main():
             print(json.dumps(rows, ensure_ascii=False, indent=1, default=str) if args.json else format_results(rows, cards, mode))
             if args.csv: write_csv(args.csv, rows, cards); print(f'  written to {args.csv} (keep it private until publication)')
         return
-    source = one(deploy.query('select id from public.phases where slug='+q(args.source)), 'source phase')['id']
+    phase = one(deploy.query('select id, ends_at is not null and now()>=ends_at as finished, ends_at from public.phases'
+                             ' where slug='+q(args.source)), 'source phase')
+    source = phase['id']
+    if not phase['finished'] and not args.before_freeze:
+        # The database refuses this (source_phase_not_finished); say why instead of an opaque API error.
+        parser.error(f"{args.source} has not ended yet (ends_at={phase['ends_at']}); test one team with --team ... --before-freeze")
     team = None
     if args.team:
         team = one(deploy.query('select id from public.teams where id::text='+q(args.team)+' or slug='+q(args.team)
