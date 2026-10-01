@@ -13,6 +13,40 @@ from test_project_database import database, identity, query, rpc, session, setup
 ORG = 'AGENTIC-OBSERVER26-runner-'
 
 
+def finished_job(s, org, seconds, days_ago=1):
+    """A succeeded engine job on org with a controlled duration inside the usage window."""
+    uri = s['uri']
+    batch, run = uuid.uuid4(), uuid.uuid4()
+    query(uri, "insert into public.observer_batches(id,team_id,user_id,phase_id,mode) values(%s,%s,%s,%s,'local')",
+          (batch, s['team'], s['user'], s['phase']))
+    query(uri, "insert into public.observer_runs(id,batch_id,scenario_id,status) values(%s,%s,%s,'queued')",
+          (run, batch, s['scenario']))
+    job = uuid.uuid4()
+    rpc(uri, 'observer_enqueue_job', job, 'engine', run, None, org,
+        secrets.token_urlsafe(32), 'encrypted job payload', 'encrypted nonce')
+    query(uri, """update private.observer_jobs set status='succeeded',
+        claimed_at=now()-(%s||' days')::interval-(%s||' seconds')::interval,
+        finished_at=now()-(%s||' days')::interval where id=%s""", (days_ago, seconds, days_ago, job))
+    # The run is over; only the recorded job duration remains as usage.
+    query(uri, "update public.observer_runs set status='scored',score=1,finished_at=now() where id=%s", (run,))
+    return job
+
+
+def claimed_job(s, org):
+    """An unexpired claimed job on org: one unit of active load."""
+    uri = s['uri']
+    batch, run = uuid.uuid4(), uuid.uuid4()
+    query(uri, "insert into public.observer_batches(id,team_id,user_id,phase_id,mode) values(%s,%s,%s,%s,'local')",
+          (batch, s['team'], s['user'], s['phase']))
+    query(uri, "insert into public.observer_runs(id,batch_id,scenario_id,status) values(%s,%s,%s,'queued')",
+          (run, batch, s['scenario']))
+    job = uuid.uuid4()
+    rpc(uri, 'observer_enqueue_job', job, 'engine', run, None, org,
+        secrets.token_urlsafe(32), 'encrypted job payload', 'encrypted nonce')
+    query(uri, "update private.observer_jobs set status='claimed',claimed_at=now() where id=%s", (job,))
+    return job
+
+
 def install(uri, n, enabled=True):
     query(uri, """insert into private.observer_installations
         (organization,organization_id,installation_id,repository_id,approved_sha,enabled)
@@ -73,6 +107,43 @@ def test_new_participants_fill_the_least_loaded_enabled_organizations(setup):
     install(uri, 7, enabled=False)
     first = query(uri, 'select user_id from private.observer_placements where organization=%s', (ORG + '7',))[0][0]
     assert rpc(uri, 'observer_placement', first) == ORG + '7'
+
+
+def test_new_placement_avoids_organizations_with_active_jobs(setup):
+    s = setup; uri = s['uri']
+    query(uri, 'delete from private.observer_placements')
+    for n in range(1, 4):
+        install(uri, n)
+    for n in range(4, 13):
+        install(uri, n, enabled=False)
+    # org-3 has zero placements but one active job: count-based placement would
+    # have chosen it, load-based placement must not.
+    claimed_job(s, ORG + '3')
+    for n in (1, 2):
+        placed, _ = identity(uri)
+        query(uri, 'insert into private.observer_placements(user_id,organization) values(%s,%s)', (placed, ORG + str(n)))
+    user, _ = identity(uri)
+    assert rpc(uri, 'observer_placement', user) == ORG + '1'
+
+
+def test_new_placement_prefers_the_least_recently_used_organization(setup):
+    s = setup; uri = s['uri']
+    query(uri, 'delete from private.observer_placements')
+    for n in range(1, 4):
+        install(uri, n)
+    for n in range(4, 13):
+        install(uri, n, enabled=False)
+    # org-1 has zero placements but consumed an hour inside the seven-day window;
+    # org-2 has one placement and no usage.
+    finished_job(s, ORG + '1', 3600)
+    placed, _ = identity(uri)
+    query(uri, 'insert into private.observer_placements(user_id,organization) values(%s,%s)', (placed, ORG + '2'))
+    user, _ = identity(uri)
+    assert rpc(uri, 'observer_placement', user) == ORG + '2'
+    # Usage outside the seven-day window no longer counts.
+    query(uri, "update private.observer_jobs set claimed_at=now()-interval '10 days',finished_at=now()-interval '9 days'")
+    user, _ = identity(uri)
+    assert rpc(uri, 'observer_placement', user) == ORG + '1'
 
 
 def test_concurrent_first_placement_is_recorded_once(setup):

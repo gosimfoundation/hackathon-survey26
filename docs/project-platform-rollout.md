@@ -200,7 +200,12 @@ Runner organizations 7-12 (added 2026-09-27) raise the monthly Actions budget.
 A participant's organization is recorded once in `private.observer_placements`
 (`public.observer_placement`): participants with existing jobs keep their
 organization; new participants go to the enabled organization with the fewest
-placed participants. A new organization stays `enabled=false` (and may be marked
+active jobs, then the least Actions usage over the last seven days, then the
+fewest placed participants (count alone left heavy teams concentrated on
+runner-1). `scripts/rebalance-observer-placements.py` (dry-run by default)
+moves idle recorded placements when accumulated usage drifts apart; the next
+job auto-creates a fresh private repository in the new organization and old
+evidence stays readable in the old one. A new organization stays `enabled=false` (and may be marked
 `"enabled": false` in `ops/github-installations.json`) until its app installation
 and control repository are verified with `configure-observer-runners.py`.
 
