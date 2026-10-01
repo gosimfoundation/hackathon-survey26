@@ -39,6 +39,11 @@ begin
   insert into private.observer_hardening(id) values(true) on conflict do nothing;
   update private.observer_hardening set restricted_egress=coalesce(p_restricted_egress,restricted_egress),
     rescore=coalesce(p_rescore,rescore),updated_at=now() where id;
+  if p_rescore is false then
+    -- Runs not yet handed to a score job will not be checked: no stale 'pending'.
+    update public.observer_runs r set score_check=null where r.score_check='pending'
+      and not exists(select 1 from private.observer_jobs j where j.run_id=r.id and j.kind='score');
+  end if;
   perform private.audit('observer.hardening',public.observer_hardening());
   return public.observer_hardening();
 end $$;
@@ -175,6 +180,8 @@ begin
   else
     update public.observer_runs set status='failed',error='score_verification_failed',score=null,
       score_check='rejected' where id=r.id;
+    -- A voided trace is the team's run, never a platform failure: no refund and
+    -- no automatic retry (private.observer_participant_failure below).
     if b.status='scored' then
       update public.observer_batches set status='failed',score=null,quota_refunded=false where id=b.id;
     else
@@ -205,10 +212,16 @@ begin
   update private.observer_jobs set status=case when coalesce(p_error,'')='' then 'succeeded' else 'failed' end,
     result=p_result,error=left(coalesce(p_error,''),1000),finished_at=now() where id=p_job;
   if v.kind='score' then
-    perform private.observer_settle_score_check(p_job,
-      case when coalesce(p_error,'')='' then 'scored'
-        when p_result->'diagnostics'->>'code'='score_trace_mismatch' then 'rejected' else 'unverified' end,
-      case when coalesce(p_error,'')='' then p_result end);
+    begin
+      perform private.observer_settle_score_check(p_job,
+        case when coalesce(p_error,'')='' then 'scored'
+          when p_result->'diagnostics'->>'code'='score_trace_mismatch' then 'rejected' else 'unverified' end,
+        case when coalesce(p_error,'')='' then p_result end);
+    exception when raise_exception then
+      -- A receipt that does not fit its run (e.g. another digest) changes no
+      -- score; the run keeps its reported one.
+      perform private.observer_settle_score_check(p_job,'unverified',null);
+    end;
     return;
   end if;
   if coalesce(p_error,'')<>'' then
@@ -275,6 +288,47 @@ begin
     body:='{}'::jsonb,timeout_milliseconds:=120000) into request_id;
   update private.observer_dispatch_config set last_enqueued_at=clock_timestamp(),last_request_id=request_id where id;
   return request_id;
+end $$;
+
+-- Unchanged except that a run voided by its score check is the team's failure.
+create or replace function private.observer_participant_failure(p_run uuid)
+returns boolean language sql stable security definer set search_path to 'public', 'pg_temp' as $$
+  select exists(select 1 from public.observer_runs r join public.observer_batches b on b.id=r.batch_id
+    where r.id=p_run and r.status='failed' and (r.error='local_runner_stopped'
+      or r.error='score_verification_failed'
+      or (r.error='evaluation_expired' and b.mode='local')
+      or (r.error in ('execute_job_failed','engine_job_failed') and exists(select 1 from private.observer_jobs j
+        where j.run_id=r.id and j.status='failed' and j.result->'diagnostics'->>'code'='project_operation_failed'
+          and (j.kind='execute' or (j.kind='engine' and j.result->'diagnostics'->>'stage'='execute'))))))
+$$;
+
+-- Unchanged except that a score job moving organization never moves its team's
+-- placement: it only re-reads a finished run's trace.
+create or replace function public.observer_failover_job(p_job uuid, p_organization text)
+returns void language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+declare v private.observer_jobs; v_target private.observer_installations; v_owner uuid;
+begin
+  select * into v_target from private.observer_installations where organization=p_organization and enabled;
+  if not found then raise exception 'runner_not_configured'; end if;
+  select * into v from private.observer_jobs where id=p_job for update;
+  if not found or v.status not in ('queued','dispatched') or v.expires_at<=now() then
+    raise exception 'job_unavailable'; end if;
+  if v.organization=p_organization then raise exception 'job_conflict'; end if;
+  update private.observer_jobs set organization=p_organization,repository_id=v_target.repository_id,
+    organization_id=v_target.organization_id,workflow_sha=v_target.approved_sha,error='',dispatch_count=0
+    where id=p_job;
+  if v.kind='score' then return; end if;
+  select coalesce(b.user_id,pr.owner_id) into v_owner
+    from private.observer_jobs j
+    left join public.observer_runs r on r.id=j.run_id
+    left join public.observer_batches b on b.id=r.batch_id
+    left join public.observer_revisions v2 on v2.id=j.revision_id
+    left join public.observer_projects pr on pr.id=v2.project_id
+  where j.id=p_job;
+  if v_owner is not null then
+    update private.observer_placements set organization=p_organization
+      where user_id=v_owner and organization=v.organization;
+  end if;
 end $$;
 
 revoke all on function public.observer_hardening(),public.observer_set_hardening(boolean,boolean),

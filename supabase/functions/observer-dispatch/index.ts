@@ -43,7 +43,8 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       apiBase: Deno.env.get("SUPABASE_URL") ?? "",
       ensureRepository: (user) => app.privateParticipantRepository(user),
     });
-    const rescoring = await scheduleScores({ rpc, masterKey });
+    // The rescore never holds up dispatching evaluations.
+    const rescoring = await scheduleScores({ rpc, masterKey }).catch(() => [{ error: "rescore_unavailable" }]);
     const dispatched = await dispatchPending(rpc, app, masterKey);
     const cleaned = await cleanupUploads(rpc, async (path) => {
       const { error } = await service.storage.from("observer-staging").remove([path]);

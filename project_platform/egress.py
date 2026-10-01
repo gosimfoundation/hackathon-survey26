@@ -18,6 +18,7 @@ import json
 import os
 import re
 import secrets
+import select
 import subprocess
 import threading
 import time
@@ -249,8 +250,11 @@ class RestrictedEgress:
                        "--read-only", "--tmpfs", "/tmp:rw,nosuid,size=16m",
                        "--memory", "256m", "--pids-limit", "128", "--cpus", "1",
                        "--log-driver", "none", "--entrypoint", "python3", PROXY_IMAGE, "-u", "-"]
-            self.process = subprocess.Popen(command, env=self.client_env, stdin=subprocess.PIPE,
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+            try:
+                self.process = subprocess.Popen(command, env=self.client_env, stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+            except OSError:
+                raise JobError("egress_proxy_failed") from None
             try:
                 self.process.stdin.write(render_proxy_script(upstream, self.prefix))
                 self.process.stdin.close()
@@ -269,13 +273,19 @@ class RestrictedEgress:
 
     def _await_ready(self) -> None:
         deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            if self.process is None or self.process.stdout is None:
+        stdout = self.process.stdout if self.process is not None else None
+        buffer = b""
+        while stdout is not None and time.monotonic() < deadline:
+            ready, _, _ = select.select([stdout], [], [], max(0.0, deadline - time.monotonic()))
+            if not ready:
                 break
-            line = self.process.stdout.readline()
-            if line == b"READY\n":
-                return
-            if not line or self.process.poll() is not None:
+            chunk = os.read(stdout.fileno(), 64)
+            if not chunk:
+                break
+            buffer += chunk
+            if b"\n" in buffer:
+                if buffer.split(b"\n", 1)[0] == b"READY":
+                    return
                 break
         raise JobError("egress_proxy_failed")
 

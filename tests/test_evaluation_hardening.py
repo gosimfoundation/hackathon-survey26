@@ -142,14 +142,15 @@ def test_switch_off_leaves_finish_exactly_as_before(formal):
     finish(s, run, engine, 12.0, hashlib.sha256(b"trace").hexdigest())
     assert run_row(s, run) == ("scored", 12.0, "", None)
     assert pending(s, run) == []
-    # Runs already waiting are not scheduled while the switch is off.
+    # Turning it off also drops checks no score job has picked up yet.
     rpc(s["uri"], "observer_set_hardening", None, True)
     batch2, run2, engine2 = formal_run(s)
     finish(s, run2, engine2, 13.0, hashlib.sha256(b"trace2").hexdigest())
-    rpc(s["uri"], "observer_set_hardening", None, False)
-    assert pending(s, run2) == []
-    rpc(s["uri"], "observer_set_hardening", None, True)
     assert len(pending(s, run2)) == 1
+    rpc(s["uri"], "observer_set_hardening", None, False)
+    assert pending(s, run2) == [] and run_row(s, run2) == ("scored", 13.0, "", None)
+    rpc(s["uri"], "observer_set_hardening", None, True)
+    assert pending(s, run2) == []
 
 
 def test_matching_recompute_verifies_and_a_forged_score_is_corrected(formal):
@@ -186,15 +187,14 @@ def test_matching_recompute_verifies_and_a_forged_score_is_corrected(formal):
     rpc(uri, "observer_finish_run", run2, engine2, Jsonb(forged), digest2, RESULT)
     with pytest.raises(psycopg.Error, match="result_conflict"):
         rpc(uri, "observer_finish_run", run2, engine2, Jsonb(summary), digest2, RESULT)
-    # The receipt is bound to the committed digest.
+    # The receipt is bound to the committed digest: another trace changes nothing.
     batch3, run3, engine3 = formal_run(s)
     digest3 = hashlib.sha256(b"trace three").hexdigest()
     finish(s, run3, engine3, 7.0, digest3)
     job3 = claim_score_job(s, run3)
-    with pytest.raises(psycopg.Error, match="invalid_job_result"):
-        rpc(uri, "observer_finish_job", job3, "404", "1",
-            Jsonb(receipt(run3, hashlib.sha256(b"other").hexdigest(), 70.0)), "")
-    assert run_row(s, run3) == ("scored", 7.0, "", "pending")
+    rpc(uri, "observer_finish_job", job3, "404", "1",
+        Jsonb(receipt(run3, hashlib.sha256(b"other").hexdigest(), 70.0)), "")
+    assert run_row(s, run3) == ("scored", 7.0, "", "unverified")
 
 
 def test_a_trace_that_is_not_the_committed_one_voids_the_run(formal):
@@ -207,6 +207,9 @@ def test_a_trace_that_is_not_the_committed_one_voids_the_run(formal):
         Jsonb({"diagnostics": {"stage": "score", "code": "score_trace_mismatch", "log": ""}}), "score_job_failed")
     assert run_row(s, run) == ("failed", None, "score_verification_failed", "rejected")
     assert batch_row(s, batch) == ("failed", None)
+    # The team's failure, not the platform's: no refund, no automatic retry.
+    assert query(uri, "select quota_refunded from public.observer_batches where id=%s", (batch,)) == [(False,)]
+    assert query(uri, "select private.observer_participant_failure(%s)", (run,)) == [(True,)]
     assert query(uri, "select score from public.observer_leaderboard(%s) where team_id=%s",
                  (s["phase"], s["team"]), role="anon") == []
     assert query(uri, "select count(*) from public.audit_log where action='observer.score_rejected' "
@@ -231,6 +234,24 @@ def test_infrastructure_failures_leave_the_reported_score_unverified(formal):
     rpc(uri, "observer_reconcile_jobs")
     assert run_row(s, run2) == ("scored", 13.0, "", "unverified")
     assert query(uri, "select status,error from private.observer_jobs where id=%s", (job2,)) == [("failed", "job_expired")]
+
+
+def test_a_score_job_failing_over_never_moves_the_team(formal):
+    s = formal
+    uri = s["uri"]
+    other = "AGENTIC-OBSERVER26-runner-2"
+    query(uri, """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled)
+        values(%s,'102',203,'304',%s,true) on conflict(organization) do update set enabled=true""", (other, "b" * 40))
+    query(uri, """insert into private.observer_placements(user_id,organization) values(%s,%s)
+        on conflict(user_id) do update set organization=excluded.organization""", (s["user"], ORG))
+    batch, run, engine = formal_run(s)
+    finish(s, run, engine, 3.0, hashlib.sha256(b"committed").hexdigest())
+    job = uuid.uuid4()
+    rpc(uri, "observer_enqueue_job", job, "score", run, None, ORG, secrets.token_urlsafe(32), "x", "y")
+    rpc(uri, "observer_failover_job", job, other)
+    assert query(uri, "select organization from private.observer_jobs where id=%s", (job,)) == [(other,)]
+    assert query(uri, "select organization from private.observer_placements where user_id=%s", (s["user"],)) == [(ORG,)]
 
 
 def test_switching_rescore_off_mid_flight_never_changes_a_score(formal):

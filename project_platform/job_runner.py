@@ -114,13 +114,17 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         egress = (RestrictedEgress(participant["model_base_url"], client_env=runtime.client_env, local=http.local)
                   if payload.get("restricted_egress") is True else None)
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                # The trusted forwarder image downloads while the project builds.
+            # The trusted forwarder image downloads while the project builds; a
+            # failed build does not wait for it.
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            try:
                 forwarder = pool.submit(egress.pull) if egress else None
                 runtime.pull()
                 runtime.build()
                 if forwarder:
                     forwarder.result()
+            finally:
+                pool.shutdown(wait=False)
             if egress:
                 egress.start()
                 runtime.network = egress.network
