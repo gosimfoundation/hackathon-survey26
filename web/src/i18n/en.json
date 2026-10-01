@@ -1947,7 +1947,7 @@
   "resources": {
     "kicker": "Resources",
     "title": "Starter kit and data",
-    "lede": "Everything needed to run and score an agent locally: the v4 starter kit, the task card pages and card files, and the earlier v3 warm-up material.",
+    "lede": "Everything needed to run and score an agent locally: the v4 starter kit, the task card pages and card files, and the v3 warm-up material.",
     "kit": "v3 starter kit (zip)",
     "kit_desc": "agent/ (minimal agent, optional LLM via .env), challenge/ (workflow, scorer, preview, simulators, replay), scenarios/dev-reference, local_runner.py, score_decisions.py, make_scenario.py, pack_agent.py, sac_submit.py, SKILL.md.",
     "kit_v4": "v4 starter kit (zip)",
@@ -2007,7 +2007,7 @@
     "flow1_hint": "This one download is all you need: unzip it and run python3 local_runner.py for a score on the demo card in seconds.",
     "flow2": "Step 3 · Write your own strategy",
     "flow2_hint": "Change agent/planner.py, run again and compare; these are the references.",
-    "flow3": "Earlier v3 · decisions.csv warm-up",
+    "flow3": "v3 · decisions.csv warm-up",
     "flow3_hint": "The v3 scenarios and v3 scoring rules, kept only for the decisions.csv warm-up; they differ from the v4 task cards of this competition."
   },
   "faq": {

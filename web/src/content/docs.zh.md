@@ -87,7 +87,7 @@ python3 score_decisions.py --scenario scenarios/dev-reference --decisions run_ou
 
 打开[参赛页](/compete)，选择本地运行的场景，上传 `run_output/decisions.csv`。CSV 列固定为 `decision_id, slot_id, action, tile_id, program, request_id, reason`，文件最大 20 MB，每队每天最多 50 次，以网页额度为准。提交成功后进入详情页，查看评测状态、得分构成、完成情况和回放。练习赛每个场景分别排名，保留本队最高分，榜单只用于练习、不决定奖项。
 
-`config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求，公开文件可从资源页下载。用入门包在本地运行练习场景时使用原有 `participant-agent-protocol-v1` 合约，已有成绩与回放保持不变；完整项目的云端评测一律使用 `participant-agent-protocol-v2`（日志里显示的就是这个版本），回答时沿用请求里的 `protocol_version` 即可。入门包自带的智能体两个版本都支持。平台和入门包使用同一评分器，精确公式和常数以场景配置与公开评分器为准。
+`config/` 包含规则配置；`outputs/reference/` 包含天区、目标、日历、时隙、天气、预报、事件和观测请求，公开文件可从资源页下载。用入门包在本地运行练习场景时使用 `participant-agent-protocol-v1` 合约；完整项目的云端评测使用 `participant-agent-protocol-v2`（日志里显示的就是这个版本），回答时沿用请求里的 `protocol_version` 即可。入门包自带的智能体两个版本都支持。平台和入门包使用同一评分器，精确公式和常数以场景配置与公开评分器为准。
 
 程序报错时查看输出目录的 `agent.log`；核对场景名称、CSV 列名、文件大小和当天额度，可以用上面的 `score_decisions.py` 命令独立复算。完整命令与字段说明保存在入门包的 `SKILL.md`、`QUICKSTART_ZH.md` 和 `README.md`。
 

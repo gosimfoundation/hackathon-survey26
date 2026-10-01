@@ -1947,7 +1947,7 @@
   "resources": {
     "kicker": "资源",
     "title": "入门包与数据",
-    "lede": "在本地运行和评分智能体所需的全部内容：v4 入门包、任务卡说明与卡片文件，以及旧版 v3 热身资料。",
+    "lede": "在本地运行和评分智能体所需的全部内容：v4 入门包、任务卡说明与卡片文件，以及 v3 热身资料。",
     "kit": "v3 入门包（zip）",
     "kit_desc": "agent/（最小智能体，可通过 .env 启用大模型）、challenge/（workflow、评分器、preview、模拟器、回放）、scenarios/dev-reference、local_runner.py、score_decisions.py、make_scenario.py、pack_agent.py、sac_submit.py、SKILL.md。",
     "kit_v4": "v4 入门包（zip）",
@@ -2007,7 +2007,7 @@
     "flow1_hint": "只需要这一个下载：解压后运行 python3 local_runner.py，几秒内在示例卡上出分。",
     "flow2": "第三步 · 写你自己的策略",
     "flow2_hint": "改 agent/planner.py，再运行、再比较；这些是查手册的地方。",
-    "flow3": "旧版 v3 · decisions.csv 热身",
+    "flow3": "v3 · decisions.csv 热身",
     "flow3_hint": "v3 场景与 v3 评分规则，只用于 decisions.csv 热身，与本次比赛的 v4 任务卡不同。"
   },
   "faq": {
