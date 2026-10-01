@@ -15,11 +15,10 @@
 # directly reachable). --set '.param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"'
 # replaces the Ubuntu package origin (packages stay signature-checked).
 images:
-# Same image, same digest; the mirror only helps where the origin is slow.
+# Pinned by digest. Where the origin is slow, download the same file from a
+# mirror, check it against the official SHA256SUMS and override with
+# --set '.images=[{"location":"/path/to.img","arch":"aarch64","digest":"sha256:..."}]'.
 - location: "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-arm64.img"
-  arch: "aarch64"
-  digest: "sha256:6a61b967ba4a27dd1966f835a67643073ed55c2860ce3dc1cb0517282e6b8bec"
-- location: "https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-arm64.img"
   arch: "aarch64"
   digest: "sha256:6a61b967ba4a27dd1966f835a67643073ed55c2860ce3dc1cb0517282e6b8bec"
 - location: "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-amd64.img"
@@ -39,12 +38,6 @@ ssh:
   loadDotSSHPubKeys: false
   forwardAgent: false
   forwardX11: false
-vmOpts:
-  vz:
-    # amd64-only participant images run through Rosetta instead of failing.
-    rosetta:
-      enabled: true
-      binfmt: true
 upgradePackages: false
 provision:
 - mode: system
@@ -62,33 +55,43 @@ provision:
       rm -f /etc/apt/apt.conf.d/90observer-proxy
     fi
     id runner >/dev/null 2>&1 || useradd --create-home --shell /bin/bash runner
-    command -v docker >/dev/null || { apt-get update; apt-get install -y docker.io iptables jq curl git; }
+    # qemu-user-static: amd64-only participant images run emulated instead of failing.
+    command -v docker >/dev/null || { apt-get update; apt-get install -y docker.io iptables jq curl git qemu-user-static; }
     usermod -aG docker runner
     if [ -n "$proxy_port" ]; then
       install -d /etc/systemd/system/docker.service.d
       printf '[Service]\nEnvironment=HTTP_PROXY=%s HTTPS_PROXY=%s NO_PROXY=localhost,127.0.0.1\n' "$proxy" "$proxy" \
         > /etc/systemd/system/docker.service.d/proxy.conf
     fi
+    # Containers resolve names through Lima's resolver like the VM itself.
+    gateway="$(ip -4 route show default | awk '{print $3; exit}')"
+    printf '{"dns": ["%s"]}\n' "$gateway" > /etc/docker/daemon.json
     sysctl -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
     printf 'net.ipv6.conf.all.disable_ipv6=1\nnet.ipv6.conf.default.disable_ipv6=1\n' > /etc/sysctl.d/90-observer.conf
 
     # Egress guard: the VM and every container may reach the public internet
     # (GitHub, the job API, package and image registries) but never the Mac
     # (192.168.5.2 is the host's loopback, e.g. its browser debugging port),
-    # the local network, or link-local metadata. DNS goes to Lima's resolver.
+    # the local network, or link-local metadata. DNS (port 53 only) goes to
+    # Lima's resolver on the gateway.
     install -d /opt/observer
     printf '%s' "$proxy_port" > /opt/observer/host-proxy-port
     cat > /opt/observer/egress-guard.sh <<'GUARD'
     #!/bin/bash
     set -eu
     uplink="$(ip -4 route show default | awk '{print $5; exit}')"
+    gateway="$(ip -4 route show default | awk '{print $3; exit}')"
     proxy_port="$(cat /opt/observer/host-proxy-port 2>/dev/null || true)"
     for chain in OUTPUT DOCKER-USER; do
       iptables -N "OBSERVER-$chain" 2>/dev/null || iptables -F "OBSERVER-$chain"
       iptables -C "$chain" -j "OBSERVER-$chain" 2>/dev/null || iptables -I "$chain" 1 -j "OBSERVER-$chain"
       # Replies to connections the Mac opened (limactl shell) are allowed; new ones are not.
       iptables -A "OBSERVER-$chain" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
-      iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.3 -p udp --dport 53 -j RETURN
+      for dns in "$gateway" 192.168.5.3; do
+        for proto in udp tcp; do
+          iptables -A "OBSERVER-$chain" -o "$uplink" -d "$dns" -p "$proto" --dport 53 -j RETURN
+        done
+      done
       iptables -A "OBSERVER-$chain" -o "$uplink" -p udp --sport 68 --dport 67 -j RETURN
       if [ "$chain" = OUTPUT ] && [ -n "$proxy_port" ]; then
         # Only root and the runner account; container traffic is forwarded, never OUTPUT.
@@ -97,10 +100,15 @@ provision:
             -m owner --uid-owner "$uid" -j RETURN
         done
       fi
-      iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.3 -p tcp --dport 53 -j RETURN
       for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
         iptables -A "OBSERVER-$chain" -o "$uplink" -d "$net" -j REJECT
       done
+    done
+    # Containers cannot open connections to the VM itself (sshd, dockerd).
+    iptables -N OBSERVER-INPUT 2>/dev/null || iptables -F OBSERVER-INPUT
+    iptables -C INPUT -j OBSERVER-INPUT 2>/dev/null || iptables -I INPUT 1 -j OBSERVER-INPUT
+    for bridge in docker0 br-+; do
+      iptables -A OBSERVER-INPUT -i "$bridge" -m conntrack --ctstate NEW -j REJECT
     done
     GUARD
     chmod 0755 /opt/observer/egress-guard.sh
@@ -130,5 +138,5 @@ provision:
     CLEAN
     chmod 0755 /opt/observer/job-cleanup.sh
     systemctl daemon-reload
-    systemctl enable --now docker observer-egress-guard
-    systemctl restart observer-egress-guard
+    systemctl enable docker observer-egress-guard
+    systemctl restart docker observer-egress-guard

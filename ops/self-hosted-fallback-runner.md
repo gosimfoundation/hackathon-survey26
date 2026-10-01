@@ -39,8 +39,9 @@ Participant code must never run on the organizer's Mac. The boundary is the VM:
   directory mounts, no port forwarding, no guest agent, no SSH agent
   forwarding, `~/.ssh/*.pub` not loaded. Nothing from the Mac (browser profile,
   GitHub login, keychain) exists inside.
-- Egress guard (iptables `OUTPUT` and `DOCKER-USER`): the VM and every
-  container reach only the public internet. The Mac (`192.168.5.2` is its
+- Egress guard (iptables `OUTPUT`, `DOCKER-USER`, `INPUT`): the VM and every
+  container reach only the public internet; containers cannot connect to the
+  VM itself. The Mac (`192.168.5.2` is its
   loopback, e.g. the browser's debugging port), private and link-local
   networks are rejected. If a host proxy is configured, only root (apt,
   dockerd) and the `runner` account may reach that one port; container traffic
@@ -59,8 +60,8 @@ Participant code must never run on the organizer's Mac. The boundary is the VM:
 
 ## One-time setup (organizer's Mac)
 
-Prerequisites: Lima (`brew install lima`) and Rosetta on Apple silicon
-(`softwareupdate --install-rosetta`). No Docker on the Mac is needed.
+Prerequisites: Lima (`brew install lima`). No Docker on the Mac is needed;
+Docker runs inside the VM (amd64-only images run through `qemu-user-static`).
 
 1. Create and boot the VM (add the `--set` only where GitHub/Docker Hub need
    the Mac's local HTTP proxy, and the Ubuntu origin is slow):
@@ -72,12 +73,19 @@ Prerequisites: Lima (`brew install lima`) and Rosetta on Apple silicon
    limactl start observer-fallback
    ```
 
+   If the Ubuntu image download is slow, fetch the same image from a mirror,
+   compare its SHA-256 with `https://cloud-images.ubuntu.com/noble/current/SHA256SUMS`
+   and add `| .images=[{"location":"/path/to.img","arch":"aarch64","digest":"sha256:<sum>"}]`
+   to the `--set` expression.
+
 2. Check the boundary from inside the VM:
 
    ```sh
    limactl shell observer-fallback -- ls /Users          # must fail: no host mounts
    limactl shell observer-fallback -- sudo iptables -S OBSERVER-OUTPUT
    limactl shell observer-fallback -- curl -m 5 http://192.168.5.2:18800/json/version  # must fail
+   limactl shell observer-fallback -- sudo -u runner docker run --rm alpine:3.20 \
+     sh -c 'nc -z -w 3 192.168.5.2 1082 || echo blocked'  # containers never reach the Mac
    ```
 
 3. Register the runner on the fallback organization's `observer-control`
