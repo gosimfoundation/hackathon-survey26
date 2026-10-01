@@ -1,7 +1,9 @@
-# v4 competition task cards: v4-a, v4-b, v4-c, v4-d (specs only)
+# v4 practice task cards: v4-practice-a, -b, -c, -d (specs only)
 
-**Status: trial / for review.** This directory carries only the **generator specs**
-for the four trial v4 task cards, so that organizers can review the parameters and
+**Status: practice cards (Playground α, β, γ, δ).** These are debugging cards for
+participants, not the hackathon cards A–D (`v4-a`..`v4-d`) or the hidden cards E–H,
+which are generated separately with secret seeds. This directory carries only the
+**generator specs** for the four practice cards, so that organizers can review the parameters and
 rebuild the cards on their side. Built bundles (`config/` + `public/` + `truth/`),
 smoke-run evidence and sky maps are deliberately **not** committed — regenerate them
 from these specs when needed.
@@ -10,10 +12,10 @@ from these specs when needed.
 
 ```
 cards/
-  v4-a/spec/    card.json + the four v4_*.json generator configs
-  v4-b/spec/    same
-  v4-c/spec/    same
-  v4-d/spec/    same
+  v4-practice-a/spec/    card.json + the four v4_*.json generator configs
+  v4-practice-b/spec/    same
+  v4-practice-c/spec/    same
+  v4-practice-d/spec/    same
 ```
 
 Each `spec/` is a complete, self-contained generator input set: `card.json`
@@ -26,7 +28,7 @@ hashed per-stream seeds, `cross_validate_generator_configs`, bundle layout
 
 ## Card parameters
 
-| | v4-a | v4-b | v4-c | v4-d |
+| | v4-practice-a (α) | v4-practice-b (β) | v4-practice-c (γ) | v4-practice-d (δ) |
 |---|---|---|---|---|
 | site | VISTA/Paranal -24.62 deg | Cape Town -33.92 deg | Mauna Kea +19.82 deg | Nemo (fictional) -45 deg |
 | footprint | 3 components / 6000 deg2 | 2 / 8000 deg2 | 4 / 4000 deg2 | 3 / 6000 deg2 |
@@ -37,30 +39,31 @@ hashed per-stream seeds, `cross_validate_generator_configs`, bundle layout
 | stress | no | no | no | yes (data_loss + pointing_offset) |
 | observation requests | 6 x (8 targets, min 6, reward 100) | same | same | same |
 
-Only v4-b differs in the score config (f0/T0). `program` multipliers, `uniformity.weight`,
+Only v4-practice-b differs in the score config (f0/T0). `program` multipliers, `uniformity.weight`,
 `required`, `reporting`, `background_closure` and `publication` are identical across all four.
 
-## Known issue
+## Sky map of v4-practice-d (resolved)
 
-- v4-d's footprint has a detached fragment: ~10 targets near RA 190-215 deg,
-  dec < -55 deg fall outside every component polygon. Diagnose and regenerate v4-d
-  before any participant-facing use.
+The ~10 targets near RA 180–186 deg, dec < −55 deg that looked like a detached fragment
+are inside the footprint: they belong to the component centred at (150, −50), which
+reaches just past RA 180. The generator's spherical containment test accepts every one
+of the 30000 targets. Only the map was misleading: the Mollweide map was centred on
+RA 0, so that component was drawn in two pieces on opposite edges. `challenge/v4_sky_map.py`
+now recentres the map so that no component straddles the seam (RA 270 for this card).
 
-## Before these can be formal cards
+## Registering them as practice cards
 
-1. **Rotate the seeds.** The specs carry trial seeds (`20261001`, `20260930`,
-   `20261201`, `20270101`), and v4-a's seed is byte-identical to the seed committed in
-   `challenge/reference/v4/v4_catalog_config.json`. Anyone with this public repository
-   can therefore rebuild these cards' hidden weather. Formal cards need 128-bit secrets
-   injected from outside git, with the `seed` field removed from `spec/`.
-2. **Register**, per card: a `public.scenarios` row (contract `v4-score-v1`,
-   `global_wallclock_seconds` 900, `weather_public`/`forecasts_public`/`events_public`
-   all false); only `config/` and `public/` uploaded to `scenarios/<slug>/` (the phase
-   switch refuses a formal card that has files outside those two directories); the full
-   `config/`+`public/`+`truth/` bundle zipped to
-   `observer-scenarios/<scenario_id>/<digest>.zip` with a
-   `private.observer_scenario_bundles` row; then
-   `scripts/configure-v4-phases.py --formal v4-a,v4-b,v4-c,v4-d --apply`.
+1. **Seeds are public.** Practice cards publish their full file set (`config/`, `public/`
+   and `truth/`), so the trial seeds in `spec/` (`20261001`, `20260930`, `20261201`,
+   `20270101`) are fine here. Never reuse these specs or seeds for a hackathon or hidden
+   card: anyone with this public repository can rebuild them.
+2. **Register**, per card: a `public.scenarios` row with slug `v4-practice-<x>`
+   (contract `v4-score-v1`, `global_wallclock_seconds` 900, weather, forecasts and events
+   public), the bundle ZIP as its evaluation bundle, `config/`, `public/` and `truth/` in
+   the public `scenarios` bucket under the slug, and the card parked in the sealed staging
+   phase until the practice phase is switched to the practice set with
+   `scripts/configure-v4-phases.py --practice ...`. Do not use the slugs `v4-a`..`v4-h`:
+   they are the registered hackathon and hidden cards.
 3. **Do not use the admin "rotate seed" action on a v4 card.** It runs
    `worker/main.py:process_scenario_job`, which is v3-only and has no contract guard: it
    would overwrite `scenarios/<slug>/` with a v3 scenario and flip the row's contract,

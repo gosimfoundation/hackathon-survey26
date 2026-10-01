@@ -1,9 +1,0 @@
-{
-  "name": "v4-b",
-  "card_id": "B",
-  "scenario_slug": "v4-b",
-  "phase": "online",
-  "stress": false,
-  "wallclock_seconds": 900,
-  "observation_requests": {}
-}
