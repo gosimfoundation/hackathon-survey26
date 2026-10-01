@@ -312,3 +312,122 @@ def test_organizer_script_dry_run_and_apply(hidden, monkeypatch, capsys):
     assert 'APPLIED' in out and 'created=1' in out
     assert query(uri, 'select revision_id from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(rev,)]
     assert '"already_evaluated"' in main('--team', team_slug, '--json')
+
+
+def test_hidden_final_counts_only_the_current_card_set_and_retries_only_platform_failures(hidden):
+    from test_project_eval_ux import ORG, fail
+    s = hidden; uri = s['uri']
+    query(uri, """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled)
+        values(%s,'101',202,'303',%s,true) on conflict(organization) do update set enabled=true""", (ORG, 'a'*40))
+    run = lambda **flags: query(uri, 'select private.observer_run_hidden_final(%s,%s,%s,true,false,%s,%s)',
+                                (s['phase'], s['hidden'], s['team'], flags.get('platform', False),
+                                 flags.get('participant', False)))[0][0]['teams'][0]
+    rev = revision(s); materialize(s, rev); choose(s, rev)
+    query(uri, "update public.phases set ends_at=now()-interval '1 second' where id=%s", (s['phase'],))
+    old = run()['batch_id']
+    # The phase moves to a new card set (v3 -> v4): the earlier batch neither blocks nor counts.
+    card = uuid.uuid4()
+    query(uri, "insert into public.scenarios(id,slug,name) values(%s,%s,'Card')", (card, 'card-' + str(card)[:8]))
+    query(uri, 'insert into public.phase_scenarios values(%s,%s)', (s['hidden'], card))
+    query(uri, "insert into private.observer_scenario_bundles values(%s,'hidden/card.zip',%s)", (card, 'd' * 64))
+    current = run()
+    assert (current['action'], current['stale_batches'], current['previous_batch_id']) == ('created', 1, None)
+    assert {r[0] for r in query(uri, 'select scenario_id from public.observer_runs where batch_id=%s',
+                                (current['batch_id'],))} == {s['hidden_scenario'], card}
+    assert run()['reason'] == 'already_evaluated'
+    # A platform failure is rerun only on request; the rerun uses all cards again.
+    query(uri, "update public.observer_runs set status='failed',error='evaluation_schedule_failed',finished_at=now()"
+               " where batch_id=%s and scenario_id=%s", (current['batch_id'], card))
+    query(uri, 'select private.observer_finalize_batch(%s)', (current['batch_id'],))
+    # Classified and retried only once no run of the failed batch is still running.
+    query(uri, "update public.observer_runs set status='running' where batch_id=%s and scenario_id=%s",
+          (current['batch_id'], s['hidden_scenario']))
+    assert run(platform=True)['reason'] == 'failed_settling'
+    query(uri, "update public.observer_runs set status='queued' where batch_id=%s and scenario_id=%s",
+          (current['batch_id'], s['hidden_scenario']))
+    skipped = run()
+    assert (skipped['reason'], skipped['failure'], skipped['previous_status']) == ('failed_platform', 'platform', 'failed')
+    retried = run(platform=True)
+    assert retried['action'] == 'created' and retried['previous_batch_id'] == current['batch_id']
+    # The failed batch's leftover queued run is cancelled; the new runs are ordered for the dispatcher.
+    assert query(uri, 'select status from public.observer_runs where batch_id=%s and scenario_id=%s',
+                 (current['batch_id'], s['hidden_scenario'])) == [('cancelled',)]
+    assert len({r[0] for r in query(uri, 'select created_at from public.observer_runs where batch_id=%s',
+                                    (retried['batch_id'],))}) == 2
+    # A failure caused by the team's own project is final unless organizers decide otherwise.
+    fail(s, retried['batch_id'], 'engine', 'project_operation_failed', stage='execute')
+    assert query(uri, 'select status from public.observer_batches where id=%s', (retried['batch_id'],)) == [('failed',)]
+    final = run(platform=True)
+    assert (final['action'], final['reason'], final['failure']) == ('skip', 'failed_participant', 'participant')
+    assert run(platform=True, participant=True)['action'] == 'created'
+    assert query(uri, 'select count(*) from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(4,)]
+    assert query(uri, 'select private.observer_batch_covers_phase(%s,%s)', (old, s['hidden'])) == [(False,)]
+
+
+def test_organizer_script_status_results_and_estimate(hidden, monkeypatch, capsys, tmp_path):
+    import csv
+    import importlib.util
+    import sys
+    from pathlib import Path
+    from psycopg.rows import dict_row
+    s = hidden; uri = s['uri']
+    spec = importlib.util.spec_from_file_location('run_hidden_final', Path(__file__).resolve().parents[1]/'scripts/run-hidden-final.py')
+    script = importlib.util.module_from_spec(spec); spec.loader.exec_module(script)
+
+    def management_query(statement):
+        with psycopg.connect(uri, row_factory=dict_row) as conn:
+            cur = conn.execute(statement)
+            return cur.fetchall() if cur.description else []
+    monkeypatch.setattr(script.deploy, 'query', management_query)
+    source, target = (query(uri, 'select slug from public.phases where id=%s', (p,))[0][0] for p in (s['phase'], s['hidden']))
+    query(uri, 'update public.observer_phase_settings set colocated=true,runtime_seconds=900 where phase_id=%s', (s['hidden'],))
+    teams = []
+    for score in (30, 50, 50, None):
+        user, team = identity(uri)
+        t = {**s, 'user': user, 'team': team}
+        rev = revision(t); materialize(t, rev, user); choose(t, rev)
+        teams.append((team, score))
+    query(uri, 'update public.teams set is_hidden=false')
+    query(uri, "update public.phases set ends_at=now()-interval '1 second' where id=%s", (s['phase'],))
+
+    def main(*flags):
+        monkeypatch.setattr(sys, 'argv', ['run-hidden-final.py', '--source', source, '--target', target, *flags])
+        script.main()
+        return capsys.readouterr().out
+    from test_project_eval_ux import ORG
+    query(uri, """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled,monthly_minute_limit)
+        values(%s,'101',202,'303',%s,true,10) on conflict(organization) do update set enabled=true,monthly_minute_limit=10""",
+          (ORG, 'a'*40))
+    first_user = query(uri, 'select id from public.profiles where team_id=%s', (teams[0][0],))[0][0]
+    query(uri, 'insert into private.observer_placements(user_id,organization) values(%s,%s)', (first_user, ORG))
+    out = main()
+    assert 'DRY RUN' in out and 'colocated=true' in out and 'estimate: 4 runs' in out and '18 min per run' in out
+    assert 'runner capacity:' in out and f'! {ORG}: needs up to ~18 min' in out and '3 batch user(s) without a placement' in out
+    assert 'not enough runner minutes' in out
+    with pytest.raises(SystemExit):
+        main('--limit', '2')
+    out = main('--apply', '--limit', '2')
+    assert 'created=2' in out and 'deferred=2' in out and 'over --limit' in out and 'estimate: 2 runs' in out
+    assert 'created=2' in main('--apply')
+    for team, score in teams:
+        batch = query(uri, 'select id from public.observer_batches where phase_id=%s and team_id=%s', (s['hidden'], team))[0][0]
+        if score is None:
+            query(uri, "update public.observer_runs set status='failed',error='evaluation_schedule_failed',finished_at=now()"
+                       " where batch_id=%s", (batch,))
+        else:
+            query(uri, "update public.observer_runs set status='scored',score=%s,finished_at=now() where batch_id=%s", (score, batch))
+        query(uri, 'select private.observer_finalize_batch(%s)', (batch,))
+    out = main('--status')
+    assert 'STATUS: batches' in out and 'failed batches: platform=1' in out
+    with pytest.raises(SystemExit):
+        main('--status', '--apply')
+    path = tmp_path / 'ranking.csv'
+    out = main('--results', '--csv', str(path))
+    assert 'leaderboard_mode=hidden' in out and 'ranked=3' in out
+    rows = list(csv.DictReader(path.open(encoding='utf-8')))
+    ranks = sorted((r['rank'], r['mean']) for r in rows)
+    assert ranks == [('', ''), ('1', '50.0'), ('1', '50.0'), ('3', '30.0')]
+    assert next(r for r in rows if r['rank'] == '')['failure'] == 'platform'
+    assert 'retry after platform failure' in main('--apply', '--retry-failed')
