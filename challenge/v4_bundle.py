@@ -70,8 +70,45 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
             weather[key]["count"] = int(count)
         else:
             raise ValueError(f"unknown event family {key!r}")
+    scenario = _scenario(spec, stress, site=None)
+    fiber = _load("v4_fiber_config.json")
+    fiber.pop("demo", None)
+    cross_validate_generator_configs(catalog, weather, scenario, fiber, require_hashed_seeds=True)
+    return _generate(root, seed, catalog, weather, scenario, fiber, REFERENCE / "v4_score_config.json",
+                     spec.get("observation_requests"), stress)
+
+
+SPEC_CONFIGS = ("v4_catalog_config.json", "v4_weather_config.json", "v4_fiber_config.json", "v4_score_config.json")
+
+
+def build_spec_bundle(root: Path, spec_dir: Path) -> Path:
+    """Generate a card bundle into ``root`` (must not exist) from a self-contained spec folder.
+
+    ``spec_dir`` holds ``card.json`` (name, card_id, scenario_slug, phase, stress, wallclock_seconds,
+    observation_requests) and the four generator configs (catalog, weather, fiber, score), used as
+    they are: their own site, season, seeds and scoring. The scenario comes from the reference
+    template with the configs' site. Returns ``root``.
+    """
+    root, spec_dir = Path(root), Path(spec_dir)
+    if root.exists():
+        raise ValueError("bundle directory already exists")
+    card = json.loads((spec_dir / "card.json").read_text(encoding="utf-8"))
+    catalog, weather, fiber, _score = (json.loads((spec_dir / name).read_text(encoding="utf-8")) for name in SPEC_CONFIGS)
+    stress = bool(card.get("stress", False))
+    weather["stress_tests"]["enabled"] = stress  # card.json decides, as the spec keys of build_card_bundle do
+    scenario = _scenario(card, stress, site=catalog["site"])
+    scenario["minimum_altitude_deg"] = float(catalog["observability"]["minimum_altitude_deg"])
+    fiber.pop("demo", None)
+    cross_validate_generator_configs(catalog, weather, scenario, fiber)
+    return _generate(root, int(catalog["seed"]), catalog, weather, scenario, fiber, spec_dir / "v4_score_config.json",
+                     card.get("observation_requests"), stress)
+
+
+def _scenario(spec: Mapping, stress: bool, *, site: Mapping | None) -> dict:
     scenario = _load("v4_scenario_stress.json" if stress else "v4_scenario_default.json")
     scenario["name"] = str(spec["name"])
+    if site is not None:
+        scenario["site"] = dict(site)
     scenario["task_card"] = {"card_id": str(spec["card_id"]), "scenario_slug": str(spec["scenario_slug"]),
                              "phase": str(spec["phase"])}
     scenario["fiber_config"] = "v4_fiber_config.json"
@@ -89,18 +126,19 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
         scenario["stress"]["stress_events_csv"] = "../truth/v4_stress_events.csv"
     if spec.get("wallclock_seconds") is not None:
         scenario["limits"] = {"global_wallclock_seconds": int(spec["wallclock_seconds"])}
-    fiber = _load("v4_fiber_config.json")
-    fiber.pop("demo", None)
-    cross_validate_generator_configs(catalog, weather, scenario, fiber, require_hashed_seeds=True)
+    return scenario
 
+
+def _generate(root: Path, seed: int, catalog: dict, weather: dict, scenario: dict, fiber: dict, score_path: Path,
+              observation_requests: Mapping | None, stress: bool) -> Path:
+    score = json.loads(Path(score_path).read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory(prefix="v4-card-") as temporary:
         work = Path(temporary)
         (work / "catalog.json").write_text(json.dumps(catalog))
         (work / "weather.json").write_text(json.dumps(weather))
         v4_catalog_generator.generate_catalog(work / "catalog.json", work / "out")
         v4_weather_simulator.generate(work / "weather.json", work / "out")
-        score = _load("v4_score_config.json")
-        request_settings = dict(spec.get("observation_requests") or {})
+        request_settings = dict(observation_requests or {})
         request_settings.setdefault(
             "completion_factor_threshold", score["observation_requests"]["completion_factor_threshold"]
         )
@@ -129,7 +167,7 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
             (root / name).mkdir(parents=True)
         (root / "config" / "v4_scenario.json").write_text(json.dumps(scenario, indent=2, sort_keys=True) + "\n")
         (root / "config" / "v4_fiber_config.json").write_text(json.dumps(fiber, indent=2, sort_keys=True) + "\n")
-        shutil.copyfile(REFERENCE / "v4_score_config.json", root / "config" / "v4_score_config.json")
+        shutil.copyfile(score_path, root / "config" / "v4_score_config.json")
         for name in PUBLIC:
             shutil.copyfile(work / "out" / name, root / "public" / name)
         for name in TRUTH + (("v4_stress_events.csv",) if stress else ()):

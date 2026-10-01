@@ -16,6 +16,11 @@ OPENAI_BASE_URL / OPENAI_API_KEY are injected; put them in <agent>/.env to try t
 
 The engine is the platform's own adapter (challenge/v4_workflow.py, vendored unchanged).
 
+The card's truth/ folder (hidden weather, events, stress events) is read by this runner only, to score
+the run. Your agent must never read it: on the platform the agent only has its own folder, and a formal
+card's truth is never published. Before a run the runner checks the agent folder and refuses to start if
+the card lies inside it or a source file names a truth file (override with --allow-truth-refs).
+
 Outputs in --out: decisions.csv, observations.csv, messages.jsonl, score_report.json, workflow_result.json,
 actions.jsonl, agent.log. The last stdout line is a JSON summary. Exit code 0 = the run ended normally, 2 = agent error.
 Standard library only (Python 3.9+).
@@ -46,6 +51,10 @@ ENTRY_CANDIDATES = ("baseline_agent.py", "agent.py", "main.py")
 SAFE_ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 PROTECTED_KEYS = {"PATH", "HOME", "TMPDIR", "LD_PRELOAD", "PYTHONPATH", "PYTHONSTARTUP"}
 DEFAULT_WALLCLOCK = 900.0
+TRUTH_MARKERS = ("truth/", "truth\\", "v4_weather_truth", "v4_slots.csv", "v4_events.csv",
+                 "v4_earthquake_effects", "v4_stress_events")
+SKIPPED_DIRS = {"__pycache__", "node_modules", "venv", "site-packages"}
+SCANNED_SUFFIXES = {".py", ".sh", ".js", ".ts", ".json", ".toml", ".cfg", ".ini", ".txt", ".yaml", ".yml", ""}
 
 
 def load_dotenv(path: Path) -> dict[str, str]:
@@ -71,6 +80,33 @@ def find_entry(agent: Path) -> Path:
         if (agent / name).is_file():
             return (agent / name).resolve()
     raise SystemExit(f"no entry script in {agent}: expected one of {', '.join(ENTRY_CANDIDATES)}")
+
+
+def truth_problems(agent_dir: Path, card_dir: Path) -> list[str]:
+    """Why this agent folder could read the card's hidden truth/ files (empty list: none found).
+
+    A static check, not a sandbox: it catches the card inside the agent folder (pack_agent.py would ship
+    it) and source files that name a truth file. Reading the truth locally makes a score the platform
+    will never reproduce."""
+    problems = []
+    agent_dir, card_dir = agent_dir.resolve(), card_dir.resolve()
+    if card_dir == agent_dir or agent_dir in card_dir.parents:
+        problems.append(f"the card folder {card_dir} is inside the agent folder")
+    scanned = 0
+    for path in sorted(agent_dir.rglob("*")):
+        rel = path.relative_to(agent_dir)
+        if any(part.startswith(".") or part in SKIPPED_DIRS for part in rel.parts):
+            continue
+        if not path.is_file() or path.suffix.lower() not in SCANNED_SUFFIXES or path.stat().st_size > 2_000_000:
+            continue
+        scanned += 1
+        if scanned > 2000:
+            break
+        text = path.read_text(encoding="utf-8", errors="replace")
+        hits = sorted({marker for marker in TRUTH_MARKERS if marker in text})
+        if hits:
+            problems.append(f"{rel.as_posix()} mentions {', '.join(hits)}")
+    return problems
 
 
 def agent_environment(agent_dir: Path, scratch: Path, card: dict, wallclock: float, inherit: bool) -> tuple[dict, list[str]]:
@@ -111,6 +147,9 @@ def main(argv=None) -> int:
     parser.add_argument("--inherit-env", action="store_true", help="pass your whole shell environment to the agent")
     parser.add_argument("--show-agent-stderr", action="store_true", help="print the agent's stderr here instead of agent.log")
     parser.add_argument("--quiet", action="store_true", help="print only the final JSON summary")
+    parser.add_argument("--allow-truth-refs", action="store_true",
+                        help="run even if the agent folder contains the card or names a truth/ file "
+                             "(the score will not carry over to the platform)")
     args = parser.parse_args(argv)
 
     card_dir = args.card.resolve()
@@ -122,6 +161,11 @@ def main(argv=None) -> int:
     args.wallclock = V4Workflow(card_dir).wallclock_budget(args.wallclock)  # min(this, card limit, 900)
     entry = find_entry(args.agent)
     agent_dir = entry.parent
+    problems = truth_problems(agent_dir, card_dir)
+    if problems and not args.allow_truth_refs:
+        raise SystemExit("local_runner: refusing to run, the agent could read the card's hidden truth/ files:\n  - "
+                         + "\n  - ".join(problems) + "\nOn the platform your agent only has its own folder and no "
+                         "truth. Remove these references (or pass --allow-truth-refs to run anyway).")
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     scratch = out / "scratch"
@@ -129,6 +173,10 @@ def main(argv=None) -> int:
     env, dotenv_keys = agent_environment(agent_dir, scratch, card, args.wallclock, args.inherit_env)
     say = (lambda text: None) if args.quiet else (lambda text: print(text, file=sys.stderr, flush=True))
     say(f"[local-runner] card={card['card_id']} agent={entry.name} wallclock={args.wallclock:g}s dotenv_keys={dotenv_keys}")
+    say(f"[local-runner] note: {card_dir.name}/truth/ (hidden weather and events) is read by this runner only, to "
+        "score. Your agent gets bulletins and forecasts during the run; on the platform it has only its own folder.")
+    for problem in problems:
+        say(f"[local-runner] WARNING (--allow-truth-refs): {problem}; this score will not carry over to the platform")
 
     started = time.monotonic()
     with (out / "agent.log").open("w", encoding="utf-8") as log:

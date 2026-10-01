@@ -17,9 +17,9 @@ pytestmark = pytest.mark.skipif(not all(os.environ.get(k) for k in ('OBSERVER_DE
                                 reason='Local browser toolchain required')
 
 RELEASED = {
-    'v4-alpha/config': ['v4_scenario.json', 'v4_score_config.json'],
-    'v4-alpha/public': ['targets.csv'],
-    'v4-alpha/truth': ['v4_weather_truth.csv'],
+    'v4-practice-a/config': ['v4_scenario.json', 'v4_score_config.json'],
+    'v4-practice-a/public': ['targets.csv'],
+    'v4-practice-a/truth': ['v4_weather_truth.csv'],
     'v4-a/public': ['targets.csv', 'taskcard.en.md', 'taskcard.zh.md'],
 }
 CARD_A = {'en': '# Task card A: released for the start\n\n## At a glance\n\nReleased text.\n',

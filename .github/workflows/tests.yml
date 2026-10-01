@@ -22,6 +22,8 @@ jobs:
       - run: SAC_POSTGREST_BIN=$PWD/postgrest pytest tests/supabase -q
       - name: v4 participant task cards and rules
         run: pytest tests/test_v4_participant_docs.py -q
+      - name: v4 practice cards (builder, bundles, pages)
+        run: pytest tests/test_v4_practice_cards.py -q
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.7

@@ -17,7 +17,7 @@ CONTENT = Path(__file__).resolve().parents[1] / "web" / "src" / "content"
 FORMAL_WORDS = re.compile(r"正式赛|正式比赛|线上比赛|online competition|finals-preview|competition scenarios|正式大会|オンライン大会|compétition en ligne", re.I)
 PRACTICE_WORDS = re.compile(r"练习赛|练习场景|Playground|\bpractice\b|練習|entraînement", re.I)
 HIDDEN_WORDS = re.compile(r"seed|种子|pointing offset|指向偏差|efficiency multiplier|效率乘数|window_max_fraction|magnitude|震级", re.I)
-PRACTICE_CARDS = ("alpha", "beta")
+PRACTICE_CARDS = ("alpha", "beta", "gamma", "delta")
 
 
 def body(name: str) -> str:
@@ -35,7 +35,7 @@ def test_zh_and_en_pages_exist_and_have_the_same_shape(stem):
     assert len(headings(en)) == len(headings(zh)) >= 8
     assert en.count("|") == zh.count("|")  # same tables
     for text in (en, zh):
-        assert "Paranal" in text or "帕拉纳尔" in text
+        assert re.search(r"Latitude −?\d+\.\d\d°|纬度 −?\d+\.\d\d°", text)  # every page names its site
         assert "1.08" in text and "0.90" in text  # the worked example
         assert "`observe`" in text and "`wait`" in text and "`report`" in text and "`finish`" in text
 

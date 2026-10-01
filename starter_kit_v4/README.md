@@ -314,6 +314,11 @@ Bulletins and forecasts reach your agent one by one during the run, as they are 
 must not read the card folder at all: on the platform it only has its own folder. Run another public card
 with `python3 local_runner.py --card <folder>`.
 
+`truth/` is read by `local_runner.py` only, to score the run. Before each run the runner checks your agent
+folder and refuses to start if the card folder sits inside it, or if a source file names a truth file
+(`truth/`, `v4_weather_truth.csv`, `v4_events.csv`, ...). A score that used the truth will not carry over to
+the platform. `--allow-truth-refs` runs anyway, with a warning.
+
 ## Troubleshooting
 
 - `agent_error`: read the `error` field in the summary and the end of `run_output/agent.log`.

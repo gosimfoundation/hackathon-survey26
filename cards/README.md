@@ -20,11 +20,12 @@ cards/
 
 Each `spec/` is a complete, self-contained generator input set: `card.json`
 (name / card_id / scenario_slug / phase / stress / wallclock) plus the catalog,
-weather, fiber and score configs. The trial builder used to produce the trial
-bundles is kept outside this repository; organizers can regenerate any card by
-feeding a spec to the v4 card bundle tooling (`challenge/v4_bundle.py` semantics:
-hashed per-stream seeds, `cross_validate_generator_configs`, bundle layout
-`config/` + `public/` + `truth/`).
+weather, fiber and score configs. `scripts/build-v4-practice-cards.py OUT --zip` builds
+the bundles (`challenge.v4_bundle.build_spec_bundle`: catalogue -> weather -> observation
+requests, bundle layout `config/` + `public/` + `truth/`) and `--pages` writes the card pages
+`web/src/content/taskcard.<alpha|beta|gamma|delta>.v4.<en|zh>.md` from the specs
+(tests/test_v4_practice_cards.py fails if a page and its spec disagree). `card.json` decides
+`stress`: the weather config's `stress_tests.enabled` is overridden by it.
 
 ## Card parameters
 
