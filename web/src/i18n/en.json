@@ -17,6 +17,10 @@
         "title": "Rules",
         "description": "Eligibility, submission limits, scoring and conduct rules for the Agentic Observer hackathon."
       },
+      "cards": {
+        "title": "Task cards",
+        "description": "v4 practice cards and hackathon cards: each card’s task, time limit and file downloads."
+      },
       "docs": {
         "title": "Docs",
         "description": "The participant-agent-protocol-v1/v2 messages, the challenge-score-v3 scorer, scenario files and the starter kit."
@@ -91,6 +95,7 @@
     "start": "Get started",
     "brief": "Full event brief",
     "rules": "Rules",
+    "cards": "Task cards",
     "docs": "Docs",
     "resources": "Resources",
     "leaderboard": "Leaderboard",
@@ -1941,14 +1946,27 @@
   "resources": {
     "kicker": "Resources",
     "title": "Starter kit and data",
-    "lede": "Everything needed to run and score an agent locally: the starter kit and, per scenario, the configuration and reference files the platform uses.",
-    "kit": "Starter kit (zip)",
+    "lede": "Everything needed to run and score an agent locally: the v4 starter kit, the task card pages and card files, and the earlier v3 warm-up material.",
+    "kit": "v3 starter kit (zip)",
     "kit_desc": "agent/ (minimal agent, optional LLM via .env), challenge/ (workflow, scorer, preview, simulators, replay), scenarios/dev-reference, local_runner.py, score_decisions.py, make_scenario.py, pack_agent.py, sac_submit.py, SKILL.md.",
-    "reference": "Complete project example (GitHub)",
+    "kit_v4": "v4 starter kit (zip)",
+    "kit_v4_desc": "agent/ (a working baseline agent, its planner, sky maths, an optional LLM hook and observer.project.json), examples/idle_agent.py, cards/demo (a public demo card), local_runner.py, pack_agent.py, challenge/ (simulator and v4 scorer), README.md, SKILL.md. Python 3.9+ standard library only.",
+    "skill_v4": "SKILL.md (v4)",
+    "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: check the kit, the protocol, the score, improve, pack and submit.",
+    "cards": "Task cards",
+    "cards_desc": "Each card’s site, survey dates, number of targets, time limit, whether its weather is public, and what the agent receives and sends.",
+    "flow_cards": "Step 2 · Take a practice card",
+    "flow_cards_hint": "Every file of a practice card is public (weather included), so your local score matches the platform. Hackathon cards A–D publish their card page and public inputs when the competition starts.",
+    "card_view": "Read the card",
+    "card_zip": "Download ZIP",
+    "card_pending": "files not online yet",
+    "card_locked": "published at the start",
+    "card_formal_title": "Hackathon card {card}",
+    "reference": "v3 complete project example (GitHub)",
     "reference_desc": "A minimal complete project implementing the round-by-round JSONL interface, ready to pack and upload; use it as the starting point for your own project.",
-    "skill": "SKILL.md",
+    "skill": "SKILL.md (v3)",
     "skill_desc": "One-file instructions an AI coding agent can follow to build, test and submit.",
-    "scenarios": "Scenarios",
+    "scenarios": "v3 scenarios",
     "hidden": "not publicly downloadable",
     "nights": "nights",
     "slots": "slots",
@@ -1960,7 +1978,7 @@
     "cli": "Command line",
     "kit_file": "agent-observer-starter-kit.zip",
     "docs": "Documentation",
-    "docs_desc": "Data formats with exact columns, the three protocol envelopes, the scoring formula and every penalty, packaging rules and limits.",
+    "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
     "scenarios_note": "A scenario contains config/*.json and outputs/reference/*.csv. Files follow the visibility flags shown here. Public practice data remains downloadable; future competition weather and anomaly answers stay on the server.",
     "weather_public": "weather public",
     "weather_hidden": "future weather stays private",
@@ -1985,11 +2003,11 @@
     "scorer": "scoring_core.py",
     "scorer_desc": "The frozen challenge-score-v3 scorer (with contracts.py and score_config.json next to it). Standard library only, Python 3.12.",
     "flow1": "Step 1 · Grab the kit and run",
-    "flow1_hint": "The only download you need: unzip, double-click, a score in seconds.",
-    "flow2": "Step 2 · Write your own strategy",
-    "flow2_hint": "Editing one function gets you on the board; these are the reference and the manual.",
-    "flow3": "Step 3 · Fetch data when you need it",
-    "flow3_hint": "Published files are listed for each scenario. Competition sessions reveal current information step by step."
+    "flow1_hint": "This one download is all you need: unzip it and run python3 local_runner.py for a score on the demo card in seconds.",
+    "flow2": "Step 3 · Write your own strategy",
+    "flow2_hint": "Change agent/planner.py, run again and compare; these are the references.",
+    "flow3": "Earlier v3 · decisions.csv warm-up",
+    "flow3_hint": "The v3 scenarios and v3 scoring rules, kept only for the decisions.csv warm-up; they differ from the v4 task cards of this competition."
   },
   "faq": {
     "kicker": "FAQ",
@@ -2070,7 +2088,7 @@
   "rules_page": {
     "kicker": "Rules",
     "title": "Competition rules and scoring",
-    "version": "Rules version 1.1 · 2026-09-27",
+    "version": "Rules version 2.0 · 2026-10-01 · v4 task cards",
     "phases_title": "Phase configuration (live)",
     "daily": "submissions/day",
     "board": "board",
@@ -2080,6 +2098,20 @@
       "hidden": "hidden",
       "published": "published"
     }
+  },
+  "cards_page": {
+    "kicker": "Task cards",
+    "title": "v4 task cards",
+    "lede": "Each task card is one complete simulated survey season. Practice cards α–δ are public now; hackathon cards A–D are published when the competition starts; hidden cards E–H are never published.",
+    "practice": "Practice cards",
+    "formal": "Hackathon cards",
+    "hidden_note": "The hidden cards E–H are never published. They are only used for the final evaluation of each team’s final version after the deadline, which decides the final ranking (rules, section 5).",
+    "download": "Download card files (ZIP)",
+    "files": "{n} files",
+    "kit_hint": "Unzip into the v4 starter kit’s cards/ folder and run python3 local_runner.py --card cards/<card>.",
+    "files_pending": "The card files are not online yet; once they are, download them here or on Resources.",
+    "locked_title": "Not published yet",
+    "locked": "Hackathon card {card} is published when the competition starts (Oct 5 00:00, UTC+8): the card page and the public inputs (targets, sky footprint, site, telescope and fibres, observing calendar, score settings). Weather, forecasts and events stay private."
   },
   "docs_page": {
     "kicker": "Docs",

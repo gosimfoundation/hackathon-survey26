@@ -20,7 +20,7 @@ jobs:
           curl -sSL -o postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v16.2/postgrest-v16.2-linux-static-x86-64.tar.xz
           tar xJf postgrest.tar.xz && chmod +x postgrest
       - run: SAC_POSTGREST_BIN=$PWD/postgrest pytest tests/supabase -q
-      - name: v4 participant task cards (drafts behind the v4 switch)
+      - name: v4 participant task cards and rules
         run: pytest tests/test_v4_participant_docs.py -q
       - uses: denoland/setup-deno@v2
         with:
@@ -51,7 +51,7 @@ jobs:
           export SAC_NODE_BIN="$(dirname "$(command -v node)")"
           export SAC_POSTGREST_BIN="$PWD/postgrest"
           export OBSERVER_DENO_BIN="$(command -v deno)"
-          pytest tests/test_project_portal_browser.py tests/test_team_entry_browser.py tests/test_current_competition_browser.py tests/test_ux_quick_wins_browser.py tests/test_card_board_browser.py -q
+          pytest tests/test_project_portal_browser.py tests/test_team_entry_browser.py tests/test_current_competition_browser.py tests/test_ux_quick_wins_browser.py tests/test_card_board_browser.py tests/test_task_cards_browser.py -q
   edge-functions:
     runs-on: ubuntu-24.04
     steps:
