@@ -85,3 +85,7 @@ python3 scripts/run-hidden-final.py --results --csv ~/hidden-final-results.csv
 - 公布前不要在任何公开渠道（群聊、issue、PR、网站文案）提及 E–H 的内容、分数或排名；脚本输出和 CSV 只留在主办方本地。
 - 脚本不会打印卡的内容（只有卡 slug、分数和状态）；不要把卡包或结果包解压后外传。
 - 不要对隐藏卡使用「轮换种子」等会在日志中写出种子的操作。
+
+## 7 · 线上演练记录
+
+- 2026-10-01：迁移 `20261001000200` 已部署。用隐藏测试队 `acceptance-w02-platform-test`（最终版本设为其 v4 探针版本）执行 `--team … --before-freeze` 预览 → `--apply`：4 个 run 全部由正常调度在 colocated 模式下跑完并计分，批次 `scored`，`--status`、`--results --csv` 输出正常（该队为隐藏队伍，不排名）。匿名访问 `final-hidden` 的阶段、卡榜和批次均为空或被拒。探针程序很快结束（平均每 run 不到 1 分钟），不能代表 900 s 跑满时的耗时。
