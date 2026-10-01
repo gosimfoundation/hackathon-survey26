@@ -279,6 +279,9 @@ export class GitHubApp {
     jobId: string,
     nonce: string,
     approvedSha: string,
+    // Only the organizer's fallback runtime declares this input; older
+    // runtimes reject unknown inputs, so it is sent only when needed.
+    runner?: "self-hosted",
   ) {
     if (!UUID.test(jobId) || !/^[A-Za-z0-9_-]{40,100}$/.test(nonce) || !SHA.test(approvedSha)) {
       throw new GitHubError("invalid_job_dispatch");
@@ -300,7 +303,7 @@ export class GitHubApp {
     if (branch.sha !== approvedSha) throw new GitHubError("control_revision_not_approved");
     await this.request("/repos/" + full + "/actions/workflows/" + workflow + "/dispatches", token, "POST", {
       ref,
-      inputs: { job_id: jobId, job_nonce: nonce },
+      inputs: runner ? { job_id: jobId, job_nonce: nonce, runner } : { job_id: jobId, job_nonce: nonce },
     });
   }
 

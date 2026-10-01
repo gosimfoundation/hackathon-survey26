@@ -222,12 +222,18 @@ Deno.test("only approved private control workflow commits may be dispatched", as
   f.repos.set(organization + "/" + CONTROL_REPOSITORY, { id: 10, private: true, fork: false });
   await f.app.dispatch(organization, "observer-execute.yml", user, "x".repeat(43), sha);
   assertEquals(f.calls.at(-1)?.body, { ref: "main", inputs: { job_id: user, job_nonce: "x".repeat(43) } });
+  // Only a fallback dispatch names the runner pool; older runtimes reject unknown inputs.
+  await f.app.dispatch(organization, "observer-execute.yml", user, "x".repeat(43), sha, "self-hosted");
+  assertEquals(f.calls.at(-1)?.body, {
+    ref: "main",
+    inputs: { job_id: user, job_nonce: "x".repeat(43), runner: "self-hosted" },
+  });
   f.wrongBranch();
   await assertRejects(
     () => f.app.dispatch(organization, "observer-engine.yml", user, "x".repeat(43), sha),
     GitHubError,
   );
-  assertEquals(f.calls.filter((c) => c.path.endsWith("/dispatches")).length, 1);
+  assertEquals(f.calls.filter((c) => c.path.endsWith("/dispatches")).length, 2);
 });
 
 Deno.test("archive redirects return only codeload destinations without forwarding installation secrets", async () => {

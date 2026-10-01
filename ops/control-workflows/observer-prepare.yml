@@ -11,6 +11,12 @@ on:
         description: One-time dispatch capability
         type: string
         required: true
+      runner:
+        description: Runner pool; self-hosted is the organizer's isolated fallback only
+        type: choice
+        options: [github-hosted, self-hosted]
+        default: github-hosted
+        required: false
 
 permissions:
   contents: read
@@ -23,7 +29,7 @@ concurrency:
 jobs:
   prepare:
     if: ${{ (github.ref == 'refs/heads/main' || github.ref == format('refs/tags/observer-runtime-{0}', github.sha)) && github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner == 'self-hosted' && fromJSON('["self-hosted","linux","observer-fallback"]') || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

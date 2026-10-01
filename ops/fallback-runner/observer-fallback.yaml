@@ -1,0 +1,134 @@
+# Isolated Linux VM for the self-hosted evaluation fallback runner (Lima, macOS host).
+#
+#   limactl create --name observer-fallback ops/fallback-runner/observer-fallback.yaml
+#   limactl start observer-fallback
+#
+# The VM is the isolation boundary between participant code and the organizer's
+# Mac. "plain" mode means: no host directory mounts, no port forwarding, no guest
+# agent, no SSH agent forwarding. Nothing from the host (browser profile, GitHub
+# login, keychain, ~/.ssh) is visible inside. The only secret ever placed in the
+# VM is the runner's own registration (see install-runner.sh).
+#
+# Optional: --set '.param.HostProxyPort="1082"' lets root (apt, dockerd) and the
+# runner account, but never a participant container, use an HTTP proxy that
+# listens on the Mac's loopback (needed where GitHub/Docker Hub are not
+# directly reachable). --set '.param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"'
+# replaces the Ubuntu package origin (packages stay signature-checked).
+images:
+# Same image, same digest; the mirror only helps where the origin is slow.
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+  digest: "sha256:6a61b967ba4a27dd1966f835a67643073ed55c2860ce3dc1cb0517282e6b8bec"
+- location: "https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+  digest: "sha256:6a61b967ba4a27dd1966f835a67643073ed55c2860ce3dc1cb0517282e6b8bec"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20260518/ubuntu-24.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+  digest: "sha256:53fdde898feed8b027d94baa9cfe8229867f330a1d9c49dc7d84465ee7f229f7"
+param:
+  HostProxyPort: ""
+  AptMirror: ""
+propagateProxyEnv: false
+vmType: vz
+plain: true
+cpus: 4
+memory: 6GiB
+disk: 40GiB
+mounts: []
+ssh:
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+  forwardX11: false
+vmOpts:
+  vz:
+    # amd64-only participant images run through Rosetta instead of failing.
+    rosetta:
+      enabled: true
+      binfmt: true
+upgradePackages: false
+provision:
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    proxy_port="${PARAM_HostProxyPort:-}"
+    if [ -n "$proxy_port" ]; then
+      proxy="http://192.168.5.2:$proxy_port"
+      printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$proxy" "$proxy" > /etc/apt/apt.conf.d/90observer-proxy
+    fi
+    if [ -n "${PARAM_AptMirror:-}" ]; then
+      sed -i "s#http://ports.ubuntu.com/ubuntu-ports#${PARAM_AptMirror}#g" /etc/apt/sources.list.d/ubuntu.sources
+      rm -f /etc/apt/apt.conf.d/90observer-proxy
+    fi
+    id runner >/dev/null 2>&1 || useradd --create-home --shell /bin/bash runner
+    command -v docker >/dev/null || { apt-get update; apt-get install -y docker.io iptables jq curl git; }
+    usermod -aG docker runner
+    if [ -n "$proxy_port" ]; then
+      install -d /etc/systemd/system/docker.service.d
+      printf '[Service]\nEnvironment=HTTP_PROXY=%s HTTPS_PROXY=%s NO_PROXY=localhost,127.0.0.1\n' "$proxy" "$proxy" \
+        > /etc/systemd/system/docker.service.d/proxy.conf
+    fi
+    sysctl -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
+    printf 'net.ipv6.conf.all.disable_ipv6=1\nnet.ipv6.conf.default.disable_ipv6=1\n' > /etc/sysctl.d/90-observer.conf
+
+    # Egress guard: the VM and every container may reach the public internet
+    # (GitHub, the job API, package and image registries) but never the Mac
+    # (192.168.5.2 is the host's loopback, e.g. its browser debugging port),
+    # the local network, or link-local metadata. DNS goes to Lima's resolver.
+    install -d /opt/observer
+    printf '%s' "$proxy_port" > /opt/observer/host-proxy-port
+    cat > /opt/observer/egress-guard.sh <<'GUARD'
+    #!/bin/bash
+    set -eu
+    uplink="$(ip -4 route show default | awk '{print $5; exit}')"
+    proxy_port="$(cat /opt/observer/host-proxy-port 2>/dev/null || true)"
+    for chain in OUTPUT DOCKER-USER; do
+      iptables -N "OBSERVER-$chain" 2>/dev/null || iptables -F "OBSERVER-$chain"
+      iptables -C "$chain" -j "OBSERVER-$chain" 2>/dev/null || iptables -I "$chain" 1 -j "OBSERVER-$chain"
+      # Replies to connections the Mac opened (limactl shell) are allowed; new ones are not.
+      iptables -A "OBSERVER-$chain" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+      iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.3 -p udp --dport 53 -j RETURN
+      iptables -A "OBSERVER-$chain" -o "$uplink" -p udp --sport 68 --dport 67 -j RETURN
+      if [ "$chain" = OUTPUT ] && [ -n "$proxy_port" ]; then
+        # Only root and the runner account; container traffic is forwarded, never OUTPUT.
+        for uid in 0 "$(id -u runner)"; do
+          iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.2 -p tcp --dport "$proxy_port" \
+            -m owner --uid-owner "$uid" -j RETURN
+        done
+      fi
+      iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.3 -p tcp --dport 53 -j RETURN
+      for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
+        iptables -A "OBSERVER-$chain" -o "$uplink" -d "$net" -j REJECT
+      done
+    done
+    GUARD
+    chmod 0755 /opt/observer/egress-guard.sh
+    cat > /etc/systemd/system/observer-egress-guard.service <<'UNIT'
+    [Unit]
+    Description=Block VM and container access to the host and local networks
+    After=docker.service network-online.target
+    Requires=docker.service
+    PartOf=docker.service
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/opt/observer/egress-guard.sh
+    [Install]
+    WantedBy=multi-user.target docker.service
+    UNIT
+
+    # Runs before and after every job: nothing a participant built survives.
+    # It removes every container, so a VM hosts exactly one runner.
+    cat > /opt/observer/job-cleanup.sh <<'CLEAN'
+    #!/bin/bash
+    set -u
+    docker ps -aq | xargs -r docker rm -f >/dev/null 2>&1
+    docker system prune -af --volumes >/dev/null 2>&1
+    find /tmp /var/tmp -mindepth 1 -maxdepth 1 -user "$(id -u)" -exec rm -rf {} + 2>/dev/null
+    exit 0
+    CLEAN
+    chmod 0755 /opt/observer/job-cleanup.sh
+    systemctl daemon-reload
+    systemctl enable --now docker observer-egress-guard
+    systemctl restart observer-egress-guard
