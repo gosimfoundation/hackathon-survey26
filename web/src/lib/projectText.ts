@@ -38,12 +38,43 @@ const REVISION_ERRORS: Record<string, string> = {
 }
 const PREPARATION_FAILED = 'Project preparation failed: '
 
+// Fixed reasons written by the preparation runtime (project_platform/model_client.py
+// and model_adapter.py). Unknown or project-specific reasons stay in English.
+const ADAPT_HINT_ZH = '可换用更快的模型或接口，或在项目中加入 observer.project.json，这样无需自动适配。'
+const CHECK_MODEL_ZH = '请在「参赛」页检查 API 地址、模型名、密钥和余额。'
+const PREPARATION_REASONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+  [/^The model provider rejected the request(?: \(HTTP (\d{3})\))?\. Check the API endpoint, model name, key and balance on the Participate page\.$/,
+    (m) => `模型服务商拒绝了请求${m[1] ? `（HTTP ${m[1]}）` : ''}。${CHECK_MODEL_ZH}`],
+  [/^No model API is set up for your team\. Set one under Model API on the Participate page, or add observer\.project\.json so no automatic adaptation is needed\.$/,
+    () => '本队还没有设置模型 API。请在「参赛」页的「模型 API」中设置，或在项目中加入 observer.project.json，这样无需自动适配。'],
+  [/^No open Participate page answered the model request\./,
+    () => '没有打开的「参赛」页面响应模型请求。本队未保存模型密钥，项目准备期间请保持「参赛」页面打开并连接模型 API；也可以在该页面加密保存密钥，或在项目中加入 observer.project.json，这样无需自动适配。'],
+  [/^Your model API took longer than the two-minute limit to answer\./, () => '你的模型 API 超过两分钟仍未响应。' + ADAPT_HINT_ZH],
+  [/^Your model API did not answer within (\d+) seconds\./, (m) => `你的模型 API 在 ${m[1]} 秒内没有响应。` + ADAPT_HINT_ZH],
+  [/^Your model API could not be reached or did not answer in time\./,
+    () => '无法连接你的模型 API，或它没有及时响应。请在「参赛」页检查 API 地址。' + ADAPT_HINT_ZH],
+  [/^Your model API failed or did not answer in time through the open Participate page\./,
+    () => '通过打开的「参赛」页面调用模型 API 失败或超时。' + CHECK_MODEL_ZH + ADAPT_HINT_ZH],
+  [/^The adaptation model did not return a valid interface proposal\.$/,
+    () => '自动适配用的模型没有返回有效的接口方案。请重新提交，或换用更强的模型，或在项目中加入 observer.project.json。'],
+  [/^Model call failed \(HTTP (\d{3})\)\.$/, (m) => `模型调用失败（HTTP ${m[1]}）。请稍后重新提交。`],
+  [/^Model service is unavailable\.$/, () => '模型服务暂时不可用，请稍后重新提交。'],
+]
+
+function preparationReason(reason: string): string {
+  for (const [pattern, zh] of PREPARATION_REASONS) {
+    const match = reason.match(pattern)
+    if (match) return zh(match)
+  }
+  return reason
+}
+
 /** Revision errors are stored in English; show them in Chinese on the zh page. */
 export function revisionErrorText(error: string | null | undefined, locale: TextLocale): string {
   const text = (error ?? '').trim()
   if (!text || locale !== 'zh') return text
   if (REVISION_ERRORS[text]) return REVISION_ERRORS[text]
-  if (text.startsWith(PREPARATION_FAILED)) return `项目准备失败：${text.slice(PREPARATION_FAILED.length)}`
+  if (text.startsWith(PREPARATION_FAILED)) return `项目准备失败：${preparationReason(text.slice(PREPARATION_FAILED.length))}`
   return text
 }
 

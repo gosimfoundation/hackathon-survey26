@@ -28,6 +28,14 @@ _FINAL={
     "personal_model_failed":"Your model API failed or did not answer in time through the open Participate page. "
         "Check the API endpoint, model name, key and balance."+_ADAPT,
 }
+# Provider answers that usually clear up on their own (rate limit, overloaded or
+# restarting gateway). These are retried once as a new call with a new key.
+TRANSIENT_PROVIDER_STATUS=frozenset({429,500,502,503,504})
+PROVIDER_RETRY_DELAY=5.0
+
+
+class _TransientProviderError(Exception):
+    pass
 
 
 class ModelClient:
@@ -46,6 +54,18 @@ class ModelClient:
         payload=json.dumps(body,allow_nan=False).encode()
         if len(payload)>65536:
             raise ProjectError("Model request exceeds the proxy size limit.")
+        try:
+            return self._call(payload)
+        except _TransientProviderError:
+            # The earlier call is finished (the provider answered), so a new
+            # Idempotency-Key is a new call, not a duplicate of an accepted one.
+            time.sleep(PROVIDER_RETRY_DELAY)
+        try:
+            return self._call(payload)
+        except _TransientProviderError as exc:
+            raise ProjectError(str(exc)) from None
+
+    def _call(self, payload: bytes) -> dict:
         call_id=str(uuid.uuid4())
         earlier=None
         for attempt in range(3):
@@ -67,9 +87,12 @@ class ModelClient:
                     # The team's provider answered with an error. Retrying the same
                     # idempotent call cannot help and would only report 409.
                     status=error.get("provider_status")
-                    raise ProjectError("The model provider rejected the request"
+                    message=("The model provider rejected the request"
                         +(" (HTTP "+str(status)+")" if isinstance(status,int) else "")
-                        +". Check the API endpoint, model name, key and balance on the Participate page.") from None
+                        +". Check the API endpoint, model name, key and balance on the Participate page.")
+                    if status in TRANSIENT_PROVIDER_STATUS:
+                        raise _TransientProviderError(message) from None
+                    raise ProjectError(message) from None
                 if error.get("code") in _FINAL:
                     raise ProjectError(_FINAL[error["code"]]) from None
                 if exc.code==403:
