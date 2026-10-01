@@ -14,7 +14,7 @@ Bundle contract (one task card, ``V4_SCENARIO_PATH`` marks a v4 bundle)::
     config/v4_fiber_config.json   fibre grid + exposure bounds (public)
     config/v4_score_config.json   the public score contract
     public/...                    targets, footprint, night calendar, bulletins, forecasts
-    truth/...                     slots, weather truth, events, quake effects, stress events
+    truth/...                     slots, weather truth, events, requests, quake effects, stress events
 
 Optional scenario keys read here: ``task_card`` (object, copied to initialize),
 ``site.sun_altitude_limit_deg`` (default -18) and ``limits.global_wallclock_seconds``
@@ -337,6 +337,8 @@ def result_summary(result: Mapping) -> dict:
         "targets_observed": counts["targets_observed"],
         "observe_actions": counts["observe_actions"],
         "invalidated_observations": counts["invalidated_observations"],
+        "observation_requests_issued": counts["observation_requests_issued"],
+        "observation_requests_completed": counts["observation_requests_completed"],
         "termination_reason": result["termination_reason"],
         "committed_action_count": result["committed_action_count"],
         "accounted_wallclock_seconds": result["accounted_wallclock_seconds"],

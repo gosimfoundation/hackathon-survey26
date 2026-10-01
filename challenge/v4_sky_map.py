@@ -2,9 +2,11 @@
 """Organizer-side sky map renderer for the v4 catalogue.
 
 Mollweide all-sky projection in equatorial coordinates (RA increasing to the left, the
-astronomical convention): light-gray RA/Dec graticule with tick labels, dark-blue
-footprint outlines drawn from densified great-circle edges over a deep-blue fill, small
-white dots for ordinary targets, and small red ringed markers for required targets.
+astronomical convention), centred on RA=0 unless a footprint component would straddle
+the seam there, in which case the map is recentred so that no component is split:
+light-gray RA/Dec graticule with tick labels, dark-blue footprint outlines drawn from
+densified great-circle edges over a deep-blue fill, small white dots for ordinary
+targets, and small red ringed markers for required targets.
 matplotlib/numpy are build-time-only dependencies; the runtime catalogue generator
 stays pure standard library.
 """
@@ -76,6 +78,85 @@ def _densify_edges(vertices: list[tuple[float, float]], subdivisions: int = 16):
     return dense
 
 
+def _split_at_seam(dense: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
+    """Split a densified boundary loop at the RA=180 map seam.
+
+    The Mollweide map is continuous only for RA in [0, 180); a component whose
+    boundary crosses RA=180 would otherwise be filled across the whole map.
+    Each returned piece touches the seam at both ends (ra pinned just inside its
+    map half) and is closed along the ellipse rim so the fill follows the map edge.
+    A component that never crosses the seam yields a single unchanged piece.
+    """
+    import numpy as np
+
+    count = len(dense)
+    lons = [((ra + 180.0) % 360.0) - 180.0 for ra, _ in dense]
+    crossings = [
+        index for index in range(count)
+        if abs(lons[(index + 1) % count] - lons[index]) > 180.0
+    ]
+    if not crossings:
+        return [list(dense)]
+
+    def seam_point(index: int) -> tuple[float, float, float]:
+        """(ra_side_for_piece_left_of_crossing, ra_side_after, dec_at_seam)."""
+        lon0 = lons[index]
+        lon1 = lons[(index + 1) % count]
+        lon1_unwrapped = lon1 + (360.0 if lon0 > 0.0 else -360.0)
+        fraction = (180.0 - abs(lon0)) / (abs(lon1_unwrapped) - abs(lon0))
+        seam_dec = dense[index][1] + fraction * (dense[(index + 1) % count][1] - dense[index][1])
+        return (179.999999 if lon0 > 0.0 else 180.000001,
+                180.000001 if lon0 > 0.0 else 179.999999,
+                seam_dec)
+
+    before_ra, after_ra, first_seam_dec = seam_point(crossings[0])
+    order = [(crossings[0] + 1 + k) % count for k in range(count)]
+    pieces: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = [(after_ra, first_seam_dec)]
+    for index in order:
+        current.append(dense[index])
+        if index in crossings[1:]:
+            end_ra, next_ra, seam_dec = seam_point(index)
+            current.append((end_ra, seam_dec))
+            pieces.append(current)
+            current = [(next_ra, seam_dec)]
+    current.append((before_ra, first_seam_dec))
+    pieces.append(current)
+
+    # Close each piece along the ellipse rim instead of a straight chord.
+    closed = []
+    for piece in pieces:
+        rim_ra = piece[0][0]
+        arc = [(rim_ra, dec) for dec in np.linspace(piece[-1][1], piece[0][1], 33)]
+        closed.append(piece + arc)
+    return closed
+
+
+def _crosses_seam(dense: list[tuple[float, float]], center_ra_deg: float) -> bool:
+    return len(_split_at_seam([((ra - center_ra_deg) % 360.0, dec) for ra, dec in dense])) > 1
+
+
+def _choose_center_ra(components: dict[str, list[tuple[float, float]]]) -> float:
+    """Central meridian for the map: RA=0 unless a footprint component crosses the seam.
+
+    A component that straddles RA=180 would be drawn in two pieces on opposite map edges,
+    which reads as a detached fragment with targets outside the footprint. In that case
+    the seam moves to the middle of the widest RA gap between components (snapped to a
+    30 deg graticule meridian when that still clears every component).
+    """
+    dense = {key: _densify_edges(vertices) for key, vertices in components.items()}
+    if not any(_crosses_seam(boundary, 0.0) for boundary in dense.values()):
+        return 0.0
+    ras = sorted(ra for boundary in dense.values() for ra, _ in boundary)
+    gaps = [((ras[(i + 1) % len(ras)] - ras[i]) % 360.0, ras[i]) for i in range(len(ras))]
+    width, start = max(gaps)
+    exact = (start + width / 2.0 + 180.0) % 360.0
+    for center in (round(exact / 30.0) * 30.0 % 360.0, exact):
+        if not any(_crosses_seam(boundary, center) for boundary in dense.values()):
+            return center
+    return 0.0  # no clear gap: keep the default map and its split pieces
+
+
 def render_sky_map(
     targets_path: Path,
     footprint_path: Path,
@@ -103,13 +184,17 @@ def render_sky_map(
     ra = np.array([float(row["ra_deg"]) for row in targets])
     dec = np.array([float(row["dec_deg"]) for row in targets])
     required = np.array([row["required"].strip().lower() == "true" for row in targets])
-    x_all, y_all = _mollweide_project(ra, dec)
-
     components: dict[str, list[tuple[float, float]]] = {}
     for row in footprint_rows:
         components.setdefault(row["component_id"], []).append(
             (float(row["ra_deg"]), float(row["dec_deg"]))
         )
+    center = _choose_center_ra(components)
+
+    def project(ra_values, dec_values):
+        return _mollweide_project((np.asarray(ra_values, dtype=float) - center) % 360.0, dec_values)
+
+    x_all, y_all = project(ra, dec)
 
     half_width = 2.0 * math.sqrt(2.0)
     half_height = math.sqrt(2.0)
@@ -119,22 +204,24 @@ def render_sky_map(
     # the ellipse boundary.
     dense_dec = np.linspace(-90.0, 90.0, 361)
     for meridian in range(0, 360, 30):
-        gx, gy = _mollweide_project(np.full_like(dense_dec, float(meridian)), dense_dec)
+        gx, gy = project(np.full_like(dense_dec, float(meridian)), dense_dec)
         ax.plot(gx, gy, color="#b9b9b9", linewidth=0.5, zorder=0)
     dense_ra = np.linspace(0.0, 360.0, 1441)
     for parallel in range(-60, 61, 30):
-        gx, gy = _mollweide_project(dense_ra, np.full_like(dense_ra, float(parallel)))
+        gx, gy = project(dense_ra, np.full_like(dense_ra, float(parallel)))
         ax.plot(gx, gy, color="#b9b9b9", linewidth=0.5, zorder=0)
 
-    # Footprint fill and boundary (geodesic edges).
+    # Footprint fill and boundary (geodesic edges, split at the map seam; the seam sits
+    # opposite the central meridian, so only a component the seam cannot avoid is split).
     for component_id in sorted(components):
-        dense = _densify_edges(components[component_id])
-        vx, vy = _mollweide_project(
-            np.array([point[0] for point in dense]),
-            np.array([point[1] for point in dense]),
-        )
-        ax.fill(vx, vy, facecolor=FOOTPRINT_FILL, edgecolor="none", zorder=1)
-        ax.plot(vx, vy, color=FOOTPRINT_EDGE, linewidth=1.6, zorder=3)
+        dense = [((ra_deg - center) % 360.0, dec_deg) for ra_deg, dec_deg in _densify_edges(components[component_id])]
+        for piece in _split_at_seam(dense):
+            vx, vy = _mollweide_project(
+                np.array([point[0] for point in piece]),
+                np.array([point[1] for point in piece]),
+            )
+            ax.fill(vx, vy, facecolor=FOOTPRINT_FILL, edgecolor="none", zorder=1)
+            ax.plot(vx, vy, color=FOOTPRINT_EDGE, linewidth=1.6, zorder=3)
 
     # Targets: small translucent white dots keep 30k points readable as density.
     ordinary = ~required
@@ -183,7 +270,7 @@ def render_sky_map(
     )
     # RA labels along the equator (every 60 deg; RA increases leftward).
     for meridian in range(0, 360, 60):
-        mx, _ = _mollweide_project(np.array([float(meridian)]), np.array([0.0]))
+        mx, _ = project(np.array([float(meridian)]), np.array([0.0]))
         x = float(mx[0])
         if abs(x) > half_width - 0.02:
             x = math.copysign(half_width - 0.28, x)
@@ -200,7 +287,7 @@ def render_sky_map(
         )
     # Dec labels along the central meridian.
     for parallel in range(-60, 61, 30):
-        _, py = _mollweide_project(np.array([0.0]), np.array([float(parallel)]))
+        _, py = project(np.array([center]), np.array([float(parallel)]))
         ax.text(
             0.13,
             float(py[0]),
@@ -219,6 +306,8 @@ def render_sky_map(
     ax.axis("off")
 
     title = "v4 survey footprint and target catalogue (Mollweide all-sky, equatorial)"
+    if center:
+        title = title[:-1] + f", centred on RA {center:.0f}\u00b0)"
     if summary_path is not None and summary_path.is_file():
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         area = summary["footprint"]["total_area_deg2"]

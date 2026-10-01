@@ -7,7 +7,8 @@ seeds before anything is generated. Output layout::
 
     <root>/config/{v4_scenario.json, v4_fiber_config.json, v4_score_config.json}
     <root>/public/{targets.csv, footprint.csv, v4_night_calendar.csv, v4_bulletins.jsonl, v4_forecasts.jsonl}
-    <root>/truth/{v4_slots.csv, v4_weather_truth.csv, v4_events.csv, v4_earthquake_effects.csv[, v4_stress_events.csv]}
+    <root>/truth/{v4_slots.csv, v4_weather_truth.csv, v4_events.csv, v4_earthquake_effects.csv,
+                  v4_observation_requests.jsonl[, v4_stress_events.csv]}
 
 No seed is written anywhere in the bundle. Pure standard library.
 """
@@ -20,12 +21,13 @@ import tempfile
 from pathlib import Path
 from typing import Mapping
 
-from . import v4_catalog_generator, v4_weather_simulator
+from . import v4_catalog_generator, v4_observation_requests, v4_weather_simulator
 from .v4_config_check import cross_validate_generator_configs
 
 REFERENCE = Path(__file__).resolve().parent / "reference" / "v4"
 PUBLIC = ("targets.csv", "footprint.csv", "v4_night_calendar.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl")
-TRUTH = ("v4_slots.csv", "v4_weather_truth.csv", "v4_events.csv", "v4_earthquake_effects.csv")
+TRUTH = ("v4_slots.csv", "v4_weather_truth.csv", "v4_events.csv", "v4_earthquake_effects.csv",
+         "v4_observation_requests.jsonl")
 SCENARIO_CONTRACT = "v4-score-v1"  # public.scenarios.contract of every v4 card
 
 
@@ -38,7 +40,8 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
 
     spec keys: name, card_id, scenario_slug, phase, seed (int, secret for real cards),
     start_date, end_date, targets, area_deg2, stress (bool), wallclock_seconds (optional),
-    event_counts (optional {condition|rocket_launch|earthquake|instrument_fault: n}).
+    event_counts (optional {condition|rocket_launch|earthquake|instrument_fault: n}) and
+    observation_requests (optional generator settings).
     """
     root = Path(root)
     if root.exists():
@@ -79,6 +82,7 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
         "forecasts_jsonl": "../public/v4_forecasts.jsonl", "slots_csv": "../truth/v4_slots.csv",
         "weather_truth_csv": "../truth/v4_weather_truth.csv", "events_csv": "../truth/v4_events.csv",
         "earthquake_effects_csv": "../truth/v4_earthquake_effects.csv",
+        "observation_requests_jsonl": "../truth/v4_observation_requests.jsonl",
     }
     scenario.pop("agent_params", None)
     if stress:
@@ -95,6 +99,32 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
         (work / "weather.json").write_text(json.dumps(weather))
         v4_catalog_generator.generate_catalog(work / "catalog.json", work / "out")
         v4_weather_simulator.generate(work / "weather.json", work / "out")
+        score = _load("v4_score_config.json")
+        request_settings = dict(spec.get("observation_requests") or {})
+        request_settings.setdefault(
+            "completion_factor_threshold", score["observation_requests"]["completion_factor_threshold"]
+        )
+        request_settings.setdefault(
+            "minimum_feature_flux",
+            float(request_settings["completion_factor_threshold"])
+            * float(score["flux_zero_point"])
+            * float(score["exposure_zero_point_seconds"])
+            / float(fiber["exposure"]["max_duration_seconds"]),
+        )
+        v4_observation_requests.generate_requests(
+            seed=seed,
+            targets_csv=work / "out" / "targets.csv",
+            night_calendar_csv=work / "out" / "v4_night_calendar.csv",
+            slots_csv=work / "out" / "v4_slots.csv",
+            site=scenario["site"],
+            minimum_altitude_deg=float(scenario["minimum_altitude_deg"]),
+            output_path=work / "out" / "v4_observation_requests.jsonl",
+            settings=request_settings,
+            flux_zero_point=float(score["flux_zero_point"]),
+            exposure_zero_point_seconds=float(score["exposure_zero_point_seconds"]),
+            min_duration_seconds=int(fiber["exposure"]["min_duration_seconds"]),
+            max_duration_seconds=int(fiber["exposure"]["max_duration_seconds"]),
+        )
         for name in ("config", "public", "truth"):
             (root / name).mkdir(parents=True)
         (root / "config" / "v4_scenario.json").write_text(json.dumps(scenario, indent=2, sort_keys=True) + "\n")

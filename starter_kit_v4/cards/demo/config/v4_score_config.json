@@ -35,5 +35,9 @@
     "false_penalty": -150,
     "false_report_free_allowance": 2,
     "max_consecutive_reports": 32
+  },
+  "observation_requests": {
+    "completion_factor_threshold": 0.5,
+    "miss_penalty": 0
   }
 }

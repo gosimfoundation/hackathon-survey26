@@ -329,7 +329,7 @@ def validate_config(config: Mapping) -> None:
             raise ValueError(f"earthquake {name} must be non-negative")
     terrain = config["terrain_obstruction"]
     lo, hi = map(int, terrain["sector_count"])
-    if lo < 1 or hi < lo:
+    if lo < 0 or hi < lo:
         raise ValueError("invalid terrain sector_count range")
     rocket = config["rocket_launch"]
     if int(rocket["count"]) < 0:

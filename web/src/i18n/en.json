@@ -1276,6 +1276,7 @@
       "required_penalty": "Required penalty",
       "uniformity_penalty": "Uniformity penalty",
       "report_settlement": "Reports",
+      "observation_request_reward": "Observation requests",
       "base_science": "Base science",
       "program_bonus": "Bonus",
       "request_reward": "Requests",

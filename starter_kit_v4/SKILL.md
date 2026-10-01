@@ -12,7 +12,8 @@ python3 local_runner.py --agent examples/idle_agent.py --quiet
 ```
 
 Expected on `cards/demo` (the public demo card at Paranal, Chile (virtual), 7 nights, 2,400 targets):
-baseline `"termination_reason": "survey_complete"`, `"total": 849.000608`, `"required_missing": 3`;
+baseline `"termination_reason": "survey_complete"`, `"total": 1082.572141`, `"required_missing": 1`,
+and `"observation_requests_completed": 1`;
 idle agent `"total": -6200.0`. Exit code 2 means `agent_error`: read `"error"` and `run_output/agent.log`.
 
 ## 2. Know the contract (`participant-agent-protocol-v4`)
@@ -48,6 +49,8 @@ idle agent `"total": -6200.0`. Exit code 2 means `agent_error`: read `"error"` a
 
 - factor = min(feature_flux × duration × q / 450, 1); score = science_weight × factor × program_bonus.
 - q is the hidden sky/instrument quality; learn it from `last_result.hits` (each hit has its score).
+- Time-limited requests arrive in `new_messages` and remain in `active_requests`. Observe their named
+  catalogue targets before `deadline_utc`; attribution is automatic and no `request_id` action field exists.
 - program_bonus: DARK 1.20, BRIGHT 1.12, BACKUP 1.06 if the declared program matches the sky band, else 1.0.
 - Only the best exposure per target counts. Required target with best factor < 0.5: −50 each.
 - −200 × (1 − Jain index) over 10° RA bands. Spread observations across right ascension.

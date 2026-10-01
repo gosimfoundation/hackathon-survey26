@@ -31,7 +31,7 @@ Expected on the demo card (a few seconds):
 | Agent | `total` | Required missing |
 |---|---|---|
 | `examples/idle_agent.py` | −6200 | 120 of 120 |
-| `agent/` (baseline) | 849.000608 | 3 of 120 |
+| `agent/` (baseline) | 1082.572141 | 1 of 120 |
 
 The last line of the output is a JSON summary. Files are in `run_output/`: `decisions.csv`,
 `observations.csv`, `messages.jsonl`, `score_report.json`, `workflow_result.json`, `actions.jsonl`, `agent.log`
@@ -55,7 +55,9 @@ The last line of the output is a JSON summary. Files are in `run_output/`: `deci
 9. Your agent never sees the weather itself. During a run it only gets short bulletins and forecasts
    (event kind + compass direction). Some cards publish their weather files for local scoring; your
    agent must not read them.
-10. One wall clock per card (900 s on the platform). When it runs out, the survey stops there.
+10. A card may publish time-limited observation requests. They name existing targets; qualifying
+    exposures are attributed automatically, and completing enough targets earns the stated reward.
+11. One wall clock per card (900 s on the platform). When it runs out, the survey stops there.
 
 ## Protocol: `participant-agent-protocol-v4`
 
@@ -96,17 +98,19 @@ One JSON object per line. The platform writes to your **stdin**; you answer on *
                      "initial":false,"notices":[{"event_kind":"overcast","direction":"SW"}]},
   "latest_forecast":{"record_type":"forecast","coverage_start_utc":"...","coverage_end_utc":"...",
                      "notices":[{"event_kind":"rain","direction":"ALL","nights":["2026-10-02"]}]},
+  "active_requests":[],
   "new_messages":[],
   "last_result":{"action":"observe","observe_index":11,"assigned_count":16,"hit_count":13,
                  "hits":[{"target_id":"V4T001234","score":0.8123}]}}}
 ```
 
-- `new_messages`: bulletins and forecasts published since your last request, plus an immediate
-  `report_result` after a report (and, on some cards, one `state_resync`, see below).
+- `new_messages`: bulletins, forecasts, observation requests and request results published since
+  your last decision, plus an immediate `report_result` after a report (and, on some cards, one
+  `state_resync`, see below).
 - `last_result.hits`: the targets of your previous observe that landed on their fibre, with their score
   (0 when the sky was closed or blocked there). Assigned targets that are missing were not hits.
   Fibre ids are not returned.
-- `running_total`: the sum of best scores so far (no penalties).
+- `running_total`: the sum of best target scores so far (no penalties, request rewards, or report settlement).
 
 Answer with the same `decision_sequence` and one action. Optional `reason` and `decision_source`
 strings are only logged.
@@ -195,6 +199,7 @@ total = Σ best score
         − 200 × (1 − Jain index over 10° right-ascension bands of the fraction of targets with factor ≥ 0.5)
         + reports (+100 if an unrepaired instrument fault is active; first 2 false reports after
                    each correct report: 0, then −150 per false report on the demo card)
+        + rewards of completed observation requests
 ```
 
 The Jain index is 1 when every RA band is observed to the same fraction, so spread your effort.
@@ -229,7 +234,18 @@ With 300 s instead, factor = 0.30. That is below 0.5, so a required target would
 On some cards part of your recent observation data can be lost. You then get one message in
 `new_messages` with `record_type: "state_resync"`. It lists `observed_target_ids` and `best_scores`:
 the targets that still count and their best score now. Rebuild your "already done" list from it. The
-time already spent is not returned.
+time already spent is not returned. Its `observation_requests` list carries the recomputed progress
+of requests that are still active; a changed expired result is sent again with `revised: true`.
+
+### Observation requests
+
+An `observation_request` arrives in `new_messages` when it is issued. It gives `request_id`,
+`deadline_utc`, `target_ids`, `minimum_completed`, `completion_factor_threshold`,
+`completion_reward`, and `reason`. The same request remains in `active_requests` with
+`completed_target_ids`, `completed_count`, and `remaining_count` until its deadline. You do not put a
+request id in an action: any valid exposure wholly inside the request window is attributed
+automatically. Ordinary science score still applies. At the deadline an
+`observation_request_result` reports `completed` or `expired`; an incomplete request has no penalty.
 
 ## Time
 

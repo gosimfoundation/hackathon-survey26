@@ -11,8 +11,9 @@ messages.jsonl / score_report.json.
 
 Agent contract (protocol wiring belongs to the platform layer): a callable
 `agent(snapshot) -> action dict | None`. The snapshot carries now_utc, survey_end_utc,
-observe_action_index, running_total, latest_bulletin, latest_forecast, new_messages
-(bulletins/forecasts/state_resync delivered since the previous decision) and
+observe_action_index, running_total, latest_bulletin, latest_forecast, active_requests,
+new_messages (bulletins/forecasts/observation requests/results/state_resync delivered
+since the previous decision) and
 last_result (hit target ids + scores of the previous observe, without fiber ids — per
 the MP-056 ruling). Actions: {"action": "observe", ...} (MP-056 schema plus a "program"
 field), {"action": "wait", "duration_seconds": n}, {"action": "report"}, or None to end
@@ -38,6 +39,8 @@ from .contracts import sha256_file, write_exact_csv, write_text_lf
 from .v4_config_check import (
     DEFAULT_FALSE_REPORT_FREE_ALLOWANCE,
     DEFAULT_MAX_CONSECUTIVE_REPORTS,
+    DEFAULT_REQUEST_FACTOR_THRESHOLD,
+    DEFAULT_REQUEST_MISS_PENALTY,
     validate_scenario,
 )
 from .v4_fiber_map import (
@@ -57,10 +60,12 @@ from .v4_scorer import (
     TargetScore,
     WeatherTruth,
     lunar_quality_factor,
+    observation_request_status,
     program_band,
     program_multiplier,
     required_penalty,
     score_target_exposure,
+    settle_observation_requests,
     uniformity_penalty,
     validate_lunar_model,
 )
@@ -165,6 +170,7 @@ class Scenario:
     events: list[ScoreEvent]
     bulletins: list[dict]
     forecasts: list[dict]
+    observation_requests: list[dict]
     stress_rows: list[dict[str, str]]
     survey_start: datetime
     survey_end: datetime
@@ -191,6 +197,9 @@ def load_scenario(path: Path) -> Scenario:
     score_config["reporting"].setdefault(
         "max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS
     )
+    request_score_config = score_config.setdefault("observation_requests", {})
+    request_score_config.setdefault("completion_factor_threshold", DEFAULT_REQUEST_FACTOR_THRESHOLD)
+    request_score_config.setdefault("miss_penalty", DEFAULT_REQUEST_MISS_PENALTY)
     validate_lunar_model(score_config)
     products = config["products"]
 
@@ -259,6 +268,18 @@ def load_scenario(path: Path) -> Scenario:
         if stress.get("enabled")
         else []
     )
+    request_path = products.get("observation_requests_jsonl")
+    observation_requests = []
+    if request_path:
+        for row in _read_jsonl(_resolve(base, request_path)):
+            observation_requests.append(
+                {
+                    **row,
+                    "issued_at_utc": _parse_utc(row["issued_at_utc"]),
+                    "deadline_utc": _parse_utc(row["deadline_utc"]),
+                }
+            )
+
     scenario = Scenario(
         config=config,
         scenario_dir=base,
@@ -270,12 +291,58 @@ def load_scenario(path: Path) -> Scenario:
         events=events,
         bulletins=_read_jsonl(_resolve(base, products["bulletins_jsonl"])),
         forecasts=_read_jsonl(_resolve(base, products["forecasts_jsonl"])),
+        observation_requests=observation_requests,
         stress_rows=stress_rows,
         survey_start=slots[0].start_utc if slots else None,
         survey_end=slots[-1].end_utc if slots else None,
     )
     validate_scenario(scenario)
     return scenario
+
+
+def _request_public_record(request: Mapping) -> dict:
+    return {
+        "schema_version": request["schema_version"],
+        "record_type": "observation_request",
+        "request_id": request["request_id"],
+        "issued_at_utc": _format_utc(request["issued_at_utc"]),
+        "deadline_utc": _format_utc(request["deadline_utc"]),
+        "target_ids": list(request["target_ids"]),
+        "minimum_completed": int(request["minimum_completed"]),
+        "completion_factor_threshold": float(request["completion_factor_threshold"]),
+        "completion_reward": float(request["completion_reward"]),
+        "reason": request["reason"],
+    }
+
+
+def _request_snapshot(request: Mapping, ledger: BestLedger) -> dict:
+    status = observation_request_status(request, ledger)
+    return {
+        **_request_public_record(request),
+        "completed_target_ids": status["completed_target_ids"],
+        "completed_count": status["completed_count"],
+        "remaining_count": max(0, status["minimum_completed"] - status["completed_count"]),
+    }
+
+
+def _request_result(
+    request: Mapping, ledger: BestLedger, issued_at: datetime, revised: bool, previous_reward: float = 0.0
+) -> dict:
+    status = observation_request_status(request, ledger)
+    return {
+        "schema_version": "v4-observation-request-result-v1",
+        "record_type": "observation_request_result",
+        "issued_at_utc": _format_utc(issued_at),
+        "request_id": request["request_id"],
+        "status": "completed" if status["completed"] else "expired",
+        "completed_target_ids": status["completed_target_ids"],
+        "completed_count": status["completed_count"],
+        "minimum_completed": status["minimum_completed"],
+        # Differential settlement: a revision after data loss may withdraw (negative
+        # delta) or restore the previously announced reward.
+        "score_delta": status["reward"] - previous_reward,
+        "revised": revised,
+    }
 
 
 # --- data-loss runtime trigger ---------------------------------------------------------
@@ -387,8 +454,11 @@ def run_scenario(
 
     bulletin_times = [_parse_utc(item["issued_at_utc"]) for item in scenario.bulletins]
     forecast_times = [_parse_utc(item["issued_at_utc"]) for item in scenario.forecasts]
+    request_times = [item["issued_at_utc"] for item in scenario.observation_requests]
     bulletin_cursor = 0
     forecast_cursor = 0
+    request_cursor = 0
+    announced_request_results: dict[str, tuple] = {}
 
     context = {
         "scenario": {
@@ -433,7 +503,7 @@ def run_scenario(
         termination_reason, termination_detail = stop.reason, stop.detail
 
     while agent is not None and now < scenario.survey_end:
-        # Deliver newly published bulletins/forecasts, report results, and state resyncs.
+        # Deliver newly published bulletins, forecasts, requests, report results, and resyncs.
         new_messages: list[dict] = []
         while bulletin_cursor < len(scenario.bulletins) and bulletin_times[bulletin_cursor] <= now:
             new_messages.append(scenario.bulletins[bulletin_cursor])
@@ -443,6 +513,11 @@ def run_scenario(
             new_messages.append(scenario.forecasts[forecast_cursor])
             messages.append(scenario.forecasts[forecast_cursor])
             forecast_cursor += 1
+        while request_cursor < len(scenario.observation_requests) and request_times[request_cursor] <= now:
+            published = _request_public_record(scenario.observation_requests[request_cursor])
+            new_messages.append(published)
+            messages.append(published)
+            request_cursor += 1
         if pending_report_result is not None:
             new_messages.append(pending_report_result)
             messages.append(pending_report_result)
@@ -485,6 +560,11 @@ def run_scenario(
                     {"target_id": target_id, "best_score": round(best[target_id][1], 6)}
                     for target_id in sorted(best)
                 ],
+                "observation_requests": [
+                    _request_snapshot(request, ledger)
+                    for request in scenario.observation_requests[:request_cursor]
+                    if now < request["deadline_utc"]
+                ],
             }
             invalidation_notes.append(
                 {
@@ -495,6 +575,26 @@ def run_scenario(
             )
             new_messages.append(resync)
             messages.append(resync)
+
+        # Requests settle at their deadlines.  A later data-loss event can revise an
+        # already announced result, because request progress is derived from the same
+        # validity flags as the ordinary best-score ledger.
+        for request in scenario.observation_requests[:request_cursor]:
+            if now < request["deadline_utc"]:
+                continue
+            status = observation_request_status(request, ledger)
+            signature = (
+                status["completed"],
+                tuple(status["completed_target_ids"]),
+                status["reward"],
+            )
+            previous = announced_request_results.get(request["request_id"])
+            if previous != signature:
+                previous_reward = previous[2] if previous is not None else 0.0
+                result_message = _request_result(request, ledger, now, previous is not None, previous_reward)
+                new_messages.append(result_message)
+                messages.append(result_message)
+                announced_request_results[request["request_id"]] = signature
 
         if pending_until is not None:
             if now < pending_until:
@@ -521,6 +621,11 @@ def run_scenario(
             "running_total": round(sum(item[1] for item in ledger.best().values()), 6),
             "latest_bulletin": latest_bulletin,
             "latest_forecast": latest_forecast,
+            "active_requests": [
+                _request_snapshot(request, ledger)
+                for request in scenario.observation_requests[:request_cursor]
+                if now < request["deadline_utc"]
+            ],
             "new_messages": new_messages,
             "last_result": last_result,
         }
@@ -678,7 +783,7 @@ def run_scenario(
                 site,
             )
             hit_rows.append((target, fiber_id, scored, mult))
-            ledger.record(observe_index, target_id, scored.factor, scored.score)
+            ledger.record(observe_index, target_id, scored.factor, scored.score, start, end)
 
         for target, fiber_id, scored, mult in hit_rows:
             observations.append(
@@ -731,7 +836,17 @@ def run_scenario(
     sum_best = sum(item[1] for item in best.values())
     required_missing, required_cost = required_penalty(scenario.targets, max_factors, score_config)
     band_ratios, uniformity_cost = uniformity_penalty(scenario.targets, max_factors, score_config)
-    total = sum_best - required_cost - uniformity_cost + report_settlement
+    issued_requests = [request for request in scenario.observation_requests if request["issued_at_utc"] <= now]
+    request_statuses, request_reward = settle_observation_requests(issued_requests, ledger)
+    request_reports = [
+        {
+            **status,
+            "issued_at_utc": _format_utc(request["issued_at_utc"]),
+            "deadline_utc": _format_utc(request["deadline_utc"]),
+        }
+        for request, status in zip(issued_requests, request_statuses)
+    ]
+    total = sum_best - required_cost - uniformity_cost + report_settlement + request_reward
 
     by_class: dict[str, float] = {}
     class_by_id = {target["target_id"]: target["target_class"] for target in scenario.targets}
@@ -754,6 +869,7 @@ def run_scenario(
             "required_penalty": round(-required_cost, 6),
             "uniformity_penalty": round(-uniformity_cost, 6),
             "report_settlement": round(report_settlement, 6),
+            "observation_request_reward": round(request_reward, 6),
         },
         "counts": {
             "decisions": len(decisions),
@@ -764,10 +880,13 @@ def run_scenario(
             "invalidated_observations": sum(
                 note["invalidated_observations"] for note in invalidation_notes
             ),
+            "observation_requests_issued": len(request_statuses),
+            "observation_requests_completed": sum(item["completed"] for item in request_statuses),
         },
         "by_class": {key: round(value, 6) for key, value in sorted(by_class.items())},
         "uniformity_bands": {key: round(value, 6) for key, value in band_ratios.items()},
         "invalidations": invalidation_notes,
+        "observation_requests": request_reports,
         "termination": {"reason": termination_reason, "detail": termination_detail},
         "sha256": {
             "scenario": sha256_file(scenario_path),

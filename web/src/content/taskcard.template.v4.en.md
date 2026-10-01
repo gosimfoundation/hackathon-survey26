@@ -43,6 +43,7 @@ settings). During a run your agent receives a short bulletin every 15 minutes an
 - the current time;
 - the latest bulletin and forecast, and all messages since your last decision;
 - the result of your last observation: which targets hit their fibre, and their scores;
+- the time-limited observation requests in progress and how far along they are (`active_requests`);
 - the time you have left.
 
 ## What your agent sends
@@ -62,7 +63,8 @@ One action per decision:
 - Its score grows with brightness, exposure time and sky quality, up to a cap.
 - A matching program adds 20% (DARK), 12% (BRIGHT) or 6% (BACKUP). A wrong program adds nothing.
 - Only the best exposure of each target counts.
-- Final score = sum of best scores − 50 × missing required targets − unevenness penalty ± reports.
+- Time-limited observation requests: complete enough of a request's targets inside its time window to earn its reward; a missed request costs nothing.
+- Final score = sum of best scores − 50 × missing required targets − unevenness penalty ± reports + request rewards.
 
 **Example.** A target has brightness 0.60 and weight 1.0. You expose it for 900 s. The sky quality is 0.75.
 Its factor is 0.60 × 900 × 0.75 ÷ 450 = 0.90. You declared DARK and the sky was DARK, so the score is
