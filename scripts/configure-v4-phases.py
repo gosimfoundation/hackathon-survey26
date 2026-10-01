@@ -23,7 +23,7 @@ Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
 anything else: v4_requires_colocated); --reverse restores the previous value.
 
 Forward (default): python scripts/configure-v4-phases.py \\
-    --practice v4-alpha,v4-beta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h \\
+    --practice v4-practice-a,v4-practice-b,v4-practice-c,v4-practice-d --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h \\
     --preview v4-public-test [--apply]
 Reverse:           python scripts/configure-v4-phases.py --reverse [--apply]
 Status:            python scripts/configure-v4-phases.py --status

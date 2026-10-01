@@ -5,7 +5,7 @@ import { FORMAL_CARDS, PRACTICE_CARDS, cardPagePath, cardTitle, cardZipEntry, fi
 
 test('the site knows the practice cards and the hackathon cards A–D, never the hidden cards E–H', () => {
   assert.deepEqual(PRACTICE_CARDS.map(c => [c.id, c.slug, c.symbol]),
-    [['alpha', 'v4-alpha', 'α'], ['beta', 'v4-beta', 'β'], ['gamma', 'v4-gamma', 'γ'], ['delta', 'v4-delta', 'δ']])
+    [['alpha', 'v4-practice-a', 'α'], ['beta', 'v4-practice-b', 'β'], ['gamma', 'v4-practice-c', 'γ'], ['delta', 'v4-practice-d', 'δ']])
   assert.deepEqual(FORMAL_CARDS.map(c => [c.id, c.slug, c.symbol]), [['a', 'v4-a', 'A'], ['b', 'v4-b', 'B'], ['c', 'v4-c', 'C'], ['d', 'v4-d', 'D']])
   for (const hidden of ['e', 'f', 'g', 'h', 'v4-e']) assert.equal(findCard(hidden), null)
   assert.equal(findCard('a')?.stage, 'formal')

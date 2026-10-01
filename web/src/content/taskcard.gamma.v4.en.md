@@ -1,15 +1,15 @@
-# Task card α (alpha): First light
+# Task card γ (gamma): Northern sky
 
-A season to learn the rules at a classic southern site.
+A northern site with only nine wide fibres: every exposure must count.
 
 ## At a glance
 
 | | |
 |---|---|
-| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
-| Survey | 2026-10-01 to 2027-01-31, 123 nights. You observe when the sun is below −18°. |
-| Targets | 30,000 targets on 6,000 deg² of sky, in 3 regions. 1,500 are required. |
-| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
+| Site | Mauna Kea, Hawaii (virtual). Latitude 19.82°, longitude −155.47°. |
+| Survey | 2026-12-01 to 2027-03-31, 121 nights. You observe when the sun is below −18°. |
+| Targets | 30,000 targets on 4,000 deg² of sky, in 4 regions. 1,500 are required. |
+| Instrument | 9 contiguous fibre assignment cells in a 3 × 3 grid. The field covers 6.3 deg² and is about 2.51° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
@@ -41,7 +41,7 @@ One action per decision:
 
 | Action | Meaning |
 |---|---|
-| `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
+| `observe` | Point the telescope, put up to 9 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
 | `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |
@@ -72,10 +72,10 @@ least 0.50, so it would still count as missing.
 
 ## Try it
 
-1. Download the v4 starter kit and card α from the Resources page. Put the card folder into the kit's `cards/` folder.
-2. Run `python3 local_runner.py --card cards/alpha`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
-3. Compare with `python3 local_runner.py --card cards/alpha --agent examples/idle_agent.py` (an agent that does nothing).
+1. Download the v4 starter kit and card γ from the Resources page. Put the card folder into the kit's `cards/` folder.
+2. Run `python3 local_runner.py --card cards/gamma`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
+3. Compare with `python3 local_runner.py --card cards/gamma --agent examples/idle_agent.py` (an agent that does nothing).
 4. Change `agent/planner.py`, run again, and compare.
-5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card α in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
+5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card γ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
 
 Playground scores are for practice. They do not decide awards.

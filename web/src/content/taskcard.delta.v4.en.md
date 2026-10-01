@@ -1,18 +1,18 @@
-# Task card α (alpha): First light
+# Task card δ (delta): The long year
 
-A season to learn the rules at a classic southern site.
+A whole year with a hundred fibres, and part of your recent data can be lost once.
 
 ## At a glance
 
 | | |
 |---|---|
-| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
-| Survey | 2026-10-01 to 2027-01-31, 123 nights. You observe when the sun is below −18°. |
+| Site | Nemo Observatory, South Pacific (fictional). Latitude −45.00°, longitude −135.00°. |
+| Survey | 2027-01-01 to 2027-12-31, 365 nights. You observe when the sun is below −18°. |
 | Targets | 30,000 targets on 6,000 deg² of sky, in 3 regions. 1,500 are required. |
-| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
+| Instrument | 100 contiguous fibre assignment cells in a 10 × 10 grid. The field covers 6 deg² and is about 2.45° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
-| Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
+| Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). Possibly one `state_resync` message. It means part of your recent data was lost. It lists the targets that still count and their best scores. Rebuild your list of finished targets from it. The time already spent is not returned. |
 
 ## Your goal
 
@@ -41,7 +41,7 @@ One action per decision:
 
 | Action | Meaning |
 |---|---|
-| `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
+| `observe` | Point the telescope, put up to 100 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
 | `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |
@@ -72,10 +72,10 @@ least 0.50, so it would still count as missing.
 
 ## Try it
 
-1. Download the v4 starter kit and card α from the Resources page. Put the card folder into the kit's `cards/` folder.
-2. Run `python3 local_runner.py --card cards/alpha`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
-3. Compare with `python3 local_runner.py --card cards/alpha --agent examples/idle_agent.py` (an agent that does nothing).
+1. Download the v4 starter kit and card δ from the Resources page. Put the card folder into the kit's `cards/` folder.
+2. Run `python3 local_runner.py --card cards/delta`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
+3. Compare with `python3 local_runner.py --card cards/delta --agent examples/idle_agent.py` (an agent that does nothing).
 4. Change `agent/planner.py`, run again, and compare.
-5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card α in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
+5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card δ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
 
 Playground scores are for practice. They do not decide awards.

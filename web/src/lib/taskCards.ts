@@ -8,10 +8,10 @@ export type CardStage = 'practice' | 'formal'
 export interface TaskCard { id: string; slug: string; stage: CardStage; symbol: string }
 
 export const PRACTICE_CARDS: TaskCard[] = [
-  { id: 'alpha', slug: 'v4-alpha', stage: 'practice', symbol: 'α' },
-  { id: 'beta', slug: 'v4-beta', stage: 'practice', symbol: 'β' },
-  { id: 'gamma', slug: 'v4-gamma', stage: 'practice', symbol: 'γ' },
-  { id: 'delta', slug: 'v4-delta', stage: 'practice', symbol: 'δ' },
+  { id: 'alpha', slug: 'v4-practice-a', stage: 'practice', symbol: 'α' },
+  { id: 'beta', slug: 'v4-practice-b', stage: 'practice', symbol: 'β' },
+  { id: 'gamma', slug: 'v4-practice-c', stage: 'practice', symbol: 'γ' },
+  { id: 'delta', slug: 'v4-practice-d', stage: 'practice', symbol: 'δ' },
 ]
 export const FORMAL_CARDS: TaskCard[] = ['a', 'b', 'c', 'd']
   .map(id => ({ id, slug: `v4-${id}`, stage: 'formal' as const, symbol: id.toUpperCase() }))
