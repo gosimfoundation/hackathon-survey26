@@ -19,7 +19,7 @@ Deno.test("artifact references accept all twelve runner organizations and nothin
   );
   for (
     const value of [
-      "github:AGENTIC-OBSERVER26-runner-13/" + repo + "@" + sha,
+      "github:AGENTIC-OBSERVER26-runner-100/" + repo + "@" + sha,
       "github:AGENTIC-OBSERVER26-runner-0/" + repo + "@" + sha,
       "github:outsider/" + repo + "@" + sha,
       "github:AGENTIC-OBSERVER26-runner-10/source-" + "c".repeat(20) + "@" + sha,

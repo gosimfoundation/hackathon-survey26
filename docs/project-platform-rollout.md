@@ -197,15 +197,33 @@ public; immutable project revisions and all detailed results use the participant
 private repository. Source snapshots cannot overwrite an existing revision.
 
 Runner organizations 7-12 (added 2026-09-27) raise the monthly Actions budget.
+The fleet is not capped at twelve: installation rows accept runner-1..99, so an
+organization becomes usable the moment its row in `private.observer_installations`
+is verified and enabled (13-36 are being provisioned).
 A participant's organization is recorded once in `private.observer_placements`
 (`public.observer_placement`): participants with existing jobs keep their
-organization; new participants go to the enabled organization with the fewest
-active jobs, then the least Actions usage over the last seven days, then the
-fewest placed participants (count alone left heavy teams concentrated on
-runner-1). `scripts/rebalance-observer-placements.py` (dry-run by default)
-moves idle recorded placements when accumulated usage drifts apart; the next
-job auto-creates a fresh private repository in the new organization and old
-evidence stays readable in the old one. A new organization stays `enabled=false` (and may be marked
+organization; new participants go to the enabled organization ranked by
+`public.observer_organizations_by_load`: over the per-organization
+`monthly_minute_limit` (default 1800 Actions minutes per calendar month, just
+under the free allowance) last, recent dispatch failures (thirty-minute window)
+demoted, then fewest active jobs, least usage over the last seven days, fewest
+placed participants. When an organization-level dispatch fails (missing or
+suspended installation, rejected/quota-exhausted API call, unapproved control
+repository), the dispatcher moves the still-pending job and the owner's
+placement to the next best organization (`public.observer_failover_job`) and
+dispatches again immediately; in-flight (claimed) jobs never move.
+`scripts/rebalance-observer-placements.py` (dry-run by default) moves idle
+recorded placements when accumulated usage drifts apart, never targeting an
+over-cap organization.
+
+A participant's private repository stays bound to its original organization:
+moving a placement creates a fresh, empty repository in the new organization
+on the next job (the same GitHub App is installed everywhere, so no
+re-installation or repository transfer is needed), while historical revisions
+and evidence in the old organization remain readable cross-organization. The
+cost of moving is therefore only repository-history continuity, not
+re-provisioning; brand-new participants and failed-over jobs automatically
+land on healthy organizations. A new organization stays `enabled=false` (and may be marked
 `"enabled": false` in `ops/github-installations.json`) until its app installation
 and control repository are verified with `configure-observer-runners.py`.
 

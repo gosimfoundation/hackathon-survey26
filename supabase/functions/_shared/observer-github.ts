@@ -4,8 +4,8 @@ import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "npm:jose@6.
 import type { JWTVerifyGetKey } from "npm:jose@6.1.0";
 
 /** Runner organization names; which of them are usable comes from the installation table. */
-export const RUNNER_ORGANIZATION = /^AGENTIC-OBSERVER26-runner-([1-9]|1[0-2])$/;
-export const RUNNER_ORGANIZATION_PATTERN = "AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])";
+export const RUNNER_ORGANIZATION = /^AGENTIC-OBSERVER26-runner-([1-9]|[1-9][0-9])$/;
+export const RUNNER_ORGANIZATION_PATTERN = "AGENTIC-OBSERVER26-runner-(?:[1-9]|[1-9][0-9])";
 export function isRunnerOrganization(value: unknown): value is string {
   return typeof value === "string" && RUNNER_ORGANIZATION.test(value);
 }
@@ -29,9 +29,10 @@ export function databaseLocator(rpc: (name: string, args: Record<string, unknown
 }
 
 /**
- * A participant's organization is recorded once and never recomputed, so the
- * private repository and every later job stay together even when runner
- * organizations are added.
+ * A participant's organization is recorded once and stays stable even when
+ * runner organizations are added; only a dispatch failover may move it,
+ * together with the pending job, so claim-time credentials stay in one
+ * organization.
  */
 export async function placement(userId: string, locate: Locator) {
   if (!UUID.test(userId)) throw new GitHubError("invalid_participant");

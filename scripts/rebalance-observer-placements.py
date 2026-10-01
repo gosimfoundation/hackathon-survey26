@@ -6,6 +6,8 @@ public.observer_placement) decides which AGENTIC-OBSERVER26-runner-N
 organization hosts their private repository and every future job. Count-based
 placement left usage uneven (one week: runner-1 1543 minutes, runner-8 11).
 This tool moves idle participants so per-organization recent usage converges.
+Organizations already over their monthly minute cap (monthly_minute_limit on
+their installation row) are never chosen as targets.
 
 Dry-run by default: it only prints the planned moves as JSON. With --apply the
 moves run in a single transaction that re-verifies each participant is still
@@ -46,7 +48,13 @@ NOT_BUSY = """
     where pr.owner_id=p.user_id and v.status in ('queued','preparing'))
 """
 
-ENABLED_SQL = "select organization from private.observer_installations where enabled order by 1"
+ENABLED_SQL = """
+select i.organization from private.observer_installations i where i.enabled
+  and coalesce((select sum(extract(epoch from j.finished_at-j.claimed_at)) from private.observer_jobs j
+    where j.organization=i.organization and j.claimed_at is not null and j.finished_at is not null
+      and j.finished_at>=date_trunc('month',now())),0) < i.monthly_minute_limit*60
+  order by 1
+"""
 
 USAGE_SQL = """
 select p.user_id, p.organization,
