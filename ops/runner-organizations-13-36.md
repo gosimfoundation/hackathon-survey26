@@ -21,7 +21,7 @@ Each organization needs (reference: runner-1…12, runtime from main `472f79e`):
 
 | Organization | Status | organization_id | installation_id | repository_id | approved_sha |
 |---|---|---|---|---|---|
-| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; approved runtime matches runner-1…12) | 336376701 | 166758323 | 1399205505 | 2a1d3694f2e3eca623e4ee298185a268b0dc0b4c |
+| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; runtime republished from main `d7f1211` so its repository check accepts runner-13) | 336376701 | 166758323 | 1399205505 | 80155414d3847daea124aaa2f3d622f4428d0b23 |
 | AGENTIC-OBSERVER26-runner-14 … runner-36 | ⛔ not created | — | — | — | — |
 
 Notes:

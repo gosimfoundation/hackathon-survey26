@@ -5,6 +5,7 @@ import { replayActions, replayMeta, replayNetPrefix, replayNights, replayObserve
 import { drawSkyMap, lstDeg, PAD, type ObservedMark } from '../../lib/skymap'
 import { OUTCOME_COLORS } from '../../lib/report'
 import { fmtUtc, num } from '../../lib/format'
+import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
 
 const { t, tf } = useI18n()
 const clock = useReplayClock()
@@ -97,6 +98,7 @@ function loop() { render(); if (!reduced.value) raf = requestAnimationFrame(loop
 // Four beats explaining the axes, the marks, the meridian (and its jump) and the readout. Shown once per
 // browser; the replay keeps running behind it, paused so nothing moves while reading.
 const TOUR_KEY = 'sac.sky-tour.seen'
+const TOUR_OVERLAY = 'sky-tour'
 const ALL_TOUR_STEPS = ['axes', 'tiles', 'meridian', 'hud'] as const
 /** False on runs long enough that the time cursor is left out; the walkthrough then skips its step. */
 const cursorShown = computed(() => { void replayMeta.version; return replayHasCursor })
@@ -112,6 +114,7 @@ function nextStep() {
 }
 function endTour() {
   tourStep.value = -1
+  releaseOverlay(TOUR_OVERLAY)
   clock.setPaused(false)
   try { window.localStorage.setItem(TOUR_KEY, '1') } catch { /* private mode */ }
 }
@@ -121,8 +124,10 @@ onMounted(() => {
   loop()
   let seen = true
   try { seen = window.localStorage.getItem(TOUR_KEY) === '1' } catch { /* private mode: do not nag */ }
-  if (!seen && !clock.state.reduced) startTour()
+  // The first-visit walkthrough waits its turn behind another overlay (a pinned announcement popup).
+  if (!seen && !clock.state.reduced) requestOverlay(TOUR_OVERLAY)
 })
+watch(() => overlayActive(TOUR_OVERLAY), active => { if (active && tourStep.value < 0) startTour() })
 // The frame loop does not run under reduced motion, so a newly loaded run has to be drawn on arrival.
 watch(() => replayMeta.version, () => render(), { flush: 'post' })
 // A run swapped in mid-walkthrough can drop the cursor step; keep the walkthrough on a step that exists.
@@ -132,7 +137,7 @@ function onHover(e: PointerEvent, inside: boolean) {
   clock.setPaused(inside)
 }
 
-onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect() })
+onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOverlay(TOUR_OVERLAY) })
 </script>
 
 <template>

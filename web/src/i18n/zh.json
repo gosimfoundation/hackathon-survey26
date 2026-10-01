@@ -2143,7 +2143,11 @@
       "info": "信息",
       "warning": "注意",
       "success": "好消息"
-    }
+    },
+    "popup_close": "关闭公告",
+    "popup_all": "查看全部公告",
+    "popup_ok": "知道了",
+    "popup_more": "另有 {n} 条置顶公告"
   },
   "admin": {
     "title": "Admin",
