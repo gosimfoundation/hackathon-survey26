@@ -94,8 +94,7 @@
       "organization_id": "336376701",
       "installation_id": 166758323,
       "repository_id": "1399205505",
-      "approved_sha": "2a1d3694f2e3eca623e4ee298185a268b0dc0b4c",
-      "enabled": false
+      "approved_sha": "2a1d3694f2e3eca623e4ee298185a268b0dc0b4c"
     }
   ]
 }

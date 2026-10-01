@@ -1,11 +1,10 @@
 # Runner organizations 13–36 preparation status
 
 Tracking issue for the 24 additional evaluation runner organizations
-(`AGENTIC-OBSERVER26-runner-13` … `runner-36`). New organizations are **not**
-wired into scheduling: placement still only picks `enabled` rows of
-`private.observer_installations`, and every new organization stays
-`"enabled": false` in `ops/github-installations.json` until it is verified
-with `scripts/configure-observer-runners.py` and deliberately turned on.
+(`AGENTIC-OBSERVER26-runner-13` … `runner-36`). New organizations are recorded
+`"enabled": false` in `ops/github-installations.json` until deliberately turned
+on; runner-13 was enabled on 2026-10-01 after its approved runtime was
+re-verified against runner-1…12.
 
 Each organization needs (reference: runner-1…12, runtime from main `472f79e`):
 
@@ -22,7 +21,7 @@ Each organization needs (reference: runner-1…12, runtime from main `472f79e`):
 
 | Organization | Status | organization_id | installation_id | repository_id | approved_sha |
 |---|---|---|---|---|---|
-| AGENTIC-OBSERVER26-runner-13 | ✅ ready (all 6 steps done 2026-09-30; recorded `enabled: false`) | 336376701 | 166758323 | 1399205505 | 2a1d3694f2e3eca623e4ee298185a268b0dc0b4c |
+| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; approved runtime matches runner-1…12) | 336376701 | 166758323 | 1399205505 | 2a1d3694f2e3eca623e4ee298185a268b0dc0b4c |
 | AGENTIC-OBSERVER26-runner-14 … runner-36 | ⛔ not created | — | — | — | — |
 
 Notes:
