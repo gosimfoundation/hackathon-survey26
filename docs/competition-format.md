@@ -35,9 +35,11 @@ Final version and hidden final (organizer decision 2026-09-26, migration 2026092
   `published`, participants cannot see the phase, its scenario, its batches/runs/logs or result downloads, and no
   signed-in user can start an evaluation there. Its scenario files stay private even after publication, and its
   scenario cannot be linked to any other phase.
-- After `online` ends, `scripts/run-hidden-final.py` (dry run by default, `--apply`, `--team`, `--retry-failed`)
-  creates one formal batch per team for its final version, outside the daily limit; the normal dispatcher runs
-  them. Publish by setting
+- After `online` ends, `scripts/run-hidden-final.py` (dry run by default, `--apply`, `--limit`, `--team`,
+  `--retry-failed`, `--status`, `--results`) creates one formal batch per team for its final version, outside the
+  daily limit: one run per hidden card (E–H); the normal dispatcher runs them. Only batches on the phase's current
+  card set count; `--retry-failed` reruns platform failures only (migration 20261001000200). Procedure, estimates
+  and confidentiality: `docs/hidden-final-runbook.md`. Publish by setting
   `final-hidden.leaderboard_mode='published'`.
 - Model keys (organizer rule 2026-09-27): teams whose program calls a model must switch to stored mode
   ("加密保存" / "Save encrypted on the server") before `online.ends_at`; in relay mode the key lives only in an
