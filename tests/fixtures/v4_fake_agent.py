@@ -7,6 +7,7 @@ Modes (argv[1]):
   bad-after:N  greedy for N decisions, then an invalid action (fibre 16)
   garbage-after:N  greedy for N decisions, then a non-JSON line on stdout
   sleep        never answers (wall-clock expiry)
+  sleep-after:N    greedy for N decisions, then never answers (expiry with a history)
   finish-after:N   greedy for N decisions, then {"action": "finish"}
 Every mode logs "INIT <json>" (a summary of initialize) and "FINISH-MSG <json>" to stderr.
 With PROBE=1 it also logs what it can see of the host ("PROBE <json>").
@@ -87,7 +88,7 @@ def answer(message):
     state["count"] += 1
     if MODE == "wait":
         return {"action": "wait", "duration_seconds": 3600}
-    if MODE == "sleep":
+    if MODE == "sleep" or MODE.startswith("sleep-after:") and state["count"] > int(MODE.split(":")[1]):
         time.sleep(3600)
     if MODE.startswith("bad-after:") and state["count"] > int(MODE.split(":")[1]):
         return {"action": "observe", "pointing": {"alt_deg": 60.0, "az_deg": 10.0},

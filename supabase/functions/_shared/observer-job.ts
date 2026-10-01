@@ -76,6 +76,19 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "instance",
       "archive_url",
       "colocated",
+      "restricted_egress",
+    ],
+    // The independent rescore: the scenario and the run's stored result, no
+    // session capability (a score job can never publish or finish a session).
+    score: [
+      "kind",
+      "job_id",
+      "run_id",
+      "scenario_url",
+      "scenario_digest",
+      "result_url",
+      "decisions_digest",
+      "termination_reason",
     ],
     prepare: [
       "kind",
@@ -156,8 +169,22 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       throw new ProxyError(503, "invalid_job_payload");
     }
     projectManifest(colocated.manifest as Record<string, unknown> | null);
-  } else if (kind === "engine" && value.archive_url !== undefined) {
+  } else if (kind === "engine" && (value.archive_url !== undefined || value.restricted_egress !== undefined)) {
     throw new ProxyError(503, "invalid_job_payload");
+  }
+  // Model-proxy-only egress for the colocated participant container.
+  if (kind === "engine" && value.restricted_egress !== undefined && value.restricted_egress !== true) {
+    throw new ProxyError(503, "invalid_job_payload");
+  }
+  if (kind === "score") {
+    string("run_id", uuid);
+    url("scenario_url");
+    url("result_url");
+    string("scenario_digest", hash);
+    string("decisions_digest", hash);
+    if (typeof value.termination_reason !== "string" || !/^[a-z_]{0,64}$/.test(value.termination_reason)) {
+      throw new ProxyError(503, "invalid_job_payload");
+    }
   }
   if (kind === "engine") {
     url("scenario_url");
@@ -329,7 +356,8 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
       if (parsed.scenario_ref !== undefined) {
         const ref = parsed.scenario_ref;
         if (
-          parsed.kind !== "engine" || parsed.scenario_url !== undefined || !deps.scenarioDownload ||
+          (parsed.kind !== "engine" && parsed.kind !== "score") || parsed.scenario_url !== undefined ||
+          !deps.scenarioDownload ||
           !ref || typeof ref !== "object" || Array.isArray(ref) ||
           Object.keys(ref).sort().join(",") !== "bucket,path" || ref.bucket !== "observer-scenarios" ||
           typeof ref.path !== "string" || !/^[A-Za-z0-9_/-]+[.]zip$/.test(ref.path)
@@ -338,6 +366,18 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         }
         parsed.scenario_url = await deps.scenarioDownload(ref.path);
         delete parsed.scenario_ref;
+      }
+      if (parsed.result_ref !== undefined) {
+        // The trace a score job recomputes: the run's private result snapshot,
+        // exactly as the finish call recorded it.
+        if (
+          parsed.kind !== "score" || parsed.result_url !== undefined || !deps.archiveDownload ||
+          typeof parsed.result_ref !== "string"
+        ) {
+          throw new ProxyError(503, "invalid_job_payload");
+        }
+        parsed.result_url = await deps.archiveDownload(parsed.result_ref, true);
+        delete parsed.result_ref;
       }
       if (parsed.archive_ref !== undefined) {
         if (parsed.archive_url !== undefined || !deps.archiveDownload || typeof parsed.archive_ref !== "string") {
