@@ -1,4 +1,4 @@
-"""Recorded runner placement across up to twelve organizations."""
+"""Recorded runner placement across up to ninety-nine organizations."""
 from __future__ import annotations
 
 import concurrent.futures
