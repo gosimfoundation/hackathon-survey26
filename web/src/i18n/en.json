@@ -351,7 +351,7 @@
     "prizes": {
       "kicker": "04 / Awards",
       "title": "$5,500 in prizes",
-      "lede": "Awarded on the final ranking: the score of each team's final version on the hidden final scenario.",
+      "lede": "Awarded on the final ranking: the score of each team's final version on the hidden cards E–H.",
       "tiers": [
         {
           "place": "First Prize",
@@ -373,7 +373,7 @@
     "leaderboard": {
       "kicker": "05 / Leaderboard",
       "title": "Live standings",
-      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per scenario, and the competition board keeps each team's best complete batch (the mean of the three formal scenarios). Both are feedback only; the final ranking uses only the hidden final scenario.",
+      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D). Both are feedback only; the final ranking uses only the hidden cards E–H.",
       "signal_live": "Board live",
       "signal_waiting": "Awaiting benchmark signal",
       "feed": "Live evaluation feed"
@@ -421,7 +421,7 @@
         },
         {
           "title": "Limits",
-          "desc": "Any language; model calls are optional. decisions.csv up to 20 MB, project ZIP up to 50 MB. Competition: 10 complete batches per team per day, 3600 s per scenario."
+          "desc": "Any language; model calls are optional. decisions.csv up to 20 MB, project ZIP up to 50 MB. Competition: 4 evaluations per team per day, each running cards A–D with 900 s per card."
         }
       ],
       "link": "Submission docs"
@@ -550,7 +550,7 @@
         },
         {
           "title": "Enter the online competition",
-          "desc": "October 5–7: submit a complete project, evaluate it on three fixed formal scenarios and choose your final version; the hidden final scenario decides the ranking.",
+          "desc": "October 5–7: submit a complete project, evaluate it on the task cards A–D and choose your final version; the hidden cards E–H decide the ranking.",
           "time": "Oct 5",
           "to": "/compete"
         }
@@ -1200,7 +1200,7 @@
     "published": "Final results published.",
     "live": "Live",
     "tie": "Ties keep the earlier submission ahead.",
-    "mean_note": "Competition score = the mean of all scenarios in the same completed batch. Each team keeps its best complete batch; score components are averaged too.",
+    "mean_note": "Competition score = the mean of cards A–D in the same completed evaluation. Each team keeps its best complete evaluation; each card tab shows that evaluation’s score on the card.",
     "download_csv": "Download CSV",
     "json": "JSON",
     "n_entries": "{n} teams",
@@ -1238,7 +1238,7 @@
     "per_scenario_note": "The practice board ranks each scenario separately: each board compares scores on that scenario only, with a team's best score there.",
     "detail": {
       "board_scenario": "Board: {scenario}",
-      "board_mean": "Board: mean over the scenarios in each evaluation",
+      "board_mean": "Board: mean over the cards in each evaluation",
       "close": "Close",
       "evenness": "Coverage evenness",
       "scored_at": "Scored at",
@@ -1250,8 +1250,8 @@
     "calibrated_score": "Calibrated score",
     "raw_score": "Raw score",
     "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
-    "public_board": "Online board: each team’s best evaluation on the three fixed formal scenarios. It is live, but it does not decide the final ranking — after the online phase ends, each team’s final version is evaluated once on a hidden scenario, and only that score ranks.",
-    "final_board": "Final ranking: one evaluation of each team’s final version on the hidden scenario, run after the online phase ended.",
+    "public_board": "Online board: each team’s best complete evaluation on the task cards A–D (900 s per card); the Overall tab is the mean over A–D and each card has its own tab. It is live, but it does not decide the final ranking — after the online phase ends, each team’s final version is evaluated once on the hidden cards E–H, and only the mean over E–H ranks.",
+    "final_board": "Final ranking: one evaluation of each team’s final version on the hidden cards E–H, run after the online phase ended; the Overall tab is the mean over E–H.",
     "overall": "Overall",
     "cards": "Cards",
     "overall_note": "Overall = the mean of a team's card scores in its best complete evaluation (a scored run on every card). Each card tab shows the run on that card from the same evaluation.",
@@ -2022,7 +2022,7 @@
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each scenario has one wall clock (global_wallclock_seconds, sent in the initialize message): 3600 s per scenario in the formal competition, 5 hours per scenario for complete-project cloud evaluations on the Playground, and your own --wallclock choice for local practice. It starts after the initialize message and covers every decision — snapshot serialisation, your think time and parsing included. There is no per-decision limit. When it expires the process is stopped and the actions committed so far are scored, with the terminal penalties for unfinished REQUIRED tiles, FLEXIBLE shortfalls and expired requests."
+        "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on the Playground, in the competition and on the hidden cards; local_runner.py uses the same limit, or a shorter one set with --wallclock. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
       },
       {
         "q": "What is hidden on the competition scenarios?",
@@ -2030,11 +2030,11 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 50 decisions.csv submissions and 5 complete-project evaluations per team per day (separate board). Competition: 10 complete batches per team per day, each covering all three formal scenarios, and the online board keeps your best complete batch. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
+        "a": "Practice: 50 decisions.csv submissions and 5 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
-        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated once on one hidden scenario, and only that score decides the final ranking; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams before awards are confirmed on October 17."
+        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated once on the hidden cards E–H, and only the mean over E–H decides the final ranking; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams before awards are confirmed on October 17."
       },
       {
         "q": "Do I have to attend in Shenzhen?",
@@ -2251,7 +2251,7 @@
       "hidden": "hidden",
       "locked": "locked",
       "final_title": "Final versions",
-      "final_help": "Each team’s version for the hidden final evaluation: its choice, else the version of its best scored evaluation. Relay-mode teams must keep a page open during their hidden run.",
+      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run, so a program that calls a model needs its API key saved encrypted on the server.",
       "final_phase": "Phase",
       "final_version": "Version",
       "final_source": "Source",
@@ -2527,8 +2527,9 @@
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [
-        "10 batches per team per day; each batch runs on three fixed scenarios and scores their mean.",
-        "Choose your final version before the competition ends."
+        "4 evaluations per team per day; each runs your agent on the task cards A–D, 900 s per card, and the board shows the mean over A–D.",
+        "Choose your final version before the competition ends.",
+        "The final ranking uses only one evaluation of that version on the hidden cards E–H (the mean over E–H)."
       ],
       "s3_cta": "Go to Participate",
       "help_prefix": "More questions? See the",
