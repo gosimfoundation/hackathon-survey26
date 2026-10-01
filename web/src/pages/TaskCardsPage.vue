@@ -96,6 +96,8 @@ async function download() {
 <style scoped>
 .card-sets { display: flex; flex-wrap: wrap; gap: 1.5rem 3rem; }
 .card-sets .label { display: block; margin-bottom: .35rem; }
+/* Greek letters must stay lower case: an upper-case α reads as the hackathon card A. */
+.card-sets .tabs a { text-transform: none; letter-spacing: .04em; font-size: .85rem; }
 .card-files { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
 .locked { max-width: 42rem; }
 </style>

@@ -56,7 +56,8 @@ const filesFor = (group: ScenarioFileGroup) => SCENARIO_FILES.filter(f => f.grou
 const groupVisible = (s: Scenario, group: ScenarioFileGroup) => filesFor(group).some(f => scenarioFileVisible(s, f))
 const fmtClock = (v: number | null | undefined) => v == null ? '—' : v >= 3600 ? `${(v / 3600).toFixed(v % 3600 ? 1 : 0)} h` : `${Math.round(v / 60)} min`
 // v4 cards have their own section (task cards); this list keeps the v3 scenarios and their file layout.
-const active = computed(() => scenarios.value.filter(s => s.is_active && !s.slug.startsWith('v4-')))
+// A scenario linked to several phases (CSV and complete-project practice) is listed once.
+const active = computed(() => scenarios.value.filter((s, i, all) => s.is_active && !s.slug.startsWith('v4-') && all.findIndex(x => x.slug === s.slug) === i))
 
 async function download(scenario: Scenario, file: ScenarioFile) {
   const key = `${scenario.slug}/${file.key}`
