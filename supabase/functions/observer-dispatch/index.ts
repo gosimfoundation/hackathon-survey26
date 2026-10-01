@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { dispatchPending } from "../_shared/observer-dispatch.ts";
 import { databaseLocator, GitHubApp } from "../_shared/observer-github.ts";
 import { ProxyError } from "../_shared/observer-model.ts";
-import { scheduleRuns } from "../_shared/observer-orchestrate.ts";
+import { scheduleRuns, scheduleScores } from "../_shared/observer-orchestrate.ts";
 import { schedulePreparations } from "../_shared/observer-prepare.ts";
 import { cleanupUploads } from "../_shared/observer-cleanup.ts";
 
@@ -43,12 +43,13 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       apiBase: Deno.env.get("SUPABASE_URL") ?? "",
       ensureRepository: (user) => app.privateParticipantRepository(user),
     });
+    const rescoring = await scheduleScores({ rpc, masterKey });
     const dispatched = await dispatchPending(rpc, app, masterKey);
     const cleaned = await cleanupUploads(rpc, async (path) => {
       const { error } = await service.storage.from("observer-staging").remove([path]);
       if (error) throw new ProxyError(503, "temporary_cleanup_failed");
     });
-    const data = { prepared, scheduled, dispatched, cleaned };
+    const data = { prepared, scheduled, rescoring, dispatched, cleaned };
     return Response.json({ data }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof ProxyError ? error.code : "dispatch_unavailable" }, {

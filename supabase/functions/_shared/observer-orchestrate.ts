@@ -25,6 +25,11 @@ export async function scheduleRuns(deps: RunScheduler) {
   if (!installations.length) return [];
   const enabled = new Set(installations.map((i: { organization: string }) => i.organization));
   const runs = await deps.rpc("observer_pending_runs", { p_limit: 5 });
+  // Organizer switch: model-proxy-only egress for colocated participant
+  // containers. Read once per pass, and only when a colocated run needs it.
+  let restrictedEgress: Promise<boolean> | undefined;
+  const egressSwitch = () =>
+    restrictedEgress ??= deps.rpc("observer_hardening", {}).then((value) => value?.restricted_egress === true);
   const outcomes = [];
   for (const run of runs) {
     try {
@@ -38,6 +43,7 @@ export async function scheduleRuns(deps: RunScheduler) {
       // the same step-by-step protocol, without a database round trip per step.
       const colocated = run.mode === "project" && !instance &&
         await deps.rpc("observer_run_colocated", { p_run: run.id }) === true;
+      const restricted = colocated && await egressSwitch();
       const participant = randomCapability(), engine = randomCapability();
       const jobs = [];
       const encodeJob = async (kind: string, input: Record<string, unknown>) => {
@@ -62,6 +68,7 @@ export async function scheduleRuns(deps: RunScheduler) {
           ...(instance ? { instance } : {}),
           ...(colocated
             ? {
+              ...(restricted ? { restricted_egress: true } : {}),
               archive_ref: run.archive_ref,
               colocated: {
                 run_credential: "obs_" + run.id + "." + participant,
@@ -104,6 +111,50 @@ export async function scheduleRuns(deps: RunScheduler) {
     } catch (error) {
       const code = error instanceof GitHubError ? error.code : "schedule_unavailable";
       await deps.rpc("observer_run_schedule_error", { p_run: run.id, p_lease: run.lease, p_error: code });
+      outcomes.push({ id: run.id, scheduled: false, error: code });
+    }
+  }
+  return outcomes;
+}
+
+/**
+ * The independent rescore: once a formal project run is scored from its engine's
+ * summary, a score job on a fresh runner (no participant code) recomputes the
+ * score from the committed trace. The database adopts the recomputed score.
+ */
+export async function scheduleScores(deps: Pick<RunScheduler, "rpc" | "masterKey">) {
+  const installations = await deps.rpc("observer_runner_configuration", {});
+  if (!installations.length) return [];
+  const runs = await deps.rpc("observer_pending_score_runs", { p_limit: 5 });
+  const outcomes = [];
+  for (const run of runs) {
+    try {
+      const id = crypto.randomUUID(), nonce = randomCapability();
+      const input = {
+        run_id: run.id,
+        scenario_ref: { bucket: "observer-scenarios", path: run.storage_path },
+        scenario_digest: run.scenario_digest,
+        result_ref: run.result_path,
+        decisions_digest: run.decisions_digest,
+        termination_reason: run.termination_reason,
+      };
+      await deps.rpc("observer_enqueue_job", {
+        p_id: id,
+        p_kind: "score",
+        p_run: run.id,
+        p_revision: null,
+        p_organization: run.organization,
+        p_nonce: nonce,
+        p_encrypted_input: await encryptCredential(
+          JSON.stringify({ ...input, kind: "score", job_id: id }),
+          id,
+          deps.masterKey,
+        ),
+        p_encrypted_nonce: await encryptCredential(nonce, id + ":nonce", deps.masterKey),
+      });
+      outcomes.push({ id: run.id, scheduled: true });
+    } catch (error) {
+      const code = error instanceof GitHubError ? error.code : "schedule_unavailable";
       outcomes.push({ id: run.id, scheduled: false, error: code });
     }
   }

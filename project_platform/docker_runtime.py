@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from .egress import NETWORK_PATTERN
 from .manifest import ProjectError, ProjectManifest
 from .transport import AGENT_LOG_BYTES, ExecutionError, JsonlTransport
 
@@ -50,6 +51,10 @@ class DockerWorkspace:
         if not workdir.is_dir() or not workdir.resolve().is_relative_to(self.root):
             raise ProjectError("Project working directory is missing or outside its workspace.")
         self.name = "observer-" + uuid.uuid4().hex
+        # None: Docker's default bridge. Otherwise the per-run internal network of
+        # project_platform.egress; only the run step joins it, a reviewed build
+        # keeps the bridge (package registries).
+        self.network: str | None = None
         self.transport: JsonlTransport | None = None
         self.build_log = ""
         # Only explicitly safe client settings reach the Docker CLI. They are not
@@ -58,7 +63,7 @@ class DockerWorkspace:
                            ("PATH", "HOME", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG")
                            if key in os.environ}
 
-    def _command(self, *, name: str, environment: Mapping[str, str]) -> list[str]:
+    def _command(self, *, name: str, environment: Mapping[str, str], network: str = "bridge") -> list[str]:
         lim = self.limits
         args = [
             "docker", "run", "--rm", "--interactive", "--name", name,
@@ -72,7 +77,7 @@ class DockerWorkspace:
             "--cpus", str(lim.cpus), "--pids-limit", str(lim.processes),
             "--ulimit", "nofile=512:512", "--ulimit", "fsize=268435456:268435456",
             "--read-only", "--tmpfs", "/tmp:rw,nosuid,size=256m",
-            "--network", "bridge", "--log-driver", "none",
+            "--network", network, "--log-driver", "none",
             "--mount", f"type=bind,src={self.root},dst=/workspace",
             "--workdir", "/workspace" + ("" if self.manifest.working_directory == "." else "/" + self.manifest.working_directory),
             "--entrypoint", "/bin/sh",
@@ -129,8 +134,10 @@ class DockerWorkspace:
             raise ProjectError("Only scoped execution and model-proxy credentials may reach the project.")
         if any(not isinstance(value, str) or "\x00" in value for value in run_environment.values()):
             raise ProjectError("Invalid runtime environment.")
+        if self.network is not None and not NETWORK_PATTERN.fullmatch(self.network):
+            raise ProjectError("Only a per-run restricted egress network may be selected.")
         env = {**dict(self.manifest.environment), **run_environment}
-        command = self._command(name=self.name, environment=env)
+        command = self._command(name=self.name, environment=env, network=self.network or "bridge")
         command += [self.image, "-c", "exec " + shlex.join(self.manifest.run)]
         secrets = tuple(value for key, value in run_environment.items() if key.endswith(("TOKEN", "KEY")))
         self.transport = JsonlTransport(command, environment={**self.client_env, **env}, redactions=secrets,

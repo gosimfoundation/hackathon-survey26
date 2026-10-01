@@ -445,3 +445,56 @@ Deno.test("only the participant log may exceed the receipt size", async () => {
     "body_too_large",
   );
 });
+
+Deno.test("a score job claims fresh downloads of the scenario and the run's private result only", async () => {
+  const result = "github:AGENTIC-OBSERVER26-runner-1/participant-" + "a".repeat(32) + "@" + "b".repeat(40);
+  const input: Record<string, unknown> = {
+    kind: "score",
+    job_id: job,
+    run_id: payload.run_id,
+    scenario_ref: { bucket: "observer-scenarios", path: "cards/v4-a.zip" },
+    scenario_digest: "a".repeat(64),
+    result_ref: result,
+    decisions_digest: "d".repeat(64),
+    termination_reason: "agent_finished",
+  };
+  const signed: string[] = [];
+  const deps: JobDependencies = {
+    masterKey: key,
+    verify: () => Promise.resolve({ runId: "404", runAttempt: "1", subject: "expected" }),
+    rpc: async (name) =>
+      name === "observer_job_identity"
+        ? { ...identity, workflow: "observer-score.yml" }
+        : await encryptCredential(JSON.stringify(input), job, key),
+    scenarioDownload: (path) => {
+      signed.push("scenario:" + path);
+      return Promise.resolve("https://storage.test/card.zip");
+    },
+    archiveDownload: (reference, privateOnly) => {
+      assertEquals(privateOnly, true);
+      signed.push("result:" + reference);
+      return Promise.resolve("https://codeload.github.com/result.zip");
+    },
+  };
+  assertEquals(await jobRequest(request(), deps), {
+    kind: "score",
+    job_id: job,
+    run_id: payload.run_id,
+    scenario_url: "https://storage.test/card.zip",
+    scenario_digest: "a".repeat(64),
+    result_url: "https://codeload.github.com/result.zip",
+    decisions_digest: "d".repeat(64),
+    termination_reason: "agent_finished",
+  });
+  assertEquals(signed, ["scenario:cards/v4-a.zip", "result:" + result]);
+  // A result reference is resolved for a score job only.
+  input.kind = "engine";
+  await assertRejects(() => jobRequest(request(), deps), ProxyError);
+  // A score job cannot mint repository credentials or store a participant log.
+  input.kind = "score";
+  await assertRejects(() =>
+    jobRequest(request("artifact_repository"), {
+      ...deps,
+      repositoryCredentials: () => Promise.resolve({ full_name: "x/y", token: "t" }),
+    }), ProxyError);
+});

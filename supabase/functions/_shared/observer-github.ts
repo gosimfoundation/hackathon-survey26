@@ -275,7 +275,7 @@ export class GitHubApp {
 
   async dispatch(
     organization: string,
-    workflow: "observer-prepare.yml" | "observer-execute.yml" | "observer-engine.yml",
+    workflow: "observer-prepare.yml" | "observer-execute.yml" | "observer-engine.yml" | "observer-score.yml",
     jobId: string,
     nonce: string,
     approvedSha: string,
@@ -333,7 +333,7 @@ export type WorkflowIdentity = {
   repositoryId: string;
   organizationId: string;
   organization: string;
-  workflow: "observer-prepare.yml" | "observer-execute.yml" | "observer-engine.yml";
+  workflow: "observer-prepare.yml" | "observer-execute.yml" | "observer-engine.yml" | "observer-score.yml";
   approvedSha: string;
   runId?: string;
   runAttempt?: string;
@@ -362,7 +362,8 @@ export async function verifyWorkflowIdentity(
     throw new GitHubError("invalid_workflow_identity", 401);
   }
   const repo = expected.organization + "/" + CONTROL_REPOSITORY;
-  const allowedRef = claims.ref === "refs/heads/main" || claims.ref === "refs/tags/observer-runtime-" + expected.approvedSha;
+  const allowedRef = claims.ref === "refs/heads/main" ||
+    claims.ref === "refs/tags/observer-runtime-" + expected.approvedSha;
   if (
     claims.repository_id !== expected.repositoryId || claims.repository_owner_id !== expected.organizationId ||
     claims.repository !== repo || claims.repository_visibility !== "private" ||
