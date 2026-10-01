@@ -219,6 +219,38 @@ action = {'action': 'wait', 'duration_seconds': 900}
     assert "saw finish" not in (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
 
 
+def test_runner_refuses_an_agent_that_names_the_truth_files(tmp_path):
+    """truth/ feeds the local scorer only; an agent that reads it gets a score the platform never gives."""
+    (tmp_path / "agent").mkdir()
+    agent = write_agent(tmp_path / "agent" / "agent.py", """
+open('../cards/demo/truth/v4_weather_truth.csv').close()
+action = {'action': 'finish'}
+""")
+    refused = run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--quiet")
+    assert refused.returncode != 0 and not refused.stdout
+    assert "hidden truth/" in refused.stderr and "agent.py mentions truth/, v4_weather_truth" in refused.stderr
+    assert not (tmp_path / "out").exists()
+    # The override runs (the file does not exist from there) and says the score will not carry over.
+    forced = run("local_runner.py", "--agent", str(agent), "--out", str(tmp_path / "out"), "--allow-truth-refs")
+    assert forced.returncode == 2 and "WARNING (--allow-truth-refs)" in forced.stderr
+
+
+def test_runner_refuses_a_card_inside_the_agent_folder(tmp_path):
+    agent_dir = tmp_path / "agent"
+    shutil.copytree(KIT / "agent", agent_dir)
+    shutil.copytree(DEMO, agent_dir / "cards" / "demo")
+    refused = run("local_runner.py", "--agent", str(agent_dir), "--card", str(agent_dir / "cards" / "demo"),
+                  "--out", str(tmp_path / "out"), "--quiet")
+    assert refused.returncode != 0 and "is inside the agent folder" in refused.stderr
+
+
+def test_runner_explains_truth_before_a_normal_run(baseline):
+    proc = run("local_runner.py", "--agent", "examples/idle_agent.py", "--out", str(baseline["out"] / "idle-note"))
+    assert proc.returncode == 0
+    assert "demo/truth/ (hidden weather and events) is read by this runner only" in proc.stderr
+    assert "WARNING" not in proc.stderr
+
+
 def test_initialize_carries_only_public_data():
     init = kit_module("v4_workflow").V4Workflow(DEMO).initialize_payload(900.0)
     assert init["schema_version"] == "v4-initialize-v1"

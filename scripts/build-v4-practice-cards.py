@@ -42,17 +42,35 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import sys
 from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from challenge.v4_bundle import build_card_bundle  # noqa: E402
+from challenge import v4_weather_simulator  # noqa: E402
+from challenge.tile_geometry_simulator import _local_sidereal_deg  # noqa: E402
+from challenge.v4_bundle import REFERENCE, build_card_bundle  # noqa: E402
 from challenge.v4_workflow import V4Workflow  # noqa: E402
 from project_platform.artifacts import pack_files  # noqa: E402
 from project_platform.package import ProjectFile  # noqa: E402
 
-THREE_REGIONS = {"n_components": 3, "component_area_weights": [0.4, 0.32, 0.28], "vertices_per_component": 40}
+# Three regions placed around the season's mean night-middle sidereal time (the same template the
+# formal cards use), so every region is up during the night whatever the season. The reference
+# footprint is centred for an October season; a December one would leave a region set at dusk.
+FOOTPRINT_OFFSETS = [(-48.0, -24.0), (8.0, -52.0), (52.0, -16.0)]
+
+
+def three_regions(start_date: str, end_date: str) -> dict:
+    weather = json.loads((REFERENCE / "v4_weather_config.json").read_text(encoding="utf-8"))
+    weather["survey"].update(start_date=start_date, end_date=end_date)
+    nights, _ = v4_weather_simulator.build_nights(weather)
+    lon = weather["site"]["longitude_deg"]
+    mids = [math.radians(_local_sidereal_deg(n.observing_start_utc + (n.observing_end_utc - n.observing_start_utc) / 2, lon))
+            for n in nights]
+    mid_lst = math.degrees(math.atan2(sum(map(math.sin, mids)), sum(map(math.cos, mids)))) % 360.0
+    return {"n_components": 3, "component_area_weights": [0.4, 0.32, 0.28], "vertices_per_component": 40,
+            "component_centers": [[round((mid_lst + dra) % 360.0, 2), ddec] for dra, ddec in FOOTPRINT_OFFSETS]}
 
 PRACTICE_SPECS = {
     # Medium: fault reporting and re-planning around earthquakes and sector weather. No data loss.
@@ -60,7 +78,7 @@ PRACTICE_SPECS = {
         "name": "v4-gamma", "card_id": "gamma", "scenario_slug": "v4-gamma", "phase": "practice-projects",
         "seed": 3307, "start_date": "2026-11-08", "end_date": "2026-12-13",
         "targets": 9600, "area_deg2": 1920.0, "stress": False, "wallclock_seconds": 900,
-        "catalog_overrides": {"footprint": dict(THREE_REGIONS)},
+        "catalog_overrides": {"footprint": three_regions("2026-11-08", "2026-12-13")},
         "event_counts": {"rainy": 3, "cloudy": 5, "smoggy": 3, "cold_wave": 2, "tornado": 0,
                          "rocket_launch": 2, "earthquake": 2, "instrument_fault": 3},
     },
@@ -70,10 +88,10 @@ PRACTICE_SPECS = {
         "name": "v4-delta", "card_id": "delta", "scenario_slug": "v4-delta", "phase": "practice-projects",
         "seed": 4409, "start_date": "2026-12-20", "end_date": "2027-01-24",
         "targets": 9800, "area_deg2": 1950.0, "stress": True, "wallclock_seconds": 900,
-        "catalog_overrides": {"footprint": dict(THREE_REGIONS)},
+        "catalog_overrides": {"footprint": three_regions("2026-12-20", "2027-01-24")},
         "event_counts": {"rainy": 8, "cloudy": 12, "smoggy": 6, "cold_wave": 5, "tornado": 2,
-                         "rocket_launch": 5, "earthquake": 3, "instrument_fault": 3},
-        "weather_overrides": {"background_closure": {"start_probability_per_open_slot": 0.02,
+                         "rocket_launch": 5, "earthquake": 4, "instrument_fault": 4},
+        "weather_overrides": {"background_closure": {"start_probability_per_open_slot": 0.025,
                                                      "reopen_probability_per_closed_slot": 0.22,
                                                      "seasonal_probability_amplitude": 0.01}},
     },

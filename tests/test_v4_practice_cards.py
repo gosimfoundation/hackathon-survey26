@@ -6,13 +6,20 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
+import math
+import subprocess
+import sys
 import time
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from challenge import v4_workflow
+from challenge.tile_geometry_simulator import _local_sidereal_deg
 from test_v4_engine import run_card
 
 ROOT = Path(__file__).resolve().parents[1]
+KIT = ROOT / "starter_kit_v4"
 
 
 def _script():
@@ -81,3 +88,55 @@ def test_the_extreme_card_still_runs_end_to_end(tmp_path):
     assert time.monotonic() - started < 300
     report = result["score_report"]
     assert report["counts"]["observe_actions"] > 0
+
+
+def _utc(text: str) -> datetime:
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def test_every_region_is_up_at_night(tmp_path):
+    """The regions follow the season: in mid-night sky, not where the October reference put them
+    (a December card built on those centres left a region set at dusk, and its required targets
+    were lost whatever the strategy)."""
+    module = _script()
+    for name, spec in module.PRACTICE_SPECS.items():
+        bundle = module.build_card_bundle(tmp_path / name, spec)
+        scenario = json.loads((bundle / "config" / "v4_scenario.json").read_text(encoding="utf-8"))
+        longitude = scenario["site"]["longitude_deg"]
+        with (bundle / "public" / "v4_night_calendar.csv").open() as handle:
+            mids = [_local_sidereal_deg(_utc(r["observing_start_utc"]) + (_utc(r["observing_end_utc"]) - _utc(r["observing_start_utc"])) / 2,
+                                        longitude) for r in csv.DictReader(handle)]
+        regions = defaultdict(list)
+        with (bundle / "public" / "footprint.csv").open() as handle:
+            for row in csv.DictReader(handle):
+                regions[row["component_id"]].append(math.radians(float(row["ra_deg"])))
+        assert len(regions) == 3, name
+        for component, ras in regions.items():
+            ra = math.degrees(math.atan2(sum(map(math.sin, ras)), sum(map(math.cos, ras))))
+            hour_angles = sorted(abs((mid - ra + 180.0) % 360.0 - 180.0) for mid in mids)
+            assert hour_angles[len(hour_angles) // 2] < 60.0, (name, component, hour_angles[len(hour_angles) // 2])
+
+
+def _baseline(card: Path, out: Path) -> dict:
+    proc = subprocess.run([sys.executable, "-B", str(KIT / "local_runner.py"), "--card", str(card), "--out", str(out), "--quiet"],
+                          cwd=str(KIT), capture_output=True, text=True, timeout=600)
+    assert proc.returncode == 0, proc.stderr[-3000:]
+    return json.loads(proc.stdout)
+
+
+def test_starter_kit_baseline_difficulty(tmp_path):
+    """The practice set gets harder card by card. The kit baseline ends both seasons with a positive
+    score, delta (the extreme one) below gamma, and delta still leaves required targets on the table
+    for a better strategy. Its data loss fires and the baseline recovers from the state_resync."""
+    module = _script()
+    runs = {}
+    for name, spec in module.PRACTICE_SPECS.items():
+        runs[name] = _baseline(module.build_card_bundle(tmp_path / name, spec), tmp_path / f"{name}-out")
+        assert runs[name]["termination_reason"] == "survey_complete", name
+        assert runs[name]["wall_seconds"] < 300, name
+    gamma, delta = runs["v4-gamma"], runs["v4-delta"]
+    assert 0 < delta["total"] < gamma["total"]
+    assert delta["required_missing"] >= 20
+    report = json.loads((tmp_path / "v4-delta-out" / "score_report.json").read_text(encoding="utf-8"))
+    assert report["invalidations"] and report["invalidations"][0]["invalidated_observations"] > 0
+    assert "state_resync:" in (tmp_path / "v4-delta-out" / "agent.log").read_text(encoding="utf-8")
