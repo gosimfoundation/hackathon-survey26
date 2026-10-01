@@ -12,7 +12,7 @@ import TierBadge from '../components/TierBadge.vue'
 import TeamDirectory from '../components/TeamDirectory.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import { useTeamCapacity } from '../composables/useTeamCapacity'
-import { teamCreationBlocked } from '../lib/teamCapacity'
+import { showsTeamPlaces, teamCreationBlocked } from '../lib/teamCapacity'
 
 interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number }
 
@@ -179,7 +179,7 @@ onMounted(load)
       <div id="create" class="panel">
         <div class="hd"><h2>{{ t('team.create_title') }}</h2></div>
         <div v-if="capacity?.full" class="errors mb-6" role="status" data-testid="team-capacity-full">{{ tf('team.capacity.full', { limit: capacity.limit }) }}</div>
-        <p v-else-if="capacity" class="text3 text-sm mb-4" data-testid="team-capacity">{{ tf('team.capacity.remaining', { remaining: capacity.remaining, limit: capacity.limit }) }}</p>
+        <p v-else-if="capacity && showsTeamPlaces(capacity)" class="text3 text-sm mb-4" data-testid="team-capacity">{{ tf('team.capacity.remaining', { remaining: capacity.remaining, limit: capacity.limit }) }}</p>
         <div class="solo-callout mb-6" data-testid="solo-callout">
           <p class="text2 text-sm">{{ t('team.solo_lede') }}</p>
           <SoloTeamButton class="mt-3" />
