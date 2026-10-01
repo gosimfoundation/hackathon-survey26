@@ -33,6 +33,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -115,11 +116,15 @@ def http(method, path, data=None, *, key='SUPABASE_SERVICE_ROLE_KEY', content_ty
     headers = {'apikey': os.environ['SUPABASE_ANON_KEY'], 'Authorization': 'Bearer ' + os.environ[key], 'User-Agent': 'cosmos-ops'}
     if data is not None: headers.update({'Content-Type': content_type, 'x-upsert': 'true'})
     req = urllib.request.Request(os.environ['SUPABASE_URL'] + path, data=data, method=method, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return r.status, r.read()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read()
+    for attempt in range(5):      # uploads are upserts, so a retry after a dropped connection is safe
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+        except OSError:
+            if attempt == 4: raise
+            time.sleep(2 * (attempt + 1))
 
 
 def obj(name, authenticated=True):
