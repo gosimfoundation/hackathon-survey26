@@ -308,7 +308,8 @@ def test_fallback_moves_a_pending_job_to_a_free_self_hosted_slot(setup):
         rpc(uri, 'observer_fallback_job', first)
     query(uri, 'update private.observer_installations set fallback_capacity=1 where organization=%s', (ORG + '13',))
     query(uri, "update private.observer_jobs set status='dispatched',dispatch_count=3,error='x' where id=%s", (first,))
-    assert rpc(uri, 'observer_fallback_job', first) == {'organization': ORG + '13', 'approved_sha': 'f' * 40}
+    assert rpc(uri, 'observer_fallback_job', first) == {'organization': ORG + '13', 'approved_sha': 'f' * 40,
+                                                     'partner': None}
     row = query(uri, """select organization,repository_id,organization_id,workflow_sha,runner,status,error,
         dispatch_count from private.observer_jobs where id=%s""", (first,))[0]
     assert row == (ORG + '13', '3013', '1013', 'f' * 40, 'self-hosted', 'queued', '', 1)
@@ -352,6 +353,10 @@ def test_pending_jobs_name_the_fallback_reason_only_while_a_slot_is_free(setup):
     query(uri, 'update private.observer_installations set monthly_minute_limit=0')
     over = queued_job(s, ORG + '8')
     assert pending(uri)[str(over)]['fallback'] == 'over_limit'
+    # A job GitHub already accepted keeps waiting for its hosted run.
+    query(uri, """update private.observer_jobs set status='dispatched',dispatch_count=1,
+        last_dispatch_at=now()-interval '3 minutes' where id=%s""", (over,))
+    assert pending(uri)[str(over)]['fallback'] is None
     query(uri, 'update private.observer_installations set monthly_minute_limit=1800')
     # A self-hosted run accepted by GitHub waits for its runner instead of being re-dispatched.
     waiting = queued_job(s, ORG + '8')
@@ -364,3 +369,48 @@ def test_pending_jobs_name_the_fallback_reason_only_while_a_slot_is_free(setup):
     assert (retried['runner'], retried['fallback'], retried['organization']) == ('self-hosted', None, ORG + '13')
     query(uri, "update private.observer_jobs set status='failed' where status in ('queued','dispatched','claimed')")
     query(uri, 'update private.observer_installations set fallback_capacity=0')
+
+
+def fallback_avoiding(uri, job, avoid):
+    return query(uri, 'select public.observer_fallback_job(%s,%s::text[])', (job, avoid))[0][0]
+
+
+def test_fallback_avoids_failed_organizations_and_moves_split_runs_together(setup):
+    s = setup; uri = s['uri']
+    fallback_ready(uri, 1)
+    query(uri, """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled,fallback_capacity)
+        values(%s,'1014',2014,'3014',%s,true,2) on conflict(organization) do update
+        set enabled=true,fallback_capacity=2""", (ORG + '14', 'e' * 40))
+    lone = queued_job(s, ORG + '8')
+    with pytest.raises(psycopg.Error, match='fallback_unavailable'):
+        fallback_avoiding(uri, lone, [ORG + '13', ORG + '14'])
+    assert fallback_avoiding(uri, lone, [ORG + '14'])['organization'] == ORG + '13'
+    # A split run's execute and engine jobs must run together: two slots or none.
+    batch, run = uuid.uuid4(), uuid.uuid4()
+    query(uri, "insert into public.observer_batches(id,team_id,user_id,phase_id,mode) values(%s,%s,%s,%s,'local')",
+          (batch, s['team'], s['user'], s['phase']))
+    query(uri, "insert into public.observer_runs(id,batch_id,scenario_id,status) values(%s,%s,%s,'queued')",
+          (run, batch, s['scenario']))
+    engine, execute = uuid.uuid4(), uuid.uuid4()
+    for job, kind in ((engine, 'engine'), (execute, 'execute')):
+        rpc(uri, 'observer_enqueue_job', job, kind, run, None, ORG + '8',
+            secrets.token_urlsafe(32), 'encrypted job payload', 'encrypted nonce')
+    query(uri, "update private.observer_jobs set status='dispatched',dispatch_count=3 where id=%s", (execute,))
+    with pytest.raises(psycopg.Error, match='fallback_unavailable'):
+        fallback_avoiding(uri, engine, [ORG + '14'])
+    assert rpc(uri, 'observer_fallback_job', engine)['organization'] == ORG + '14'
+    rows = query(uri, """select id,organization,runner,status,dispatch_count,last_dispatch_at is null
+        from private.observer_jobs where run_id=%s order by kind""", (run,))
+    assert rows == [(engine, ORG + '14', 'self-hosted', 'queued', 1, False),
+                    (execute, ORG + '14', 'self-hosted', 'queued', 0, True)]
+    # Fallback minutes and load never count against GitHub-hosted organizations.
+    query(uri, """update private.observer_jobs set status='succeeded',claimed_at=now()-interval '40 hours',
+        finished_at=now() where run_id=%s""", (run,))
+    loads = {r[0]: r[1:] for r in query(uri, """select organization,month_minutes,active_jobs,over_limit
+        from public.observer_organizations_by_load()""")}
+    assert loads[ORG + '14'][1] == 0 and loads[ORG + '13'][1] == 0
+    assert loads[ORG + '14'][0] < 1800 and not loads[ORG + '14'][2]
+    query(uri, "update private.observer_jobs set status='failed' where status in ('queued','dispatched','claimed')")
+    query(uri, 'update private.observer_installations set fallback_capacity=0')
+    query(uri, 'update private.observer_installations set enabled=false where organization=%s', (ORG + '14',))

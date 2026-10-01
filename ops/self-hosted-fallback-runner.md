@@ -33,44 +33,75 @@ runners; it does not help during a GitHub-wide outage.
 
 ## Security boundary
 
-Participant code must never run on the organizer's Mac. The boundary is the VM:
+Participant code must never reach the organizer's Mac. Four layers, from the
+inside out:
 
-- Lima `plain` mode (`ops/fallback-runner/observer-fallback.yaml`): no host
-  directory mounts, no port forwarding, no guest agent, no SSH agent
-  forwarding, `~/.ssh/*.pub` not loaded. Nothing from the Mac (browser profile,
-  GitHub login, keychain) exists inside.
-- Egress guard (iptables `OUTPUT`, `DOCKER-USER`, `INPUT`): the VM and every
-  container reach only the public internet; containers cannot connect to the
-  VM itself. The Mac (`192.168.5.2` is its
-  loopback, e.g. the browser's debugging port), private and link-local
-  networks are rejected. If a host proxy is configured, only root (apt,
-  dockerd) and the `runner` account may reach that one port; container traffic
-  is forwarded and never matches.
-- Inside the VM participant code runs exactly as on GitHub-hosted runners: in
-  the trusted job runner's Docker sandbox (`--cap-drop=ALL`, read-only root,
-  resource limits).
-- The runner is registered at **repository level** on `observer-control`
-  only, so participant repositories in the same organization can never
-  schedule work on it, and only the reviewed control workflows run there.
-- The only secret in the VM is the runner's own registration. It is created
-  from a one-hour, register-only token.
-- Every job starts and ends with `/opt/observer/job-cleanup.sh`: all
-  containers, images, volumes and the runner account's temporary files are
-  removed.
+1. **Job sandbox** — as on GitHub-hosted runners, participant code runs only in
+   the trusted job runner's Docker container (`--cap-drop=ALL`,
+   `no-new-privileges`, read-only root, non-root user, resource limits).
+2. **gVisor** — in the VM, Docker's default runtime is `runsc`: a container
+   talks to gVisor's user-space kernel, so a kernel exploit does not reach the
+   VM kernel. (amd64-only images are not supported on the fallback.)
+3. **The VM** (`ops/fallback-runner/observer-fallback.yaml`) — Lima `plain`
+   mode: no host directory mounts, no port forwarding, no guest agent, no SSH
+   agent forwarding. Nothing from the Mac (browser profile, GitHub login,
+   keychain, `~/.ssh`) exists inside; the only secret is the runner's own
+   registration, created from a one-hour register-only token. The runner is
+   registered at **repository level** on `observer-control`, so only the
+   reviewed control workflows run there. Every job starts and ends with
+   `/opt/observer/job-cleanup.sh` (all containers, images, volumes and
+   temporary files removed), so one VM hosts exactly one runner. An in-VM
+   egress guard (iptables `OUTPUT`, `DOCKER-USER`, `INPUT`) keeps containers
+   and non-root code away from the Mac (`192.168.5.2`), private, fake-IP and
+   link-local networks and from the VM itself; the runner service requires it.
+4. **Host boundary (required before enabling)** — Lima's user-mode network
+   maps `192.168.5.2` to the Mac's loopback, and a local HTTP proxy happily
+   forwards to `127.0.0.1` too. Code that becomes root inside the VM can undo
+   the in-VM guard, so the Mac must enforce the boundary itself:
+   - the VM runs under a dedicated macOS account (`observerfb`), and pf
+     (`ops/fallback-runner/pf.anchor`) lets that account reach only the public
+     internet, the VM's own SSH port and the egress proxy — never the Mac's
+     other loopback services (e.g. the browser's debugging port) or the LAN;
+   - `ops/fallback-runner/egress-proxy.py`, run by the organizer's account,
+     accepts only `CONNECT <allowlisted host>:443` (GitHub, container
+     registries, PyPI, gVisor, Supabase) and chains to the local proxy.
+     IP literals, loopback names and other ports are refused.
 
-## One-time setup (organizer's Mac)
+## One-time setup (organizer's Mac, needs an administrator once)
 
-Prerequisites: Lima (`brew install lima`). No Docker on the Mac is needed;
-Docker runs inside the VM (amd64-only images run through `qemu-user-static`).
+Prerequisites: Lima (`brew install lima`). No Docker on the Mac.
 
-1. Create and boot the VM (add the `--set` only where GitHub/Docker Hub need
-   the Mac's local HTTP proxy, and the Ubuntu origin is slow):
+1. Host boundary (administrator):
 
    ```sh
-   limactl create --name observer-fallback \
-     --set '.param.HostProxyPort="1082" | .param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"' \
-     ops/fallback-runner/observer-fallback.yaml
-   limactl start observer-fallback
+   # A standard account that only runs the VM (no login use).
+   sudo sysadminctl -addUser observerfb -fullName "Observer fallback VM" -password -
+   # Egress proxy, run by the organizer's own account.
+   sudo mkdir -p /Users/Shared/observer-fallback
+   sudo cp ops/fallback-runner/egress-proxy.py /Users/Shared/observer-fallback/
+   cp ops/fallback-runner/org.agentic-observer.egress-proxy.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/org.agentic-observer.egress-proxy.plist
+   # pf anchor, loaded at boot.
+   sudo cp ops/fallback-runner/pf.anchor /etc/pf.anchors/observer-fallback
+   printf 'anchor "observer-fallback"\nload anchor "observer-fallback" from "/etc/pf.anchors/observer-fallback"\n' \
+     | sudo tee -a /etc/pf.conf
+   sudo cp ops/fallback-runner/org.agentic-observer.pf.plist /Library/LaunchDaemons/
+   sudo launchctl load /Library/LaunchDaemons/org.agentic-observer.pf.plist
+   sudo pfctl -a observer-fallback -s rules   # the four rules are listed
+   ```
+
+2. Create and boot the VM as `observerfb`. `HostProxyPort` is the egress
+   proxy. `Resolvers` is needed when the Mac's resolver returns a local
+   proxy's fake IPs (`198.18.0.0/15`), which the VM refuses; `AptMirror` is
+   optional:
+
+   ```sh
+   sudo cp ops/fallback-runner/observer-fallback.yaml /Users/Shared/observer-fallback/
+   sudo -u observerfb -H limactl create --name observer-fallback \
+     --set '.param.HostProxyPort="18080" | .param.Resolvers="223.5.5.5 119.29.29.29" | .param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"' \
+     /Users/Shared/observer-fallback/observer-fallback.yaml
+   sudo -u observerfb -H limactl start observer-fallback
+   sudo -u observerfb -H limactl shell observer-fallback -- sudo cloud-init status --wait
    ```
 
    If the Ubuntu image download is slow, fetch the same image from a mirror,
@@ -78,22 +109,26 @@ Docker runs inside the VM (amd64-only images run through `qemu-user-static`).
    and add `| .images=[{"location":"/path/to.img","arch":"aarch64","digest":"sha256:<sum>"}]`
    to the `--set` expression.
 
-2. Check the boundary from inside the VM:
+3. Check every layer (each command must print `blocked`):
 
    ```sh
-   limactl shell observer-fallback -- ls /Users          # must fail: no host mounts
-   limactl shell observer-fallback -- sudo iptables -S OBSERVER-OUTPUT
-   limactl shell observer-fallback -- curl -m 5 http://192.168.5.2:18800/json/version  # must fail
-   limactl shell observer-fallback -- sudo -u runner docker run --rm alpine:3.20 \
-     sh -c 'nc -z -w 3 192.168.5.2 1082 || echo blocked'  # containers never reach the Mac
+   vm() { sudo -u observerfb -H limactl shell observer-fallback -- "$@"; }
+   vm ls /Users 2>/dev/null || echo blocked                          # no host files
+   vm sudo docker info | grep -q 'Default Runtime: runsc' && echo gvisor
+   vm sudo -u runner docker run --rm alpine:3.20 sh -c \
+     'nc -z -w 3 192.168.5.2 18800 || echo blocked'                   # containers
+   # Even VM root, with the in-VM guard bypassed, must not reach the browser:
+   vm sudo sh -c 'iptables -I OUTPUT 1 -j ACCEPT; curl -s -m 5 http://192.168.5.2:18800/json/version || echo blocked;
+     curl -s -m 5 -x http://192.168.5.2:18080 http://127.0.0.1:18800/json/version || echo blocked;
+     iptables -D OUTPUT 1'
    ```
 
-3. Register the runner on the fallback organization's `observer-control`
-   (runner-13 by default):
+4. Register the runner on the fallback organization's `observer-control`
+   (runner-13 by default). The VM is disposable: to re-register, recreate it.
 
    ```sh
    token=$(gh api -X POST repos/AGENTIC-OBSERVER26-runner-13/observer-control/actions/runners/registration-token -q .token)
-   limactl shell observer-fallback sudo env RUNNER_TOKEN="$token" \
+   sudo -u observerfb -H limactl shell observer-fallback sudo env RUNNER_TOKEN="$token" \
      RUNNER_URL=https://github.com/AGENTIC-OBSERVER26-runner-13/observer-control \
      bash -s < ops/fallback-runner/install-runner.sh
    ```
@@ -109,13 +144,14 @@ Docker runs inside the VM (amd64-only images run through `qemu-user-static`).
    `observer-runtime-<sha>`, and approve that sha in its installation row. The
    new workflows accept the optional `runner` input; other organizations may
    keep their current runtime because the input is only sent to the fallback.
-4. Set up the VM and register the runner (above); confirm it is "Idle" under
-   the repository's Actions → Runners.
+4. Set up the host boundary and the VM and register the runner (above);
+   confirm it is "Idle" under the repository's Actions → Runners.
 5. Enable: `update private.observer_installations set fallback_capacity=1
    where organization='AGENTIC-OBSERVER26-runner-13';`
    `fallback_capacity` is the number of fallback VMs registered there; each
    VM hosts exactly one runner because its job cleanup removes every
-   container.
+   container. A split (execute + engine) run needs two free slots, so phases
+   that are not colocated need two VMs to use the fallback.
 
 Disable at any time with `fallback_capacity=0` (pending self-hosted jobs keep
 their slot until they finish or expire), then `limactl stop observer-fallback`.

@@ -57,20 +57,25 @@ async function tryDispatch(
 }
 
 // Last resort: the organizer's self-hosted fallback runner. Returns null when no
-// fallback slot is free, so the caller keeps its GitHub-hosted outcome.
+// fallback slot is free, so the caller keeps its GitHub-hosted outcome. A split
+// run's partner job moves along; it is recorded in partners and dispatched on the
+// next round from its new row.
 async function tryFallback(
   rpc: Rpc,
   app: Pick<GitHubApp, "dispatch">,
   job: PendingJob,
   nonce: string,
+  partners: Set<string>,
+  failed: string[] = [],
 ): Promise<Outcome | null> {
-  let target: { organization: string; approved_sha: string };
+  let target: { organization: string; approved_sha: string; partner?: string | null };
   try {
-    target = await rpc("observer_fallback_job", { p_job: job.id });
+    target = await rpc("observer_fallback_job", { p_job: job.id, p_avoid: failed });
   } catch {
     return null;
   }
   if (!target?.organization) return null;
+  if (target.partner) partners.add(target.partner);
   const result = await tryDispatch(rpc, app, job, target.organization, nonce, target.approved_sha, true);
   return result.ok
     ? { id: job.id, dispatched: true, fallback: target.organization }
@@ -82,11 +87,16 @@ export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">
   await rpc("observer_reconcile_sessions", {});
   const jobs: PendingJob[] = await rpc("observer_pending_jobs", { p_limit: 10 });
   const outcomes: Outcome[] = [];
+  const partners = new Set<string>();
   for (const job of jobs) {
+    if (partners.has(job.id)) {
+      outcomes.push({ id: job.id, dispatched: false, error: "moved_to_fallback" });
+      continue;
+    }
     try {
       const nonce = await decryptCredential(job.encrypted_nonce, job.id + ":nonce", masterKey);
       if (job.fallback) {
-        const moved = await tryFallback(rpc, app, job, nonce);
+        const moved = await tryFallback(rpc, app, job, nonce, partners);
         if (moved) {
           outcomes.push(moved);
           continue;
@@ -110,6 +120,7 @@ export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">
       const candidates: LoadRow[] = await rpc("observer_organizations_by_load", {});
       const next = candidates.find((c) => c.organization !== job.organization && !c.over_limit);
       let error = first.error;
+      const failed = [job.organization];
       if (next) {
         // Moves the job and the owner's recorded placement atomically.
         await rpc("observer_failover_job", { p_job: job.id, p_organization: next.organization });
@@ -119,9 +130,12 @@ export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">
           continue;
         }
         error = retried.error;
+        failed.push(next.organization);
       }
       // No GitHub-hosted organization can take the job right now.
-      const moved = ORGANIZATION_FAILURES.has(error ?? "") ? await tryFallback(rpc, app, job, nonce) : null;
+      const moved = ORGANIZATION_FAILURES.has(error ?? "")
+        ? await tryFallback(rpc, app, job, nonce, partners, failed)
+        : null;
       outcomes.push(moved ?? { id: job.id, dispatched: false, error });
     } catch (error) {
       const code = error instanceof GitHubError ? error.code : "dispatch_unavailable";

@@ -16,6 +16,9 @@ set -euo pipefail
   { echo "RUNNER_URL must be a runner organization's observer-control repository" >&2; exit 2; }
 RUNNER_NAME="${RUNNER_NAME:-observer-fallback-1}"
 home=/home/runner/actions-runner
+# The VM is disposable: to re-register, delete and recreate it.
+[ ! -e "$home/.runner" ] || { echo "A runner is already registered in this VM." >&2; exit 2; }
+systemctl is-active --quiet observer-egress-guard || { echo "Egress guard is not active." >&2; exit 2; }
 
 port="$(cat /opt/observer/host-proxy-port 2>/dev/null || true)"
 proxy_env=()
@@ -39,7 +42,6 @@ tar -xzf "/tmp/$package" -C "$home" && rm -f "/tmp/$package"
 chown -R runner:runner "$home"
 "$home/bin/installdependencies.sh" >/dev/null
 
-if [ -f "$home/.runner" ]; then "$home/svc.sh" stop || true; "$home/svc.sh" uninstall || true; fi
 sudo -u runner env "${proxy_env[@]}" "$home/config.sh" --unattended --replace --url "$RUNNER_URL" \
   --token "$RUNNER_TOKEN" --name "$RUNNER_NAME" --labels observer-fallback --work _work
 {
@@ -47,5 +49,13 @@ sudo -u runner env "${proxy_env[@]}" "$home/config.sh" --unattended --replace --
   echo "ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/observer/job-cleanup.sh"
   echo "ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/observer/job-cleanup.sh"
 } >> "$home/.env"
-cd "$home" && ./svc.sh install runner && ./svc.sh start
+cd "$home"
+./svc.sh install runner
+# The runner never runs without the egress guard.
+unit="$(cat .service)"
+install -d "/etc/systemd/system/$unit.d"
+printf '[Unit]\nRequires=observer-egress-guard.service\nAfter=observer-egress-guard.service\n' \
+  > "/etc/systemd/system/$unit.d/egress-guard.conf"
+systemctl daemon-reload
+./svc.sh start
 echo "Runner $RUNNER_NAME registered with labels self-hosted, Linux, $arch, observer-fallback."

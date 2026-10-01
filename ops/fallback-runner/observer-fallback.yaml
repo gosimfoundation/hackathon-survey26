@@ -13,7 +13,17 @@
 # runner account, but never a participant container, use an HTTP proxy that
 # listens on the Mac's loopback (needed where GitHub/Docker Hub are not
 # directly reachable). --set '.param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"'
-# replaces the Ubuntu package origin (packages stay signature-checked).
+# replaces the Ubuntu package origin for the VM's architecture (packages stay
+# signature-checked; apt then connects directly). --set '.param.Resolvers="223.5.5.5 119.29.29.29"'
+# makes the VM and its containers use these public DNS servers instead of
+# Lima's resolver on the Mac, which may answer with a local proxy's fake IPs.
+#
+# Isolation layers: participant code runs in the trusted job runner's Docker
+# sandbox under gVisor (runsc, the default runtime), inside this VM, whose
+# egress guard keeps containers and non-root code away from the Mac. Lima's
+# user-mode network maps 192.168.5.2 to the Mac's loopback, so the guard does
+# not stop code that becomes root in the VM; see
+# ops/self-hosted-fallback-runner.md for the host-side boundary.
 images:
 # Pinned by digest. Where the origin is slow, download the same file from a
 # mirror, check it against the official SHA256SUMS and override with
@@ -27,6 +37,7 @@ images:
 param:
   HostProxyPort: ""
   AptMirror: ""
+  Resolvers: ""
 propagateProxyEnv: false
 vmType: vz
 plain: true
@@ -35,6 +46,8 @@ memory: 6GiB
 disk: 40GiB
 mounts: []
 ssh:
+  # Fixed so the host firewall can allow exactly this loopback port.
+  localPort: 60022
   loadDotSSHPubKeys: false
   forwardAgent: false
   forwardX11: false
@@ -45,71 +58,114 @@ provision:
     #!/bin/bash
     set -eux -o pipefail
     export DEBIAN_FRONTEND=noninteractive
+    gateway="$(ip -4 route show default | awk '{print $3; exit}')"
+    resolvers="${PARAM_Resolvers:-}"
+    if [ -n "$resolvers" ]; then
+      install -d /etc/systemd/resolved.conf.d
+      printf '[Resolve]\nDNS=%s\nDomains=~.\n' "$resolvers" > /etc/systemd/resolved.conf.d/90-observer.conf
+      systemctl restart systemd-resolved
+    fi
+    resolvers="${resolvers:-$gateway}"
     proxy_port="${PARAM_HostProxyPort:-}"
+    proxy=""
     if [ -n "$proxy_port" ]; then
       proxy="http://192.168.5.2:$proxy_port"
       printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$proxy" "$proxy" > /etc/apt/apt.conf.d/90observer-proxy
     fi
     if [ -n "${PARAM_AptMirror:-}" ]; then
-      sed -i "s#http://ports.ubuntu.com/ubuntu-ports#${PARAM_AptMirror}#g" /etc/apt/sources.list.d/ubuntu.sources
+      sed -i -E "s#^URIs: .*#URIs: ${PARAM_AptMirror}#" /etc/apt/sources.list.d/ubuntu.sources
+      # Ubuntu packages come from the mirror directly; gVisor's repository still needs the proxy.
       rm -f /etc/apt/apt.conf.d/90observer-proxy
+      [ -z "$proxy" ] || printf 'Acquire::https::Proxy::storage.googleapis.com "%s";\n' "$proxy" \
+        > /etc/apt/apt.conf.d/90observer-proxy
     fi
     id runner >/dev/null 2>&1 || useradd --create-home --shell /bin/bash runner
-    # qemu-user-static: amd64-only participant images run emulated instead of failing.
-    command -v docker >/dev/null || { apt-get update; apt-get install -y docker.io iptables jq curl git qemu-user-static; }
+    if ! command -v runsc >/dev/null; then
+      apt-get update
+      apt-get install -y docker.io iptables jq curl git gnupg
+      # gVisor: participant containers get a user-space kernel, so a kernel
+      # exploit from a container does not reach the VM kernel.
+      https_proxy="$proxy" curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor --yes -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" \
+        > /etc/apt/sources.list.d/gvisor.list
+      apt-get update
+      apt-get install -y runsc
+    fi
     usermod -aG docker runner
-    if [ -n "$proxy_port" ]; then
+    if [ -n "$proxy" ]; then
       install -d /etc/systemd/system/docker.service.d
       printf '[Service]\nEnvironment=HTTP_PROXY=%s HTTPS_PROXY=%s NO_PROXY=localhost,127.0.0.1\n' "$proxy" "$proxy" \
         > /etc/systemd/system/docker.service.d/proxy.conf
     fi
-    # Containers resolve names through Lima's resolver like the VM itself.
-    gateway="$(ip -4 route show default | awk '{print $3; exit}')"
-    printf '{"dns": ["%s"]}\n' "$gateway" > /etc/docker/daemon.json
+    # Containers use the same resolvers as the VM.
+    dns_json="$(printf '%s\n' $resolvers | jq -R . | jq -cs .)"
+    cat > /etc/docker/daemon.json <<JSON
+    {"dns": $dns_json, "default-runtime": "runsc",
+     "runtimes": {"runsc": {"path": "/usr/bin/runsc"}}}
+    JSON
     sysctl -w net.ipv6.conf.all.disable_ipv6=1 net.ipv6.conf.default.disable_ipv6=1
     printf 'net.ipv6.conf.all.disable_ipv6=1\nnet.ipv6.conf.default.disable_ipv6=1\n' > /etc/sysctl.d/90-observer.conf
 
     # Egress guard: the VM and every container may reach the public internet
     # (GitHub, the job API, package and image registries) but never the Mac
     # (192.168.5.2 is the host's loopback, e.g. its browser debugging port),
-    # the local network, or link-local metadata. DNS (port 53 only) goes to
-    # Lima's resolver on the gateway.
+    # the local network, proxy fake-IP ranges or link-local metadata. DNS
+    # (port 53 only) goes to the configured resolvers. Containers cannot
+    # open connections to the VM itself. Each chain is built aside and swapped
+    # in, so the rules never disappear while being refreshed.
     install -d /opt/observer
     printf '%s' "$proxy_port" > /opt/observer/host-proxy-port
+    printf '%s\n' $resolvers > /opt/observer/resolvers
     cat > /opt/observer/egress-guard.sh <<'GUARD'
     #!/bin/bash
-    set -eu
+    set -euo pipefail
     uplink="$(ip -4 route show default | awk '{print $5; exit}')"
-    gateway="$(ip -4 route show default | awk '{print $3; exit}')"
     proxy_port="$(cat /opt/observer/host-proxy-port 2>/dev/null || true)"
+    resolvers="$(cat /opt/observer/resolvers)"
+    runner_uid="$(id -u runner)"
+    test -n "$uplink"
+    test -n "$resolvers"
+    iptables -N DOCKER-USER 2>/dev/null || true
+    swap() { # chain parent
+      local old="OBSERVER-$1" new="OBSERVER-$1-NEW"
+      iptables -I "$2" 1 -j "$new"
+      while iptables -D "$2" -j "$old" 2>/dev/null; do :; done
+      iptables -F "$old" 2>/dev/null && iptables -X "$old"
+      iptables -E "$new" "$old"
+    }
     for chain in OUTPUT DOCKER-USER; do
-      iptables -N "OBSERVER-$chain" 2>/dev/null || iptables -F "OBSERVER-$chain"
-      iptables -C "$chain" -j "OBSERVER-$chain" 2>/dev/null || iptables -I "$chain" 1 -j "OBSERVER-$chain"
+      new="OBSERVER-$chain-NEW"
+      iptables -F "$new" 2>/dev/null && iptables -X "$new"
+      iptables -N "$new"
       # Replies to connections the Mac opened (limactl shell) are allowed; new ones are not.
-      iptables -A "OBSERVER-$chain" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
-      for dns in "$gateway" 192.168.5.3; do
+      iptables -A "$new" -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+      for dns in $resolvers; do
         for proto in udp tcp; do
-          iptables -A "OBSERVER-$chain" -o "$uplink" -d "$dns" -p "$proto" --dport 53 -j RETURN
+          iptables -A "$new" -o "$uplink" -d "$dns" -p "$proto" --dport 53 -j RETURN
         done
       done
-      iptables -A "OBSERVER-$chain" -o "$uplink" -p udp --sport 68 --dport 67 -j RETURN
-      if [ "$chain" = OUTPUT ] && [ -n "$proxy_port" ]; then
-        # Only root and the runner account; container traffic is forwarded, never OUTPUT.
-        for uid in 0 "$(id -u runner)"; do
-          iptables -A "OBSERVER-$chain" -o "$uplink" -d 192.168.5.2 -p tcp --dport "$proxy_port" \
-            -m owner --uid-owner "$uid" -j RETURN
-        done
+      if [ "$chain" = OUTPUT ]; then
+        iptables -A "$new" -o "$uplink" -p udp --sport 68 --dport 67 -j RETURN
+        if [ -n "$proxy_port" ]; then
+          # Only root, apt's download account and the runner account; container
+          # traffic is forwarded, never OUTPUT.
+          for uid in 0 "$(id -u _apt)" "$runner_uid"; do
+            iptables -A "$new" -o "$uplink" -d 192.168.5.2 -p tcp --dport "$proxy_port" \
+              -m owner --uid-owner "$uid" -j RETURN
+          done
+        fi
       fi
-      for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
-        iptables -A "OBSERVER-$chain" -o "$uplink" -d "$net" -j REJECT
+      for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10 169.254.0.0/16 198.18.0.0/15 224.0.0.0/4; do
+        iptables -A "$new" -o "$uplink" -d "$net" -j REJECT
       done
+      swap "$chain" "$chain"
     done
-    # Containers cannot open connections to the VM itself (sshd, dockerd).
-    iptables -N OBSERVER-INPUT 2>/dev/null || iptables -F OBSERVER-INPUT
-    iptables -C INPUT -j OBSERVER-INPUT 2>/dev/null || iptables -I INPUT 1 -j OBSERVER-INPUT
+    iptables -F OBSERVER-INPUT-NEW 2>/dev/null && iptables -X OBSERVER-INPUT-NEW
+    iptables -N OBSERVER-INPUT-NEW
     for bridge in docker0 br-+; do
-      iptables -A OBSERVER-INPUT -i "$bridge" -m conntrack --ctstate NEW -j REJECT
+      iptables -A OBSERVER-INPUT-NEW -i "$bridge" -m conntrack --ctstate NEW -j REJECT
     done
+    swap INPUT INPUT
     GUARD
     chmod 0755 /opt/observer/egress-guard.sh
     cat > /etc/systemd/system/observer-egress-guard.service <<'UNIT'

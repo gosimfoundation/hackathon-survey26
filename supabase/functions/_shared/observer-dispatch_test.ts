@@ -210,7 +210,11 @@ Deno.test("when every GitHub-hosted organization fails the job falls back to the
     { org: "AGENTIC-OBSERVER26-runner-2", sha: "b".repeat(40) },
     { org: "AGENTIC-OBSERVER26-runner-13", sha: "f".repeat(40), runner: "self-hosted" },
   ]);
-  assertEquals(calls.find((c) => c.name === "observer_fallback_job")?.args, { p_job: id });
+  // Organizations that just failed are never chosen as the fallback.
+  assertEquals(calls.find((c) => c.name === "observer_fallback_job")?.args, {
+    p_job: id,
+    p_avoid: ["AGENTIC-OBSERVER26-runner-1", "AGENTIC-OBSERVER26-runner-2"],
+  });
 });
 
 Deno.test("a healthy GitHub-hosted organization is always preferred over the fallback", async () => {
@@ -259,4 +263,45 @@ Deno.test("a self-hosted job is re-dispatched to its runner pool and never fails
   assertEquals(result, [{ id, dispatched: false, error: "github_request_failed" }]);
   assertEquals(dispatches, [{ org: "AGENTIC-OBSERVER26-runner-13", sha: "f".repeat(40), runner: "self-hosted" }]);
   assertEquals(calls.filter((c) => c.name === "observer_failover_job" || c.name === "observer_fallback_job"), []);
+});
+
+Deno.test("a split run's partner moved along with its job waits for the next round", async () => {
+  const key = btoa("k".repeat(32)), nonce = "n".repeat(43);
+  const ids = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"];
+  const jobs = await Promise.all(ids.map(async (id, n) => ({
+    id,
+    kind: n ? "execute" : "engine",
+    organization: "AGENTIC-OBSERVER26-runner-1",
+    workflow_sha: "a".repeat(40),
+    encrypted_nonce: await encryptCredential(nonce, id + ":nonce", key),
+    runner: "github-hosted",
+    fallback: "over_limit",
+  })));
+  const dispatches: string[] = [];
+  const result = await dispatchPending(
+    (name) => {
+      if (name === "observer_pending_jobs") return Promise.resolve(jobs);
+      if (name === "observer_fallback_job") {
+        return Promise.resolve({
+          organization: "AGENTIC-OBSERVER26-runner-13",
+          approved_sha: "f".repeat(40),
+          partner: ids[1],
+        });
+      }
+      return Promise.resolve(null);
+    },
+    {
+      dispatch: (org, _workflow, job, _nonce, _sha, runner?: string) => {
+        dispatches.push(job + "@" + org + (runner ? ":" + runner : ""));
+        return Promise.resolve();
+      },
+    },
+    key,
+  );
+  assertEquals(result, [
+    { id: ids[0], dispatched: true, fallback: "AGENTIC-OBSERVER26-runner-13" },
+    { id: ids[1], dispatched: false, error: "moved_to_fallback" },
+  ]);
+  // The partner is never dispatched GitHub-hosted from its stale row.
+  assertEquals(dispatches, [ids[0] + "@AGENTIC-OBSERVER26-runner-13:self-hosted"]);
 });
