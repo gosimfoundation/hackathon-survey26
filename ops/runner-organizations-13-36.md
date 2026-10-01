@@ -6,15 +6,17 @@ Tracking issue for the 24 additional evaluation runner organizations
 on; runner-13 was enabled on 2026-10-01 after its approved runtime was
 re-verified against runner-1…12. On 2026-10-01 all thirteen organizations
 were moved to the runtime exported from main `9791047` (timed observation
-requests, #111/#125), and later that day to the runtime from main `9cf6f63`
-(preparation retries, #132), each verified blob-by-blob against the export.
+requests, #111/#125), and later that day to the runtimes from main `9cf6f63`
+(preparation retries, #132) and main `e7b9207` (evaluation hardening:
+model-proxy-only egress and the `observer-score.yml` rescore job, #135), each
+verified blob-by-blob against the export.
 
-Each organization needs (reference: runner-1…13, runtime from main `9cf6f63`):
+Each organization needs (reference: runner-1…13, runtime from main `e7b9207`):
 
 1. GitHub organization on the Free plan, owned by BH3GEI (web UI only).
 2. Private `observer-control` repository (not a fork, default branch `main`)
-   containing the 54-file trusted runtime exported by
-   `scripts/build-observer-control.py` from main `9cf6f63`
+   containing the 56-file trusted runtime exported by
+   `scripts/build-observer-control.py` from main `e7b9207`
    (byte-identical to the approved runner-1…13 inventories).
 3. Installation of GitHub App `agentic-observer-2026-evaluator`
    (app_id 5057707) with `repository_selection=all`.
@@ -24,7 +26,7 @@ Each organization needs (reference: runner-1…13, runtime from main `9cf6f63`):
 
 | Organization | Status | organization_id | installation_id | repository_id | approved_sha |
 |---|---|---|---|---|---|
-| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; runtime republished from main `9cf6f63` together with runner-1…12) | 336376701 | 166758323 | 1399205505 | 4e4ae9ceb699982c46d70723f8d9a9677a215a6f |
+| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; runtime republished from main `e7b9207` together with runner-1…12) | 336376701 | 166758323 | 1399205505 | fe20acc844a09f35ba08e4763aef3c759ec8d297 |
 | AGENTIC-OBSERVER26-runner-14 … runner-36 | ⛔ not created | — | — | — | — |
 
 Notes:
@@ -36,9 +38,9 @@ Notes:
   organizations can be created manually in the web UI at a later time, then
   configured per the checklist above (`gh` + App install) and appended here.
 - The `observer-control` push CI ("Trusted runtime tests") fails identically
-  on every approved runner-1…13 runtime (now from `9cf6f63`)
+  on every approved runner-1…13 runtime (now from `e7b9207`)
   (tests expect the starter-kit fixtures, now `archive/starter_kit_v3/`, which the trusted export intentionally
-  omits). Dispatch workflows (Observer prepare/execute/engine) are
+  omits). Dispatch workflows (Observer prepare/execute/engine/score) are
   unaffected.
 - Database: migration `20260930000200_thirtysix_runner_organizations.sql`
   relaxes the organization-name checks to runner-1…36. It does not insert
