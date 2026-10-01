@@ -17,6 +17,10 @@
         "title": "规则",
         "description": "参赛资格、提交次数、评分与行为规范。"
       },
+      "cards": {
+        "title": "任务卡",
+        "description": "v4 练习卡与黑客松任务卡：每张卡的任务说明、时间限制与卡片文件下载。"
+      },
       "docs": {
         "title": "文档",
         "description": "participant-agent-protocol-v1/v2 消息、challenge-score-v3 评分器、场景文件与入门套件。"
@@ -91,6 +95,7 @@
     "start": "上手",
     "brief": "完整赛事说明",
     "rules": "规则",
+    "cards": "任务卡",
     "docs": "文档",
     "resources": "资源",
     "leaderboard": "排行榜",
@@ -1941,14 +1946,27 @@
   "resources": {
     "kicker": "资源",
     "title": "入门包与数据",
-    "lede": "在本地运行和评分智能体所需的全部内容：入门包，以及平台使用的各场景配置与参考文件。",
-    "kit": "入门包（zip）",
+    "lede": "在本地运行和评分智能体所需的全部内容：v4 入门包、任务卡说明与卡片文件，以及旧版 v3 热身资料。",
+    "kit": "v3 入门包（zip）",
     "kit_desc": "agent/（最小智能体，可通过 .env 启用大模型）、challenge/（workflow、评分器、preview、模拟器、回放）、scenarios/dev-reference、local_runner.py、score_decisions.py、make_scenario.py、pack_agent.py、sac_submit.py、SKILL.md。",
-    "reference": "完整项目示例（GitHub）",
+    "kit_v4": "v4 入门包（zip）",
+    "kit_v4_desc": "agent/（可运行的基线智能体、规划器、天球几何、可选大模型钩子与 observer.project.json）、examples/idle_agent.py、cards/demo（公开示例卡）、local_runner.py、pack_agent.py、challenge/（模拟器与 v4 评分器）、README.md、SKILL.md。只需 Python 3.9+ 标准库。",
+    "skill_v4": "SKILL.md（v4）",
+    "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：检查入门包、协议、计分、改进、打包提交。",
+    "cards": "任务卡",
+    "cards_desc": "每张卡的站点、巡天时间、目标数量、时间限制、天气是否公开，以及智能体收发的消息。",
+    "flow_cards": "第二步 · 拿一张练习卡",
+    "flow_cards_hint": "练习卡的文件（含天气）全部公开，本地得分与平台一致。黑客松任务卡 A–D 在比赛开始时公开卡片说明和公开输入。",
+    "card_view": "看说明",
+    "card_zip": "下载 ZIP",
+    "card_pending": "文件尚未上线",
+    "card_locked": "开赛时公开",
+    "card_formal_title": "黑客松任务卡 {card}",
+    "reference": "v3 完整项目示例（GitHub）",
     "reference_desc": "一个实现逐轮 JSONL 接口的最小完整项目，可直接打包上传；参考它准备你自己的项目。",
-    "skill": "SKILL.md",
+    "skill": "SKILL.md（v3）",
     "skill_desc": "AI 编程助手可直接照做的单文件说明：构建、测试、提交。",
-    "scenarios": "场景",
+    "scenarios": "v3 场景",
     "hidden": "不提供公开下载",
     "nights": "夜",
     "slots": "时隙",
@@ -1960,7 +1978,7 @@
     "cli": "命令行",
     "kit_file": "agent-observer-starter-kit.zip",
     "docs": "参赛文档",
-    "docs_desc": "带精确列的数据格式、三种协议消息、评分公式与全部惩罚、打包规则与限制。",
+    "docs_desc": "报名组队、完整项目提交、启动配置、模型 API、评测次数与最终版本。",
     "scenarios_note": "一个场景包含 config/*.json 和 outputs/reference/*.csv，文件按此处的可见性标记提供下载。公开练习数据保持可下载；正式赛未来天气与异常答案保留在服务器。",
     "weather_public": "天气公开",
     "weather_hidden": "未来天气不公开",
@@ -1985,11 +2003,11 @@
     "scorer": "scoring_core.py",
     "scorer_desc": "冻结的 challenge-score-v3 评分器（旁边还有 contracts.py 与 score_config.json）。仅标准库，Python 3.12。",
     "flow1": "第一步 · 拿包就跑",
-    "flow1_hint": "只需要这一个下载：解压、双击、十几秒出分。",
-    "flow2": "第二步 · 写你自己的策略",
-    "flow2_hint": "改一个函数就能上榜；这些是抄作业和查手册的地方。",
-    "flow3": "第三步 · 需要数据再来拿",
-    "flow3_hint": "这里列出每个场景已公开的文件；正式赛通过会话逐步提供当前信息。"
+    "flow1_hint": "只需要这一个下载：解压后运行 python3 local_runner.py，几秒内在示例卡上出分。",
+    "flow2": "第三步 · 写你自己的策略",
+    "flow2_hint": "改 agent/planner.py，再运行、再比较；这些是查手册的地方。",
+    "flow3": "旧版 v3 · decisions.csv 热身",
+    "flow3_hint": "v3 场景与 v3 评分规则，只用于 decisions.csv 热身，与本次比赛的 v4 任务卡不同。"
   },
   "faq": {
     "kicker": "常见问题",
@@ -2070,7 +2088,7 @@
   "rules_page": {
     "kicker": "规则",
     "title": "比赛规则与评分",
-    "version": "规则版本 1.1 · 2026-09-27",
+    "version": "规则版本 2.0 · 2026-10-01 · v4 任务卡",
     "phases_title": "阶段配置（实时）",
     "daily": "次/天",
     "board": "榜单",
@@ -2080,6 +2098,20 @@
       "hidden": "隐藏",
       "published": "已公布"
     }
+  },
+  "cards_page": {
+    "kicker": "任务卡",
+    "title": "v4 任务卡",
+    "lede": "每张任务卡是一季完整的模拟巡天。练习卡 α–δ 现在公开；黑客松任务卡 A–D 在比赛开始时公开；隐藏任务卡 E–H 不公开。",
+    "practice": "练习卡",
+    "formal": "黑客松任务卡",
+    "hidden_note": "隐藏任务卡 E–H 不公开，只用于比赛截止后对各队最终版本的决赛评测，决定最终排名（见规则第 5 节）。",
+    "download": "下载卡片文件（ZIP）",
+    "files": "{n} 个文件",
+    "kit_hint": "解压到 v4 入门包的 cards/ 目录，运行 python3 local_runner.py --card cards/<卡片>。",
+    "files_pending": "卡片文件尚未上线，上线后可在这里和资源页下载。",
+    "locked_title": "尚未公开",
+    "locked": "黑客松任务卡 {card} 在比赛开始时（10 月 5 日 00:00，UTC+8）公开：卡片说明和公开输入（目标、天区轮廓、站点、望远镜与光纤、观测日程、计分参数）。天气、预报与事件不公开。"
   },
   "docs_page": {
     "kicker": "文档",

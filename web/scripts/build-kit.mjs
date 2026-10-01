@@ -1,4 +1,7 @@
-// Assemble the public starter-kit downloads from ../archive/starter_kit_v3 (challenge v3).
+// Assemble the public starter-kit downloads.
+//   public/downloads/agent-observer-starter-kit-v4.zip  (../starter_kit_v4 under agent-observer-starter-kit-v4/)
+//   public/skill-v4.md
+// and, for the earlier v3 decisions.csv warm-up, from ../archive/starter_kit_v3 (challenge v3):
 //   public/downloads/agent-observer-starter-kit.zip  (whole kit under agent-observer-starter-kit/)
 //   public/downloads/scoring_core.py, contracts.py, score_config.json  (public scorer + contracts + weights)
 //   public/skill.md
@@ -19,6 +22,26 @@ const EXCLUDED_DIRS = new Set(['__pycache__', '.venv', 'venv', 'run_output', 'de
 const EXCLUDED_FILES = new Set(['.DS_Store', 'Thumbs.db'])
 const excludeFile = (name) => EXCLUDED_FILES.has(name) || name.endsWith('.pyc') || name.endsWith('.pyo') || name.endsWith('.zip')
   || (name === '.env') || (name.startsWith('.env.') && name !== '.env.example')
+
+// v4 starter kit: the competition kit (task cards, participant-agent-protocol-v4). Standard library only, no placeholders.
+const kitV4Dir = process.env.STARTER_KIT_V4_DIR || resolve(root, '..', 'starter_kit_v4')
+if (existsSync(kitV4Dir)) {
+  for (const required of ['README.md', 'SKILL.md', 'local_runner.py', 'pack_agent.py', 'agent/baseline_agent.py', 'agent/observer.project.json',
+                          'examples/idle_agent.py', 'challenge/v4_scorer.py', 'cards/demo/config/v4_score_config.json']) {
+    if (!existsSync(resolve(kitV4Dir, required))) { console.error(`[build-kit] v4 starter kit is incomplete: missing ${required}`); process.exit(1) }
+  }
+  mkdirSync(resolve(root, 'public', 'downloads'), { recursive: true })
+  const v4Entries = {}
+  for (const rel of walk(kitV4Dir)) {
+    v4Entries[`agent-observer-starter-kit-v4/${rel}`] = [readFileSync(resolve(kitV4Dir, rel)), { mtime: new Date('2026-10-01T00:00:00Z'), level: 9 }]
+  }
+  const v4Zip = zipSync(v4Entries, { level: 9 })
+  writeFileSync(resolve(root, 'public', 'downloads', 'agent-observer-starter-kit-v4.zip'), v4Zip)
+  copyFileSync(resolve(kitV4Dir, 'SKILL.md'), resolve(root, 'public', 'skill-v4.md'))
+  console.log(`[build-kit] v4 kit: ${Object.keys(v4Entries).length} files into public/downloads/agent-observer-starter-kit-v4.zip (${v4Zip.length} bytes); public/skill-v4.md`)
+} else {
+  console.warn(`[build-kit] v4 starter kit not found at ${kitV4Dir}; skipping its download bundle.`)
+}
 
 if (!existsSync(kitDir)) {
   console.warn(`[build-kit] starter kit not found at ${kitDir}; skipping download bundle.`)

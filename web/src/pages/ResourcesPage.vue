@@ -7,12 +7,14 @@ import { appUrl } from '../composables/api'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { loadPhases, SCENARIO_FILES, scenarioFileVisible, type Scenario, type ScenarioFile, type ScenarioFileGroup } from '../lib/data'
 import { downloadObject } from '../lib/storage'
+import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards'
+import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
 import { useFlash } from '../stores/flash'
 import { competition } from '../stores/competition'
 import PageHead from '../components/layout/PageHead.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
 
-const { t } = useI18n()
+const { t, tf, locale } = useI18n()
 const flash = useFlash()
 // A signed-in download counts as the dashboard quest's kit step.
 const { remember } = useQuestFlags()
@@ -22,29 +24,40 @@ const busy = ref<string | null>(null)
 const GROUPS: ScenarioFileGroup[] = ['config', 'data', 'weather', 'forecasts', 'events']
 
 const kit = computed(() => [
-  { n: '01', title: 'resources.kit', desc: 'resources.kit_desc', href: appUrl('/downloads/agent-observer-starter-kit.zip'), primary: true, label: 'common.download' },
-  { n: '02', title: 'resources.reference', desc: 'resources.reference_desc', href: 'https://github.com/BH3GEI/observer-project-example', primary: false, label: 'common.view', view: true },
-  { n: '03', title: 'resources.scorer', desc: 'resources.scorer_desc', href: appUrl('/downloads/scoring_core.py'), primary: false, label: 'common.download' },
-  { n: '04', title: 'resources.skill', desc: 'resources.skill_desc', href: appUrl('/skill.md'), primary: false, label: 'common.view', view: true },
-  { n: '05', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
+  { n: '01', title: 'resources.kit_v4', desc: 'resources.kit_v4_desc', href: appUrl('/downloads/agent-observer-starter-kit-v4.zip'), primary: true, label: 'common.download' },
+  { n: '02', title: 'resources.skill_v4', desc: 'resources.skill_v4_desc', href: appUrl('/skill-v4.md'), primary: false, label: 'common.view', view: true },
+  { n: '03', title: 'resources.cards', desc: 'resources.cards_desc', href: '/cards', primary: false, label: 'common.view', route: true },
+  { n: '04', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
 ])
-const cli = `# environment for sac_submit.py (also printed in SKILL.md inside the kit)
-export SAC_URL=${import.meta.env.VITE_SUPABASE_URL || 'https://<ref>.supabase.co'}
-export SAC_KEY=${import.meta.env.VITE_SUPABASE_ANON_KEY || '<anon key>'}
-export SAC_EMAIL=you@example.org SAC_PASSWORD='...'
-
-unzip agent-observer-starter-kit.zip && cd agent-observer-starter-kit
-# run the minimal agent locally on the bundled public scenario, then re-score the trace (details: SKILL.md)
-python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py --wallclock 600 --out run_output
-python3 score_decisions.py --scenario scenarios/dev-reference --decisions run_output/decisions.csv
-python3 make_scenario.py --out scenarios/mine --seed 7 --days 30      # more practice scenarios
-python3 fetch_scenario.py dev-fortnight                                # any published scenario -> scenarios/dev-fortnight/
-# submit the decisions.csv your local run produced
-python3 sac_submit.py --phase practice --kind results --scenario dev-reference --file run_output/decisions.csv --wait`
+// The earlier v3 practice (decisions.csv warm-up on the v3 scenarios) keeps its own kit and scorer.
+const legacy = computed(() => [
+  { n: 'v3', title: 'resources.kit', desc: 'resources.kit_desc', href: appUrl('/downloads/agent-observer-starter-kit.zip'), label: 'common.download' },
+  { n: 'v3', title: 'resources.reference', desc: 'resources.reference_desc', href: 'https://github.com/BH3GEI/observer-project-example', label: 'common.view', view: true },
+  { n: 'v3', title: 'resources.scorer', desc: 'resources.scorer_desc', href: appUrl('/downloads/scoring_core.py'), label: 'common.download' },
+  { n: 'v3', title: 'resources.skill', desc: 'resources.skill_desc', href: appUrl('/skill.md'), label: 'common.view', view: true },
+])
+const language = computed<CardLanguage>(() => locale.value === 'zh' ? 'zh' : 'en')
+const taskCards = [...practiceCards, ...FORMAL_CARDS]
+const cardFiles = ref<Record<string, string[] | undefined>>({})
+const cardBusy = ref<string | null>(null)
+async function downloadCard(card: TaskCard) {
+  cardBusy.value = card.id
+  try { await downloadCardZip(card, cardFiles.value[card.id] ?? []) }
+  catch { flash.error(t('subs.download_failed')) }
+  finally { cardBusy.value = null }
+}
+const cli = `unzip agent-observer-starter-kit-v4.zip && cd agent-observer-starter-kit-v4
+python3 local_runner.py                                   # baseline agent on the demo card
+python3 local_runner.py --agent examples/idle_agent.py    # the "do nothing" score, for comparison
+# a practice card from this page: unzip taskcard-alpha.zip into cards/ (cards/alpha/config, public, truth)
+python3 local_runner.py --card cards/alpha
+python3 pack_agent.py --out ../my-agent.zip               # upload on the Participate page`
 const filesFor = (group: ScenarioFileGroup) => SCENARIO_FILES.filter(f => f.group === group)
 const groupVisible = (s: Scenario, group: ScenarioFileGroup) => filesFor(group).some(f => scenarioFileVisible(s, f))
 const fmtClock = (v: number | null | undefined) => v == null ? '—' : v >= 3600 ? `${(v / 3600).toFixed(v % 3600 ? 1 : 0)} h` : `${Math.round(v / 60)} min`
-const active = computed(() => scenarios.value.filter(s => s.is_active))
+// v4 cards have their own section (task cards); this list keeps the v3 scenarios and their file layout.
+// A scenario linked to several phases (CSV and complete-project practice) is listed once.
+const active = computed(() => scenarios.value.filter((s, i, all) => s.is_active && !s.slug.startsWith('v4-') && all.findIndex(x => x.slug === s.slug) === i))
 
 async function download(scenario: Scenario, file: ScenarioFile) {
   const key = `${scenario.slug}/${file.key}`
@@ -55,6 +68,10 @@ async function download(scenario: Scenario, file: ScenarioFile) {
 }
 
 onMounted(async () => {
+  if (isSupabaseConfigured) for (const card of taskCards) {
+    releasedCardFiles(card).then(files => { cardFiles.value = { ...cardFiles.value, [card.id]: files } })
+      .catch(() => { cardFiles.value = { ...cardFiles.value, [card.id]: [] } })
+  }
   try { scenarios.value = isSupabaseConfigured ? (await loadPhases()).flatMap(p=>p.scenarios) : [] }
   catch { scenarios.value = [] }
   finally { loading.value = false }
@@ -72,15 +89,31 @@ onMounted(async () => {
             <span class="label accent">{{ kit[0].n }}</span>
             <h3 class="mt-3">{{ t(kit[0].title) }}</h3>
             <p>{{ t(kit[0].desc) }}</p>
-            <p class="mt-5"><a class="btn primary" :href="kit[0].href" download @click="remember('prepare')">{{ t(kit[0].label) }} ↓</a></p>
+            <p class="mt-5"><a class="btn primary" :href="kit[0].href" download data-testid="kit-v4" @click="remember('prepare')">{{ t(kit[0].label) }} ↓</a></p>
           </article>
         </div>
       </div>
 
       <div class="flow-band reveal mt-16">
-        <div class="flow-head"><span class="flow-step">2</span><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
-        <div class="cards cards-4 reveal-stagger">
-          <article v-for="item in kit.slice(1)" :key="item.n" v-tilt class="card card-lift">
+        <div class="flow-head"><span class="flow-step">2</span><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
+        <div class="task-card-grid">
+          <article v-for="c in taskCards" :key="c.id" class="task-card-item" :data-testid="`resources-card-${c.id}`">
+            <span class="label" :class="{ accent: c.stage === 'practice' }">{{ c.stage === 'practice' ? t('cards_page.practice') : t('cards_page.formal') }}</span>
+            <h3 class="mt-2">{{ c.stage === 'practice' ? bundledCardTitle(c, language) : tf('resources.card_formal_title', { card: c.symbol }) }}</h3>
+            <p class="task-card-actions">
+              <router-link class="btn sm" :to="`/cards/${c.id}`">{{ t('resources.card_view') }} →</router-link>
+              <button v-if="cardFiles[c.id]?.length" type="button" class="btn sm" :disabled="cardBusy === c.id" :data-testid="`card-zip-${c.id}`" @click="downloadCard(c)">{{ t('resources.card_zip') }} ↓</button>
+              <span v-else-if="cardFiles[c.id]" class="pill" :class="c.stage === 'practice' ? 'upcoming' : 'closed'">{{ c.stage === 'practice' ? t('resources.card_pending') : t('resources.card_locked') }}</span>
+            </p>
+          </article>
+        </div>
+        <p class="text3 mt-4 text-sm">{{ t('cards_page.hidden_note') }}</p>
+      </div>
+
+      <div class="flow-band reveal mt-16">
+        <div class="flow-head"><span class="flow-step">3</span><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
+        <div class="cards cards-3 reveal-stagger">
+          <article v-for="item in kit.slice(1)" :key="item.title" v-tilt class="card card-lift">
             <span class="label accent">{{ item.n }}</span>
             <h3 class="mt-3">{{ t(item.title) }}</h3>
             <p>{{ t(item.desc) }}</p>
@@ -90,10 +123,22 @@ onMounted(async () => {
             </p>
           </article>
         </div>
+        <h2 class="label accent mt-12 mb-4">{{ t('resources.cli') }}</h2>
+        <pre class="code-block" tabindex="0">{{ cli }}</pre>
       </div>
 
       <div class="flow-band reveal mt-16">
-        <div class="flow-head"><span class="flow-step">3</span><div><h2>{{ t('resources.flow3') }}</h2><p>{{ t('resources.flow3_hint') }}</p></div></div>
+        <div class="flow-head"><span class="flow-step">v3</span><div><h2>{{ t('resources.flow3') }}</h2><p>{{ t('resources.flow3_hint') }}</p></div></div>
+        <div class="cards cards-4 reveal-stagger">
+          <article v-for="item in legacy" :key="item.title" class="card">
+            <span class="label">{{ item.n }}</span>
+            <h3 class="mt-3">{{ t(item.title) }}</h3>
+            <p>{{ t(item.desc) }}</p>
+            <p class="mt-5">
+              <a class="btn sm" :href="item.href" :download="item.view ? undefined : ''" :target="item.view ? '_blank' : undefined">{{ t(item.label) }} {{ item.view ? '→' : '↓' }}</a>
+            </p>
+          </article>
+        </div>
       </div>
       <h2 class="label accent mt-8 mb-2">{{ t('resources.scenarios') }}</h2>
       <p class="text2 mb-6 max-w-3xl text-sm">{{ t('resources.scenarios_note') }}</p>
@@ -138,8 +183,6 @@ onMounted(async () => {
         </article>
       </div>
 
-      <h2 class="label accent mt-20 mb-4">{{ t('resources.cli') }}</h2>
-      <pre class="code-block" tabindex="0">{{ cli }}</pre>
     </div></section>
   </main>
 </template>
@@ -153,6 +196,10 @@ onMounted(async () => {
 .flow-head p { margin-top: .25rem; font-size: .85rem; color: #aeb6c8; }
 .flow-primary { border-color: rgba(251,191,36,.4); }
 .cards.cards-1 { grid-template-columns: minmax(0, 1fr); }
+.task-card-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.task-card-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
+.task-card-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
+.task-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
 .scenario-grid { display: grid; gap: 1.5rem; }
 @media (min-width: 1100px) { .scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .scenario-card { border: 1px solid rgba(158,173,255,.22); background: linear-gradient(180deg, rgba(38,48,86,.45), rgba(13,18,36,.9)); padding: 1.5rem; min-width: 0; }
