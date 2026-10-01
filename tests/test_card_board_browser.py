@@ -104,10 +104,11 @@ def test_formal_card_board_overall_and_card_tabs(portal_site, edge_stack):
 
 def test_playground_card_board_has_card_tabs_only_and_keeps_practice_wording(portal_site, edge_stack):
     uri = edge_stack['harness'].db_uri; tag = secrets.token_hex(3)
-    phase, (alpha, beta) = card_phase(uri, 'practice-projects', 'cards', names=['Alpha ' + tag, 'Beta ' + tag])
+    names = [name + ' ' + tag for name in ('Alpha', 'Beta', 'Gamma', 'Delta')]
+    phase, (alpha, beta, gamma, delta) = card_phase(uri, 'practice-projects', 'cards', names=names)
     query(uri, "update private.observer_site_mode set mode='practice',phase_id=null")
     user = team_named(uri, 'Practice ' + tag)
-    batch(uri, phase, user, {alpha: 12, beta: 3})
+    batch(uri, phase, user, {alpha: 12, beta: 3, gamma: 7, delta: 5})
     errors, problems = [], []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel=os.environ.get('OBSERVER_BROWSER_CHANNEL'))
@@ -117,13 +118,15 @@ def test_playground_card_board_has_card_tabs_only_and_keeps_practice_wording(por
             page.goto(portal_site + '/?lang=' + language)
             home = page.locator('#board')
             expect(home.get_by_test_id('board-cards')).to_be_visible(timeout=15000)
-            assert texts(home.get_by_test_id('board-cards').locator('button')) == ['Alpha ' + tag, 'Beta ' + tag]
+            assert texts(home.get_by_test_id('board-cards').locator('button')) == names
             expect(home.get_by_test_id('board-card-overall')).to_have_count(0)
             expect(home.get_by_test_id('lb-row').first).to_contain_text('12')
             page.goto(portal_site + '/leaderboard/practice-projects?lang=' + language)
             expect(page.get_by_test_id('board-card-practice-projects-1')).to_be_visible(timeout=15000)
             page.get_by_test_id('board-card-practice-projects-1').click()
             expect(page.get_by_test_id('lb-row').first.locator('td').nth(2)).to_contain_text('3')
+            page.get_by_test_id('board-card-practice-projects-2').click()
+            expect(page.get_by_test_id('lb-row').first.locator('td').nth(2)).to_contain_text('7')
             text = page.locator('main').inner_text()
             match = re.search(r'正式赛|正式比赛|线上比赛|online competition|finals-preview|competition scenarios', text, re.I)
             if match: problems.append((language, text[max(0, match.start() - 40):match.end() + 80]))

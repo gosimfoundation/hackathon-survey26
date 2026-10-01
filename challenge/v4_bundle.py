@@ -23,6 +23,16 @@ from typing import Mapping
 from . import v4_catalog_generator, v4_weather_simulator
 from .v4_config_check import cross_validate_generator_configs
 
+
+def _deep_merge(base: dict, overrides: Mapping) -> dict:
+    """Apply ``overrides`` onto ``base`` in place (nested dicts merge, everything else replaces)."""
+    for key, value in overrides.items():
+        if isinstance(value, Mapping) and isinstance(base.get(key), dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
+
 REFERENCE = Path(__file__).resolve().parent / "reference" / "v4"
 PUBLIC = ("targets.csv", "footprint.csv", "v4_night_calendar.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl")
 TRUTH = ("v4_slots.csv", "v4_weather_truth.csv", "v4_events.csv", "v4_earthquake_effects.csv")
@@ -38,7 +48,9 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
 
     spec keys: name, card_id, scenario_slug, phase, seed (int, secret for real cards),
     start_date, end_date, targets, area_deg2, stress (bool), wallclock_seconds (optional),
-    event_counts (optional {condition|rocket_launch|earthquake|instrument_fault: n}).
+    event_counts (optional {condition|rocket_launch|earthquake|instrument_fault: n}),
+    catalog_overrides / weather_overrides (optional dicts deep-merged into the reference
+    generator configs, e.g. a three-component footprint or a harsher background closure).
     """
     root = Path(root)
     if root.exists():
@@ -55,6 +67,7 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
         catalog["footprint"]["total_area_deg2"] = area
     catalog["targets"]["total_count"] = int(spec["targets"])
     catalog["observability"].update(start_date=spec["start_date"], end_date=spec["end_date"])
+    _deep_merge(catalog, spec.get("catalog_overrides") or {})
     weather = _load("v4_weather_stress_config.json" if stress else "v4_weather_config.json")
     # Same card secret, different stream names: catalogue and weather stay independent.
     weather.update(seed=seed, seed_derivation="sha256-v1")
@@ -67,6 +80,7 @@ def build_card_bundle(root: Path, spec: Mapping) -> Path:
             weather[key]["count"] = int(count)
         else:
             raise ValueError(f"unknown event family {key!r}")
+    _deep_merge(weather, spec.get("weather_overrides") or {})
     scenario = _load("v4_scenario_stress.json" if stress else "v4_scenario_default.json")
     scenario["name"] = str(spec["name"])
     scenario["task_card"] = {"card_id": str(spec["card_id"]), "scenario_slug": str(spec["scenario_slug"]),

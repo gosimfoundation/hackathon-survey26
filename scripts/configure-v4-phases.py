@@ -2,7 +2,7 @@
 """Switch the complete-project phases between the v3 scenarios and the v4 cards.
 
 Organizer decisions 2026-09-28 (go/no-go for v4: 2026-10-02 12:00 UTC):
-  practice-projects  v4 practice cards (alpha, beta), one board per card;
+  practice-projects  v4 practice cards (alpha, beta, gamma, delta), one board per card;
                      --practice-mode replace (default) unlinks the v3 Playground
                      scenarios from this phase, add keeps them next to the cards,
                      skip leaves the phase alone;
@@ -23,7 +23,7 @@ Every phase that runs v4 cards is set to colocated=true (the v4 engine refuses
 anything else: v4_requires_colocated); --reverse restores the previous value.
 
 Forward (default): python scripts/configure-v4-phases.py \\
-    --practice v4-alpha,v4-beta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h \\
+    --practice v4-alpha,v4-beta,v4-gamma,v4-delta --formal v4-a,v4-b,v4-c,v4-d --final v4-e,v4-f,v4-g,v4-h \\
     --preview v4-public-test [--apply]
 Reverse:           python scripts/configure-v4-phases.py --reverse [--apply]
 Status:            python scripts/configure-v4-phases.py --status
@@ -459,7 +459,7 @@ def main(argv=None):
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--reverse', action='store_true', help='Restore the configuration saved before the switch')
     mode.add_argument('--status', action='store_true', help='Print the current configuration of the three phases')
-    parser.add_argument('--practice', type=slugs_arg, default=[], help='Practice card slugs, comma separated (alpha,beta)')
+    parser.add_argument('--practice', type=slugs_arg, default=[], help='Practice card slugs, comma separated (alpha,beta,gamma,delta)')
     parser.add_argument('--formal', type=slugs_arg, default=[], help='Formal card slugs for online (A-D)')
     parser.add_argument('--final', type=slugs_arg, default=[], help='Hidden final card slugs (E-H)')
     parser.add_argument('--practice-mode', choices=('replace', 'add', 'skip'), default='replace',

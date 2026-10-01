@@ -17,7 +17,7 @@ CONTENT = Path(__file__).resolve().parents[1] / "web" / "src" / "content"
 FORMAL_WORDS = re.compile(r"正式赛|正式比赛|线上比赛|online competition|finals-preview|competition scenarios|正式大会|オンライン大会|compétition en ligne", re.I)
 PRACTICE_WORDS = re.compile(r"练习赛|练习场景|Playground|\bpractice\b|練習|entraînement", re.I)
 HIDDEN_WORDS = re.compile(r"seed|种子|pointing offset|指向偏差|efficiency multiplier|效率乘数|window_max_fraction|magnitude|震级", re.I)
-PRACTICE_CARDS = ("alpha", "beta")
+PRACTICE_CARDS = ("alpha", "beta", "gamma", "delta")
 
 
 def body(name: str) -> str:

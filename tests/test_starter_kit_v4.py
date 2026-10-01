@@ -238,7 +238,7 @@ def test_initialize_carries_only_public_data():
 def test_demo_card_is_public_small_and_seedless():
     scenario = json.loads((DEMO / "config" / "v4_scenario.json").read_text(encoding="utf-8"))
     assert scenario["task_card"]["card_id"] == "demo"
-    assert scenario["task_card"]["card_id"].lower() not in {"alpha", "beta", *"abcdefgh"}
+    assert scenario["task_card"]["card_id"].lower() not in {"alpha", "beta", "gamma", "delta", *"abcdefgh"}
     assert scenario["site"]["name"] == "Paranal, Chile (virtual)" and scenario["limits"]["global_wallclock_seconds"] == 900
     assert sorted(p.name for p in (DEMO / "public").iterdir()) == [
         "footprint.csv", "targets.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl", "v4_night_calendar.csv"]

@@ -78,6 +78,7 @@ def world(database):
     formal = [scenario(uri, f'formal-{c}', contract=V3) for c in 'abc']
     final = scenario(uri, 'eval-final', contract=V3)
     alpha, beta = scenario(uri, 'v4-alpha', public=True), scenario(uri, 'v4-beta', public=True)
+    gamma, delta = scenario(uri, 'v4-gamma', public=True), scenario(uri, 'v4-delta', public=True)
     public_test = scenario(uri, 'v4-public-test', public=True, wallclock=300)  # the dedicated public test card
     a_d = [scenario(uri, f'v4-{c}') for c in 'abcd']
     e_h = [scenario(uri, f'v4-{c}') for c in 'efgh']
@@ -103,7 +104,7 @@ def world(database):
     staging_final = new_phase(uri, 'v4-staging-final', sort_order=10302, leaderboard_mode='hidden', counts_for_final=True,
                               settings=dict(project, runtime_seconds=900, daily_batches=20, sealed=True))
     links(uri, practice, *dev); links(uri, playground, *dev); links(uri, online, *formal); links(uri, hidden, final)
-    links(uri, rehearsal, *formal); links(uri, staging_practice, alpha, beta)
+    links(uri, rehearsal, *formal); links(uri, staging_practice, alpha, beta, gamma, delta)
     links(uri, staging_formal, *a_d); links(uri, staging_final, *e_h)
     query(uri, "insert into private.observer_preparation_config values(true,%s,%s,'test-model',true)", (online, dev[0]))
     # Files in the public 'scenarios' bucket, as registered by scenario-work (W2).
@@ -114,7 +115,7 @@ def world(database):
                " values(%s,'101',202,'303',%s,true) on conflict(organization) do nothing", (ORG, 'a' * 40))
     return {'uri': uri, 'user': user, 'team': team, 'online': online, 'hidden': hidden, 'playground': playground,
             'practice': practice, 'rehearsal': rehearsal, 'formal': formal, 'final': final, 'e_h': e_h, 'a_d': a_d,
-            'alpha': alpha, 'beta': beta, 'public_test': public_test, 'staging_formal': staging_formal, 'staging_final': staging_final}
+            'alpha': alpha, 'beta': beta, 'gamma': gamma, 'delta': delta, 'public_test': public_test, 'staging_formal': staging_formal, 'staging_final': staging_final}
 
 
 def state(uri):
@@ -138,7 +139,7 @@ def listed(uri, sid, role='anon', user=None):
     return query(uri, 'select id from public.scenarios where id=%s', (sid,), role=role, user=user) != []
 
 
-PRACTICE_FILES = [f'v4-{c}/{p}' for c in ('alpha', 'beta') for p in (
+PRACTICE_FILES = [f'v4-{c}/{p}' for c in ('alpha', 'beta', 'gamma', 'delta') for p in (
     'config/v4_scenario.json', 'config/v4_score_config.json', 'public/targets.csv', 'public/v4_bulletins.jsonl',
     'truth/v4_weather_truth.csv', 'truth/v4_events.csv')]
 FORMAL_FILES = [f'v4-{c}/{p}' for c in 'abcd' for p in (
@@ -152,7 +153,7 @@ def readable(uri, role='anon', user=None):
     return {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role, user=user)}
 
 
-FORWARD = ('--practice', 'v4-alpha,v4-beta', '--formal', 'v4-a,v4-b,v4-c,v4-d', '--final', 'v4-e,v4-f,v4-g,v4-h')
+FORWARD = ('--practice', 'v4-alpha,v4-beta,v4-gamma,v4-delta', '--formal', 'v4-a,v4-b,v4-c,v4-d', '--final', 'v4-e,v4-f,v4-g,v4-h')
 
 
 def test_dry_run_and_refusals_change_nothing(world, capsys):
@@ -192,7 +193,7 @@ def test_active_jobs_block_the_switch_even_after_planning(world, capsys):
     run_id = query(uri, 'select id from public.observer_runs where batch_id=%s', (batch,))[0][0]
     before = state(uri)
     # Planned while idle, then a job appears before the transaction runs: the in-transaction guard refuses.
-    args = mod.argparse.Namespace(practice=['v4-alpha', 'v4-beta'], formal=['v4-a', 'v4-b', 'v4-c', 'v4-d'],
+    args = mod.argparse.Namespace(practice=['v4-alpha', 'v4-beta', 'v4-gamma', 'v4-delta'], formal=['v4-a', 'v4-b', 'v4-c', 'v4-d'],
                                   final=['v4-e', 'v4-f', 'v4-g', 'v4-h'], practice_mode='replace', runtime=900,
                                   practice_runtime=900, daily=4, preview=None)
     _, sql = mod.plan_forward(args)
@@ -211,7 +212,7 @@ def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
     assert code == 2 and any('dedicated public test card' in p for p in out['problems'])  # never a practice card
     code, out = run(mod, *FORWARD, '--preview', 'v4-public-test', '--apply', capsys=capsys)
     assert code == 0 and out['applied'], out
-    assert slugs_of(uri, 'practice-projects') == ['v4-alpha', 'v4-beta']
+    assert slugs_of(uri, 'practice-projects') == ['v4-alpha', 'v4-beta', 'v4-delta', 'v4-gamma']
     assert slugs_of(uri, 'practice') == ['dev-fortnight', 'dev-reference']
     assert slugs_of(uri, 'online') == ['v4-a', 'v4-b', 'v4-c', 'v4-d']
     assert slugs_of(uri, 'final-hidden') == ['v4-e', 'v4-f', 'v4-g', 'v4-h']
@@ -249,7 +250,7 @@ def test_switch_to_v4_and_back_restores_v3_exactly(world, capsys):
 
     # A second round trip (e.g. rehearsal, then the real switch) behaves the same.
     assert run(mod, *FORWARD, '--practice-mode', 'add', '--apply', capsys=capsys)[0] == 0
-    assert slugs_of(uri, 'practice-projects') == ['dev-fortnight', 'dev-reference', 'v4-alpha', 'v4-beta']
+    assert slugs_of(uri, 'practice-projects') == ['dev-fortnight', 'dev-reference', 'v4-alpha', 'v4-beta', 'v4-delta', 'v4-gamma']
     assert query(uri, "select runtime_seconds from public.observer_phase_settings where phase_id=%s", (world['playground'],)) == [(18000,)]
     assert run(mod, '--reverse', '--apply', capsys=capsys)[0] == 0
     assert state(uri) == before
@@ -285,12 +286,13 @@ def test_card_files_open_for_practice_at_once_and_for_formal_cards_at_the_compet
     assert 'formal-a/config/scenario_config.json' not in before and 'dev-fortnight/config/scenario_config.json' in before
     code, out = run(mod, *FORWARD, capsys=capsys)
     assert out['released_files']['v4-alpha'] == {'release': 'practice', 'files': sorted(f.split('/', 1)[1] for f in PRACTICE_FILES if f.startswith('v4-alpha/'))}
+    assert out['released_files']['v4-delta'] == {'release': 'practice', 'files': sorted(f.split('/', 1)[1] for f in PRACTICE_FILES if f.startswith('v4-delta/'))}
     assert out['released_files']['v4-a']['release'] == 'competition' and len(out['released_files']['v4-a']['files']) == 5
     assert 'v4-e' not in out['released_files']
     assert run(mod, *FORWARD, '--apply', capsys=capsys)[0] == 0
     for role, user in (('anon', None), ('authenticated', participant)):
         names = readable(uri, role, user)
-        assert set(PRACTICE_FILES) <= names                          # alpha/beta: full public set
+        assert set(PRACTICE_FILES) <= names                          # the four practice cards: full public set
         assert not any(n.startswith(('v4-a/', 'v4-b/', 'v4-c/', 'v4-d/')) for n in names)   # before the competition
         assert 'formal-a/config/scenario_config.json' not in names and 'eval-final/config/scenario_config.json' not in names
     online = world['online']
