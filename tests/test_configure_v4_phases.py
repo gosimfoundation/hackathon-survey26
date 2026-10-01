@@ -315,6 +315,65 @@ def test_card_files_open_for_practice_at_once_and_for_formal_cards_at_the_compet
     assert query(uri, 'select count(*) from private.observer_scenario_public_files') == [(0,)]
 
 
+def test_timeline_files_are_never_released_for_formal_cards(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    for name in ('v4_bulletins.jsonl', 'v4_forecasts.jsonl', 'public/v4_weather_truth.csv', 'config/bulletins.jsonl',
+                 'public/V4_Forecasts.JSONL', 'public/v4_events.csv', 'public/v4_stress_events.csv'):
+        assert mod.timeline_file(name), name
+    for name in FORMAL_FILES:
+        assert not mod.timeline_file(name), name
+    code, out = run(mod, *FORWARD, capsys=capsys)
+    assert code == 0 and not out['problems']
+    for c in 'abcd':      # exactly the five public inputs, nothing else
+        assert out['released_files'][f'v4-{c}']['files'] == sorted(f.split('/', 1)[1] for f in FORMAL_FILES if f.startswith(f'v4-{c}/'))
+    leaked = ['v4-a/public/v4_bulletins.jsonl', 'v4-b/public/v4_forecasts.jsonl', 'v4-d/config/v4_forecasts.jsonl']
+    for name in leaked:
+        query(uri, "insert into storage.objects(bucket_id,name) values('scenarios',%s)", (name,))
+    try:
+        code, out = run(mod, *FORWARD, capsys=capsys)
+        assert code == 2
+        for slug in ('v4-a', 'v4-b', 'v4-d'):
+            assert f'{slug} has weather or event timeline files in the public scenario bucket (never released)' in out['problems']
+        released = {f'{s}/{f}' for s, r in out['released_files'].items() for f in r['files']}
+        assert not released & set(leaked)
+        assert not any(mod.timeline_file(f) for s, r in out['released_files'].items() if r['release'] == 'competition' for f in r['files'])
+        before = state(uri)
+        code, out = run(mod, *FORWARD, '--apply', capsys=capsys)
+        assert code == 2 and not out['applied'] and state(uri) == before
+        assert query(uri, 'select count(*) from private.observer_scenario_public_files') == [(0,)]
+    finally:
+        query(uri, 'delete from storage.objects where name = any(%s)', (leaked,))
+
+
+def test_practice_card_with_private_weather_keeps_its_timeline_closed(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    query(uri, 'update public.scenarios set forecasts_public=false where slug=%s', ('v4-beta',))
+    try:
+        code, out = run(mod, *FORWARD, capsys=capsys)
+        beta = out['released_files']['v4-beta']['files']
+        assert 'public/v4_bulletins.jsonl' not in beta and not any(f.startswith('truth/') for f in beta)
+        assert 'config/v4_scenario.json' in beta and 'public/targets.csv' in beta
+        assert 'public/v4_bulletins.jsonl' in out['released_files']['v4-alpha']['files']    # fully public practice card
+    finally:
+        query(uri, 'update public.scenarios set forecasts_public=true where slug=%s', ('v4-beta',))
+
+
+def test_the_switch_refuses_in_the_database_to_release_a_formal_timeline_file(world, capsys):
+    uri = world['uri']; mod = load(uri)
+    real = mod.released_files
+    def leaky(cards, args, problems):
+        out = real(cards, args, problems)
+        out['v4-a'] = ('competition', out['v4-a'][1] + ['public/v4_forecasts.jsonl'])
+        return out
+    mod.released_files = leaky
+    before = state(uri)
+    with pytest.raises(Exception, match='weather or event timeline file'):
+        mod.main(list(FORWARD) + ['--apply'])
+    capsys.readouterr()
+    assert state(uri) == before
+    assert query(uri, 'select count(*) from private.observer_scenario_public_files') == [(0,)]
+
+
 def test_dry_run_reports_missing_migrations_instead_of_failing(world, capsys):
     uri = world['uri']; mod = load(uri)
     real = mod.query
