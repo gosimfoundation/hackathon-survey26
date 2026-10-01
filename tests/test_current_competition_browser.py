@@ -90,7 +90,9 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         assert query(uri,'select mode from private.observer_site_mode')[0][0]=='practice'
         query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled) values(%s,true,true)',(phase,))
         configure({'uri':uri,'phase':phase,'scenario':scenario})
-        switch.click()
+        # A successful switch reloads the page; wait for that reload, or it aborts the next goto.
+        with page.expect_navigation(timeout=15000):
+            switch.click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to Playground',timeout=15000)
         goto(page,portal_site+'/submit?lang=en')
         expect(page.get_by_test_id('project-title')).to_be_visible(timeout=15000)
@@ -119,7 +121,8 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         page.goto(portal_site+'/faq?lang=en')
         expect(page.locator('main')).to_contain_text('Submit your complete project as a ZIP file and it runs in the cloud.')
         page.goto(portal_site+'/admin/settings?lang=en')
-        page.get_by_test_id('competition-mode-switch').click()
+        with page.expect_navigation(timeout=15000):
+            page.get_by_test_id('competition-mode-switch').click()
         expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to competition',timeout=15000)
         goto(page,portal_site+'/submit?lang=en')
         expect(page.locator('input[type=file]')).to_be_visible(timeout=15000)
