@@ -1,4 +1,4 @@
-"""Recorded runner placement across up to twelve organizations."""
+"""Recorded runner placement across up to thirty-six organizations."""
 from __future__ import annotations
 
 import concurrent.futures
@@ -20,18 +20,18 @@ def install(uri, n, enabled=True):
           (ORG + str(n), str(1000 + n), 2000 + n, str(3000 + n), 'a' * 40, enabled))
 
 
-def test_organization_names_one_to_twelve_only(setup):
+def test_organization_names_one_to_thirtysix_only(setup):
     uri = setup['uri']
-    for n in (1, 7, 10, 12):
+    for n in (1, 7, 10, 12, 13, 29, 30, 36):
         install(uri, n, enabled=False)
-    for name in ('13', '0', '01', '1x'):
+    for name in ('37', '0', '01', '1x'):
         with pytest.raises(psycopg.Error, match='organization_check'):
             query(uri, """insert into private.observer_installations
                 (organization,organization_id,installation_id,repository_id,approved_sha)
                 values(%s,'9','9','9',%s)""", (ORG + name, 'a' * 40))
     check = query(uri, """select pg_get_constraintdef(oid) from pg_constraint
         where conname='observer_materializations_archive_ref_check'""")[0][0]
-    assert '[1-9]|1[0-2]' in check
+    assert '[12][0-9]|3[0-6]' in check
 
 
 def test_existing_participant_keeps_the_organization_of_their_jobs(setup):
