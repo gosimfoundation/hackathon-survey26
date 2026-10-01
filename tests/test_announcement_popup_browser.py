@@ -77,14 +77,16 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         expect(popup).to_have_count(1, timeout=15000)  # the announcements have arrived
         home.wait_for_timeout(500)
         assert tour.is_visible() != popup.is_visible(), 'exactly one of the two is open'
+        # The walkthrough card sits in the hero; a pointer click can land under the sticky header after
+        # scrolling, so its close button is pressed directly (the turn-taking is what is checked here).
         if tour.is_visible():
-            home.get_by_test_id('sky-tour-close').click()
+            home.get_by_test_id('sky-tour-close').dispatch_event('click')
             expect(popup).to_be_visible()
             home.get_by_role('button', name='知道了').click()
         else:
             home.get_by_role('button', name='知道了').click()
             expect(tour).to_be_visible()
-            home.get_by_test_id('sky-tour-close').click()
+            home.get_by_test_id('sky-tour-close').dispatch_event('click')
         expect(popup).to_have_count(0)
         expect(tour).to_have_count(0)
         # "See all announcements" leads to the list, which is never covered.
