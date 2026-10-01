@@ -5,7 +5,6 @@ import { useScrollReveal } from '../composables/useScrollReveal'
 import domeImage from '../assets/images/cosmos-dome.jpg'
 import { useAuth } from '../stores/auth'
 import { useRegistrationOpen } from '../composables/useRegistrationOpen'
-import { usePublicSettings } from '../composables/usePublicSettings'
 
 useScrollReveal()
 const { t, pick } = useI18n()
@@ -27,9 +26,7 @@ type Section = {
   rounds?: { number: string; name: string; dates: string; format: string; challenge: string; participants: string }[]
 }
 
-const { mechanicsPublic } = usePublicSettings()
-const sections = computed(() => (t('vision.sections') as (Section & { gated?: boolean })[])
-  .filter(section => mechanicsPublic.value || !section.gated))
+const sections = computed(() => t('vision.sections') as Section[])
 const kickerText = (kicker: string) => kicker.replace(/^\d+ \/ /, '')
 </script>
 
@@ -55,7 +52,7 @@ const kickerText = (kicker: string) => kicker.replace(/^\d+ \/ /, '')
           <span class="font-mono text-xs uppercase tracking-[.1em] text-[#315efb]">{{ pick('AGENT OBSERVER / PARTICIPANT BRIEFING / 01—08', '巡天智能体 / 参赛说明 / 01—08') }}</span>
           <h1 class="mt-7 max-w-[14ch] text-balance text-[clamp(3rem,6.5vw,6.75rem)] font-semibold leading-[1.02] tracking-[-.055em] text-[#f5f5f5]">{{ t('vision.pageTitle') }}</h1>
           <p class="mt-8 max-w-2xl text-base font-medium leading-[1.7] text-white/80 md:text-lg">{{ t('vision.pageSubtitle') }}</p>
-          <p class="mt-7 max-w-3xl border-t border-white/30 pt-6 text-sm leading-relaxed text-white/65 md:text-base">{{ mechanicsPublic ? t('vision.intro') : t('vision.intro_gated') }}</p>
+          <p class="mt-7 max-w-3xl border-t border-white/30 pt-6 text-sm leading-relaxed text-white/65 md:text-base">{{ t('vision.intro') }}</p>
         </div>
       </div>
     </header>

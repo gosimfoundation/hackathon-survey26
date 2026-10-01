@@ -161,7 +161,7 @@ onMounted(async () => {
             <a v-if="competition.mode==='practice'" class="btn sm" :href="appUrl('/downloads/agent-observer-starter-kit.zip')" download @click="remember('prepare')">{{ t('dash.quick.kit') }} ↓</a>
             <router-link v-else class="btn sm" to="/resources" @click="remember('prepare')">{{ t('dash.quick.kit') }} →</router-link>
             <router-link class="btn sm" to="/docs">{{ t('dash.quick.docs') }} →</router-link>
-            <a class="btn sm" :href="appUrl('/skill.md')" target="_blank" rel="noopener">SKILL.md →</a>
+            <a class="btn sm" :href="appUrl(competition.mode==='practice' ? '/skill.md' : '/skill-v4.md')" target="_blank" rel="noopener">SKILL.md →</a>
           </div>
         </div>
       </div>
