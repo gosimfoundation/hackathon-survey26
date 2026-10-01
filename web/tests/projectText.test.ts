@@ -28,6 +28,25 @@ test('preparation errors are shown in Chinese on the zh page', () => {
   assert.equal(revisionErrorText(null, 'zh'), '')
 })
 
+test('fixed preparation reasons from the runtime are translated, others stay as written', () => {
+  const failed = (reason: string) => revisionErrorText('Project preparation failed: ' + reason, 'zh')
+  assert.equal(failed('The model provider rejected the request (HTTP 404). Check the API endpoint, model name, key and balance on the Participate page.'),
+    '项目准备失败：模型服务商拒绝了请求（HTTP 404）。请在「参赛」页检查 API 地址、模型名、密钥和余额。')
+  assert.equal(failed('The model provider rejected the request. Check the API endpoint, model name, key and balance on the Participate page.'),
+    '项目准备失败：模型服务商拒绝了请求。请在「参赛」页检查 API 地址、模型名、密钥和余额。')
+  assert.match(failed('No model API is set up for your team. Set one under Model API on the Participate page, or add observer.project.json so no automatic adaptation is needed.'),
+    /^项目准备失败：本队还没有设置模型 API。/)
+  assert.match(failed('No open Participate page answered the model request. Your team does not save its model key, so keep the Participate page open with the model API connected while the project is prepared, or save the key there, or add observer.project.json so no automatic adaptation is needed.'),
+    /保持「参赛」页面打开/)
+  assert.match(failed('Your model API did not answer within 140 seconds. Use a faster model or endpoint, or add observer.project.json so no automatic adaptation is needed.'),
+    /在 140 秒内没有响应。可换用更快的模型/)
+  assert.match(failed('The adaptation model did not return a valid interface proposal.'), /没有返回有效的接口方案/)
+  assert.equal(failed('Model call failed (HTTP 503).'), '项目准备失败：模型调用失败（HTTP 503）。请稍后重新提交。')
+  assert.equal(failed('build must be a nonempty array of command arguments.'), '项目准备失败：build must be a nonempty array of command arguments.')
+  const english = 'Project preparation failed: Model service is unavailable.'
+  assert.equal(revisionErrorText(english, 'en'), english)
+})
+
 test('only failed public repositories can be prepared again from the same source', () => {
   const repo = { status: 'failed', source_kind: 'repository', source_location: 'https://github.com/team/project' }
   assert.ok(canPrepareAgain(repo))

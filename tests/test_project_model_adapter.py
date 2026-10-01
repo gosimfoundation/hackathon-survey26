@@ -58,6 +58,37 @@ def test_malformed_or_ambiguous_model_output_is_not_accepted():
             propose_adapter(SOURCE,"test",lambda _:{"choices":[{"message":{"content":text}}]})
 
 
+
+def test_a_fenced_proposal_is_unwrapped():
+    text=chr(96)*3+"json\n"+json.dumps(proposal())+"\n"+chr(96)*3
+    adapted=propose_adapter(SOURCE,"test",lambda _:{"choices":[{"message":{"content":text}}]})
+    assert adapted.files[0].path==".observer-adapter/main.py"
+
+
+def test_an_invalid_proposal_is_requested_once_more_with_the_rejected_rule():
+    bad=proposal(); bad["manifest"]["build"]="pip install nothing"
+    answers=[{"choices":[{"message":{"content":"Here is the adapter: {"}}]},model_response(proposal())]
+    requests=[]
+    def complete(request):
+        requests.append(request)
+        return answers[len(requests)-1]
+    assert propose_adapter(SOURCE,"test",complete).files[0].path==".observer-adapter/main.py"
+    assert len(requests)==2 and requests[0]["messages"]==requests[1]["messages"][:2]
+    assert "did not return a valid interface proposal" in requests[1]["messages"][2]["content"]
+    requests.clear()
+    with pytest.raises(ProjectError,match="build"):
+        propose_adapter(SOURCE,"test",lambda request:requests.append(request) or model_response(bad))
+    assert len(requests)==2 and "build" in requests[1]["messages"][2]["content"]
+
+
+def test_a_missing_entry_point_is_not_asked_again():
+    requests=[]
+    with pytest.raises(ProjectError,match="could not identify the entry point"):
+        propose_adapter(SOURCE,"test",lambda request:requests.append(request) or model_response({
+            "error":"manual_interface_required","explanation":"No callable agent found"}))
+    assert len(requests)==1
+
+
 V3_PROMPT_SHA256 = "186b2bfa3da956350af0fe679db504d6d8951255e25bbac475eb72c23705c833"
 
 
