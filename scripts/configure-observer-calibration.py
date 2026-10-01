@@ -69,7 +69,7 @@ def activation_sql(phase, entries, runner_versions):
         raise ValueError('Each scenario requires exactly one study')
     # Every enabled runner organization must be covered; the database check below
     # compares against the live installation list rather than a fixed count.
-    if not runner_versions or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|1[0-2])', o) or
+    if not runner_versions or any(not re.fullmatch(r'AGENTIC-OBSERVER26-runner-(?:[1-9]|[1-9][0-9])', o) or
                                   not re.fullmatch('[0-9a-f]{40}', s) for o, s in runner_versions.items()):
         raise ValueError('Tested runtime versions for the runner organizations are required')
     rows = []
