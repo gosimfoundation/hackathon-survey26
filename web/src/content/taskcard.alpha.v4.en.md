@@ -1,14 +1,14 @@
-# Task card α (alpha): First light
+# Task card α (alpha): Opening season
 
-A season to learn the rules at a classic southern site.
+A full season at Paranal with only the weather to handle.
 
 ## At a glance
 
 | | |
 |---|---|
 | Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
-| Survey | 2026-10-01 to 2027-01-31, 123 nights. You observe when the sun is below −18°. |
-| Targets | 30,000 targets on 6,000 deg² of sky, in 3 regions. 1,500 are required. |
+| Survey | 2026-10-04 to 2026-11-10, 38 nights. You observe when the sun is below −18°. |
+| Targets | 10,000 targets on 2,000 deg² of sky, in 3 regions. 500 are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |

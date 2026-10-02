@@ -1,18 +1,18 @@
-# Task card γ (gamma): Northern sky
+# Task card γ (gamma): Unsettled season
 
-A northern site with only nine wide fibres: every exposure must count.
+On top of the weather, part of your recent data can be lost once.
 
 ## At a glance
 
 | | |
 |---|---|
-| Site | Mauna Kea, Hawaii (virtual). Latitude 19.82°, longitude −155.47°. |
-| Survey | 2026-12-01 to 2027-03-31, 121 nights. You observe when the sun is below −18°. |
-| Targets | 30,000 targets on 4,000 deg² of sky, in 4 regions. 1,500 are required. |
-| Instrument | 9 contiguous fibre assignment cells in a 3 × 3 grid. The field covers 6.3 deg² and is about 2.51° across. |
+| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
+| Survey | 2026-10-09 to 2026-11-15, 38 nights. You observe when the sun is below −18°. |
+| Targets | 9,900 targets on 1,980 deg² of sky, in 3 regions. 495 are required. |
+| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
-| Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
+| Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). Possibly one `state_resync` message. It means part of your recent data was lost. It lists the targets that still count and their best scores. Rebuild your list of finished targets from it. The time already spent is not returned. |
 
 ## Your goal
 
@@ -41,7 +41,7 @@ One action per decision:
 
 | Action | Meaning |
 |---|---|
-| `observe` | Point the telescope, put up to 9 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
+| `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
 | `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |

@@ -1,15 +1,15 @@
-# Task card β (beta): Crowded field
+# Task card β (beta): Moving sky
 
-Fifty thousand targets and small fibres: choosing what to point at matters most.
+A season from mid-October: the sky moves with the season, and the targets lie in other parts of it.
 
 ## At a glance
 
 | | |
 |---|---|
-| Site | Cape Town, South Africa (virtual). Latitude −33.92°, longitude 18.42°. |
-| Survey | 2027-06-01 to 2027-11-30, 183 nights. You observe when the sun is below −18°. |
-| Targets | 50,000 targets on 8,000 deg² of sky, in 2 regions. 2,500 are required. |
-| Instrument | 25 contiguous fibre assignment cells in a 5 × 5 grid. The field covers 1.6 deg² and is about 1.26° across. |
+| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
+| Survey | 2026-10-18 to 2026-11-24, 38 nights. You observe when the sun is below −18°. |
+| Targets | 9,600 targets on 1,920 deg² of sky, in 3 regions. 480 are required. |
+| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
@@ -41,7 +41,7 @@ One action per decision:
 
 | Action | Meaning |
 |---|---|
-| `observe` | Point the telescope, put up to 25 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
+| `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
 | `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |
@@ -55,9 +55,9 @@ One action per decision:
 - Time-limited observation requests: complete enough of a request's targets inside its time window to earn its reward; a missed request costs nothing.
 - Final score = sum of best scores − 50 × missing required targets − unevenness penalty ± reports + request rewards.
 
-**Example.** A target has brightness 0.60 and weight 1.0. You expose it for 1600 s. The sky quality is 0.75.
-Its factor is 0.60 × 1600 × 0.75 ÷ 800 = 0.90. You declared DARK and the sky was DARK, so the score is
-1.0 × 0.90 × 1.20 = **1.08**. With a 533 s exposure the factor is only 0.30. A required target needs at
+**Example.** A target has brightness 0.60 and weight 1.0. You expose it for 900 s. The sky quality is 0.75.
+Its factor is 0.60 × 900 × 0.75 ÷ 450 = 0.90. You declared DARK and the sky was DARK, so the score is
+1.0 × 0.90 × 1.20 = **1.08**. With a 300 s exposure the factor is only 0.30. A required target needs at
 least 0.50, so it would still count as missing.
 
 ## Common mistakes
