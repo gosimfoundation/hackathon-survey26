@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
-import { replayActions, replayMeta, replayNetPrefix, replayNights, replayObserves, replaySite, replaySlots, replayTiles, replayTimeAt, replayTotals, replayHasCursor, replayPulseSec, settledCountAt, useReplayClock, SLOT_SECONDS } from '../../composables/useReplayClock'
-import { drawSkyMap, lstDeg, PAD, type ObservedMark } from '../../lib/skymap'
+import { replayActions, replayMeta, replayNetPrefix, replayNights, replayObserves, replaySite, replaySlots, replayTargets, replayTimeAt, replayTotals, replayHasCursor, replayPulseSec, settledCountAt, useReplayClock, SLOT_SECONDS } from '../../composables/useReplayClock'
+import { drawTargetMap, lstDeg, regionOf, PAD, type LivePointing, type ObservedMark } from '../../lib/skymap'
 import { OUTCOME_COLORS } from '../../lib/report'
 import { fmtUtc, num } from '../../lib/format'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
@@ -29,7 +29,7 @@ const PULSE = SLOT_SECONDS * 2  // glow for two slots of replay time after a til
 /** Stands in for the weather row when a run arrives without one, so the readout stays up instead of throwing. */
 const EMPTY_SLOT = { slot: '—', night: '', t: '', startSec: 0, open: true, seeing: 0, transp: 0, sky: 0, eff: 0 }
 const nightIds = computed(() => { void replayMeta.version; return replayNights })
-const tileById = computed(() => { void replayMeta.version; return new Map(replayTiles.map(tile => [tile.id, tile])) })
+const targetById = computed(() => { void replayMeta.version; return new Map(replayTargets.map(t => [t.id, t])) })
 
 const narration = computed(() => tf(`hero.console.beat.${beat.value.key}`, { region: beat.value.region, night: beat.value.nightNo, nights: replayTotals.nights, n: beat.value.n }))
 /** Where the meridian sits inside the canvas box, so the walkthrough can point at the line wherever it is. */
@@ -48,17 +48,22 @@ function frameAt(progress: number) {
   const settled = settledCountAt(nowSec)
   const score = replayNetPrefix[Math.max(0, Math.min(replayNetPrefix.length - 1, settled))] ?? 0
   const observed = new Map<string, ObservedMark>()
+  let livePointing: LivePointing | null = null
   for (const entry of replayObserves) {
     if (entry.i >= settled) break
     const a = entry.a
-    if (!a.tile) continue
-    const prev = observed.get(a.tile)
-    if (!prev || a.cls === 'completed') observed.set(a.tile, { state: a.cls, doneSec: a.doneSec })
+    for (const target of a.targets) {
+      const prev = observed.get(target)
+      if (!prev || a.cls === 'completed') observed.set(target, { state: a.cls, doneSec: a.doneSec })
+    }
   }
-  // Distinct finished tiles, so a re-observation never inflates the count past the catalogue.
+  // The pointing driving the current beat, so its fibre hits can be joined to its field centre.
+  const current = replayActions[actionIndex]
+  if (current && current.a === 'observe' && current.center) livePointing = { ra: current.center.ra, dec: current.center.dec, targets: current.targets }
+  // Distinct completed targets, so a re-observation never inflates the count past the catalogue.
   let completed = 0
   for (const mark of observed.values()) if (mark.state === 'completed') completed++
-  return { slotIndex, nowSec, skySec, skyFade, observed, score, completed, actionIndex, gap }
+  return { slotIndex, nowSec, skySec, skyFade, observed, score, completed, actionIndex, gap, livePointing }
 }
 
 /** Pick the line of commentary for what the replay is showing: an exposure, or a collapsed quiet stretch. */
@@ -70,14 +75,14 @@ function beatFor(actionIndex: number, gap: { nights: number; slots: number } | n
   }
   const action = replayActions[actionIndex]
   if (!action) return { key: 'idle', region: '', nightNo, n: 0 }
-  const tile = tileById.value.get(action.tile)
-  const key = action.cls === 'completed' ? (tile?.cls === 'R' ? 'observe_required' : 'observe') : 'interrupted'
-  return { key, region: tile?.region ?? '', nightNo, n: 0 }
+  const required = action.targets.some(id => targetById.value.get(id)?.required)
+  const key = action.cls === 'completed' ? (required ? 'observe_required' : 'observe') : 'interrupted'
+  return { key, region: action.center ? regionOf(action.center.ra) : '', nightNo, n: 0 }
 }
 
 function render() {
   const progress = clock.replayProgress()
-  const { slotIndex, nowSec, skySec, skyFade, observed, score, completed, actionIndex, gap } = frameAt(progress)
+  const { slotIndex, nowSec, skySec, skyFade, observed, score, completed, actionIndex, gap, livePointing } = frameAt(progress)
   if (progress < lastProgress) shownScore = 0  // loop restarted
   lastProgress = progress
   if (!scrubbing.value) progressUI.value = progress
@@ -90,7 +95,7 @@ function render() {
   hud.value = { slot: slot.slot, night: slot.night, date: stamp.slice(0, 5), utc: stamp.slice(6), lst, seeing: slot.seeing, transp: slot.transp, sky: slot.sky, eff: slot.eff, open: slot.open, score: shownScore, completed, nightNo }
   beat.value = beatFor(actionIndex, gap, slot.open, nightNo)
   trackMeridian(skySec)
-  if (canvas.value) drawSkyMap(canvas.value, replayTiles, replaySite, { nowSec: skySec, observed, timeFade: skyFade, pulseSeconds: reduced.value ? 0 : Math.max(PULSE, replayPulseSec) })
+  if (canvas.value) drawTargetMap(canvas.value, replayTargets, replaySite, { nowSec: skySec, observed, timeFade: skyFade, pulseSeconds: reduced.value ? 0 : Math.max(PULSE, replayPulseSec), livePointing })
 }
 function loop() { render(); if (!reduced.value) raf = requestAnimationFrame(loop) }
 
@@ -201,7 +206,7 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOv
       <span v-if="cursorShown"><i class="meridian"></i>{{ t('hero.console.legend_meridian') }}</span>
     </div>
     <dl class="sky-hud" aria-live="off">
-      <div class="sky-hud-slot"><dt>{{ t('hero.console.slot') }}</dt><dd data-testid="sky-slot">{{ hud.slot }}</dd></div>
+      <div class="sky-hud-slot"><dt>{{ t('hero.console.slot') }}</dt><dd data-testid="sky-slot" class="sky-hud-code">{{ hud.slot }}</dd></div>
       <div><dt>UTC {{ hud.date }} · {{ hud.nightNo }}/{{ replayTotals.nights }}</dt><dd>{{ hud.utc }}</dd></div>
       <div class="sky-hud-weather" :title="t('hero.console.weather_help')">
         <dt>{{ t('hero.console.weather') }}</dt>
@@ -209,7 +214,7 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOv
         <dd v-else class="text-[#ff6b6b]">{{ t('hero.console.dome_closed') }}</dd>
       </div>
       <div><dt>{{ t('hero.console.score') }}</dt><dd class="text-[#78a6ff]">{{ num(hud.score, 1) }}</dd></div>
-      <div><dt>{{ t('hero.console.tiles') }}</dt><dd>{{ hud.completed }} / {{ replayTiles.length }}</dd></div>
+      <div><dt>{{ t('hero.console.tiles') }}</dt><dd>{{ hud.completed }} / {{ replayTargets.length }}</dd></div>
     </dl>
   </div>
 </template>
@@ -326,6 +331,7 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOv
 .sky-hud > div { min-width: 0; padding: .6rem .55rem; border-right: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); }
 .sky-hud dt { font-size: .58rem; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sky-hud dd { margin: .15rem 0 0; font-size: .72rem; color: #f5f5f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sky-hud-code { color: rgba(255,255,255,.45) !important; font-size: .64rem !important; }
 .sky-hud-weather { grid-column: span 2; }
 @media (min-width: 640px) {
   .sky-hud { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }

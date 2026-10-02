@@ -101,22 +101,3 @@ test('the page can set the speed, autoplay and loop the replay', () => {
   r.get('finish()')
   assert.equal(r.timers.length, 1, 'without loop the replay stays on its last round')
 })
-
-test('the bundled demo replay inflates in the browser, and plain bytes pass through', async () => {
-  const { gzipSync } = await import('node:zlib')
-  const { inflateText } = await import('../src/lib/demoReplay.ts')
-  const page = '<html><body>const DATA = {"rounds":[]};</body></html>'
-  assert.equal(await inflateText(new Uint8Array(gzipSync(page))), page)
-  assert.equal(await inflateText(new TextEncoder().encode(page)), page)
-})
-
-test('the committed demo is the full baseline run, not a trimmed one', async () => {
-  const { gunzipSync } = await import('node:zlib')
-  const facts = JSON.parse(readFileSync(new URL('../public/demo/baseline-dev-reference.json', import.meta.url), 'utf8'))
-  const page = gunzipSync(readFileSync(new URL('../public/demo/baseline-dev-reference.html.gz', import.meta.url))).toString('utf8')
-  const data = JSON.parse(page.match(/^const DATA = (.*);$/m)![1]!)
-  assert.equal(facts.scenario, 'dev-reference')
-  assert.equal(data.rounds.length, facts.rounds)
-  assert.equal(new Set(data.rounds.map((r: any) => r.night_id)).size, facts.nights)
-  assert.equal(facts.nights, 180)
-})

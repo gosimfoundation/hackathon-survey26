@@ -192,16 +192,16 @@
     "side_note": "Site 31.96°N / a decision every 15 minutes / one time budget for the whole run",
     "console": {
       "title": "Official example replay",
-      "replay_note": "Public practice field · {nights} nights · {actions} decisions",
+      "replay_note": "Local practice card L1 · {nights} nights · {actions} decisions",
       "paused": "Paused",
       "pause": "Pause",
       "resume": "Resume",
-      "aria": "Replay sky map: required and optional patches light up as exposures complete",
+      "aria": "Replay sky map: required and optional targets light up as pointings land",
       "slot": "Slot",
       "weather": "Seeing · Transparency · Sky · Instrument",
       "dome_closed": "Dome closed",
       "score": "Score",
-      "tiles": "Tiles",
+      "tiles": "Targets",
       "legend_visible": "Reachable now",
       "legend_meridian": "Overhead now",
       "night": "Night",
@@ -209,21 +209,21 @@
       "legend_flexible": "Optional",
       "legend_completed": "Completed",
       "legend_interrupted": "Interrupted",
-      "explainer": "This is the whole observable sky. Every mark is a patch waiting to be imaged; a filled one is done. Every 15 minutes the agent picks one to shoot — or waits for better weather.",
+      "explainer": "This is the whole observable sky. Every mark is a target waiting to be hit; a filled one means a fibre has already landed on it. Every 15 minutes the agent picks one pointing — where to aim the field, and which targets its 16 fibres land on — or waits for better weather.",
       "tour_replay": "What am I looking at?",
       "tour_title": "Sky map walkthrough",
       "tour_next": "Next",
       "tour_done": "Start watching",
       "tour_skip": "Skip",
       "tour": {
-        "axes": "The horizontal axis is right ascension — the sky's longitude — going all the way round from 0° to 360°. The vertical axis is declination, its latitude. R00–R07 across the top are the eight regions the sky is split into.",
-        "tiles": "Each mark is a patch to image: ◇ must be finished (REQUIRED), □ is optional (FLEXIBLE). A ring means it is high enough to shoot right now; filled in means it is already done.",
+        "axes": "The horizontal axis is right ascension — the sky's longitude — going all the way round from 0° to 360°. The vertical axis is declination, its latitude. R00–R07 across the top are the eight regions the sky is split into by right ascension.",
+        "tiles": "Each mark is a target: ◇ must be finished (REQUIRED), □ is optional (FLEXIBLE). A ring means it is high enough to shoot right now; filled in means some pointing's fibre has already landed on it. While a pointing is live, thin lines join it to the targets its 16 fibres are hitting.",
         "meridian": "The dashed blue line is where the telescope is pointing right now. It drifts to the right as the Earth turns, and moves quicker around dawn, where a whole daytime is skipped.",
-        "hud": "The row underneath is the current slot, the weather at that moment and the progress. The four weather figures are seeing, transparency, sky brightness and instrument efficiency — hover them for an explanation. The score climbs as patches light up, and that is the number competitors are trying to maximise."
+        "hud": "The row underneath is the current slot, the weather at that moment and the progress. The four weather figures are seeing, transparency, sky brightness and instrument efficiency — hover them for an explanation. The score climbs as targets light up, and that is the number competitors are trying to maximise."
       },
       "beat": {
-        "observe": "Imaging a patch in region {region}",
-        "observe_required": "Taking a must-do patch (region {region})",
+        "observe": "Pointing at a target in region {region}",
+        "observe_required": "Taking a must-do target (region {region})",
         "interrupted": "Weather cut this exposure short — it has to be redone",
         "dome_closed": "Dome closed — too much cloud to observe this slot",
         "waiting": "Nothing worth shooting is high enough yet; waiting for the next slot",
@@ -559,7 +559,6 @@
     "rail": {
       "top": "Top",
       "film": "Film",
-      "demo": "Demo",
       "quest": "Main quest",
       "participants": "Participants",
       "vision": "Vision",
@@ -576,12 +575,6 @@
     "film": {
       "kicker": "Event film",
       "play": "Play"
-    },
-    "demo": {
-      "kicker": "Official example",
-      "title": "Official example: baseline agent replay on a public practice scenario",
-      "facts": "Scenario {scenario} · seed {seed} · {nights} nights · {rounds} decisions · final score {score}",
-      "note": "Real output of the platform's scorer and replay renderer for a baseline agent. Plays at 8×; drag the sky to look around."
     }
   },
   "vision": {
