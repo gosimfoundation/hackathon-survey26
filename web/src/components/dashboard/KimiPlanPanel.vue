@@ -9,6 +9,7 @@ import { fmtUtc } from '../../lib/format'
 import { useAuth } from '../../stores/auth'
 import { useFlash } from '../../stores/flash'
 const guidePdf = `${import.meta.env.BASE_URL}media/kimi-api-credit-usage-instructions.pdf`
+const redeemUrl = computed(() => status.value.code ? `https://www.kimi.com?invite=okc&code=${encodeURIComponent(status.value.code)}` : '')
 
 const i18n = useI18n()
 const { t, tf } = i18n
@@ -72,7 +73,9 @@ onMounted(load)
           <button type="button" class="copy-btn" :aria-pressed="revealed" @click="revealed = !revealed">{{ revealed ? t('credits.hide') : t('credits.reveal') }}</button>
           <button type="button" class="copy-btn" @click="copy">{{ copied ? t('common.copied') : t('common.copy') }}</button>
         </div>
-        <p v-if="status.note" class="text3 mt-2 text-xs">{{ status.note }}</p>
+        <a v-if="redeemUrl" class="btn sm primary mt-3" data-testid="kimi-plan-redeem" :href="redeemUrl" target="_blank" rel="noopener">{{ t('kimi_plan.redeem') }} →</a>
+        <p v-if="redeemUrl" class="text3 mt-2 text-xs break-all">{{ redeemUrl }}</p>
+        <p v-else-if="status.note" class="text3 mt-2 text-xs">{{ status.note }}</p>
         <p class="text3 mt-2 text-xs">{{ tf('kimi_plan.claimed_by', { name: status.claimed_by ?? '—', at: fmtUtc(status.claimed_at, { short: true }) }) }}</p>
       </div>
     </template>
