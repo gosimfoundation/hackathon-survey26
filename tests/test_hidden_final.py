@@ -356,13 +356,15 @@ def test_hidden_final_counts_only_the_current_card_set_and_retries_only_platform
                  (current['batch_id'], s['hidden_scenario'])) == [('cancelled',)]
     assert len({r[0] for r in query(uri, 'select created_at from public.observer_runs where batch_id=%s',
                                     (retried['batch_id'],))}) == 2
-    # A failure caused by the team's own project is final unless organizers decide otherwise.
+    # A card failed by the team's own project scores 0; the evaluation goes on and is not rerun.
     fail(s, retried['batch_id'], 'engine', 'project_operation_failed', stage='execute')
-    assert query(uri, 'select status from public.observer_batches where id=%s', (retried['batch_id'],)) == [('failed',)]
-    final = run(platform=True)
-    assert (final['action'], final['reason'], final['failure']) == ('skip', 'failed_participant', 'participant')
-    assert run(platform=True, participant=True)['action'] == 'created'
-    assert query(uri, 'select count(*) from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(4,)]
+    assert query(uri, 'select status from public.observer_batches where id=%s', (retried['batch_id'],)) == [('queued',)]
+    query(uri, "update public.observer_runs set status='scored',score=40,finished_at=now() where batch_id=%s and status='queued'",
+          (retried['batch_id'],))
+    query(uri, 'select private.observer_finalize_batch(%s)', (retried['batch_id'],))
+    assert query(uri, 'select status,score from public.observer_batches where id=%s', (retried['batch_id'],)) == [('scored', 20.0)]
+    assert run(platform=True, participant=True)['reason'] == 'already_evaluated'
+    assert query(uri, 'select count(*) from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(3,)]
     assert query(uri, 'select private.observer_batch_covers_phase(%s,%s)', (old, s['hidden'])) == [(False,)]
 
 

@@ -33,7 +33,7 @@ const parts = computed(() => {
 })
 const scale = computed(() => Math.max(1, ...parts.value.map(p => Math.abs(p.value))))
 const cardScores = computed(() => (props.cards ?? []).filter(c => props.entry?.card_scores?.[c.slug] != null)
-  .map(c => ({ ...c, score: props.entry!.card_scores![c.slug]! })))
+  .map(c => ({ ...c, score: props.entry!.card_scores![c.slug]!, unfinished: !!props.entry!.unfinished_cards?.includes(c.slug) })))
 const board = computed(() => props.boardLabel ? props.boardLabel : props.entry?.scenario_slug ? tf('leaderboard.detail.board_scenario', { scenario: props.entry.scenario_slug }) : t('leaderboard.detail.board_mean'))
 
 function onKey(event: KeyboardEvent) { if (event.key === 'Escape') emit('close') }
@@ -59,7 +59,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
       <p class="team-detail-board">{{ board }}</p>
 
       <div class="team-detail-total">
-        <span class="label">{{ t(entry.calibrated ? 'leaderboard.calibrated_score' : 'leaderboard.score') }}</span>
+        <span class="label">{{ t(entry.calibrated ? 'leaderboard.calibrated_score' : 'leaderboard.score') }}<template v-if="entry.unfinished"> · <span :title="t('leaderboard.unfinished_help')">{{ t('leaderboard.unfinished') }}</span></template></span>
         <b :class="{ neg: entry.total_score < 0 }">{{ num(entry.total_score) }}</b>
       </div>
 
@@ -73,7 +73,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
       </ul>
 
       <dl class="team-detail-stats">
-        <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.name }}</dt><dd>{{ num(c.score) }}</dd></div>
+        <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.name }}</dt><dd>{{ num(c.score) }}<small v-if="c.unfinished" :title="t('leaderboard.unfinished_help')"> · {{ t('leaderboard.unfinished') }}</small></dd></div>
         <div v-if="entry.overall_score != null && entry.scenario_slug"><dt>{{ t('leaderboard.overall') }}</dt><dd>{{ num(entry.overall_score) }}<template v-if="entry.overall_rank"> · #{{ entry.overall_rank }}</template></dd></div>
         <div v-if="entry.completed_tiles != null || !entry.components"><dt>{{ t('leaderboard.tiles') }}</dt><dd>{{ entry.completed_tiles ?? '—' }}</dd></div>
         <div v-if="entry.targets_observed != null"><dt>{{ t('leaderboard.targets_observed') }}</dt><dd>{{ entry.targets_observed }}</dd></div>

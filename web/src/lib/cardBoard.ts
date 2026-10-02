@@ -37,6 +37,8 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
     report_reward: Number(row.report_reward ?? 0),
     ...('card_scores' in row || 'overall_score' in row ? {
       card_scores: numberMap(row.card_scores),
+      unfinished_cards: Array.isArray(row.unfinished_cards) ? row.unfinished_cards.map(String) : [],
+      unfinished: row.unfinished === true,
       overall_score: numberOrNull(row.overall_score),
       overall_rank: numberOrNull(row.overall_rank),
       targets_observed: numberOrNull(row.targets_observed),
