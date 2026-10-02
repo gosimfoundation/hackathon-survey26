@@ -149,7 +149,7 @@
     "eyebrow": "GOSIM Hackathon · Intelligent Survey Operations",
     "system": "Agentic Observer",
     "subtitle": "巡天智能体",
-    "lede": "Write an agent that runs a survey telescope through the night: it reads the sky state, decides like a lead observer, and picks the next observation every 900 seconds.",
+    "lede": "Write an agent that runs a survey telescope through the night: it reads the sky state, decides like a lead observer, and picks the next observation every 15 simulated minutes.",
     "pipeline": [
       {
         "label": "Online Training",

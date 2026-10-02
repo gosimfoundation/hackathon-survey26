@@ -31,6 +31,29 @@ export interface SkyTarget { id: string; ra: number; dec: number; required: bool
 export interface LivePointing { ra: number; dec: number; targets: string[] }
 const RA_MAX = 360, DEC_MIN = -10, DEC_MAX = 70
 export const PAD = { left: 30, right: 10, top: 16, bottom: 18 }
+export interface DecBounds { min: number; max: number }
+
+/** Dec extent that frames a set of points with a small margin, so a southern (or otherwise
+ * off-centre) footprint isn't squashed against one edge of the fixed -10°..+70° default band. */
+function decBoundsOf(points: { dec: number }[]): DecBounds {
+  if (!points.length) return { min: DEC_MIN, max: DEC_MAX }
+  let min = Infinity, max = -Infinity
+  for (const p of points) { if (p.dec < min) min = p.dec; if (p.dec > max) max = p.dec }
+  const margin = Math.max(3, (max - min) * 0.08)
+  min -= margin; max += margin
+  if (max - min < 20) { const mid = (min + max) / 2; min = mid - 10; max = mid + 10 }
+  return { min: Math.max(-90, min), max: Math.min(90, max) }
+}
+
+/** Dec grid-line spacing that keeps a handful of labelled lines whatever the (possibly narrow) extent. */
+function decTicks(bounds: DecBounds): number[] {
+  const span = bounds.max - bounds.min
+  const step = span > 50 ? 20 : span > 25 ? 10 : 5
+  const start = Math.ceil(bounds.min / step) * step
+  const ticks: number[] = []
+  for (let d = start; d <= bounds.max + 1e-6; d += step) ticks.push(d)
+  return ticks
+}
 
 const DEG = Math.PI / 180
 const mod = (a: number, n: number) => ((a % n) + n) % n
@@ -99,15 +122,15 @@ function tilePath(ctx: CanvasRenderingContext2D, cls: SchedulingClass, cx: numbe
 }
 
 /** Projection for the RA/Dec plot box; shared by the tile map and the target map so both read identically. */
-function plot(canvas: HTMLCanvasElement) {
+function plot(canvas: HTMLCanvasElement, dec: DecBounds = { min: DEC_MIN, max: DEC_MAX }) {
   const { w, h } = fitCanvas(canvas)
   const pw = w - PAD.left - PAD.right, ph = h - PAD.top - PAD.bottom
-  return { w, h, pw, ph, x: (ra: number) => PAD.left + (ra / RA_MAX) * pw, y: (dec: number) => PAD.top + ((DEC_MAX - dec) / (DEC_MAX - DEC_MIN)) * ph }
+  return { w, h, pw, ph, dec, x: (ra: number) => PAD.left + (ra / RA_MAX) * pw, y: (d: number) => PAD.top + ((dec.max - d) / (dec.max - dec.min)) * ph }
 }
 
-/** Graticule (8 RA regions, 20° dec bands) and the "now" meridian line, identical on both maps. */
+/** Graticule (8 RA regions, dec bands sized to the plot's own extent) and the "now" meridian line, identical on both maps. */
 function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number | null, timeFade: number, geo: ReturnType<typeof plot>) {
-  const { w, pw, ph, x, y } = geo
+  const { w, pw, ph, x, y, dec } = geo
   ctx.clearRect(0, 0, geo.w, geo.h)
   ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace'
   ctx.textBaseline = 'middle'
@@ -122,10 +145,10 @@ function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number |
     ctx.fillText(ra === 360 ? '360°' : `${ra}°`, px, geo.h - PAD.bottom / 2)
   }
   ctx.textAlign = 'right'
-  for (let dec = 0; dec <= DEC_MAX; dec += 20) {
-    const py = Math.round(y(dec)) + .5
+  for (const d of decTicks(dec)) {
+    const py = Math.round(y(d)) + .5
     ctx.beginPath(); ctx.moveTo(PAD.left, py); ctx.lineTo(PAD.left + pw, py); ctx.stroke()
-    ctx.fillText(`${dec > 0 ? '+' : ''}${dec}°`, PAD.left - 5, py)
+    ctx.fillText(`${d > 0 ? '+' : ''}${Math.round(d)}°`, PAD.left - 5, py)
   }
   ctx.strokeStyle = 'rgba(255,255,255,.25)'
   ctx.strokeRect(PAD.left + .5, PAD.top + .5, pw - 1, ph - 1)
@@ -219,10 +242,18 @@ export interface TargetFrame extends SkyFrame {
  * Current-format sky map: point-source targets (◇ required, □ optional), each lit up once a pointing's
  * fibre lands on it, plus — while a pointing is live — its field centre joined to each of its hits.
  */
+/** Bounds are cheap to recompute but the target list is stable for a whole replay, so cache by array identity. */
+const targetDecBoundsCache = new WeakMap<SkyTarget[], DecBounds>()
+function targetDecBounds(targets: SkyTarget[]): DecBounds {
+  let bounds = targetDecBoundsCache.get(targets)
+  if (!bounds) { bounds = decBoundsOf(targets); targetDecBoundsCache.set(targets, bounds) }
+  return bounds
+}
+
 export function drawTargetMap(canvas: HTMLCanvasElement, targets: SkyTarget[], site: SkySite, frame: TargetFrame): void {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
-  const geo = plot(canvas)
+  const geo = plot(canvas, targetDecBounds(targets))
   const { pw, x, y } = geo
   const timeFade = Math.max(0, Math.min(1, frame.timeFade ?? 1))
   drawGrid(ctx, site, frame.nowSec, timeFade, geo)

@@ -285,7 +285,7 @@
     "eyebrow": "Hackathon GOSIM · Relevé du ciel intelligent",
     "system": "Agent Observateur",
     "subtitle": "巡天智能体",
-    "lede": "Écrivez un agent qui pilote un télescope de relevé pendant la nuit : il lit l'état du ciel, décide comme un observateur principal et choisit la prochaine observation toutes les 900 secondes.",
+    "lede": "Écrivez un agent qui pilote un télescope de relevé pendant la nuit : il lit l'état du ciel, décide comme un observateur principal et choisit la prochaine observation toutes les 15 minutes simulées.",
     "pipeline": [
       {
         "label": "Formation en ligne",
