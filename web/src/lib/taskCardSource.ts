@@ -15,7 +15,7 @@ function bundledPage(card: TaskCard, language: CardLanguage): string | null {
   return bundled[`../content/taskcard.${card.id}.v4.${language}.md`] ?? null
 }
 
-/** Title of a bundled card page ("任务卡 α（alpha）：初见星光"); formal cards only have their symbol until released. */
+/** Title of a bundled card page ("练习卡 α"); formal cards only have their symbol until released. */
 export function bundledCardTitle(card: TaskCard, language: CardLanguage): string {
   return cardTitle(bundledPage(card, language), card)
 }

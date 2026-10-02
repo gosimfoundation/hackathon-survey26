@@ -7,7 +7,7 @@ Never add hidden-truth details: no seeds, no event times or strengths, no instru
 once a week."
 -->
 
-# Task card {{CARD_ID}}: {{CARD_TITLE}}
+# Practice card {{SYMBOL}}
 
 {{ONE_SENTENCE_STORY}}
 
