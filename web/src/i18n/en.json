@@ -1974,6 +1974,12 @@
     "cli": "Command line",
     "docs": "Documentation",
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
+    "flow_examples": "Example projects",
+    "flow_examples_hint": "Complete example agent projects -- pick a language to start from and adapt the strategy to your own.",
+    "example_github": "View on GitHub",
+    "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
+    "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
+    "example_rust_desc": "Coming soon.",
     "flow2": "Reference",
     "flow2_hint": "These are the references for building and submitting your own agent."
   },
@@ -2495,6 +2501,7 @@
       "s2_lead": "Build your agent to the protocol in the docs.",
       "s2_desc": "Iterate on the decision logic to raise your score.",
       "s2_link": "Read the task description",
+      "s2_examples_link": "View example projects",
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate:",
       "s3_points": [
@@ -2516,6 +2523,7 @@
       "s2_lead": "Build your agent to the protocol in the docs.",
       "s2_desc": "Iterate on the decision logic, then move to Step 3.",
       "s2_link": "Read the task description",
+      "s2_examples_link": "View example projects",
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [

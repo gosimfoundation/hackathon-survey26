@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/build-kit.mjs",
+    "prebuild": "node scripts/build-kit.mjs && node scripts/build-examples.mjs",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "build-kit": "node scripts/build-kit.mjs",
+    "build-examples": "node scripts/build-examples.mjs",
     "test": "node --test \"tests/*.test.ts\" \"../scripts/*.test.mjs\""
   },
   "dependencies": {
