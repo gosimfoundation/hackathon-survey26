@@ -2319,6 +2319,7 @@
       },
       "xl_title": "Import from Excel",
       "xl_lede": "Pick an .xlsx or .csv file. It is parsed locally in your browser and never uploaded. Codes are masked in the preview. Empty rows and duplicates are skipped.",
+      "xl_drop": "Drop the spreadsheet here, or click to choose a file (.xlsx / .csv)",
       "xl_file": "File",
       "xl_sheet": "Sheet",
       "xl_code_col": "Code column",
