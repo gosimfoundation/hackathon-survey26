@@ -10,6 +10,7 @@ import ScrollProgress from './components/layout/ScrollProgress.vue'
 import BrowserNotice from './components/layout/BrowserNotice.vue'
 import MidAutumnEgg from './components/layout/MidAutumnEgg.vue'
 import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
+import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
 
 const { t } = provideI18n()
 provideTheme()
@@ -35,4 +36,5 @@ provideTheme()
   <FlashContainer />
   <MidAutumnEgg />
   <PinnedAnnouncementDialog />
+  <KimiPlanDialog />
 </template>

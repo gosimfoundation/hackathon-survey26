@@ -1580,7 +1580,11 @@
       "not_eligible": "Your team needs one successful score in the practice round first.",
       "no_codes_left": "No Kimi Coding Plan codes are available right now.",
       "need_team": "Create or join a team first."
-    }
+    },
+    "popup_title": "Your team can claim a Kimi Coding Plan code",
+    "popup_captain": "Your team has run through the practice round and qualifies for one Kimi Coding Plan code. As captain, claim it on your dashboard; every member will then see it there.",
+    "popup_member": "Your team has run through the practice round and qualifies for one Kimi Coding Plan code. Ask your captain to claim it on the dashboard; it will then show up there for everyone.",
+    "popup_go": "Claim on the dashboard"
   },
   "profile": {
     "title": "Profile",
