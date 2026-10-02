@@ -3,10 +3,8 @@ name: Publish event site
 on:
   pull_request:
   workflow_dispatch:
-  # Publish only after the Tests workflow has completed successfully on main.
-  workflow_run:
-    workflows: [Tests]
-    types: [completed]
+  # Publish every push to main (organizer decision 2026-10-02: no waiting for Tests).
+  push:
     branches: [main]
 
 permissions:
@@ -18,8 +16,6 @@ concurrency:
 
 jobs:
   build:
-    # Skip the whole pipeline when Tests finished with anything but success.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -51,10 +47,8 @@ jobs:
           path: release/
           retention-days: 14
   publish:
-    # Only a green Tests run on main (or a manual dispatch from main) publishes.
-    if: >-
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    # A push to main or a manual dispatch from main publishes.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
     permissions:
