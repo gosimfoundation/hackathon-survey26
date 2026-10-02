@@ -2,7 +2,7 @@
   "scenario": "dev-reference",
   "scenario_id": "example3-reference-seed-20260909",
   "seed": 20260909,
-  "agent": "archive/starter_kit_v3/agent/minimal_agent.py",
+  "agent": "official baseline",
   "score": 12287.478,
   "rounds": 7943,
   "nights": 180,

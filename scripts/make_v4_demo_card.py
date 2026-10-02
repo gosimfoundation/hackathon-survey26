@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Organizer tool: (re)generate the public v4 demo card shipped in starter_kit_v4/cards/demo.
+"""Organizer tool: (re)generate the public v4 demo card shipped in archive/starter_kit_v4/cards/demo.
 
-    python3 scripts/make_v4_demo_card.py [--v4-source DIR] [--out starter_kit_v4/cards/demo]
+    python3 scripts/make_v4_demo_card.py [--v4-source DIR] [--out archive/starter_kit_v4/cards/demo]
 
 The demo card is small (7 nights, 2,400 targets) and PUBLIC. It uses a fixed, non-secret seed
 and is NOT one of Practice / competition cards (alpha, beta, A-H). It exists so participants can
@@ -123,7 +123,7 @@ def _find_source(explicit: str | None) -> Path:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--v4-source")
-    parser.add_argument("--out", type=Path, default=ROOT / "starter_kit_v4" / "cards" / "demo")
+    parser.add_argument("--out", type=Path, default=ROOT / "archive" / "starter_kit_v4" / "cards" / "demo")
     args = parser.parse_args(argv)
     source = _find_source(args.v4_source)
     sys.path.insert(0, str(source))

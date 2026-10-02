@@ -45,7 +45,7 @@ export async function cardPage(card: TaskCard, language: CardLanguage, files?: s
   return null
 }
 
-/** One ZIP of every released file of the card, laid out as cards/<id>/… for the v4 starter kit. */
+/** One ZIP of every released file of the card, laid out as cards/<id>/…. */
 export async function downloadCardZip(card: TaskCard, files: string[]): Promise<void> {
   const entries: Record<string, Uint8Array> = {}
   for (const key of files) {

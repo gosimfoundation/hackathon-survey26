@@ -37,7 +37,7 @@ export function cardTitle(markdown: string | null, card: TaskCard): string {
   return markdown?.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? card.symbol
 }
 
-/** ZIP entry name for a released file: unzipped into the starter kit's cards/ folder it becomes cards/<id>/<folder>/<file>. */
+/** ZIP entry name for a released file: unzipped into a cards/ folder it becomes cards/<id>/<folder>/<file>. */
 export function cardZipEntry(card: TaskCard, key: string): string | null {
   return /^(config|public|truth)\/[A-Za-z0-9_.-]+$/.test(key) && !key.includes('..') ? `${card.id}/${key}` : null
 }
