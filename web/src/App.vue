@@ -4,6 +4,7 @@ import { provideTheme } from './composables/useTheme'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppFooter from './components/layout/AppFooter.vue'
 import AnnouncementBanner from './components/layout/AnnouncementBanner.vue'
+import UpdateBanner from './components/layout/UpdateBanner.vue'
 import FlashContainer from './components/layout/FlashContainer.vue'
 import RegisterFloat from './components/layout/RegisterFloat.vue'
 import ScrollProgress from './components/layout/ScrollProgress.vue'
@@ -21,6 +22,7 @@ provideTheme()
   <ScrollProgress />
   <BrowserNotice />
   <AppHeader />
+  <UpdateBanner />
   <AnnouncementBanner />
   <div id="main-content" tabindex="-1">
     <!-- a short cross-fade between routes, so a navigation reads as a change of place rather than a flash -->

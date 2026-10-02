@@ -1,17 +1,22 @@
 /**
- * Force a stale tab onto the current build.
+ * Notice a stale tab and get it onto the current build.
  *
  * GitHub Pages serves index.html with `cache-control: max-age=600`, and Safari holds onto it far
  * longer than that — through the back/forward cache and across restores. Because the chunk names
  * are hashed and the old chunks stay on the CDN, a stale index.html keeps running an old build
  * quite happily, with no error to notice. So: re-fetch index.html past the cache, compare the entry
- * chunk it names with the one actually running, and reload when they differ.
+ * chunk it names with the one actually running, and act when they differ.
  *
- * Escalating, because a plain reload is not always enough on Safari:
- *   1st time  — refresh the cached index.html, then reload.
- *   2nd time  — reload through a one-off query string the cache has never seen.
- *   after that — stop, so a misconfigured host can never trap a visitor in a reload loop.
+ * Only the very first check — on the initial page load, before the visitor has done anything —
+ * is allowed to reload on its own, escalating because a plain reload is not always enough on
+ * Safari: 1st time refreshes the cached index.html then reloads; 2nd time reloads through a
+ * one-off query string the cache has never seen; after that it stops, so a misconfigured host can
+ * never trap a visitor in a reload loop. Every later check (tab resumed from the back/forward
+ * cache, tab brought back to the foreground, the slow heartbeat) just raises the UpdateBanner —
+ * the visitor may be mid-form or mid-upload, so nothing here ever reloads out from under them.
  */
+import { markUpdateAvailable } from './updateNotice'
+
 const TRY_KEY = 'sac-fresh-attempt'
 const ENTRY_RE = /assets\/index-[A-Za-z0-9_-]+\.js/
 
@@ -41,13 +46,17 @@ async function publishedEntry(): Promise<string | null> {
   return (await res.text()).match(ENTRY_RE)?.[0] ?? null
 }
 
-async function checkOnce() {
+async function checkOnce(initial: boolean) {
   const running = runningEntry()
   if (!running) return  // dev server, or a build without a hashed entry: nothing to compare
   let published: string | null = null
   try { published = await publishedEntry() } catch { return }  // offline: leave the tab alone
   if (!published || published === running) {
     noteAttempt(0)
+    return
+  }
+  if (!initial) {
+    markUpdateAvailable()
     return
   }
   const n = attempts() + 1
@@ -63,11 +72,10 @@ async function checkOnce() {
 
 export function installFreshnessCheck() {
   if (typeof window === 'undefined') return
-  const check = () => { void checkOnce() }
   // On load, whenever the tab comes back, and on a back/forward-cache restore (Safari's favourite
   // way of resurrecting an old page), plus a slow heartbeat for tabs left open for hours.
-  window.addEventListener('load', () => window.setTimeout(check, 1500))
-  window.addEventListener('pageshow', event => { if ((event as PageTransitionEvent).persisted) check() })
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) check() })
-  window.setInterval(() => { if (!document.hidden) check() }, 5 * 60 * 1000)
+  window.addEventListener('load', () => window.setTimeout(() => void checkOnce(true), 1500))
+  window.addEventListener('pageshow', event => { if ((event as PageTransitionEvent).persisted) void checkOnce(false) })
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkOnce(false) })
+  window.setInterval(() => { if (!document.hidden) void checkOnce(false) }, 5 * 60 * 1000)
 }
