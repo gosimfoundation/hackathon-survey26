@@ -26,7 +26,10 @@ const copy = computed(() => t(`start3.${mode.value}`))
           <h2>{{ copy.s2_title }}</h2>
           <p>{{ copy.s2_lead }}</p>
           <p>{{ copy.s2_desc }}</p>
-          <p class="mt-5"><router-link class="btn" to="/brief">{{ copy.s2_link }} →</router-link></p>
+          <p class="mt-5 start-step2-actions">
+            <router-link class="btn" to="/brief">{{ copy.s2_link }} →</router-link>
+            <router-link class="btn" to="/resources#examples" data-testid="start-examples">{{ copy.s2_examples_link }} →</router-link>
+          </p>
         </li>
         <li class="card" data-testid="start-step-3">
           <h2>{{ copy.s3_title }}</h2>
@@ -54,6 +57,7 @@ const copy = computed(() => t(`start3.${mode.value}`))
   background: rgba(2,8,20,.6); font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: .85em; color: #9ec1ff; white-space: nowrap;
 }
+.start-step2-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .start-points { margin: .75rem 0 0; padding-left: 1.15rem; color: #ccd4e6; font-size: .9rem; line-height: 1.65; }
 .start-points li + li { margin-top: .35rem; }
 .start-help { margin-top: 2rem; color: #ccd4e6; font-size: .95rem; }

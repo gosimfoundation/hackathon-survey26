@@ -3,5 +3,6 @@ dist
 .env
 .env.local
 public/downloads/
+public/examples/
 public/skill.md
 public/skill-v4.md
