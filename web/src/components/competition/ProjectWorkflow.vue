@@ -186,6 +186,9 @@ function errorMessage(e: unknown) {
     invalid_team_model: t('submit.model_api.invalid'),
     final_version_locked: pick('The online phase has ended; the final version can no longer change.', '线上赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
+    upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
+    upload_failed: pick('The file upload failed, possibly due to the network. Please try again.', '文件上传失败，可能是网络问题，请重试。'),
+    portal_unavailable: pick('Could not reach the server. Check your connection and try again.', '无法连接服务器，请检查网络后重试。'),
   }
   return code === 'cancelled' ? '' : messages[code] ?? words.value.failed
 }
