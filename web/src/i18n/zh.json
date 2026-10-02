@@ -1300,10 +1300,13 @@
     },
     "contact_email": "hackathon@gosim.org",
     "ticker": {
-      "slot": "时隙",
-      "open": "圆顶开启",
-      "closed": "圆顶关闭",
-      "per_slot": "每 15 分钟一次决策 · 全程共用一个总时长"
+      "cadence": "每 15 分钟一次决策",
+      "when": "{date}夜 · {start}–{end} UT",
+      "code_hint": "N = 夜编号 · S = 时隙编号",
+      "dome_open": "圆顶开启 · 可观测",
+      "dome_closed": "圆顶关闭 · 天气不佳",
+      "budget_label": "总时长 900 s（全程共用）",
+      "fact_hint": "点击看看 900 秒能做什么"
     }
   },
   "common": {

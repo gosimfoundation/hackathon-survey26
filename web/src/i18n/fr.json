@@ -157,10 +157,13 @@
     },
     "contact_email": "hackathon@gosim.org",
     "ticker": {
-      "slot": "Créneau",
-      "open": "Coupole ouverte",
-      "closed": "Coupole fermée",
-      "per_slot": "une décision toutes les 15 minutes · un seul budget-temps pour toute la partie"
+      "cadence": "une décision toutes les 15 minutes",
+      "when": "Nuit du {date} · {start}–{end} UT",
+      "code_hint": "N = numéro de nuit · S = numéro de créneau",
+      "dome_open": "Coupole ouverte · observation",
+      "dome_closed": "Coupole fermée · météo défavorable",
+      "budget_label": "900 s au total · partagés pour toute la partie",
+      "fact_hint": "Cliquez pour voir ce qui se passe en 900 secondes"
     }
   },
   "tiers": {
