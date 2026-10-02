@@ -10,8 +10,6 @@
 
 [最小完整项目示例](https://github.com/BH3GEI/observer-project-example)
 
-入门包也可以直接上传：在入门包目录运行 `python3 pack_agent.py`，生成的 `my-agent.zip` 根目录已带 `observer.project.json`，在「参赛」页选私有 ZIP 上传即可；自带的确定性智能体不需要模型密钥，可用来跑通流程，但它本身不满足评奖的智能体技术要求。
-
 ## 3. 启动配置
 
 项目根目录放置 `observer.project.json`，例如：
@@ -74,9 +72,9 @@
 
 ## 6. 练习赛：本地运行与 decisions.csv
 
-正式比赛开始前（以及整个练习赛期间），可以在本地用入门包练习并上传结果文件。
+正式比赛开始前（以及整个练习赛期间），可以在本地练习并上传结果文件。
 
-从[资源页](/resources)下载并解压入门包。双击 `run_baseline`，或在目录中运行：
+在本地运行：
 
 ```sh
 python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py --wallclock 600 --out run_output

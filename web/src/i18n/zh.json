@@ -83,7 +83,7 @@
       },
       "start": {
         "title": "3 步上手",
-        "description": "下载入门包、本地跑通、提交——第一次参赛按顺序做完这三步就行。"
+        "description": "阅读文档、开发智能体、提交——第一次参赛按顺序做完这三步就行。"
       },
       "teammates": {
         "title": "找队友",
@@ -324,7 +324,7 @@
         {
           "n": "02",
           "title": "构建智能体",
-          "desc": "下载入门包，用与平台相同的 workflow 和评分器在本地运行最小智能体，然后在公开开发场景上迭代——确定性代码、通过你自己的 .env 调用大模型，或两者结合。"
+          "desc": "按文档开发智能体，在公开开发场景上迭代——确定性代码、通过你自己的 .env 调用大模型，或两者结合。"
         },
         {
           "n": "03",
@@ -544,7 +544,7 @@
         },
         {
           "title": "运行基线，作出你的更改",
-          "desc": "下载入门包并运行，15 秒内得到基线成绩；随后修改 my_strategy.py，提交至调试榜。",
+          "desc": "阅读文档，开发智能体并提交至调试榜。",
           "time": "约 20 分钟",
           "to": "/start"
         },
@@ -581,7 +581,7 @@
       "kicker": "官方示例",
       "title": "官方示例：基线智能体在公开练习场景中的回放",
       "facts": "场景 {scenario} · 种子 {seed} · {nights} 夜 · {rounds} 次决策 · 最终得分 {score}",
-      "note": "平台评分器和回放渲染器对入门包基线智能体的真实输出。默认 8× 播放，拖动天空可以转动视角。"
+      "note": "平台评分器和回放渲染器对基线智能体的真实输出。默认 8× 播放，拖动天空可以转动视角。"
     }
   },
   "vision": {
@@ -721,7 +721,7 @@
         "paragraphs": [
           "语言不限。练习赛上传本地运行生成的 decisions.csv；正式比赛提交完整项目（公开仓库或私有 ZIP），平台在云端逐轮评测。接口约定见文档页。",
           "服务器逐步提供当前观测信息，并对实际执行的决策评分；未来天气与异常答案不公开。",
-          "下载入门包，运行公开场景，研究回放并改进策略；准备好后在「参赛」页上传 decisions.csv 或提交完整项目。",
+          "运行公开场景，研究回放并改进策略；准备好后在「参赛」页上传 decisions.csv 或提交完整项目。",
           "每次评测的完整运行记录——决策文件、运行日志与逐时隙回放——平台都会保留，供主办方复核，也供你自己检查每一步为什么这么走。"
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -1481,7 +1481,7 @@
     "quota": "今日",
     "best": "最佳",
     "quick": {
-      "kit": "下载入门包",
+      "kit": "资源",
       "docs": "阅读文档",
       "board": "排行榜"
     },
@@ -1503,9 +1503,9 @@
           "action": "组队"
         },
         "prepare": {
-          "title": "下载入门包",
+          "title": "阅读文档",
           "hint": "解压后运行示例智能体，在本地跑出第一份 decisions.csv。",
-          "action": "下载入门包"
+          "action": "查看文档"
         },
         "submit": {
           "title": "第一次提交",
@@ -1525,9 +1525,9 @@
           "action": "组队"
         },
         "prepare": {
-          "title": "准备项目（入门包与文档）",
+          "title": "准备项目（文档）",
           "hint": "参考完整示例项目和接口文档，用任意语言实现你的智能体。",
-          "action": "查看入门包与文档"
+          "action": "查看文档"
         },
         "submit": {
           "title": "提交项目并开始评测",
@@ -1685,7 +1685,7 @@
     "scenario": "场景",
     "file": "文件",
     "file_results": "decisions.csv",
-    "file_agent": "只传一个文件就够：上传 my_strategy.py，平台会补齐入门包里其余标准文件。如果传文件夹或 .zip，根目录有 minimal_agent.py、agent.py 或 main.py 就会原样运行。",
+    "file_agent": "只传一个文件就够：上传 my_strategy.py，平台会补齐其余标准文件。如果传文件夹或 .zip，根目录有 minimal_agent.py、agent.py 或 main.py 就会原样运行。",
     "title_field": "备注名称（可选）",
     "notes": "备注（可选，仅队伍可见）",
     "button": "上传并排队评测",
@@ -1719,7 +1719,7 @@
     "no_scenario": "本阶段还没有配置场景。",
     "all_scenarios": "本阶段全部场景",
     "agent_hints": [
-      "只改动 my_strategy.py 时，直接上传这一个文件即可，平台会用入门包的标准文件补齐程序包。",
+      "只改动 my_strategy.py 时，直接上传这一个文件即可，平台会用标准文件补齐程序包。",
       "调用大模型时，把整个 agent 文件夹拖进来：.env（你的 API key，不会展示给任何人）与 requirements.txt（开钟前安装）一并带上。",
       "完全自写的智能体：根目录含 minimal_agent.py、agent.py 或 main.py 的 .zip，通过 stdin/stdout 使用 participant-agent-protocol-v1/v2。",
       "限制：单次 20 MB、2,000 个文件、解压后 50 MB、不含符号链接。缓存、scratch/ 与 run_output/ 会自动剔除。"
@@ -1932,14 +1932,14 @@
   },
   "resources": {
     "kicker": "资源",
-    "title": "入门包与数据",
-    "lede": "在本地运行和评分智能体所需的全部内容：v4 入门包、任务卡说明与卡片文件，以及 v3 热身资料。",
+    "title": "数据",
+    "lede": "任务卡说明与卡片文件，以及 v3 热身资料。",
     "kit": "v3 入门包（zip）",
     "kit_desc": "agent/（最小智能体，可通过 .env 启用大模型）、challenge/（workflow、评分器、preview、模拟器、回放）、scenarios/dev-reference、local_runner.py、score_decisions.py、make_scenario.py、pack_agent.py、sac_submit.py、SKILL.md。",
     "kit_v4": "v4 入门包（zip）",
     "kit_v4_desc": "agent/（可运行的基线智能体、规划器、天球几何、可选大模型钩子与 observer.project.json）、examples/idle_agent.py、cards/demo（公开示例卡）、local_runner.py、pack_agent.py、challenge/（模拟器与 v4 评分器）、README.md、SKILL.md。只需 Python 3.9+ 标准库。在 cards/demo 上运行基线智能体应得 1082.572141 分（漏 1 个必观测目标，完成 1 个限时观测请求），可用来核对本地环境。",
     "skill_v4": "SKILL.md（v4）",
-    "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：检查入门包、协议、计分、改进、打包提交。",
+    "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：协议、计分、改进、打包提交。",
     "cards": "任务卡",
     "cards_desc": "每张卡的站点、巡天时间、目标数量、时间限制、天气是否公开，以及智能体收发的消息。",
     "flow_cards": "第二步 · 拿一张练习卡",
@@ -2002,7 +2002,7 @@
     "items": [
       {
         "q": "我编程基础一般，最少要做什么？",
-        "a": "下载入门包，双击 run_baseline，然后只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。重新运行即得成绩，把生成的 run_output/decisions.csv 上传到「参赛」页即可在练习榜上见分。想走云端评测：运行 python3 pack_agent.py，生成根目录带 observer.project.json 的 my-agent.zip，在「参赛」页作为私有 ZIP 上传、确认版本并开始评测。macOS 自带的 Python 就够用，Windows 从 python.org 装 Python 3.12。"
+        "a": "只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。运行与提交方法见「文档」。"
       },
       {
         "q": "需要天文背景吗？",
@@ -2042,7 +2042,7 @@
       },
       {
         "q": "平台是否免费？",
-        "a": "是。报名、数据、入门包与评分均免费。"
+        "a": "是。报名、数据与评分均免费。"
       },
       {
         "q": "必须开源吗？",
@@ -2085,7 +2085,7 @@
     "hidden_note": "隐藏任务卡 E–H 不公开，只用于比赛截止后对各队最终版本的决赛评测，决定最终排名（见规则第 5 节）。",
     "download": "下载卡片文件（ZIP）",
     "files": "{n} 个文件",
-    "kit_hint": "解压到 v4 入门包的 cards/ 目录，运行 python3 local_runner.py --card cards/<卡片>。",
+    "kit_hint": "解压到项目的 cards/ 目录。",
     "files_pending": "卡片文件尚未上线，上线后可在这里和资源页下载。",
     "locked_title": "尚未公开",
     "locked": "黑客松任务卡 {card} 在比赛开始时（10 月 5 日 00:00，UTC+8）公开：卡片说明和公开输入（目标、天区轮廓、站点、望远镜与光纤、观测日程、计分参数）。天气、预报与事件不公开。"
@@ -2113,7 +2113,7 @@
     "kicker": "公告",
     "title": "公告",
     "empty": "暂无公告。",
-    "empty_hint": "培训与比赛安排将通过本页和注册邮箱发布；可先前往资源页下载入门包开始练习。",
+    "empty_hint": "培训与比赛安排将通过本页和注册邮箱发布。",
     "pinned": "置顶",
     "levels": {
       "info": "信息",
@@ -2507,11 +2507,11 @@
   "start3": {
     "practice": {
       "subtitle": "不需要天文背景。第一次参加，按顺序做完这三步就行。",
-      "s1_title": "第 1 步 · 下载入门包",
-      "s1_desc": "入门包里有示例程序、本地评测工具和公开题目。",
-      "s1_cta": "下载入门包",
+      "s1_title": "第 1 步 · 阅读文档",
+      "s1_desc": "文档说明了任务、智能体接口和计分方式。",
+      "s1_cta": "查看文档",
       "s2_title": "第 2 步 · 在本地跑通",
-      "s2_lead": "解压后在入门包文件夹里运行：",
+      "s2_lead": "开发你的智能体，在公开场景上运行。",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑，让分数变高。",
       "s2_link": "看任务说明",
@@ -2530,11 +2530,11 @@
     },
     "competition": {
       "subtitle": "不需要天文背景。按顺序做完这三步就能参赛。",
-      "s1_title": "第 1 步 · 下载入门包",
-      "s1_desc": "入门包里有示例程序和本地评测工具。",
-      "s1_cta": "下载入门包",
+      "s1_title": "第 1 步 · 阅读文档",
+      "s1_desc": "文档说明了任务、智能体接口和计分方式。",
+      "s1_cta": "查看文档",
       "s2_title": "第 2 步 · 在本地跑通",
-      "s2_lead": "解压后在入门包文件夹里运行：",
+      "s2_lead": "开发你的智能体，并在本地测试。",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑。",
       "s2_link": "看任务说明",

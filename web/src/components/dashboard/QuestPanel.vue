@@ -3,7 +3,6 @@
 // open step carries the single primary "next" action, later steps wait muted.
 import { useI18n } from '../../composables/useI18n'
 import { useQuestFlags } from '../../composables/useQuestFlags'
-import { appUrl } from '../../composables/api'
 import type { QuestMode, QuestProgress, QuestStepId } from '../../lib/quest'
 import SoloTeamButton from '../SoloTeamButton.vue'
 
@@ -13,7 +12,6 @@ const { remember } = useQuestFlags()
 type StepCopy = { title: string; hint: string; action: string }
 const copy = (id: QuestStepId) => t(`dash.quest.${props.mode}.${id}`) as StepCopy
 const next = (id: QuestStepId) => tf('dash.quest.next_action', { action: copy(id).action })
-const kitUrl = appUrl('/downloads/agent-observer-starter-kit.zip')
 </script>
 
 <template>
@@ -44,7 +42,7 @@ const kitUrl = appUrl('/downloads/agent-observer-starter-kit.zip')
                 <SoloTeamButton />
               </template>
               <template v-else-if="step.id === 'prepare' && mode === 'practice'">
-                <a class="btn primary sm" :href="kitUrl" download data-testid="quest-next" @click="remember('prepare', mode)">{{ next(step.id) }} ↓</a>
+                <router-link class="btn primary sm" to="/docs" data-testid="quest-next" @click="remember('prepare', mode)">{{ next(step.id) }} →</router-link>
                 <router-link class="btn sm" to="/start">{{ t('nav.start') }} →</router-link>
               </template>
               <template v-else-if="step.id === 'prepare'">

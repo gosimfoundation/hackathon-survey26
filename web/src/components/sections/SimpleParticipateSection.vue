@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
-import { appUrl } from '../../composables/api'
 import { useAuth } from '../../stores/auth'
 import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 
 const { t, pick } = useI18n()
 const { isLoggedIn } = useAuth()
 const { registrationOpen } = useRegistrationOpen()
-const kitUrl = appUrl('/downloads/agent-observer-starter-kit.zip')
 type Step = { n: string; title: string; desc: string }
 type TimelineItem = { label: string; desc: string }
 const steps = computed(() => t('home.participate.steps') as Step[])
@@ -50,7 +48,6 @@ const timeline = computed(() => t('home.participate.timeline') as TimelineItem[]
               <router-link v-if="isLoggedIn" to="/compete" class="btn dark w-full md:w-auto md:min-w-60">{{ t('dash.new_submission') }} →</router-link>
               <router-link v-else-if="registrationOpen" to="/register" class="btn dark w-full md:w-auto md:min-w-60">{{ t('home.participate.cta') }} →</router-link>
               <router-link to="/start" class="btn outline-dark w-full md:w-auto">{{ t('nav.start') }} →</router-link>
-              <a :href="kitUrl" class="btn outline-dark w-full md:w-auto" download>{{ t('dash.quick.kit') }} ↓</a>
             </div>
           </div>
         </div>

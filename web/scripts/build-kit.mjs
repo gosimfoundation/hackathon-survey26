@@ -35,10 +35,10 @@ if (existsSync(kitV4Dir)) {
   for (const rel of walk(kitV4Dir)) {
     v4Entries[`agent-observer-starter-kit-v4/${rel}`] = [readFileSync(resolve(kitV4Dir, rel)), { mtime: new Date('2026-10-01T00:00:00Z'), level: 9 }]
   }
+  // The kit itself is no longer published on the site; only its SKILL.md is.
   const v4Zip = zipSync(v4Entries, { level: 9 })
-  writeFileSync(resolve(root, 'public', 'downloads', 'agent-observer-starter-kit-v4.zip'), v4Zip)
   copyFileSync(resolve(kitV4Dir, 'SKILL.md'), resolve(root, 'public', 'skill-v4.md'))
-  console.log(`[build-kit] v4 kit: ${Object.keys(v4Entries).length} files into public/downloads/agent-observer-starter-kit-v4.zip (${v4Zip.length} bytes); public/skill-v4.md`)
+  console.log(`[build-kit] v4 kit checked (${Object.keys(v4Entries).length} files, ${v4Zip.length} bytes, not published); public/skill-v4.md`)
 } else {
   console.warn(`[build-kit] v4 starter kit not found at ${kitV4Dir}; skipping its download bundle.`)
 }
@@ -86,7 +86,7 @@ for (const rel of walk(kitDir)) {
   entries[`${zipFolder}/${rel}`] = [FILLED.has(rel) ? fill(raw) : raw, executable ? { mtime, level: 9, os: 3, attrs: 0o100755 << 16 } : { mtime, level: 9 }]
 }
 const zip = zipSync(entries, { level: 9, mtime })
-writeFileSync(resolve(outDir, 'agent-observer-starter-kit.zip'), zip)
+for (const stale of ['agent-observer-starter-kit.zip', 'agent-observer-starter-kit-v4.zip']) rmSync(resolve(outDir, stale), { force: true })
 
 // Public scorer, contracts and score weights as standalone downloads (linked from the resources page).
 copyFileSync(resolve(kitDir, 'challenge', 'scoring_core.py'), resolve(outDir, 'scoring_core.py'))
@@ -99,7 +99,7 @@ for (const stale of ['scorer.py', 'protocol.py']) {
 writeFileSync(resolve(root, 'public', 'skill.md'), fill(readFileSync(resolve(kitDir, 'SKILL.md'))))
 
 const count = Object.keys(entries).length
-console.log(`[build-kit] wrote ${count} files (${rawBytes} bytes raw) into ${relative(root, resolve(outDir, 'agent-observer-starter-kit.zip'))} (${zip.length} bytes)`)
+console.log(`[build-kit] v3 kit checked (${count} files, ${zip.length} bytes, not published)`)
 for (const name of ['scoring_core.py', 'contracts.py', 'score_config.json']) console.log(`[build-kit] public/downloads/${name}: ${statSync(resolve(outDir, name)).size} bytes`)
 console.log(`[build-kit] public/skill.md: ${statSync(resolve(root, 'public', 'skill.md')).size} bytes`)
 void sep

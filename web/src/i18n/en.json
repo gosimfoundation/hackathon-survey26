@@ -23,7 +23,7 @@
       },
       "docs": {
         "title": "Docs",
-        "description": "The participant-agent-protocol-v1/v2 messages, the challenge-score-v3 scorer, scenario files and the starter kit."
+        "description": "The participant-agent-protocol-v1/v2 messages, the challenge-score-v3 scorer and scenario files."
       },
       "faq": {
         "title": "FAQ",
@@ -31,7 +31,7 @@
       },
       "resources": {
         "title": "Resources",
-        "description": "Starter kit, per-scenario configuration and reference files, and the public development scenarios."
+        "description": "Task cards, per-scenario configuration and reference files, and the public development scenarios."
       },
       "leaderboard": {
         "title": "Leaderboard",
@@ -83,7 +83,7 @@
       },
       "start": {
         "title": "Get started in 3 steps",
-        "description": "Download the starter kit, run it locally and submit — three steps to your first score."
+        "description": "Read the docs, build your agent and submit — three steps to your first score."
       },
       "teammates": {
         "title": "Find teammates",
@@ -324,7 +324,7 @@
         {
           "n": "02",
           "title": "Build your agent",
-          "desc": "Download the starter kit, run the minimal agent locally with the same workflow and scorer the platform uses, then iterate on the public development scenarios — deterministic code, an LLM through your own .env, or both."
+          "desc": "Build your agent following the docs and iterate on the public development scenarios — deterministic code, an LLM through your own .env, or both."
         },
         {
           "n": "03",
@@ -544,7 +544,7 @@
         },
         {
           "title": "Run the baseline, make your changes",
-          "desc": "Download the kit and run it — a baseline score in 15 seconds. Then edit my_strategy.py and submit to the Debug board.",
+          "desc": "Read the docs, build an agent and submit it to the Debug board.",
           "time": "~20 min",
           "to": "/start"
         },
@@ -581,7 +581,7 @@
       "kicker": "Official example",
       "title": "Official example: baseline agent replay on a public practice scenario",
       "facts": "Scenario {scenario} · seed {seed} · {nights} nights · {rounds} decisions · final score {score}",
-      "note": "Real output of the platform's scorer and replay renderer for the starter kit's baseline agent. Plays at 8×; drag the sky to look around."
+      "note": "Real output of the platform's scorer and replay renderer for a baseline agent. Plays at 8×; drag the sky to look around."
     }
   },
   "vision": {
@@ -721,7 +721,7 @@
         "paragraphs": [
           "Any language is allowed. Practice submits a locally generated decisions.csv; the formal competition submits a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
           "The server reveals current observations step by step and scores the actual decisions. Future weather and anomaly answers remain private.",
-          "Download the starter kit, run the public scenarios, study replays and improve your strategy; when ready, upload decisions.csv or submit a complete project on Participate.",
+          "Run the public scenarios, study replays and improve your strategy; when ready, upload decisions.csv or submit a complete project on Participate.",
           "The platform keeps the full record of every evaluation — the decisions file, the run log, and a slot-by-slot replay — for organizer review, and for you to inspect why each step went the way it did."
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -1481,7 +1481,7 @@
     "quota": "today",
     "best": "Best",
     "quick": {
-      "kit": "Download starter kit",
+      "kit": "Resources",
       "docs": "Read the docs",
       "board": "Leaderboard"
     },
@@ -1503,9 +1503,9 @@
           "action": "Form a team"
         },
         "prepare": {
-          "title": "Download the starter kit",
+          "title": "Read the docs",
           "hint": "Unzip it and run the example agent to produce your first decisions.csv locally.",
-          "action": "Download the kit"
+          "action": "Open the docs"
         },
         "submit": {
           "title": "Make your first submission",
@@ -1525,9 +1525,9 @@
           "action": "Form a team"
         },
         "prepare": {
-          "title": "Prepare your project (kit and docs)",
+          "title": "Prepare your project (docs)",
           "hint": "Use the complete example project and interface docs to build your agent in any language.",
-          "action": "Open the kit and docs"
+          "action": "Open the docs"
         },
         "submit": {
           "title": "Submit your project and start an evaluation",
@@ -1685,7 +1685,7 @@
     "scenario": "Scenario",
     "file": "File",
     "file_results": "decisions.csv",
-    "file_agent": "One file is enough: my_strategy.py alone (the platform adds the rest of the starter agent). A folder or .zip is used as is when it has minimal_agent.py, agent.py or main.py at its root.",
+    "file_agent": "One file is enough: my_strategy.py alone (the platform adds the rest of the agent). A folder or .zip is used as is when it has minimal_agent.py, agent.py or main.py at its root.",
     "title_field": "Label (optional)",
     "notes": "Notes (optional, private to your team)",
     "button": "Upload and queue",
@@ -1719,7 +1719,7 @@
     "no_scenario": "No scenarios are configured for this phase yet.",
     "all_scenarios": "All scenarios of the phase",
     "agent_hints": [
-      "If you changed only my_strategy.py, upload that single file; the platform completes the package with the kit's standard files.",
+      "If you changed only my_strategy.py, upload that single file; the platform completes the package with the standard files.",
       "If you call a large model, drag the whole agent folder in: include .env (your API key, never shown to anyone) and requirements.txt (installed before the clock starts).",
       "For a fully self-written agent: a .zip with minimal_agent.py, agent.py or main.py at the root, speaking participant-agent-protocol-v1/v2 over stdin/stdout.",
       "Limits: 20 MB per upload, 2,000 files, 50 MB uncompressed, no symlinks. Caches, scratch/ and run_output/ are left out automatically."
@@ -1932,14 +1932,14 @@
   },
   "resources": {
     "kicker": "Resources",
-    "title": "Starter kit and data",
-    "lede": "Everything needed to run and score an agent locally: the v4 starter kit, the task card pages and card files, and the v3 warm-up material.",
+    "title": "Data",
+    "lede": "Task card pages and card files, and the v3 warm-up material.",
     "kit": "v3 starter kit (zip)",
     "kit_desc": "agent/ (minimal agent, optional LLM via .env), challenge/ (workflow, scorer, preview, simulators, replay), scenarios/dev-reference, local_runner.py, score_decisions.py, make_scenario.py, pack_agent.py, sac_submit.py, SKILL.md.",
     "kit_v4": "v4 starter kit (zip)",
     "kit_v4_desc": "agent/ (a working baseline agent, its planner, sky maths, an optional LLM hook and observer.project.json), examples/idle_agent.py, cards/demo (a public demo card), local_runner.py, pack_agent.py, challenge/ (simulator and v4 scorer), README.md, SKILL.md. Python 3.9+ standard library only. On cards/demo the baseline agent scores 1082.572141 (1 required target missing, 1 time-limited observation request completed), which checks your local setup.",
     "skill_v4": "SKILL.md (v4)",
-    "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: check the kit, the protocol, the score, improve, pack and submit.",
+    "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: the protocol, the score, improve, pack and submit.",
     "cards": "Task cards",
     "cards_desc": "Each card’s site, survey dates, number of targets, time limit, whether its weather is public, and what the agent receives and sends.",
     "flow_cards": "Step 2 · Take a practice card",
@@ -2002,7 +2002,7 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Download the kit, double-click run_baseline, and edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. Rerun to get a score, then upload the run_output/decisions.csv it writes on Participate to appear on the practice board. To try cloud evaluation: run python3 pack_agent.py to build my-agent.zip (observer.project.json included at its root), upload it as a private ZIP on Participate, confirm the version and start an evaluation. macOS's built-in Python is enough; Windows needs Python 3.12 from python.org."
+        "a": "Edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. See the Docs for how to run and submit."
       },
       {
         "q": "Do I need an astronomy background?",
@@ -2042,7 +2042,7 @@
       },
       {
         "q": "Is the platform free?",
-        "a": "Yes. Registration, data, the starter kit and scoring are free."
+        "a": "Yes. Registration, data and scoring are free."
       },
       {
         "q": "Must I open-source my agent?",
@@ -2085,7 +2085,7 @@
     "hidden_note": "The hidden cards E–H are never published. They are only used for the final evaluation of each team’s final version after the deadline, which decides the final ranking (rules, section 5).",
     "download": "Download card files (ZIP)",
     "files": "{n} files",
-    "kit_hint": "Unzip into the v4 starter kit’s cards/ folder and run python3 local_runner.py --card cards/<card>.",
+    "kit_hint": "Unzip into your project’s cards/ folder.",
     "files_pending": "The card files are not online yet; once they are, download them here or on Resources.",
     "locked_title": "Not published yet",
     "locked": "Hackathon card {card} is published when the competition starts (Oct 5 00:00, UTC+8): the card page and the public inputs (targets, sky footprint, site, telescope and fibres, observing calendar, score settings). Weather, forecasts and events stay private."
@@ -2113,7 +2113,7 @@
     "kicker": "Announcements",
     "title": "Announcements",
     "empty": "No announcements yet.",
-    "empty_hint": "Training and competition logistics will be published here and emailed to registered teams; meanwhile you can start practicing with the starter kit on the Resources page.",
+    "empty_hint": "Training and competition logistics will be published here and emailed to registered teams.",
     "pinned": "Pinned",
     "levels": {
       "info": "info",
@@ -2507,11 +2507,11 @@
   "start3": {
     "practice": {
       "subtitle": "No astronomy background needed. If this is your first time, just do these three steps in order.",
-      "s1_title": "Step 1 · Download the starter kit",
-      "s1_desc": "It contains an example program, a local scoring tool and public scenarios.",
-      "s1_cta": "Download the starter kit",
+      "s1_title": "Step 1 · Read the docs",
+      "s1_desc": "The docs describe the task, the agent interface and scoring.",
+      "s1_cta": "Open the docs",
       "s2_title": "Step 2 · Run it locally",
-      "s2_lead": "Unzip it and run this in the kit folder:",
+      "s2_lead": "Build your agent and run it on the public scenarios.",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "When you see a score, it works. Then change the decision logic in the example program to raise the score.",
       "s2_link": "Read the task description",
@@ -2530,11 +2530,11 @@
     },
     "competition": {
       "subtitle": "No astronomy background needed. Do these three steps in order to take part.",
-      "s1_title": "Step 1 · Download the starter kit",
-      "s1_desc": "It contains an example program and a local scoring tool.",
-      "s1_cta": "Download the starter kit",
+      "s1_title": "Step 1 · Read the docs",
+      "s1_desc": "The docs describe the task, the agent interface and scoring.",
+      "s1_cta": "Open the docs",
       "s2_title": "Step 2 · Run it locally",
-      "s2_lead": "Unzip it and run this in the kit folder:",
+      "s2_lead": "Build your agent and test it locally.",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "When you see a score, it works. Then change the decision logic in the example program.",
       "s2_link": "Read the task description",

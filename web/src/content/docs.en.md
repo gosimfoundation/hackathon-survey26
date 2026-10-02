@@ -10,8 +10,6 @@ The source revision, launch configuration and any adapter are fixed and tested. 
 
 [Minimal complete project](https://github.com/BH3GEI/observer-project-example)
 
-The starter kit uploads as is: run `python3 pack_agent.py` in the kit folder; the resulting `my-agent.zip` already has `observer.project.json` at its root. Upload it as a private ZIP on Participate. The bundled deterministic agent needs no model key; it is fine for trying the flow, but on its own it does not meet the agent requirement for awards.
-
 ## 3. Launch configuration
 
 Place `observer.project.json` at the project root. For example:
@@ -74,9 +72,9 @@ Each click on "Evaluate this version" uses one of the day's evaluations. In the 
 
 ## 6. Practice: local runs and decisions.csv
 
-Before the formal competition (and throughout Practice), you can practice locally with the starter kit and upload result files.
+Before the formal competition (and throughout Practice), you can practice locally and upload result files.
 
-Download and extract the kit from [Resources](/resources). Double-click `run_baseline`, or run:
+Run locally:
 
 ```sh
 python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py --wallclock 600 --out run_output
