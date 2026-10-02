@@ -1,8 +1,6 @@
-import { ref, provide, inject, watch, type InjectionKey, type Ref } from 'vue'
+import { ref, reactive, provide, inject, watch, type InjectionKey, type Ref } from 'vue'
 import en from '../i18n/en'
 import zh from '../i18n/zh'
-import ja from '../i18n/ja.json'
-import fr from '../i18n/fr.json'
 
 type Messages = Record<string, any>
 export type Locale = 'en' | 'zh' | 'ja' | 'fr'
@@ -30,8 +28,18 @@ function withEnglishDefaults(translated: Messages): Messages {
   }
   return merge(structuredClone(en),translated)
 }
-const japanese=withEnglishDefaults(ja),french=withEnglishDefaults(fr)
-const messages: Record<Locale, Messages> = { en, zh, ja: japanese, fr: french }
+// ja/fr are a minority of visits (most users are zh, with en as the universal fallback), so their
+// ~100 KB of JSON loads on demand instead of riding in the eager bundle every visitor pays for.
+// Until loaded they point straight at `en`, which is exactly what withEnglishDefaults(ja/fr) reduces
+// to before any locale-specific override is merged in — so the fallback reads identically either way.
+const messages = reactive<Record<Locale, Messages>>({ en, zh, ja: en, fr: en })
+const extraLoaded = new Set<Locale>()
+function ensureLocaleLoaded(locale: Locale) {
+  if ((locale !== 'ja' && locale !== 'fr') || extraLoaded.has(locale)) return
+  extraLoaded.add(locale)
+  const loader = locale === 'ja' ? import('../i18n/ja.json') : import('../i18n/fr.json')
+  void loader.then(({ default: raw }) => { messages[locale] = withEnglishDefaults(raw) })
+}
 const STORAGE_KEY = 'agent-observer-locale'
 
 export const LOCALES: Locale[] = ['zh', 'en', 'ja', 'fr']
@@ -110,6 +118,7 @@ export function provideI18n(): I18n {
       document.documentElement.lang = HTML_LANG[value]
       applyDocumentMeta(currentPage)
       window.localStorage.setItem(STORAGE_KEY, value)
+      ensureLocaleLoaded(value)
     }, { immediate: true })
   }
 
