@@ -168,7 +168,17 @@ class JobClient:
     def store_sealed_result(self) -> str:
         # The backend opens the sealed result it just received and commits it to
         # the team's private repository; this runner never holds a repository token.
-        path = self._call("store_result").get("result_path")
+        # A lost result cannot be recomputed: ride out a longer GitHub hiccup
+        # than the generic quick retries do (storing is idempotent).
+        for delay in (5, 15, 30, None):
+            try:
+                path = self._call("store_result").get("result_path")
+                break
+            except JobError as exc:
+                transient = str(exc) == "job_network_error" or str(exc).startswith("job_http_5")
+                if not transient or delay is None:
+                    raise
+                time.sleep(delay)
         if not isinstance(path, str) or not path.startswith("github:"):
             raise JobError("invalid_job_response")
         return path

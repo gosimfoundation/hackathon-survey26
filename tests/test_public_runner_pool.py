@@ -140,3 +140,27 @@ def test_public_export_has_one_engine_workflow_with_only_an_opaque_input(tmp_pat
     result = subprocess.run([sys.executable, "-m", "project_platform.job_runner", "--help"],
                             cwd=destination, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_storing_a_sealed_result_rides_out_transient_backend_errors(monkeypatch):
+    import project_platform.job_client as job_client
+    monkeypatch.setattr(job_client.time, "sleep", lambda _s: None)
+    answers = iter([JobError("job_http_503")] * 4 + [{"data": {"result_path": "github:org/participant@" + "c" * 40}}])
+
+    def store(body):
+        value = next(answers)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    class Flaky(FakeHttp):
+        def json(self, url, *, body=None, bearer=None, max_body=0, timeout=0):
+            return store(body)
+
+    client = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", http=Flaky(), seal_key=SealKey())
+    assert client.store_sealed_result() == "github:org/participant@" + "c" * 40
+    hopeless = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", seal_key=SealKey(),
+                         http=type("H", (FakeHttp,), {"json": lambda self, url, **kw: (_ for _ in ()).throw(
+                             JobError("job_http_403"))})())
+    with pytest.raises(JobError, match="job_http_403"):
+        hopeless.store_sealed_result()

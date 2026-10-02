@@ -27,6 +27,7 @@ function backend() {
   const repos = new Map<string, any>();
   const permissions = new Map<string, boolean>();
   const refs = new Map<string, string>();
+  let treeFailures = 0;
   let suspended = false;
   let installAccount = organization;
   let branchSha = sha;
@@ -99,7 +100,13 @@ function backend() {
     }
     // Git Data API for backend-committed public-pool results.
     if (path.endsWith("/git/blobs")) return Response.json({ sha: "blob-" + body.content }, { status: 201 });
-    if (path.endsWith("/git/trees")) return Response.json({ sha: "tree-" + JSON.stringify(body.tree) }, { status: 201 });
+    if (path.endsWith("/git/trees")) {
+      if (treeFailures > 0) {
+        treeFailures--;
+        return Response.json({ message: "Server Error" }, { status: 500 });
+      }
+      return Response.json({ sha: "tree-" + JSON.stringify(body.tree) }, { status: 201 });
+    }
     if (path.endsWith("/git/commits")) return Response.json({ sha: "c".repeat(40) }, { status: 201 });
     if (path.endsWith("/git/refs") && method === "POST") {
       refs.set(body.ref, body.sha);
@@ -121,6 +128,7 @@ function backend() {
     wrongBranch: () => branchSha = "b".repeat(40),
     tag: (value: string) => tagSha=value,
     refs,
+    failTrees: (n: number) => treeFailures = n,
   };
 }
 
@@ -386,4 +394,18 @@ Deno.test("public-pool OIDC needs the public repository, public visibility and t
   for (const config of [{ ...pub, visibility: "private" as const }, { ...pub, repository: "other" }]) {
     await assertRejects(async () => verifyWorkflowIdentity(await signed(ok), config, keys), GitHubError, "invalid_workflow_configuration");
   }
+});
+
+Deno.test("a transient GitHub error while committing a public-pool result is retried", async () => {
+  const f = backend();
+  const run = "00000000-0000-4000-8000-0000000000cc";
+  const files = [{ path: "decisions.csv", data: new TextEncoder().encode("a"), executable: false }];
+  f.failTrees(2);
+  assertEquals(
+    await f.app.commitResult(user, run, files),
+    "github:" + organization + "/" + assigned.privateRepository + "@" + "c".repeat(40),
+  );
+  assertEquals(f.calls.filter((c) => c.path.endsWith("/git/trees")).length, 3);
+  f.failTrees(10);
+  await assertRejects(() => f.app.commitResult(user, "00000000-0000-4000-8000-0000000000cd", files), GitHubError);
 });
