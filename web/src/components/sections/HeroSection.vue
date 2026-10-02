@@ -92,12 +92,6 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
           </div>
 
           <div class="phase-strip phase-strip-live mt-9 reveal reveal-delay-5" data-testid="phase-strip">
-            <div class="phase-strip-now">
-              <span class="phase-strip-label">{{ t('phase_clock.now') }}</span>
-              <span v-if="current" class="pill open">{{ pick(current.name_en, current.name_zh) }} · {{ t('leaderboard.status.open') }}</span>
-              <span v-else-if="loaded" class="pill">{{ t('phase_clock.no_open') }}</span>
-              <span v-else class="pill" aria-busy="true">…</span>
-            </div>
             <div class="phase-strip-next" data-testid="phase-next">
               <span class="phase-strip-label">{{ t('phase_clock.next') }}</span>
               <p v-if="nextStart && next?.starts_at" class="phase-strip-stage">
@@ -212,20 +206,11 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 }
 
 .phase-strip {
-  display: grid; gap: 0; border-top: 1px solid rgba(255,255,255,.25); border-bottom: 1px solid rgba(255,255,255,.25);
+  display: grid; grid-template-columns: 1fr; gap: 0; border-top: 1px solid rgba(255,255,255,.25); border-bottom: 1px solid rgba(255,255,255,.25);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
 }
 .phase-strip > div { display: flex; flex-direction: column; justify-content: center; padding: .9rem 0; min-width: 0; }
-.phase-strip-now {
-  position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
-}
-.phase-strip-now::after {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 1px; content: '';
-  background: linear-gradient(90deg, rgba(255,255,255,.2), rgba(255,255,255,.03));
-}
 .phase-strip-label { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.5); }
-/* Both halves read top-down from the left: label, then the stage. */
-.phase-strip > .phase-strip-now { align-items: flex-start; gap: .45rem; }
 .phase-strip-stage {
   margin: .35rem 0 0; font-family: 'Space Grotesk', 'Noto Sans SC', system-ui, sans-serif;
   font-size: .98rem; line-height: 1.5; color: rgba(226,234,255,.86);
@@ -242,16 +227,6 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
   text-shadow: 0 0 26px rgba(120,166,255,.42);
 }
 .phase-countdown small { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.45); }
-@media (min-width: 768px) {
-  .phase-strip { grid-template-columns: auto 1fr; }
-  /* `.phase-strip > div` resets the padding, so these need the same reach to apply. */
-  .phase-strip > .phase-strip-now { padding-right: 1.5rem; }
-  .phase-strip-now::after {
-    left: auto; right: 0; top: .3rem; bottom: .3rem; width: 1px; height: auto;
-    background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.24) 40%, rgba(255,255,255,.1) 80%, rgba(255,255,255,0));
-  }
-  .phase-strip > .phase-strip-next { padding-left: 1.5rem; }
-}
 
 .hero-metrics { position: relative; }
 .hero-metrics > div { position: relative; padding-left: clamp(.65rem, 2vw, 1.5rem); padding-right: clamp(.65rem, 2vw, 1.5rem); }

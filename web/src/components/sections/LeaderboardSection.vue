@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { boardScenarios, isProjectBoard, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
+import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
 import { useAuth } from '../../stores/auth'
 import { fmtUtc, num } from '../../lib/format'
 import UserAvatar from '../UserAvatar.vue'
@@ -14,7 +15,7 @@ import TeamDetailDialog from '../leaderboard/TeamDetailDialog.vue'
 import BoardCardTabs from '../leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../leaderboard/CardBoardTable.vue'
 
-const { t, tf, pick } = useI18n()
+const { t, tf } = useI18n()
 const { team } = useAuth()
 const phase = ref<Phase | null>(null)
 const entries = ref<LeaderboardEntry[]>([])
@@ -49,7 +50,8 @@ async function load() {
   refreshing.value = true
   try {
     const phases = await loadPhases()
-    phase.value = homeBoardPhase(phases)
+    const allowedPhases = phases.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug))
+    phase.value = homeBoardPhase(allowedPhases)
     hidden.value = phase.value?.leaderboard_mode === 'hidden'
     if (!scenarioTabs.value.some(s => s.slug === scenarioSlug.value)) scenarioSlug.value = scenarioTabs.value[0]?.slug ?? null
     if (phase.value && !hidden.value && isProjectBoard(phase.value)) {
@@ -100,7 +102,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
         <div class="reveal reveal-delay-1 border-y poster-rule min-w-0 leaderboard-panel">
           <div class="flex flex-wrap items-center justify-between gap-4 border-b poster-rule py-5">
             <span class="font-mono text-xs uppercase tracking-[.1em] text-text-muted">
-              <template v-if="phase">{{ pick(phase.name_en, phase.name_zh) }} · {{ t(`leaderboard.status.${phase.status}`) }}</template>
+              <template v-if="phase">{{ t(LEADERBOARD_TAB_LABEL_KEYS[phase.slug]) }}</template>
               <template v-if="updatedAt"> · {{ t('leaderboard.updated') }} {{ fmtUtc(updatedAt.toISOString()) }} UTC</template>
               <template v-else-if="!phase">{{ t('home.leaderboard.feed') }}</template>
             </span>
