@@ -1,6 +1,6 @@
 import { boundedJson, decryptCredential, ProxyError } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
-import { RUNNER_ORGANIZATION_PATTERN, verifyWorkflowIdentity } from "./observer-github.ts";
+import { GitHubError, RUNNER_ORGANIZATION_PATTERN, verifyWorkflowIdentity } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
 import { AGENT_LOG_BYTES } from "./observer-agent-log.ts";
 import {
@@ -557,5 +557,13 @@ async function storeSealedResult(
     if (error instanceof SealError || error instanceof ZipError) throw new ProxyError(400, "invalid_job_result");
     throw error;
   }
-  return { result_path: await pool.commitResult(target.user_id, target.artifact_id, files) };
+  try {
+    return { result_path: await pool.commitResult(target.user_id, target.artifact_id, files) };
+  } catch (error) {
+    // Codes and statuses only: never paths, tokens or result contents.
+    const code = error instanceof GitHubError || error instanceof ProxyError ? error.code : "unexpected";
+    console.error("observer-job: public result commit failed", code, (error as { status?: number }).status ?? 0);
+    // A GitHub status (e.g. 500) is not this API's status: the runner retries 503.
+    throw new ProxyError(503, "result_commit_unavailable");
+  }
 }

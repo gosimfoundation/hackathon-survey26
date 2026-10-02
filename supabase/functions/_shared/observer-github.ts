@@ -377,6 +377,25 @@ export class GitHubApp {
    * one root commit with fixed author and date on refs/heads/results/<run>,
    * never a force update. Uses a token limited to that one repository.
    */
+  /**
+   * GitHub API call for commitResult only (the public pool): transient GitHub
+   * failures (5xx, network) are retried here, since a lost result cannot be
+   * recomputed. Every step is idempotent: blobs, trees and commits are
+   * content-addressed and the ref is checked before it is created.
+   */
+  private async resultRequest(path: string, token: string, method = "GET", body?: unknown) {
+    for (let attempt = 0;; attempt++) {
+      try {
+        return await this.request(path, token, method, body);
+      } catch (error) {
+        const transient = error instanceof GitHubError &&
+          (error.code === "github_unavailable" || error.status >= 500);
+        if (!transient || attempt >= 3) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+      }
+    }
+  }
+
   async commitResult(userId: string, runId: string, files: { path: string; data: Uint8Array; executable: boolean }[]) {
     if (!UUID.test(runId) || !files.length) throw new GitHubError("invalid_result_snapshot");
     const run = runId.toLowerCase();
@@ -385,15 +404,15 @@ export class GitHubApp {
     const token = await this.snapshotWriteToken(userId, false);
     const tree = [];
     for (const file of files) {
-      const blob = await this.request("/repos/" + full + "/git/blobs", token, "POST", {
+      const blob = await this.resultRequest("/repos/" + full + "/git/blobs", token, "POST", {
         content: toBase64(file.data),
         encoding: "base64",
       });
       tree.push({ path: file.path, mode: file.executable ? "100755" : "100644", type: "blob", sha: blob.sha });
     }
-    const created = await this.request("/repos/" + full + "/git/trees", token, "POST", { tree });
+    const created = await this.resultRequest("/repos/" + full + "/git/trees", token, "POST", { tree });
     const identity = { name: "Agentic Observer", email: "observer@create.gosim.org", date: "2026-01-01T00:00:00Z" };
-    const commit = await this.request("/repos/" + full + "/git/commits", token, "POST", {
+    const commit = await this.resultRequest("/repos/" + full + "/git/commits", token, "POST", {
       message: "Evaluation result " + run + "\n\nSHA256 " + await projectDigest(files),
       tree: created.sha,
       parents: [],
@@ -404,11 +423,11 @@ export class GitHubApp {
     const ref = "results/" + run;
     let existing;
     try {
-      existing = await this.request("/repos/" + full + "/git/ref/heads/" + ref, token);
+      existing = await this.resultRequest("/repos/" + full + "/git/ref/heads/" + ref, token);
     } catch (error) {
       if (!(error instanceof GitHubError) || error.status !== 404) throw error;
       try {
-        await this.request("/repos/" + full + "/git/refs", token, "POST", {
+        await this.resultRequest("/repos/" + full + "/git/refs", token, "POST", {
           ref: "refs/heads/" + ref,
           sha: commit.sha,
         });
@@ -416,7 +435,7 @@ export class GitHubApp {
         // A concurrent identical store may have created it first.
         if (!(creation instanceof GitHubError) || creation.status !== 422) throw creation;
       }
-      existing = await this.request("/repos/" + full + "/git/ref/heads/" + ref, token);
+      existing = await this.resultRequest("/repos/" + full + "/git/ref/heads/" + ref, token);
     }
     if (existing?.object?.sha !== commit.sha) throw new GitHubError("result_conflict");
     return "github:" + full + "@" + commit.sha;

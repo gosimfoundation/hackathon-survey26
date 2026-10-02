@@ -4,6 +4,7 @@ import { jobRequest } from "./observer-job.ts";
 import type { JobDependencies, PublicPoolDependencies } from "./observer-job.ts";
 import { decodeKey, encodeKey, openSealed, publicKeyFor, seal, SealError } from "./observer-seal.ts";
 import { readZipFiles, singleFileZip } from "./observer-zip.ts";
+import { GitHubError } from "./observer-github.ts";
 
 const job = "00000000-0000-4000-8000-000000000001";
 const run = "00000000-0000-4000-8000-000000000002";
@@ -188,6 +189,16 @@ Deno.test("a sealed result is opened by the backend and committed for the claime
     const { dependencies } = deps({ readResult: () => Promise.resolve(blob), commitResult: () => Promise.reject() });
     await assertRejects(() => jobRequest(request("store_result"), dependencies), ProxyError, "invalid_job_result");
   }
+});
+
+Deno.test("a failed result commit is reported as retryable, never as GitHub's status", async () => {
+  const archive = await singleFileZip("decisions.csv", new TextEncoder().encode("x"));
+  const { dependencies } = deps({
+    readResult: async () => await seal(publicKeyFor(resultKey), archive, "result:" + job),
+    commitResult: () => Promise.reject(new GitHubError("github_request_failed", 500)),
+  });
+  const error = await assertRejects(() => jobRequest(request("store_result"), dependencies), ProxyError);
+  assertEquals([error.status, error.code], [503, "result_commit_unavailable"]);
 });
 
 Deno.test("a fresh result upload URL is issued only to the run holding the claim", async () => {
