@@ -19,11 +19,11 @@
       },
       "cards": {
         "title": "Task cards",
-        "description": "v4 practice cards and hackathon cards: each card’s task, time limit and file downloads."
+        "description": "Practice cards and hackathon cards: each card’s task, time limit and file downloads."
       },
       "docs": {
         "title": "Docs",
-        "description": "The participant-agent-protocol-v1/v2 messages, the challenge-score-v3 scorer and scenario files."
+        "description": "The participant-agent-protocol messages, the challenge-score scorer and scenario files."
       },
       "faq": {
         "title": "FAQ",
@@ -1949,13 +1949,9 @@
   },
   "resources": {
     "kicker": "Resources",
-    "title": "Data",
-    "lede": "Task card pages and card files.",
-    "skill_v4": "SKILL.md (v4)",
-    "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: the protocol, the score, improve, pack and submit.",
-    "cards": "Task cards",
-    "cards_desc": "Each card’s site, survey dates, number of targets, time limit, whether its weather is public, and what the agent receives and sends.",
-    "flow_cards": "Step 2 · Take a practice card",
+    "title": "Resources",
+    "lede": "Task cards, example projects and reference material.",
+    "flow_cards": "Task cards",
     "flow_cards_hint": "Cards A–D are for debugging during the main competition.",
     "card_view": "Read the card",
     "card_zip": "Download ZIP",
@@ -1975,7 +1971,7 @@
     "cli": "Command line",
     "docs": "Documentation",
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
-    "flow2": "Step 3 · Write your own strategy",
+    "flow2": "Reference",
     "flow2_hint": "These are the references for building and submitting your own agent."
   },
   "faq": {
@@ -2047,7 +2043,7 @@
   "rules_page": {
     "kicker": "Rules",
     "title": "Competition rules and scoring",
-    "version": "Rules version 2.0 · 2026-10-01 · v4 task cards",
+    "version": "Rules version 2.0 · 2026-10-01 · task cards",
     "phases_title": "Phase configuration (live)",
     "daily": "submissions/day",
     "board": "board",
@@ -2060,7 +2056,7 @@
   },
   "cards_page": {
     "kicker": "Task cards",
-    "title": "v4 task cards",
+    "title": "Task cards",
     "lede": "Each task card is one complete simulated survey season. Practice cards α–δ are public now; hackathon cards A–D are published when the competition starts; hidden cards E–H are never published.",
     "practice": "Practice cards",
     "formal": "Hackathon cards",

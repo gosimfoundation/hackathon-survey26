@@ -399,7 +399,7 @@ $$
 
 后续请求若没有新预报，`new_messages` 中便没有 `forecast` 对象，`latest_forecast` 则继续保存最近一次发布的预报。
 
-当前 v4 的预报没有另设命中率、漏报率或误报率：进入预报的事件一定会在所列观测夜与观测窗口相交。预报的不确定性来自信息粒度——它只公开事件类别、粗略方向和受影响夜晚，不公开精确起止时刻、空间边界或强度。若未来任务卡引入概率预报，必须通过新的公开字段或协议版本另行说明。
+当前的预报没有另设命中率、漏报率或误报率：进入预报的事件一定会在所列观测夜与观测窗口相交。预报的不确定性来自信息粒度——它只公开事件类别、粗略方向和受影响夜晚，不公开精确起止时刻、空间边界或强度。若未来任务卡引入概率预报，必须通过新的公开字段或协议版本另行说明。
 
 预报对象及其 `notices` 中各字段的含义如下：
 
@@ -853,7 +853,7 @@ $$
     - `reporting.false_report_free_allowance`：每次正确举报后重新计算的免罚误报次数。
     - `reporting.max_consecutive_reports`：连续 `report` 动作上限。
     - `observation_requests.completion_factor_threshold`：限时观测请求中单个目标的公开完成因子门槛。
-    - `observation_requests.miss_penalty`：未完成请求的罚分；当前 v4 固定为 0。
+    - `observation_requests.miss_penalty`：未完成请求的罚分；当前固定为 0。
 - `limits`
     - `global_wallclock_seconds`：整张任务卡的实际运行时间预算。
     - `max_consecutive_reports`：协议层重复给出的连续举报上限，与评分配置中的同名含义一致。

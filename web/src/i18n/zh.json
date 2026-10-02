@@ -19,11 +19,11 @@
       },
       "cards": {
         "title": "任务卡",
-        "description": "v4 练习卡与黑客松任务卡：每张卡的任务说明、时间限制与卡片文件下载。"
+        "description": "练习卡与黑客松任务卡：每张卡的任务说明、时间限制与卡片文件下载。"
       },
       "docs": {
         "title": "文档",
-        "description": "participant-agent-protocol-v1/v2 消息、challenge-score-v3 评分器、场景文件与入门套件。"
+        "description": "participant-agent-protocol 消息、challenge-score 评分器与场景文件。"
       },
       "faq": {
         "title": "常见问题",
@@ -1949,13 +1949,9 @@
   },
   "resources": {
     "kicker": "资源",
-    "title": "数据",
-    "lede": "任务卡说明与卡片文件。",
-    "skill_v4": "SKILL.md（v4）",
-    "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：协议、计分、改进、打包提交。",
-    "cards": "任务卡",
-    "cards_desc": "每张卡的站点、巡天时间、目标数量、时间限制、天气是否公开，以及智能体收发的消息。",
-    "flow_cards": "第二步 · 拿一张练习卡",
+    "title": "资源",
+    "lede": "任务卡、示例项目和参考资料。",
+    "flow_cards": "任务卡",
     "flow_cards_hint": "A-D供大家在正式赛中调试使用",
     "card_view": "看说明",
     "card_zip": "下载 ZIP",
@@ -1975,7 +1971,7 @@
     "cli": "命令行",
     "docs": "参赛文档",
     "docs_desc": "报名组队、完整项目提交、启动配置、模型 API、评测次数与最终版本。",
-    "flow2": "第三步 · 写你自己的策略",
+    "flow2": "参考资料",
     "flow2_hint": "这些是你编写和提交智能体时要用的参考资料。"
   },
   "faq": {
@@ -2047,7 +2043,7 @@
   "rules_page": {
     "kicker": "规则",
     "title": "比赛规则与评分",
-    "version": "规则版本 2.0 · 2026-10-01 · v4 任务卡",
+    "version": "规则版本 2.0 · 2026-10-01 · 任务卡",
     "phases_title": "阶段配置（实时）",
     "daily": "次/天",
     "board": "榜单",
@@ -2060,7 +2056,7 @@
   },
   "cards_page": {
     "kicker": "任务卡",
-    "title": "v4 任务卡",
+    "title": "任务卡",
     "lede": "每张任务卡是一季完整的模拟巡天。练习卡 α–δ 现在公开；黑客松任务卡 A–D 在比赛开始时公开；隐藏任务卡 E–H 不公开。",
     "practice": "练习卡",
     "formal": "黑客松任务卡",

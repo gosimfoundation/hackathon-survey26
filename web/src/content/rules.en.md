@@ -59,7 +59,7 @@ For model calls, enter a supported HTTPS endpoint, model and key in Participate 
 
 ## 5. Scoring
 
-Each card is scored by the published v4 scorer with the parameters in that card's `config/v4_score_config.json`; the `initialize` message carries them in full. The values below are those of the current cards; the full protocol and formulas are in the v4 starter kit's `README.md` (download on [Resources](/resources)) and on the [task card](/cards) pages.
+Each card is scored by the published scorer with the parameters in that card's `config/v4_score_config.json`; the `initialize` message carries them in full. The values below are those of the current cards; the full protocol and formulas are listed below and on the [task card](/cards) pages.
 
 1. **Survey and actions.** Each card is one survey season; observing is possible while the sun is below −18°. At every decision the agent sends one action: `observe` (point the telescope, put targets on fibres, expose for 60–3600 s and declare a program: DARK, BRIGHT or BACKUP), `wait`, `report` (the instrument is faulty now) or `finish`. The number of fibres and their layout follow each card's configuration (`config/v4_fiber_config.json`, also sent in `initialize`); the practice cards have 16, 25, 9 and 100 fibres.
 2. **Target score.** A target scores only if it falls in its assigned fibre's cell and stays at or above 30° altitude for the whole exposure. Factor = min(brightness × exposure seconds × sky quality ÷ (f0 × T0), 1), where f0 × T0 comes from the card's score settings (`flux_zero_point` × `exposure_zero_point_seconds`; 0.5 × 900 = 450 on most cards); target score = science weight × factor × program bonus.
