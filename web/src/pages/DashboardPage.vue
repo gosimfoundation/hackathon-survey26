@@ -15,7 +15,6 @@ import { useSubmissionWatch } from '../composables/useSubmissionWatch'
 import DashShell from '../components/layout/DashShell.vue'
 import StatusPill from '../components/layout/StatusPill.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
-import CreditsPanel from '../components/dashboard/CreditsPanel.vue'
 import KimiPlanPanel from '../components/dashboard/KimiPlanPanel.vue'
 import QuestPanel from '../components/dashboard/QuestPanel.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
@@ -153,7 +152,6 @@ onMounted(async () => {
           </ul>
         </div>
         <KimiPlanPanel class="mt-8" />
-        <CreditsPanel v-if="competition.mode==='practice'" :class="{ 'mt-8': Boolean(team) }" />
         <div class="panel mt-8">
           <div class="hd"><h2>{{ t('resources.kicker') }}</h2></div>
           <div class="flex flex-col gap-2">
