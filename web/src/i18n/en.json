@@ -1211,6 +1211,13 @@
       "disabled": "disabled"
     },
     "no_phases": "No phase has been configured yet.",
+    "tabs": {
+      "practice": "Practice",
+      "debug": "Debug board",
+      "competition": "Competition"
+    },
+    "debug_submissions_closed": "Submissions closed",
+    "competition_starts": "Starts Oct 5, 00:00 Beijing time",
     "me": "your team",
     "chart": {
       "title": "Score composition · top 10",

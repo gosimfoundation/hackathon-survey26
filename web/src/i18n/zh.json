@@ -1211,6 +1211,13 @@
       "disabled": "已停用"
     },
     "no_phases": "尚未配置任何阶段。",
+    "tabs": {
+      "practice": "练习赛",
+      "debug": "调试榜",
+      "competition": "正式赛"
+    },
+    "debug_submissions_closed": "已停止提交",
+    "competition_starts": "北京时间 10 月 5 日 00:00 开赛",
     "me": "你的队伍",
     "chart": {
       "title": "得分构成 · 前 10 名",
