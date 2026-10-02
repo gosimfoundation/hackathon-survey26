@@ -8,6 +8,7 @@ import { kimiPlanState, normalizeKimiPlanStatus, type KimiPlanStatus } from '../
 import { fmtUtc } from '../../lib/format'
 import { useAuth } from '../../stores/auth'
 import { useFlash } from '../../stores/flash'
+const guidePdf = `${import.meta.env.BASE_URL}media/kimi-api-credit-usage-instructions.pdf`
 
 const i18n = useI18n()
 const { t, tf } = i18n
@@ -54,6 +55,7 @@ onMounted(load)
   <div v-if="team" class="panel" data-testid="kimi-plan-panel" :data-state="loading ? 'loading' : state">
     <div class="hd"><h2>{{ t('kimi_plan.title') }}</h2><span class="label">{{ t('kimi_plan.kicker') }}</span></div>
     <p class="text2 text-sm">{{ t('kimi_plan.lede') }}</p>
+    <a class="btn sm mt-3" data-testid="kimi-plan-guide" :href="guidePdf" download="Kimi API Credit Usage Instructions.pdf">{{ t('kimi_plan.guide') }} ↓</a>
     <p v-if="loading" class="text3 mt-3 text-sm">{{ t('common.loading') }}</p>
     <template v-else>
       <p v-if="state === 'coming_soon'" class="text2 mt-3 text-sm" data-testid="kimi-plan-coming">{{ t('kimi_plan.coming_soon') }}</p>
