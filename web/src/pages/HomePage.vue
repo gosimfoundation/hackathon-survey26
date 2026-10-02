@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import WechatGroup from '../components/WechatGroup.vue'
 import { useScrollReveal } from '../composables/useScrollReveal'
 import HeroSection from '../components/sections/HeroSection.vue'
 import SectionRail from '../components/layout/SectionRail.vue'
@@ -45,6 +46,7 @@ const railSections = [
     <QuestSection />
     <LeaderboardSection id="board" class="section-tint-b" />
     <ParticipantsSection />
+    <section class="section"><div class="wrap"><WechatGroup /></div></section>
     <SimpleVisionSection id="vision" class="section-tint-b" />
     <SimpleMissionSection id="mission" />
     <SimpleParticipateSection id="participate" class="section-tint-b" />
