@@ -1976,6 +1976,7 @@
     "docs_desc": "报名组队、完整项目提交、启动配置、模型 API、评测次数与最终版本。",
     "flow_examples": "示例项目",
     "flow_examples_hint": "完整的示例智能体项目，任选一种语言起步，照着改成自己的策略。",
+    "examples_bundle_download": "下载全部示例（含本地练习卡）",
     "example_github": "在 GitHub 上查看",
     "example_python_desc": "完整的智能体项目：规划、记忆、两个大模型环节、协议与动作校验。",
     "example_typescript_desc": "同一套策略的 TypeScript（Node.js）实现：规划、记忆、两个大模型环节、协议与动作校验。",

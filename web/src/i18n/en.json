@@ -1976,6 +1976,7 @@
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
     "flow_examples": "Example projects",
     "flow_examples_hint": "Complete example agent projects -- pick a language to start from and adapt the strategy to your own.",
+    "examples_bundle_download": "Download all examples (incl. local practice cards)",
     "example_github": "View on GitHub",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",

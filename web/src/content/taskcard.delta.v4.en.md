@@ -74,3 +74,5 @@ least 0.50, so it would still count as missing.
 Pack your whole agent project as a zip and upload it on the Participate page. Practice runs all practice cards α, β, γ and δ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
 
 Practice scores do not decide awards.
+
+Want to score offline first? The example projects (Resources page, "Example projects") bundle the same engine as a local runner -- see `local-cards/` and `runner/` inside.
