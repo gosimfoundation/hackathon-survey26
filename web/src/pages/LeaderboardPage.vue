@@ -8,7 +8,6 @@ import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, load
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
-import StatusPill from '../components/layout/StatusPill.vue'
 import ScoreBars from '../components/leaderboard/ScoreBars.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 import BoardScenarioTabs from '../components/leaderboard/BoardScenarioTabs.vue'
@@ -16,7 +15,7 @@ import TeamDetailDialog from '../components/leaderboard/TeamDetailDialog.vue'
 import BoardCardTabs from '../components/leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
 
-const { t, tf, pick, locale } = useI18n()
+const { t, tf, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { team } = useAuth()
@@ -27,10 +26,22 @@ const updatedAt = ref<Date | null>(null)
 const selected = ref<LeaderboardEntry | null>(null)
 let timer: number | undefined
 
+// Only these three phases are ever shown to contestants, in this order — any other phase
+// (internal rehearsal/staging/observer boards) is filtered out even if the DB returns it.
+const LEADERBOARD_SLUGS = ['practice-projects', 'practice', 'online'] as const
+const TAB_LABEL_KEYS: Record<string, string> = { 'practice-projects': 'leaderboard.tabs.practice', practice: 'leaderboard.tabs.debug', online: 'leaderboard.tabs.competition' }
+const visiblePhases = computed(() => LEADERBOARD_SLUGS.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p))
 const phase = computed<Phase | null>(() => {
   const slug = route.params.phase as string | undefined
-  if (slug) return phases.value.find(p => p.slug === slug) ?? null
-  return phases.value.find(p => p.counts_for_final && (p.status === 'open' || p.status === 'closed')) ?? phases.value.find(p => p.status === 'open') ?? phases.value[0] ?? null
+  if (slug) return visiblePhases.value.find(p => p.slug === slug) ?? null
+  return visiblePhases.value.find(p => p.counts_for_final && (p.status === 'open' || p.status === 'closed')) ?? visiblePhases.value.find(p => p.status === 'open') ?? visiblePhases.value[0] ?? null
+})
+// One short plain line replaces all status badges: no extra wording beyond these two cases.
+const statusLine = computed(() => {
+  if (!phase.value) return null
+  if (phase.value.slug === 'practice') return t('leaderboard.debug_submissions_closed')
+  if (phase.value.slug === 'online' && phase.value.status === 'upcoming') return t('leaderboard.competition_starts')
+  return null
 })
 const visible = computed(() => phase.value != null && phase.value.leaderboard_mode !== 'hidden')
 // Practice boards rank one scenario at a time (?scenario=…); the final board averages every scenario.
@@ -84,9 +95,10 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
   <main class="poster-canvas">
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
-      <div v-if="phases.length" class="tabs">
-        <router-link v-for="p in phases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }">{{ pick(p.name_en, p.name_zh) }} · {{ t(`leaderboard.status.${p.status}`) }}</router-link>
+      <div v-if="visiblePhases.length" class="tabs">
+        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }">{{ t(TAB_LABEL_KEYS[p.slug]) }}</router-link>
       </div>
+      <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
       <p v-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
       <p v-else-if="!phase" class="text2 mt-8">{{ t('leaderboard.no_phases') }}</p>
@@ -96,8 +108,6 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
           <p class="text2">{{ phaseCopy(phase, locale).description }}</p>
           <p class="text3 mt-3 text-sm">{{ phaseCopy(phase, locale).facts.join(' · ') }}</p>
           <dl class="kv mt-8">
-            <dt>{{ t('common.status') }}</dt>
-            <dd class="flex flex-wrap gap-2"><StatusPill :status="phase.status" ns="leaderboard.status" /><span class="pill" :class="phase.leaderboard_mode">{{ phase.leaderboard_mode }}</span></dd>
             <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
             <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ c.name }}</span></dd>
@@ -119,8 +129,6 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
             <p class="text2 mt-3 text-sm">{{ t('leaderboard.empty') }}</p>
           </div>
           <template v-else>
-            <p v-if="phase.leaderboard_mode === 'frozen'" class="notice">{{ t('leaderboard.frozen') }}</p>
-            <p v-else-if="phase.leaderboard_mode === 'published'" class="notice">{{ t('leaderboard.published') }}</p>
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
             <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :team-id="team?.id ?? null" @select="selected = $event" />
             <template v-else>
