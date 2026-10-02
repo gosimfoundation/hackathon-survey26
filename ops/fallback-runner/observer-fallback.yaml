@@ -80,6 +80,11 @@ provision:
         > /etc/apt/apt.conf.d/90observer-proxy
     fi
     id runner >/dev/null 2>&1 || useradd --create-home --shell /bin/bash runner
+    # The cloud image's vim pulls in the system libpython3.12 (3.12.3), which the
+    # tool-cache Python of actions/setup-python would load instead of its own.
+    if dpkg -s libpython3.12t64 >/dev/null 2>&1; then
+      DEBIAN_FRONTEND=noninteractive apt-get purge -y libpython3.12t64
+    fi
     if ! command -v runsc >/dev/null; then
       apt-get update
       apt-get install -y docker.io iptables jq curl git gnupg
