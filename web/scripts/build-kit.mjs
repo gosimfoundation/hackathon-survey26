@@ -1,5 +1,5 @@
 // Assemble the public starter-kit downloads.
-//   public/downloads/agent-observer-starter-kit-v4.zip  (../starter_kit_v4 under agent-observer-starter-kit-v4/)
+//   public/downloads/agent-observer-starter-kit-v4.zip  (../archive/starter_kit_v4 under agent-observer-starter-kit-v4/)
 //   public/skill-v4.md
 // and, for the earlier v3 decisions.csv warm-up, from ../archive/starter_kit_v3 (challenge v3):
 //   public/downloads/agent-observer-starter-kit.zip  (whole kit under agent-observer-starter-kit/)
@@ -24,7 +24,7 @@ const excludeFile = (name) => EXCLUDED_FILES.has(name) || name.endsWith('.pyc') 
   || (name === '.env') || (name.startsWith('.env.') && name !== '.env.example')
 
 // v4 starter kit: the competition kit (task cards, participant-agent-protocol-v4). Standard library only, no placeholders.
-const kitV4Dir = process.env.STARTER_KIT_V4_DIR || resolve(root, '..', 'starter_kit_v4')
+const kitV4Dir = process.env.STARTER_KIT_V4_DIR || resolve(root, '..', 'archive', 'starter_kit_v4')
 if (existsSync(kitV4Dir)) {
   for (const required of ['README.md', 'SKILL.md', 'local_runner.py', 'pack_agent.py', 'agent/baseline_agent.py', 'agent/observer.project.json',
                           'examples/idle_agent.py', 'challenge/v4_scorer.py', 'cards/demo/config/v4_score_config.json']) {

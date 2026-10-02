@@ -1,4 +1,4 @@
-"""End-to-end checks for the v4 starter kit (starter_kit_v4/).
+"""End-to-end checks for the v4 starter kit (archive/starter_kit_v4/).
 
 Runs the kit's scripts as a participant would: the baseline and the idle agent on the public demo card
 through local_runner.py (JSON-Lines subprocess, participant-agent-protocol-v4), protocol error handling,
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-KIT = ROOT / "starter_kit_v4"
+KIT = ROOT / "archive" / "starter_kit_v4"
 DEMO = KIT / "cards" / "demo"
 PY = sys.executable
 IDLE_TOTAL = -6200.0  # 120 required targets x 50 missing + the full uniformity penalty (200)

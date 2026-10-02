@@ -16,13 +16,12 @@ challenge/           the competition environment: vendored v3 modules (unchanged
 worker/              v3 evaluation worker: sandboxed agent runs (challenge_runner.py), scoring, replay upload, scenario seeding/admin CLI
 project_platform/    complete-project platform: repo-URL/ZIP submissions snapshotted via a GitHub App and executed by a trusted job runner (docker workspace, session API, model adapters)
 scoring/             standalone stage-one survey-decision scorer (standard library only, frozen CSV contract), imported by worker/
-starter_kit_v4/      the v4 starter kit participants download: agent/, demo cards, local_runner.py, pack_agent.py, SKILL.md
 tests/               pytest: runner sandbox, starter kits, platform integration on an embedded Postgres + real PostgREST harness, browser e2e; hosted_smoke.py for the live project
 docs/                organizer and participant documentation: competition-format.md, project-platform-rollout.md, example3-analysis-brief.md, ANOMALY_RELEASE_CHANGELOG_ZH.md
 scripts/             one-off organizer scripts: phase/secrets/runner configuration, backend deploy, live tests, the release-site publisher
 ops/                 the "Agentic Observer 2026 Evaluator" GitHub App manifest/installations and the control-workflow YAMLs dispatched for project jobs
 legacy-event/        the former event website; still built by the site publisher to serve the /survey26/ event root page (which redirects to the platform)
-archive/             old versions kept for reference: starter_kit_v3/ (v3 starter kit, still packaged into the practice download), legacy/ (first self-hosted FastAPI platform)
+archive/             old versions kept for reference: starter_kit_v3/ (v3 starter kit, still packaged into the practice download), starter_kit_v4/ (v4 starter kit, no longer published), legacy/ (first self-hosted FastAPI platform)
 .github/workflows/   CI: tests.yml, the self-dispatching worker.yml evaluator, publish-site.yml (GitHub Pages deploy)
 ```
 

@@ -51,7 +51,7 @@ def main() -> None:
             "scenario": SCENARIO.name,
             "scenario_id": config["scenario_id"],
             "seed": config["seed"],
-            "agent": "archive/starter_kit_v3/agent/minimal_agent.py",
+            "agent": "official baseline",
             "score": round(float(report["score"]["total"]), 3),
             "rounds": len(report["actions"]),
             "nights": len(nights),
