@@ -6,6 +6,7 @@ import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
+import { scenarioLabel } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -53,7 +54,7 @@ const cardBoard = ref<CardBoard | null>(null)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
-  : tf('leaderboard.detail.board_card', { card: cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value }))
+  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
 function pickCard(slug: string | null) {
   const { scenario: _drop, ...rest } = route.query
   void router.replace({ query: slug === null ? rest : { ...rest, scenario: slug } })
@@ -109,7 +110,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <dl class="kv mt-8">
             <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
-            <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ c.name }}</span></dd>
+            <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
             <dd v-else class="flex flex-wrap gap-2"><span v-for="s in phase.scenarios" :key="s.id" class="pill" :title="s.name">{{ s.slug }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
             <dt>{{ t('common.updated') }}</dt><dd class="m text-sm">{{ updatedAt ? fmtUtc(updatedAt.toISOString(), { seconds: true }) : '—' }} UTC</dd>
           </dl>

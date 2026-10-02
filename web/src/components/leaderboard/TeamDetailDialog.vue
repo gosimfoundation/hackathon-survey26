@@ -4,13 +4,14 @@ import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
 import type { BoardCard, LeaderboardEntry } from '../../lib/data'
 import { fmtUtc, num, pct } from '../../lib/format'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // One team's line on the board, opened from the chart or the table. Only what the board already
 // publishes is shown: team names, scores and ranks are public; member details are not.
 // Card boards pass their cards and the current tab's label; their rows carry numeric score components.
 const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null }>()
 const emit = defineEmits<{ close: [] }>()
-const { t, tf, pick } = useI18n()
+const { t, tf, pick, locale } = useI18n()
 const closeBtn = ref<HTMLButtonElement | null>(null)
 
 const handle = computed(() => (props.entry?.leader_github || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\/.*$/, ''))
@@ -33,7 +34,7 @@ const parts = computed(() => {
 })
 const scale = computed(() => Math.max(1, ...parts.value.map(p => Math.abs(p.value))))
 const cardScores = computed(() => (props.cards ?? []).filter(c => props.entry?.card_scores?.[c.slug] != null)
-  .map(c => ({ ...c, score: props.entry!.card_scores![c.slug]!, unfinished: !!props.entry!.unfinished_cards?.includes(c.slug) })))
+  .map(c => ({ ...c, label: scenarioLabel(c.slug, c.name, locale.value), score: props.entry!.card_scores![c.slug]!, unfinished: !!props.entry!.unfinished_cards?.includes(c.slug) })))
 const board = computed(() => props.boardLabel ? props.boardLabel : props.entry?.scenario_slug ? tf('leaderboard.detail.board_scenario', { scenario: props.entry.scenario_slug }) : t('leaderboard.detail.board_mean'))
 
 function onKey(event: KeyboardEvent) { if (event.key === 'Escape') emit('close') }
@@ -73,7 +74,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
       </ul>
 
       <dl class="team-detail-stats">
-        <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.name }}</dt><dd>{{ num(c.score) }}<small v-if="c.unfinished" :title="t('leaderboard.unfinished_help')"> · {{ t('leaderboard.unfinished') }}</small></dd></div>
+        <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.label }}</dt><dd>{{ num(c.score) }}<small v-if="c.unfinished" :title="t('leaderboard.unfinished_help')"> · {{ t('leaderboard.unfinished') }}</small></dd></div>
         <div v-if="entry.overall_score != null && entry.scenario_slug"><dt>{{ t('leaderboard.overall') }}</dt><dd>{{ num(entry.overall_score) }}<template v-if="entry.overall_rank"> · #{{ entry.overall_rank }}</template></dd></div>
         <div v-if="entry.completed_tiles != null || !entry.components"><dt>{{ t('leaderboard.tiles') }}</dt><dd>{{ entry.completed_tiles ?? '—' }}</dd></div>
         <div v-if="entry.targets_observed != null"><dt>{{ t('leaderboard.targets_observed') }}</dt><dd>{{ entry.targets_observed }}</dd></div>

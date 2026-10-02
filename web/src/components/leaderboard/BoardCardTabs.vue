@@ -2,14 +2,15 @@
 import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { cardBoardTabs, type BoardCard, type BoardLayout } from '../../lib/data'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 
-// Card boards: one tab per card (labelled with the scenario name from the database) and, where the phase
-// ranks an overall mean, an Overall tab first. null stands for the overall tab.
+// Card boards: one tab per card (labelled from the card slug, localized — see scenarioLabels.ts) and,
+// where the phase ranks an overall mean, an Overall tab first. null stands for the overall tab.
 const props = defineProps<{ layout: BoardLayout; cards: BoardCard[]; modelValue: string | null }>()
 const emit = defineEmits<{ 'update:modelValue': [slug: string | null] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const tabs = computed(() => cardBoardTabs({ layout: props.layout, cards: props.cards })
-  .map(slug => ({ slug, label: slug === null ? t('leaderboard.overall') : props.cards.find(c => c.slug === slug)?.name ?? slug })))
+  .map(slug => ({ slug, label: slug === null ? t('leaderboard.overall') : scenarioLabel(slug, props.cards.find(c => c.slug === slug)?.name ?? slug, locale.value) })))
 </script>
 
 <template>

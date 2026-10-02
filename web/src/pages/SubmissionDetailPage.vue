@@ -8,6 +8,7 @@ import { SUBMISSION_SELECT, PENDING_STATUSES } from '../lib/data'
 import { downloadObject, readObjectText } from '../lib/storage'
 import { fmtUtc, num } from '../lib/format'
 import { PENALTY_KEYS, WAIT_KEYS, outcomeClass, penaltyTotal, terminationTone, type ScoreReport } from '../lib/report'
+import { scenarioLabel } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { useFlash } from '../stores/flash'
 import { useSubmissionWatch } from '../composables/useSubmissionWatch'
@@ -20,7 +21,7 @@ import ActionTimeline from '../components/submissions/ActionTimeline.vue'
 import ReplayViewer from '../components/submissions/ReplayViewer.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 
-const { t, tf, pick } = useI18n()
+const { t, tf, pick, locale } = useI18n()
 const i18n = useI18n()
 const route = useRoute()
 const flash = useFlash()
@@ -151,7 +152,7 @@ onMounted(async () => {
         <!-- one panel per scenario evaluation -->
         <div v-for="ev in evaluations" :key="ev.id" class="panel mt-8" :data-testid="`evaluation-${ev.scenarios?.slug}`">
           <div class="hd">
-            <h2 class="flex flex-wrap items-center gap-2"><StatusPill :status="ev.status" /> {{ t('subs.scenario') }}: <span class="m">{{ ev.scenarios?.slug }}</span> · {{ ev.scenarios?.name }}</h2>
+            <h2 class="flex flex-wrap items-center gap-2"><StatusPill :status="ev.status" /> {{ t('subs.scenario') }}: <span class="m">{{ ev.scenarios?.slug }}</span><template v-if="ev.scenarios"> · {{ scenarioLabel(ev.scenarios.slug, ev.scenarios.name, locale) }}</template></h2>
             <span class="flex flex-wrap items-center gap-2">
               <span v-if="ev.termination_reason" class="pill" :class="terminationTone(ev.termination_reason)" :title="t(`subs.termination_help.${ev.termination_reason}`)" data-testid="termination-pill">{{ t(`subs.termination_reason.${ev.termination_reason}`) }}</span>
               <span v-if="ev.runtime_seconds" class="m xs">{{ t('subs.runtime') }} {{ num(ev.runtime_seconds, 1) }}s</span>
