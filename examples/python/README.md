@@ -172,3 +172,10 @@ list it in `requirements.txt` **and** add a matching `build` step to
 - A planning call that keeps failing just leaves that question's answer out of the
   merge for the night; the rest of the decision loop (targeting, exposure sizing,
   validation) runs the same either way.
+
+## License / Citation
+
+Task cards, simulated data, evaluation code and this example project are licensed under
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial);
+please cite the GOSIM 2026 Agentic Observer Challenge. Your own agent code is not restricted
+by this. See `LICENSE.md` for details.

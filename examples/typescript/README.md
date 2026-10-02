@@ -149,3 +149,10 @@ This example intentionally ships **no scenario data**: no `targets.csv`/`footpri
 run comes from the `initialize` message and the `new_messages` it receives live over stdin, exactly
 as it will on the platform. It only ever takes the four documented actions (`observe`, `wait`,
 `report`, `finish`) and only reads what the protocol hands it.
+
+## License / Citation
+
+Task cards, simulated data, evaluation code and this example project are licensed under
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial);
+please cite the GOSIM 2026 Agentic Observer Challenge. Your own agent code is not restricted
+by this. See `LICENSE.md` for details.

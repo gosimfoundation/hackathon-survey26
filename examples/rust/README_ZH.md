@@ -158,3 +158,9 @@ grep -rniE "truth|bulletin|forecasts\.jsonl" src/ | grep -v record_type
 - 主动 `report` 的触发条件（`planner::maybe_report`）刻意设得很保守（需要连续
   一长串满光纤指派却零命中），在容易的任务卡上可能永远不会触发——这是有意
   为之,因为猜错要付出 `scoring.reporting.false_penalty` 的代价。
+
+## 许可 / 引用
+
+任务卡、模拟数据、评测代码与本示例项目按 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
+提供（署名、非商业）；使用请引用 GOSIM 2026 Agentic Observer Challenge。选手自己编写的代码不受此限制。
+详见 `LICENSE.md`。

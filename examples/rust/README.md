@@ -179,3 +179,10 @@ file is ever read -- not to any bundled data.)
   deliberately conservative (a long, fully-assigned miss streak) and may
   never fire on an easy task card -- that is by design, since a wrong guess
   costs `scoring.reporting.false_penalty`.
+
+## License / Citation
+
+Task cards, simulated data, evaluation code and this example project are licensed under
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial);
+please cite the GOSIM 2026 Agentic Observer Challenge. Your own agent code is not restricted
+by this. See `LICENSE.md` for details.
