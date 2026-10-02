@@ -24,7 +24,7 @@ pytestmark=pytest.mark.skipif(not all(os.environ.get(k) for k in ('OBSERVER_DENO
 def test_public_playground_pages_never_ask_participants_to_choose_a_stage(portal_site,edge_stack):
     uri=edge_stack['harness'].db_uri
     phase=uuid.uuid4()
-    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Playground','练习赛 / Playground')",(phase,))
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Practice','练习赛')",(phase,))
     query(uri,"update private.observer_site_mode set mode='practice',phase_id=%s",(phase,))
     problems=[];errors=[];private_requests=[]
     with sync_playwright() as pw:
@@ -93,7 +93,7 @@ def test_admin_switch_updates_submission_resources_and_public_instructions(porta
         # A successful switch reloads the page; wait for that reload, or it aborts the next goto.
         with page.expect_navigation(timeout=15000):
             switch.click()
-        expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to Playground',timeout=15000)
+        expect(page.get_by_test_id('competition-mode-switch')).to_have_text('Switch to Practice',timeout=15000)
         goto(page,portal_site+'/submit?lang=en')
         expect(page.get_by_test_id('project-title')).to_be_visible(timeout=15000)
         assert page.locator('a[href="/projects"],a[href="/submit"]').count()==0

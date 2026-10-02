@@ -12,7 +12,7 @@ All participants use the same Participate page; the platform selects the active 
 
 | Task cards | Used for | Published |
 |---|---|---|
-| Practice cards α, β, γ, δ | Playground practice | Now: the card pages and every file (including the weather, forecast and event files), so scores can be reproduced locally |
+| Practice cards α, β, γ, δ | Practice | Now: the card pages and every file (including the weather, forecast and event files), so scores can be reproduced locally |
 | Hackathon cards A, B, C, D | Online competition evaluations and the online board | When the competition starts (Oct 5 00:00, UTC+8): the card pages and the public inputs; weather, forecasts and events stay private |
 | Hidden cards E, F, G, H | The final evaluation after the deadline, which decides the final ranking | Never; participants do not see them during the event |
 
@@ -20,21 +20,21 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 
 | Stage | Time (UTC+8) | What happens |
 |---|---|---|
-| Playground practice | Open until the competition starts | Submit a complete project on the practice cards for cloud evaluation; boards are for practice only |
+| Practice | Open until the competition starts | Submit a complete project on the practice cards for cloud evaluation; boards are for practice only |
 | Online training | Oct 2–3 | Introduces the simulator and participant protocol; details in announcements |
 | Competition | Oct 5 00:00 – Oct 7 23:59 | Submit complete projects; every evaluation runs once on each of the cards A–D; the online board updates live; choose your final version |
 | Hidden-card final evaluation | After Oct 7 23:59 | Organizers evaluate each team's final version once on the hidden cards E–H |
 | Verification and results | After the hidden evaluation | Organizers verify the top teams, then publish the final standings (hidden-card scores only) |
 | Awards Day | Oct 17 | GOSIM Shenzhen |
 
-### Playground rules
+### Practice rules
 
-1. Download the v4 starter kit and the practice cards, run your agent locally and check its score, then pack the agent and submit it as a complete project (public GitHub repository or ZIP) on Participate: the "Playground · complete projects" track. The platform runs it round by round in the cloud (same evaluation flow as the competition). Every evaluation runs once on each practice card, with a runtime limit of 900 seconds per card.
+1. Download the v4 starter kit and the practice cards, run your agent locally and check its score, then pack the agent and submit it as a complete project (public GitHub repository or ZIP) on Participate: the Practice board. The platform runs it round by round in the cloud (same evaluation flow as the competition). Every evaluation runs once on each practice card, with a runtime limit of 900 seconds per card.
 2. The daily number of evaluations is the quota shown in the "Phase configuration" table above and on Participate, reset at 00:00 UTC (08:00 Beijing time); evaluations that fail because of the platform are not counted. Model calls may only use the team's own model API key.
-3. The Playground ranks each card separately and each team keeps its best score per card; exact ties favor the earlier submission. Practice scores do not decide awards.
+3. Practice ranks each card separately and each team keeps its best score per card; exact ties favor the earlier submission. Practice scores do not decide awards.
 4. Any language or algorithm is allowed, and practice runs need no model call. Note that awards require agent (LLM-driven) techniques in at least two of these stages: natural-language understanding, data parsing, task planning, action decisions, tool calling and plan adaptation (section 3, item 6). It is worth preparing for this now.
 5. The v3 practice scenarios accept a `decisions.csv` upload as a warm-up. It uses the v3 scenarios and the v3 scoring rules (see the v3 starter kit on Resources), which differ from the v4 task cards of this competition.
-6. Kimi Coding Plan: each team that runs through the Playground (at least one successful score: a scored CSV submission or a scored complete-project evaluation) receives one Kimi Coding Plan code. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
+6. Kimi Coding Plan: each team that runs through Practice (at least one successful score: a scored CSV submission or a scored complete-project evaluation) receives one Kimi Coding Plan code. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
 
 ## 3. What you submit
 

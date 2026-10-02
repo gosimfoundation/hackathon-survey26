@@ -1,5 +1,5 @@
 // The next public stage of the event (for example the formal competition while the
-// Playground runs). Kept free of runtime imports so `npm test` can load it directly.
+// Practice runs). Kept free of runtime imports so `npm test` can load it directly.
 
 export interface ScheduledPhase {
   id: string; slug: string; name_en: string; name_zh: string; sort_order: number

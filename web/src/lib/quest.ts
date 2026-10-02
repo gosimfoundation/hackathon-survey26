@@ -8,7 +8,7 @@ export interface QuestSignals {
   hasTeam: boolean
   /** Kit downloaded / project resources opened (remembered click), or a project already exists. */
   prepared: boolean
-  /** The team has at least one submission (Playground) or formal evaluation batch (competition). */
+  /** The team has at least one submission (Practice) or formal evaluation batch (competition). */
   submitted: boolean
   /** A replay or result was opened (remembered visit). */
   reviewed: boolean

@@ -13,7 +13,7 @@ let fetchedAt = 0
 
 /**
  * Later public stages of the event, whatever the current competition is (in practice mode the
- * current list only holds the Playground). Row-level security decides which phases are visible;
+ * current list only holds Practice). Row-level security decides which phases are visible;
  * team-restricted test phases are also dropped by `upcomingPublicPhases`.
  */
 async function loadUpcoming(): Promise<ScheduledPhase[]> {

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Open the Playground complete-project board next to CSV practice.
+"""Open Practice complete-project board next to CSV practice.
 
 Creates (or verifies) the phase 'practice-projects': projects only, 5 evaluations
 per team per day, the team's own model key only (migration 20260926000400), and
-private engine bundles built from the Playground's own scenarios. Formal
+private engine bundles built from Practice's own scenarios. Formal
 competition scenarios are never touched. Dry run by default; --apply writes.
 """
 import argparse
@@ -26,13 +26,13 @@ def plan(args):
     scenarios = deploy.query('select s.id,s.slug,s.global_wallclock_seconds from public.phase_scenarios ps join public.scenarios s'
                              ' on s.id=ps.scenario_id where ps.phase_id='+q(practice['id'])+' and s.is_active order by s.slug')
     if args.scenario: scenarios = [s for s in scenarios if s['slug'] in args.scenario]
-    if not scenarios: raise RuntimeError('No Playground scenarios selected')
+    if not scenarios: raise RuntimeError('No Practice scenarios selected')
     formal = {r['scenario_id'] for r in deploy.query("select ps.scenario_id from public.phase_scenarios ps join public.phases p"
                                                      " on p.id=ps.phase_id where p.slug='online' or p.counts_for_final")}
     if any(s['id'] in formal for s in scenarios): raise RuntimeError('A selected scenario is formal material; refusing')
     runtimes = {s['global_wallclock_seconds'] for s in scenarios}
     if None in runtimes: raise RuntimeError('A selected scenario has no runtime')
-    # The Playground scenarios differ in length; the phase cap is the longest one
+    # Practice scenarios differ in length; the phase cap is the longest one
     # (each run still ends when its own scenario ends).
     existing = deploy.query('select id from public.phases where slug='+q(SLUG))
     phase_id = existing[0]['id'] if existing else str(uuid.uuid4())
@@ -41,7 +41,7 @@ def plan(args):
     runtime = max(args.runtime, max(int(r) for r in runtimes))
     statements = [
         'insert into public.phases(id,slug,name_en,name_zh,allow_results,allow_agents,leaderboard_mode,counts_for_final,is_active,sort_order,starts_at,ends_at)'
-        ' values ('+','.join(map(q, (phase_id, SLUG, 'Playground · complete projects', '练习赛 · 完整项目', False, False,
+        ' values ('+','.join(map(q, (phase_id, SLUG, 'Practice board', '练习赛榜', False, False,
                                       practice['leaderboard_mode'], False, True, int(practice['sort_order'])+1)))
         +',now(),'+(q(practice['ends_at']) if practice['ends_at'] else 'null')+') on conflict(id) do update set is_active=true',
         'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,runtime_seconds,daily_batches,'
@@ -62,11 +62,11 @@ def main():
     parser.add_argument('--runtime', type=int, default=18000, help='Phase time limit in seconds (max 18000)')
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--daily', type=int, default=5)
-    parser.add_argument('--scenario', action='append', help='Playground scenario slug (repeatable); default: all')
+    parser.add_argument('--scenario', action='append', help='Practice scenario slug (repeatable); default: all')
     args = parser.parse_args()
     result, scenarios = plan(args)
     if args.apply:
-        # Playground scenarios ship without hidden anomaly tags; the engine treats that file as optional.
+        # Practice scenarios ship without hidden anomaly tags; the engine treats that file as optional.
         practice_files = competition.FORMAL_FILES - {'outputs/reference/tile_anomalies.csv'}
         result['bundles'] = [competition.prepare_bundle(s, practice_files) for s in scenarios]
         for statement in result['statements']: deploy.query(statement)

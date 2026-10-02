@@ -38,7 +38,7 @@ const evaluations = computed(() => ((sub.value?.evaluations ?? []) as any[]).sli
 const watcher = useSubmissionWatch(load, () => pending.value)
 /** Per evaluation, the one replay position the decision replay and the observed-sky map both show. */
 const replayCursor = ref<Record<string, number | null>>({})
-// Seeing a scored replay completes the dashboard quest's last Playground step.
+// Seeing a scored replay completes the dashboard quest's last Practice step.
 const { remember } = useQuestFlags()
 watch(() => sub.value?.status, status => { if (status === 'scored') remember('review', 'practice') })
 

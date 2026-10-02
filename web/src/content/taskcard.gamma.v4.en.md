@@ -76,6 +76,6 @@ least 0.50, so it would still count as missing.
 2. Run `python3 local_runner.py --card cards/gamma`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
 3. Compare with `python3 local_runner.py --card cards/gamma --agent examples/idle_agent.py` (an agent that does nothing).
 4. Change `agent/planner.py`, run again, and compare.
-5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card γ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
+5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. Practice runs all practice cards α, β, γ and δ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
 
-Playground scores are for practice. They do not decide awards.
+Practice scores do not decide awards.

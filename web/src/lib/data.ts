@@ -147,7 +147,7 @@ export function mainPhase(phases: Phase[]): Phase | null {
     ?? phases[0] ?? null
 }
 
-/** Home page board: the main phase once the competition counts, otherwise the complete-project Playground board. */
+/** Home page board: the main phase once the competition counts, otherwise the complete-project practice board. */
 export function homeBoardPhase(phases: Phase[]): Phase | null {
   const main = mainPhase(phases)
   if (main?.counts_for_final) return main

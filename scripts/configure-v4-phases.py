@@ -3,7 +3,7 @@
 
 Organizer decisions 2026-09-28 (go/no-go for v4: 2026-10-02 12:00 UTC):
   practice-projects  v4 practice cards (alpha, beta), one board per card;
-                     --practice-mode replace (default) unlinks the v3 Playground
+                     --practice-mode replace (default) unlinks the v3 Practice
                      scenarios from this phase, add keeps them next to the cards,
                      skip leaves the phase alone;
   online             v4 formal cards (A-D), one board per card plus the overall
@@ -463,7 +463,7 @@ def main(argv=None):
     parser.add_argument('--formal', type=slugs_arg, default=[], help='Formal card slugs for online (A-D)')
     parser.add_argument('--final', type=slugs_arg, default=[], help='Hidden final card slugs (E-H)')
     parser.add_argument('--practice-mode', choices=('replace', 'add', 'skip'), default='replace',
-                        help='replace: the Playground board becomes the practice cards; add: keep the v3 scenarios too')
+                        help='replace: the practice board becomes the practice cards; add: keep the v3 scenarios too')
     parser.add_argument('--runtime', type=int, default=900, help='Wall clock per card run in online and final-hidden (s)')
     parser.add_argument('--practice-runtime', type=int, default=900, help='Wall clock per run in practice-projects (replace mode)')
     parser.add_argument('--daily', type=int, default=4, help='Evaluations per team per day in online')

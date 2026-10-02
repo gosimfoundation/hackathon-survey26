@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the home page's official demo replay: the baseline agent on the public dev-reference scenario.
 
-Same pipeline as a Playground results submission, end to end and untrimmed:
+Same pipeline as a Practice results submission, end to end and untrimmed:
   1. archive/starter_kit_v3/local_runner.py runs archive/starter_kit_v3/agent/minimal_agent.py on all 180 nights, as a
      participant would, and writes decisions.csv;
   2. the worker's scorer (challenge.scoring_core.score_files, termination "trace_complete") scores it;
