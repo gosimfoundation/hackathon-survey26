@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useScrollReveal } from '../composables/useScrollReveal'
 import domeImage from '../assets/images/cosmos-dome.jpg'
+import domeImageAvif from '../assets/images/cosmos-dome.avif'
+import domeImageWebp from '../assets/images/cosmos-dome.webp'
 import { useAuth } from '../stores/auth'
 import { useRegistrationOpen } from '../composables/useRegistrationOpen'
 
@@ -34,7 +36,11 @@ const kickerText = (kicker: string) => kicker.replace(/^\d+ \/ /, '')
   <main class="poster-canvas min-h-screen pb-24">
     <header class="vision-hero hero-section relative min-h-[720px] overflow-hidden border-b border-white/20">
       <div class="vision-hero-photo" aria-hidden="true">
-        <img :src="domeImage" alt="" loading="lazy" width="1536" height="1024">
+        <picture>
+          <source :srcset="domeImageAvif" type="image/avif">
+          <source :srcset="domeImageWebp" type="image/webp">
+          <img :src="domeImage" alt="" loading="lazy" width="1536" height="1024">
+        </picture>
         <div class="vision-plasma plasma-field"></div>
       </div>
       <div class="vision-hero-overlay" aria-hidden="true"></div>
@@ -151,12 +157,13 @@ const kickerText = (kicker: string) => kicker.replace(/^\d+ \/ /, '')
 <style scoped>
 .vision-hero { background: #060607; }
 .vision-hero-photo { position: absolute; inset: 0; }
-.vision-hero-photo > img { width: 100%; height: 100%; object-fit: cover; object-position: 58% center; filter: grayscale(1) contrast(1.28) brightness(.58); }
+.vision-hero-photo > picture { display: block; width: 100%; height: 100%; }
+.vision-hero-photo > picture > img { width: 100%; height: 100%; object-fit: cover; object-position: 58% center; filter: grayscale(1) contrast(1.28) brightness(.58); }
 .vision-hero-overlay { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgba(6,6,7,.94) 0%, rgba(6,6,7,.74) 46%, rgba(6,6,7,.18) 100%), linear-gradient(0deg, rgba(6,6,7,.88), transparent 62%); }
 .vision-plasma { top: 18%; right: -6%; transform: rotate(-8deg); }
 .vision-section:nth-child(even) .vision-number { color: #315efb; }
 @media (max-width: 720px) {
-  .vision-hero-photo > img { object-position: 66% center; }
+  .vision-hero-photo > picture > img { object-position: 66% center; }
   .vision-hero-overlay { background: linear-gradient(90deg, rgba(6,6,7,.88), rgba(6,6,7,.5)), linear-gradient(0deg, rgba(6,6,7,.9), transparent 60%); }
   .vision-plasma { top: 15%; right: -42%; }
 }

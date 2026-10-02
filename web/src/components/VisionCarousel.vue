@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-type Slide = { src: string; alt: string; stamp?: string; caption: string; credit?: string }
+type Slide = { src: string; avif?: string; webp?: string; alt: string; stamp?: string; caption: string; credit?: string }
 
 // Ported from the landing site: the sky -> human observer -> agent narrative strip.
 const props = withDefaults(
@@ -93,7 +93,11 @@ function onTouchEnd(e: TouchEvent) {
         :class="{ 'is-active': i === index }"
         :aria-hidden="i === index ? undefined : 'true'"
       >
-        <img :src="slide.src" :alt="slide.alt" :loading="i === 0 ? 'eager' : 'lazy'">
+        <picture>
+          <source v-if="slide.avif" :srcset="slide.avif" type="image/avif">
+          <source v-if="slide.webp" :srcset="slide.webp" type="image/webp">
+          <img :src="slide.src" :alt="slide.alt" :loading="i === 0 ? 'eager' : 'lazy'">
+        </picture>
       </div>
 
       <div class="carousel-veil" aria-hidden="true"></div>
@@ -154,6 +158,7 @@ function onTouchEnd(e: TouchEvent) {
   transition: opacity .6s ease;
 }
 .carousel-slide.is-active { opacity: 1; }
+.carousel-slide picture { display: block; width: 100%; height: 100%; }
 .carousel-slide img {
   width: 100%;
   height: 100%;

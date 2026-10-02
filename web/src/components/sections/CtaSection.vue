@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n'
 import heroImage from '../../assets/images/cosmos-observatory-hero.jpg'
+import heroImageAvif from '../../assets/images/cosmos-observatory-hero.avif'
+import heroImageWebp from '../../assets/images/cosmos-observatory-hero.webp'
 import { useAuth } from '../../stores/auth'
 import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 const { t, pick } = useI18n()
@@ -12,7 +14,11 @@ const { registrationOpen } = useRegistrationOpen()
   <section class="poster-section poster-canvas py-8 md:py-12">
     <div class="mx-auto max-w-[1600px] px-5 md:px-10 xl:px-14">
       <div class="cta-poster reveal reveal-scale relative min-h-[650px] overflow-hidden border border-white/20 p-6 md:min-h-[760px] md:p-10 lg:p-14">
-        <img :src="heroImage" alt="" loading="lazy" width="1821" height="864">
+        <picture>
+          <source :srcset="heroImageAvif" type="image/avif">
+          <source :srcset="heroImageWebp" type="image/webp">
+          <img :src="heroImage" alt="" loading="lazy" width="1821" height="864">
+        </picture>
         <div class="cta-plasma plasma-field" aria-hidden="true"></div>
         <div class="cta-scan" aria-hidden="true"></div>
         <div class="cta-overlay" aria-hidden="true"></div>
@@ -43,19 +49,20 @@ const { registrationOpen } = useRegistrationOpen()
 
 <style scoped>
 .cta-poster { background: radial-gradient(circle at 20% 20%, rgba(49,94,251,.2), transparent 28%), #050506; box-shadow: 8px 8px 0 #315efb; }
-.cta-poster > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 56% center; filter: grayscale(1) contrast(1.25) brightness(.64); transform: scale(1.04); transition: transform 6s ease; }
-.cta-poster:hover > img { transform: scale(1.08); }
+.cta-poster > picture { position: absolute; inset: 0; display: block; }
+.cta-poster > picture > img { width: 100%; height: 100%; object-fit: cover; object-position: 56% center; filter: grayscale(1) contrast(1.25) brightness(.64); transform: scale(1.04); transition: transform 6s ease; }
+.cta-poster:hover > picture > img { transform: scale(1.08); }
 .cta-overlay { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgba(5,5,6,.93) 0%, rgba(5,5,6,.72) 46%, rgba(5,5,6,.16) 100%), linear-gradient(0deg, rgba(5,5,6,.88), transparent 60%); }
 .cta-scan { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent, rgba(120,166,255,.08), transparent); transform: translateY(-100%); animation: scan 7s linear infinite; }
 @keyframes scan { to { transform: translateY(100%); } }
 .cta-plasma { z-index: 2; right: -8%; top: 28%; transform: rotate(-12deg); }
 @media (prefers-reduced-motion: reduce) {
   .cta-scan { animation: none; }
-  .cta-poster > img { transform: none; transition: none; }
+  .cta-poster > picture > img { transform: none; transition: none; }
 }
 
 @media (max-width: 720px) {
-  .cta-poster > img { object-position: 65% center; }
+  .cta-poster > picture > img { object-position: 65% center; }
   .cta-overlay { background: linear-gradient(90deg, rgba(5,5,6,.9), rgba(5,5,6,.48)), linear-gradient(0deg, rgba(5,5,6,.92), transparent 65%); }
   .cta-plasma { right: -42%; top: 26%; }
 }

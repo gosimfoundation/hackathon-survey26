@@ -3,8 +3,14 @@ import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import VisionCarousel from '../VisionCarousel.vue'
 import controlRoomImage from '../../assets/images/cosmos-control-room.jpg'
+import controlRoomAvif from '../../assets/images/cosmos-control-room.avif'
+import controlRoomWebp from '../../assets/images/cosmos-control-room.webp'
 import cosmicWebImage from '../../assets/images/survey-cosmic-web.jpg'
+import cosmicWebAvif from '../../assets/images/survey-cosmic-web.avif'
+import cosmicWebWebp from '../../assets/images/survey-cosmic-web.webp'
 import agentStrategyImage from '../../assets/images/survey-agent-strategy.jpg'
+import agentStrategyAvif from '../../assets/images/survey-agent-strategy.avif'
+import agentStrategyWebp from '../../assets/images/survey-agent-strategy.webp'
 
 const { t, pick } = useI18n()
 
@@ -12,6 +18,8 @@ const { t, pick } = useI18n()
 const slides = computed(() => [
   {
     src: cosmicWebImage,
+    avif: cosmicWebAvif,
+    webp: cosmicWebWebp,
     alt: pick('Galaxies tracing the cosmic web', '勾勒出宇宙网的星系分布'),
     stamp: pick('COSMIC WEB / WIDE-FIELD SAMPLING', '宇宙网 / 广域巡天采样'),
     caption: pick(
@@ -22,6 +30,8 @@ const slides = computed(() => [
   },
   {
     src: controlRoomImage,
+    avif: controlRoomAvif,
+    webp: controlRoomWebp,
     alt: pick('An observatory control room during a survey night', '巡天之夜的观测站控制室'),
     stamp: pick('OBSERVATORY CONTROL / HUMAN IN THE LOOP', '观测站控制 / 人在回路'),
     caption: pick(
@@ -31,6 +41,8 @@ const slides = computed(() => [
   },
   {
     src: agentStrategyImage,
+    avif: agentStrategyAvif,
+    webp: agentStrategyWebp,
     alt: pick(
       'An agent observer weighing weather, sky tiles and survey progress into an observing plan',
       '观测智能体把天气、天区与巡天进度权衡成一份观测计划',

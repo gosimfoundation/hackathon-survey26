@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./fonts.css";
 
 @theme {
   --color-bg-primary: #000000;
@@ -399,6 +400,7 @@ select:focus {
 }
 
 .photo-wash { position: relative; overflow: hidden; background: #0a0a0b; }
+.photo-wash picture { display: block; width: 100%; height: 100%; }
 .photo-wash img {
   width: 100%;
   height: 100%;

@@ -28,7 +28,7 @@ function start() {
             controls
             playsinline
             preload="none"
-            :poster="assetUrl('/media/survey-film-poster.jpg')"
+            :poster="assetUrl('/media/survey-film-poster.webp')"
           >
             <source :src="assetUrl('/media/survey-film.mp4')" type="video/mp4">
           </video>

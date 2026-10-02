@@ -3,6 +3,8 @@ import { competition } from '../../stores/competition'
 import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import instrumentImage from '../../assets/images/cosmos-instrument.jpg'
+import instrumentAvif from '../../assets/images/cosmos-instrument.avif'
+import instrumentWebp from '../../assets/images/cosmos-instrument.webp'
 
 const { t, pick } = useI18n()
 type Card = { title: string; desc: string }
@@ -32,7 +34,11 @@ const cardItems = computed(() => t('home.mission.cardItems') as { term: string; 
 
         <div class="relative z-10">
           <div class="mission-photo photo-wash reveal mb-12 h-[300px] md:h-[440px]">
-            <img :src="instrumentImage" alt="" loading="lazy" width="1881" height="836">
+            <picture>
+              <source :srcset="instrumentAvif" type="image/avif">
+              <source :srcset="instrumentWebp" type="image/webp">
+              <img :src="instrumentImage" alt="" loading="lazy" width="1881" height="836">
+            </picture>
             <span>{{ pick('INSTRUMENT CALIBRATION / HUMAN OVERSIGHT', '仪器标定 / 人类监督') }}</span>
           </div>
           <article v-for="(card, index) in cards" :key="card.title" class="poster-card row-sweep reveal py-9 pl-3 md:grid md:grid-cols-[5rem_1fr] md:gap-8 md:py-12" :class="`reveal-delay-${index + 1}`">
