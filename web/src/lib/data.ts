@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
+import { cached } from './requestCache'
+
+// Board reads are shared by the home page, the leaderboard page and their own 60s poll timers;
+// a short cache (and in-flight dedupe) keeps a burst of callers within this window to one request.
+const BOARD_CACHE_MS = 45000
 
 export type PhaseStatus = 'open' | 'upcoming' | 'closed' | 'disabled'
 export type LeaderboardMode = 'live' | 'frozen' | 'hidden' | 'published'
@@ -210,20 +215,27 @@ export function boardScenarios(phase: Pick<Phase, 'counts_for_final' | 'scenario
 }
 
 export async function loadLeaderboard(phaseSlug: string | null, limit = 500, scenarioSlug: string | null = null, observerPhaseId?: string): Promise<LeaderboardEntry[]> {
-  const { data, error } = observerPhaseId
-    ? await supabase.rpc('observer_board', { p_phase: observerPhaseId, p_limit: limit })
-    : await supabase.rpc('leaderboard', { p_phase_slug: phaseSlug, p_limit: limit, p_scenario_slug: scenarioSlug })
-  if (error) throw error
-  return ((data ?? []) as any[]).map(toLeaderboardEntry)
+  const key = `leaderboard:${observerPhaseId ?? ''}:${phaseSlug ?? ''}:${scenarioSlug ?? ''}:${limit}`
+  const rows = await cached(key, BOARD_CACHE_MS, async () => {
+    const { data, error } = observerPhaseId
+      ? await supabase.rpc('observer_board', { p_phase: observerPhaseId, p_limit: limit })
+      : await supabase.rpc('leaderboard', { p_phase_slug: phaseSlug, p_limit: limit, p_scenario_slug: scenarioSlug })
+    if (error) throw error
+    return (data ?? []) as any[]
+  })
+  return rows.map(toLeaderboardEntry)
 }
 
 export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, type BoardLayout, type BoardCard, type CardBoard } from './cardBoard'
 
 async function fetchCardBoard(phaseId: string, scenarioSlug: string | null, limit: number): Promise<CardBoard> {
-  const { data, error } = await supabase.rpc('observer_card_board', { p_phase: phaseId, p_scenario_slug: scenarioSlug, p_limit: limit })
-  // Until the card-board migration is deployed, complete-project phases keep the existing board.
-  if (error) return { layout: 'overall', cards: [], scenario: null, rows: await loadLeaderboard(null, limit, null, phaseId) }
-  return parseCardBoard(data)
+  const key = `card_board:${phaseId}:${scenarioSlug ?? ''}:${limit}`
+  return cached(key, BOARD_CACHE_MS, async () => {
+    const { data, error } = await supabase.rpc('observer_card_board', { p_phase: phaseId, p_scenario_slug: scenarioSlug, p_limit: limit })
+    // Until the card-board migration is deployed, complete-project phases keep the existing board.
+    if (error) return { layout: 'overall', cards: [], scenario: null, rows: await loadLeaderboard(null, limit, null, phaseId) }
+    return parseCardBoard(data)
+  })
 }
 
 /** A complete-project board, on the requested card tab when the phase has cards (see pickCardTab). */

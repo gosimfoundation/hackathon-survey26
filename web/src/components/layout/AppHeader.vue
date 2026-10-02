@@ -16,9 +16,18 @@ const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, isAdmin, signOut } = useAuth()
 let notificationTimer: ReturnType<typeof setInterval> | undefined
+function pollNotifications() { if (isLoggedIn.value && document.visibilityState === 'visible') void refreshTeamNotifications() }
 watch(isLoggedIn, logged => { if (logged) void refreshTeamNotifications(); else unreadTeamNotifications.value=0 }, {immediate:true})
-onMounted(() => { notificationTimer=setInterval(() => { if (isLoggedIn.value && !document.hidden) void refreshTeamNotifications() },15000) })
-onUnmounted(() => { if (notificationTimer) clearInterval(notificationTimer) })
+onMounted(() => {
+  notificationTimer = setInterval(pollNotifications, 60000)
+  document.addEventListener('visibilitychange', pollNotifications)
+  window.addEventListener('focus', pollNotifications)
+})
+onUnmounted(() => {
+  if (notificationTimer) clearInterval(notificationTimer)
+  document.removeEventListener('visibilitychange', pollNotifications)
+  window.removeEventListener('focus', pollNotifications)
+})
 const { registrationOpen } = useRegistrationOpen()
 const flash = useFlash()
 const mobileOpen = ref(false)

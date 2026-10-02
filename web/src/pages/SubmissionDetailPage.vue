@@ -24,7 +24,7 @@ const { t, tf, pick } = useI18n()
 const i18n = useI18n()
 const route = useRoute()
 const flash = useFlash()
-const { team, refreshMe } = useAuth()
+const { team, refreshMeCached } = useAuth()
 const sub = ref<any | null>(null)
 const reports = ref<Record<string, ScoreReport | null>>({})
 const loading = ref(true)
@@ -90,7 +90,7 @@ async function download(path: string, name: string) {
 }
 
 onMounted(async () => {
-  await refreshMe()
+  await refreshMeCached()
   try { await load() } finally { loading.value = false }
   if (team.value) watcher.start(team.value.id)
 })

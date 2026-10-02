@@ -75,8 +75,9 @@ async function load() {
 function pickScenario(slug: string) { scenarioSlug.value = slug; void load() }
 function pickCard(slug: string | null) { cardWanted.value = slug; void load() }
 
-onMounted(() => { load(); timer = window.setInterval(load, 60_000) })
-onUnmounted(() => { if (timer) window.clearInterval(timer) })
+function pollLoad() { if (document.visibilityState === 'visible') void load() }
+onMounted(() => { load(); timer = window.setInterval(pollLoad, 60_000); document.addEventListener('visibilitychange', pollLoad) })
+onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEventListener('visibilitychange', pollLoad) })
 </script>
 
 <template>

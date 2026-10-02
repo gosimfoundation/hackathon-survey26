@@ -10,7 +10,7 @@ import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
 const { pick, t, tf, locale } = useI18n()
-const { team, refreshMe } = useAuth()
+const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
 const data = ref<PortalData | null>(null)
 // Suggestions only: any public https:// address works (the server refuses IPs and internal names).
@@ -313,7 +313,7 @@ function downloadFile(command: string, fields: Record<string, unknown>, filename
   const anchor = document.createElement('a'); anchor.href = url.href; anchor.rel = 'noreferrer'; anchor.download = filename; anchor.click()
 }) }
 onMounted(async () => {
-  await refreshMe()
+  await refreshMeCached()
   try { if (team.value) await reload() } catch (e) { error.value = errorMessage(e) }
   finally { loading.value = false }
   // Links from the records page point at one evaluation; show it once it is loaded.
