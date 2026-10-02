@@ -157,10 +157,13 @@
     },
     "contact_email": "hackathon@gosim.org",
     "ticker": {
-      "slot": "スロット",
-      "open": "ドーム開",
-      "closed": "ドーム閉",
-      "per_slot": "15 分ごとに 1 回の判断 · 全行程で 1 つの持ち時間"
+      "cadence": "15 分ごとに 1 回の判断",
+      "when": "{date}の夜 · {start}–{end} UT",
+      "code_hint": "N = 夜番号 · S = スロット番号",
+      "dome_open": "ドーム開 · 観測中",
+      "dome_closed": "ドーム閉 · 悪天候",
+      "budget_label": "合計 900 秒 · 全行程で共有",
+      "fact_hint": "クリックすると 900 秒でできることがわかります"
     }
   },
   "tiers": {

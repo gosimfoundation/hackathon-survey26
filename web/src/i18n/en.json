@@ -1300,10 +1300,13 @@
     },
     "contact_email": "hackathon@gosim.org",
     "ticker": {
-      "slot": "Slot",
-      "open": "dome open",
-      "closed": "dome closed",
-      "per_slot": "a decision every 15 minutes · one time budget for the whole run"
+      "cadence": "a decision every 15 minutes",
+      "when": "Night of {date} · {start}–{end} UT",
+      "code_hint": "N = night number · S = slot number",
+      "dome_open": "Dome open · observing",
+      "dome_closed": "Dome closed · poor weather",
+      "budget_label": "900 s total · shared for the whole run",
+      "fact_hint": "Click to see what fits in 900 seconds"
     }
   },
   "common": {
