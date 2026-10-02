@@ -1357,7 +1357,8 @@
     "signed_in_as": "当前登录",
     "no_data": "暂无内容。",
     "by": "由",
-    "or": "或"
+    "or": "或",
+    "update_available": "网站已更新，请刷新页面"
   },
   "status": {
     "queued": "排队中",

@@ -1357,7 +1357,8 @@
     "signed_in_as": "Signed in as",
     "no_data": "Nothing here yet.",
     "by": "by",
-    "or": "or"
+    "or": "or",
+    "update_available": "The site was updated — please refresh"
   },
   "status": {
     "queued": "Queued",
