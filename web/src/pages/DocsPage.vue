@@ -3,12 +3,12 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import PageHead from '../components/layout/PageHead.vue'
 import MarkdownArticle, { type TocItem } from '../components/content/MarkdownArticle.vue'
-import ProtocolExplorer from '../components/docs/ProtocolExplorer.vue'
 import docsEn from '../content/docs.en.md?raw'
 import docsZh from '../content/docs.zh.md?raw'
 
 const { t, pick, locale } = useI18n()
-const source = computed(() => pick(docsEn, docsZh))
+// The guide's image paths carry a placeholder because the site can be deployed under a sub-path.
+const source = computed(() => pick(docsEn, docsZh).replaceAll('__BASE_URL__', import.meta.env.BASE_URL))
 const toc = ref<TocItem[]>([])
 const chips = computed(() => toc.value.filter(item => item.level === 2))
 const activeId = ref('')
@@ -53,7 +53,6 @@ onUnmounted(() => observer?.disconnect())
         </aside>
         <div class="docs-body min-w-0">
           <MarkdownArticle :source="source" @toc="toc = $event" />
-          <ProtocolExplorer class="mt-16" />
         </div>
       </div>
     </div></section>
