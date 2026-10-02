@@ -55,6 +55,55 @@ function decTicks(bounds: DecBounds): number[] {
   return ticks
 }
 
+/**
+ * RA window for a point set, expressed as a rotation (`cut`, the degree the window wraps at) plus a
+ * `[min, max]` span measured from that cut. A catalogue with one real footprint can still have targets
+ * scattered near both ends of the raw 0°..360° range (RA wraps), so framing it means finding where on
+ * the circle there is *nothing* and cutting there — not just taking the raw min/max, which would treat
+ * a cluster straddling the 0° seam as two clusters at opposite edges of the plot.
+ */
+export interface RaBounds { cut: number; min: number; max: number }
+const FULL_RA: RaBounds = { cut: 0, min: 0, max: 360 }
+
+/** Largest empty gap on the RA circle, cut at its middle, with a margin and a floor so a tight cluster
+ * still gets a readable window instead of collapsing to a point. */
+function raBoundsOf(points: { ra: number }[]): RaBounds {
+  if (points.length < 2) return FULL_RA
+  const angles = Array.from(new Set(points.map(p => mod(p.ra, 360)))).sort((a, b) => a - b)
+  if (angles.length < 2) return FULL_RA
+  let maxGap = -1, gapStart = 0
+  for (let i = 0; i < angles.length; i++) {
+    const a = angles[i]!
+    const g = mod(angles[(i + 1) % angles.length]! - a, 360)
+    if (g > maxGap) { maxGap = g; gapStart = a }
+  }
+  if (maxGap < 1) return FULL_RA // targets ring the whole circle; no seam to cut
+  const cut = mod(gapStart + maxGap / 2, 360)
+  const shifted = points.map(p => mod(p.ra - cut, 360))
+  let min = Math.min(...shifted), max = Math.max(...shifted)
+  const margin = Math.min(maxGap * 0.25, Math.max(3, (max - min) * 0.06))
+  min = Math.max(0, min - margin); max = Math.min(360, max + margin)
+  if (max - min < 20) { const mid = (min + max) / 2; min = Math.max(0, mid - 10); max = Math.min(360, mid + 10) }
+  return { cut, min, max }
+}
+
+/** RA grid-line spacing, mirroring decTicks; returns real RA degrees (post-rotation) to label. */
+function raTicks(bounds: RaBounds): number[] {
+  const span = bounds.max - bounds.min
+  const step = span > 180 ? 30 : span > 90 ? 20 : span > 40 ? 10 : span > 15 ? 5 : 2
+  const start = Math.ceil(bounds.min / step) * step
+  const ticks: number[] = []
+  for (let s = start; s <= bounds.max + 1e-6; s += step) ticks.push(Math.round(mod(s + bounds.cut, 360)))
+  return ticks
+}
+
+/** Where `ra` falls across the window's plot width (0..1), or null if it's outside the window entirely. */
+export function raBoundsFrac(bounds: RaBounds, ra: number): number | null {
+  const s = mod(ra - bounds.cut, 360)
+  if (s < bounds.min || s > bounds.max) return null
+  return (s - bounds.min) / (bounds.max - bounds.min)
+}
+
 const DEG = Math.PI / 180
 const mod = (a: number, n: number) => ((a % n) + n) % n
 /** The RA band label a point falls in — same eight 45°-wide bands the grid draws, R00 at ra=0. */
@@ -128,8 +177,13 @@ function plot(canvas: HTMLCanvasElement, dec: DecBounds = { min: DEC_MIN, max: D
   return { w, h, pw, ph, dec, x: (ra: number) => PAD.left + (ra / RA_MAX) * pw, y: (d: number) => PAD.top + ((dec.max - d) / (dec.max - dec.min)) * ph }
 }
 
-/** Graticule (8 RA regions, dec bands sized to the plot's own extent) and the "now" meridian line, identical on both maps. */
-function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number | null, timeFade: number, geo: ReturnType<typeof plot>) {
+/**
+ * Graticule and the "now" meridian line, identical on both maps when `ra` is left null (the tile map's
+ * fixed 0°..360° band, 8 regions + R00..R07 header). The target map passes its own `RaBounds` instead:
+ * a cropped window gets plain degree ticks and no region header, since R00..R07 (tile-map regions) are
+ * meaningless once the axis no longer spans the whole circle.
+ */
+function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number | null, timeFade: number, geo: ReturnType<typeof plot>, ra: RaBounds | null = null) {
   const { w, pw, ph, x, y, dec } = geo
   ctx.clearRect(0, 0, geo.w, geo.h)
   ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace'
@@ -137,12 +191,21 @@ function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number |
   ctx.lineWidth = 1
   ctx.strokeStyle = 'rgba(255,255,255,.12)'
   ctx.fillStyle = 'rgba(255,255,255,.4)'
-  for (let ra = 0; ra <= 360; ra += 45) {
-    const px = Math.round(x(ra)) + .5
-    ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
+  if (!ra) {
+    for (let d = 0; d <= 360; d += 45) {
+      const px = Math.round(x(d)) + .5
+      ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
+      ctx.textAlign = 'center'
+      if (d < 360) ctx.fillText(`R0${d / 45}`, x(d + 22.5), PAD.top / 2)
+      ctx.fillText(d === 360 ? '360°' : `${d}°`, px, geo.h - PAD.bottom / 2)
+    }
+  } else {
     ctx.textAlign = 'center'
-    if (ra < 360) ctx.fillText(`R0${ra / 45}`, x(ra + 22.5), PAD.top / 2)
-    ctx.fillText(ra === 360 ? '360°' : `${ra}°`, px, geo.h - PAD.bottom / 2)
+    for (const d of raTicks(ra)) {
+      const px = Math.round(x(d)) + .5
+      ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
+      ctx.fillText(`${d}°`, px, geo.h - PAD.bottom / 2)
+    }
   }
   ctx.textAlign = 'right'
   for (const d of decTicks(dec)) {
@@ -154,14 +217,30 @@ function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number |
   ctx.strokeRect(PAD.left + .5, PAD.top + .5, pw - 1, ph - 1)
 
   if (nowSec != null && timeFade > 0.02) {
-    const px = Math.round(x(lstDeg(site.lon, nowSec))) + .5
-    ctx.strokeStyle = `rgba(49,94,251,${.75 * timeFade})`
-    ctx.setLineDash([3, 3])
-    ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
-    ctx.setLineDash([])
-    ctx.fillStyle = `rgba(120,166,255,${timeFade})`
-    ctx.textAlign = px > w - 40 ? 'right' : 'left'
-    ctx.fillText('LST', px + (px > w - 40 ? -4 : 4), PAD.top + 8)
+    const lst = lstDeg(site.lon, nowSec)
+    const frac = ra ? raBoundsFrac(ra, lst) : 0
+    if (!ra || frac != null) {
+      const px = Math.round(x(lst)) + .5
+      ctx.strokeStyle = `rgba(49,94,251,${.75 * timeFade})`
+      ctx.setLineDash([3, 3])
+      ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = `rgba(120,166,255,${timeFade})`
+      ctx.textAlign = px > w - 40 ? 'right' : 'left'
+      ctx.fillText('LST', px + (px > w - 40 ? -4 : 4), PAD.top + 8)
+    } else {
+      // LST is off-window right now: a small edge arrow says which way, instead of a line to nowhere.
+      const s = mod(lst - ra.cut, 360)
+      const onLeft = mod(ra.min - s, 360) <= mod(s - ra.max, 360)
+      const ex = onLeft ? PAD.left + 1 : PAD.left + pw - 1, ey = PAD.top + 9
+      ctx.fillStyle = `rgba(120,166,255,${timeFade})`
+      ctx.beginPath()
+      if (onLeft) { ctx.moveTo(ex, ey); ctx.lineTo(ex + 6, ey - 4); ctx.lineTo(ex + 6, ey + 4) }
+      else { ctx.moveTo(ex, ey); ctx.lineTo(ex - 6, ey - 4); ctx.lineTo(ex - 6, ey + 4) }
+      ctx.closePath(); ctx.fill()
+      ctx.textAlign = onLeft ? 'left' : 'right'
+      ctx.fillText('LST', ex + (onLeft ? 9 : -9), ey)
+    }
   }
 }
 
@@ -249,49 +328,40 @@ function targetDecBounds(targets: SkyTarget[]): DecBounds {
   if (!bounds) { bounds = decBoundsOf(targets); targetDecBoundsCache.set(targets, bounds) }
   return bounds
 }
+const targetRaBoundsCache = new WeakMap<SkyTarget[], RaBounds>()
+/** RA window for a target set — exported so the console can place its own LST hover marker identically. */
+export function targetRaBounds(targets: SkyTarget[]): RaBounds {
+  let bounds = targetRaBoundsCache.get(targets)
+  if (!bounds) { bounds = raBoundsOf(targets); targetRaBoundsCache.set(targets, bounds) }
+  return bounds
+}
 
 export function drawTargetMap(canvas: HTMLCanvasElement, targets: SkyTarget[], site: SkySite, frame: TargetFrame): void {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
+  const raB = targetRaBounds(targets)
   const geo = plot(canvas, targetDecBounds(targets))
-  const { pw, x, y } = geo
+  const { pw, y } = geo
+  const x = (ra: number) => PAD.left + ((mod(ra - raB.cut, 360) - raB.min) / (raB.max - raB.min)) * pw
   const timeFade = Math.max(0, Math.min(1, frame.timeFade ?? 1))
-  drawGrid(ctx, site, frame.nowSec, timeFade, geo)
+  drawGrid(ctx, site, frame.nowSec, timeFade, { ...geo, x }, raB)
 
-  const s = Math.max(4, Math.min(9, Math.round(pw / 90)))
-  const half = s / 2
+  // A catalogue runs to thousands of point sources, not dozens of tiles: dots stay small (and required
+  // ones only a touch bigger) so individual hits and fill-in progress read at a glance instead of
+  // merging into one blob. Scales down further as the catalogue (or a cramped mobile box) gets denser.
+  const normalHalf = Math.max(0.75, Math.min(1.5, 60 / Math.sqrt(Math.max(1, targets.length))))
+  const requiredHalf = normalHalf + 0.4
   const pulse = frame.pulseSeconds ?? 0
-  const byId = frame.livePointing ? new Map(targets.map(t => [t.id, t])) : null
-
-  if (frame.livePointing && byId) {
-    const { ra, dec, targets: hits } = frame.livePointing
-    const cx = x(mod(ra, 360)), cy = y(dec)
-    ctx.strokeStyle = 'rgba(120,166,255,.55)'
-    ctx.lineWidth = 1
-    for (const id of hits) {
-      const t = byId.get(id)
-      if (!t) continue
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x(mod(t.ra, 360)), y(t.dec)); ctx.stroke()
-    }
-    ctx.strokeStyle = '#78a6ff'
-    ctx.lineWidth = 1.25
-    ctx.beginPath(); ctx.moveTo(cx - half * 1.8, cy); ctx.lineTo(cx + half * 1.8, cy); ctx.moveTo(cx, cy - half * 1.8); ctx.lineTo(cx, cy + half * 1.8); ctx.stroke()
-    ctx.beginPath(); ctx.arc(cx, cy, half * 2.4, 0, Math.PI * 2); ctx.stroke()
-  }
 
   for (const target of targets) {
-    const cx = x(mod(target.ra, 360)), cy = y(target.dec)
+    const cx = x(target.ra), cy = y(target.dec)
+    const half = target.required ? requiredHalf : normalHalf
     const outline = target.required ? CLASS_COLORS.R : CLASS_COLORS.F
     const mark = frame.observed.get(target.id)
     ctx.globalAlpha = 1
-    if (frame.nowSec != null && timeFade > 0.02 && altitudeDeg(site, target.ra, target.dec, frame.nowSec) >= site.min_alt) {
-      ctx.strokeStyle = `rgba(255,255,255,${.4 * timeFade})`
-      ctx.lineWidth = 1
-      ctx.beginPath(); ctx.arc(cx, cy, half + 4, 0, Math.PI * 2); ctx.stroke()
-    }
     if (mark && mark.state !== 'completed') {
       ctx.strokeStyle = OUTCOME_COLORS[mark.state]
-      ctx.lineWidth = 1.5
+      ctx.lineWidth = target.required ? 1 : .75
       targetPath(ctx, target.required, cx, cy, half)
       ctx.stroke()
       continue
@@ -303,9 +373,9 @@ export function drawTargetMap(canvas: HTMLCanvasElement, targets: SkyTarget[], s
         if (k > 0) {
           ctx.save()
           ctx.globalAlpha = k * .9
-          ctx.shadowColor = color; ctx.shadowBlur = 10 + 10 * k
+          ctx.shadowColor = color; ctx.shadowBlur = 6 + 6 * k
           ctx.fillStyle = color
-          targetPath(ctx, target.required, cx, cy, half + 2 * k)
+          targetPath(ctx, target.required, cx, cy, half + k)
           ctx.fill()
           ctx.restore()
         }
@@ -313,14 +383,42 @@ export function drawTargetMap(canvas: HTMLCanvasElement, targets: SkyTarget[], s
       ctx.fillStyle = color
       targetPath(ctx, target.required, cx, cy, half)
       ctx.fill()
-      if (target.required) { ctx.strokeStyle = outline; ctx.lineWidth = 1; ctx.stroke() }
+      if (target.required) { ctx.strokeStyle = outline; ctx.lineWidth = .75; ctx.stroke() }
     } else {
       ctx.strokeStyle = outline
-      ctx.lineWidth = target.required ? 1.25 : 1
+      ctx.lineWidth = target.required ? 1 : .75
       ctx.globalAlpha = target.required ? 1 : .8
-      targetPath(ctx, target.required, cx, cy, half - .5)
+      targetPath(ctx, target.required, cx, cy, half)
       ctx.stroke()
     }
   }
   ctx.globalAlpha = 1
+
+  // The live pointing — its field centre and the ~16 fibres it is landing this exposure — draws last,
+  // in flat colour well above the dim catalogue dots, so it is never lost among a few thousand of them.
+  if (frame.livePointing) {
+    const { ra, dec, targets: hits } = frame.livePointing
+    const byId = new Map(targets.map(t => [t.id, t]))
+    const cx = x(ra), cy = y(dec)
+    const r = Math.max(5, Math.min(11, pw / 55))
+    ctx.strokeStyle = 'rgba(120,166,255,.6)'
+    ctx.lineWidth = 1
+    for (const id of hits) {
+      const t = byId.get(id)
+      if (!t) continue
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x(t.ra), y(t.dec)); ctx.stroke()
+    }
+    ctx.fillStyle = '#e8edff'
+    for (const id of hits) {
+      const t = byId.get(id)
+      if (!t) continue
+      ctx.beginPath(); ctx.arc(x(t.ra), y(t.dec), normalHalf + 1.4, 0, Math.PI * 2); ctx.fill()
+    }
+    ctx.strokeStyle = '#78a6ff'
+    ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.moveTo(cx - r * .7, cy); ctx.lineTo(cx + r * .7, cy); ctx.moveTo(cx, cy - r * .7); ctx.lineTo(cx, cy + r * .7); ctx.stroke()
+    ctx.setLineDash([2, 2])
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+    ctx.setLineDash([])
+  }
 }
