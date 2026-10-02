@@ -36,17 +36,11 @@
     <title>智能体巡天黑客松 · GOSIM</title>
     <meta name="description" content="GOSIM 智能体巡天黑客松：为天文台写一个观测智能体——它看得到公开的天空状态，却看不到真实天气，每 15 分钟决定下一步拍哪片天。" />
     <!--
-      Google Fonts is slow or outright blocked on much of the mainland China network, where many
-      participants are. A normal <link rel="stylesheet"> there blocks first paint for several seconds
-      (sometimes until timeout) waiting on a request that may never complete. Load it as a non-blocking
-      resource instead: the page paints immediately in the fallback stack below, and swaps to the web
-      fonts whenever (if ever) the stylesheet actually arrives.
+      Fonts are self-hosted (src/assets/styles/fonts.css, files under public/fonts/) instead of
+      loaded from Google. fonts.googleapis.com / fonts.gstatic.com are frequently slow or blocked
+      outright on the mainland China network most participants are on — self-hosting removes those
+      requests entirely rather than just making them non-blocking.
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"></noscript>
     <script>
       try {
         const redirect = window.sessionStorage.getItem('gosim-pages-redirect')

@@ -59,7 +59,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
         class="hero-wash-video parallax-bg"
         autoplay muted loop playsinline
         preload="auto"
-        :poster="assetUrl('/media/survey-milky-way.jpg')"
+        :poster="assetUrl('/media/survey-milky-way.webp')"
       >
         <source :src="assetUrl('/media/survey-night-sky.mp4')" type="video/mp4">
       </video>
