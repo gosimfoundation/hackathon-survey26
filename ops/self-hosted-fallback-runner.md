@@ -24,7 +24,11 @@ Transient GitHub errors (`github_unavailable`, timeouts) never move a job.
 approved runtime and marks it `runner='self-hosted'`. The owner's placement,
 and with it the participant repository the job reads and writes, stays where
 it is (`20261002000600_job_moves_keep_repository.sql`; moving it made a moved
-preparation job unclaimable). The
+preparation job unclaimable). Preparation jobs never change organization at
+all (`20261002000700_preparation_jobs_stay.sql`: observer-job accepts a
+preparation job's repository only in the job's own organization), so the
+fallback takes evaluation and score jobs; a preparation job only when the
+participant is placed in the fallback organization itself. The
 dispatcher then sends the extra workflow input `runner=self-hosted`, which
 makes the control workflow use `runs-on: [self-hosted, linux, observer-fallback]`.
 A self-hosted job already accepted by GitHub is not re-dispatched; it holds its

@@ -351,6 +351,31 @@ def test_a_job_moved_to_the_fallback_keeps_time_for_the_vm_to_boot(setup):
     query(uri, 'update private.observer_installations set fallback_capacity=0')
 
 
+def test_preparation_jobs_never_change_organization(setup):
+    """observer-job only accepts a preparation job's repository in the job's own organization."""
+    s = setup; uri = s['uri']
+    fallback_ready(uri, 1)
+    query(uri, """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled)
+        values(%s,'1009',2009,'3009',%s,true) on conflict(organization) do update set enabled=true""",
+          (ORG + '9', 'a' * 40))
+    revision = rpc(uri, 'observer_create_project', 'Moved preparation', 'repository',
+                   'https://github.com/example/project', role='authenticated', user=s['user'])
+    job = uuid.uuid4()
+    rpc(uri, 'observer_enqueue_job', job, 'prepare', None, revision, ORG + '8',
+        secrets.token_urlsafe(32), 'encrypted job payload', 'encrypted nonce')
+    with pytest.raises(psycopg.Error, match='fallback_unavailable'):
+        rpc(uri, 'observer_fallback_job', job)
+    with pytest.raises(psycopg.Error, match='job_conflict'):
+        rpc(uri, 'observer_failover_job', job, ORG + '9')
+    # Where the fallback runner is the job's own organization, it may take it.
+    query(uri, "update private.observer_jobs set organization=%s where id=%s", (ORG + '13', job))
+    assert rpc(uri, 'observer_fallback_job', job)['organization'] == ORG + '13'
+    query(uri, "update private.observer_jobs set status='failed' where status in ('queued','dispatched','claimed')")
+    query(uri, 'update private.observer_installations set fallback_capacity=0')
+    query(uri, 'update private.observer_installations set enabled=false where organization=%s', (ORG + '9',))
+
+
 def pending(uri):
     return {j['id']: j for j in rpc(uri, 'observer_pending_jobs', 20)}
 
