@@ -9,7 +9,10 @@ export function usePhases(auto = true) {
   async function reload() {
     loading.value = true
     error.value = null
-    try { phases.value = isSupabaseConfigured ? await loadPhases() : [] }
+    // The public leaderboard must list every phase in LEADERBOARD_SLUGS regardless of which one
+    // teams currently submit to, so load the unfiltered set (loadPhases(true)) rather than the
+    // current-submission-phase-scoped default.
+    try { phases.value = isSupabaseConfigured ? await loadPhases(true) : [] }
     catch (e) { error.value = e; phases.value = [] }
     finally { loading.value = false }
   }

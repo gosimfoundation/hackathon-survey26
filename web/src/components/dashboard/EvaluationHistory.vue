@@ -7,11 +7,12 @@ import { useI18n } from '../../composables/useI18n'
 import { num } from '../../lib/format'
 import { formatDateTime } from '../../lib/projectText'
 import { useQuestFlags } from '../../composables/useQuestFlags'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 // `quiet` keeps the new-submission button secondary while the dashboard quest leads.
 // `allPhases` is the records page: every complete-project evaluation with its scenario scores.
 const props=withDefaults(defineProps<{limit?:number;quiet?:boolean;allPhases?:boolean;hideEmpty?:boolean}>(),{limit:50,quiet:false,allPhases:false,hideEmpty:false})
 const {team}=useAuth(), {pick,t,locale}=useI18n(), {remember}=useQuestFlags()
-type Run={id:string;status:string;score:number|null;scenarios?:{name:string}|null}
+type Run={id:string;status:string;score:number|null;scenarios?:{slug:string;name:string}|null}
 type Batch={id:string;status:string;score:number|null;created_at:string;quota_refunded?:boolean
   phases?:{name_en:string;name_zh:string}|null;observer_runs?:Run[]}
 const rows=ref<Batch[]>([]),loading=ref(true),error=ref(false)
@@ -21,7 +22,7 @@ const runs=(b:Batch)=>[...(b.observer_runs??[])].sort((x,y)=>(x.scenarios?.name?
 async function load(){
   if(!team.value || (!props.allPhases && !competition.phaseId)){loading.value=false;return}
   let request=supabase.from('observer_batches')
-    .select(props.allPhases?'*,phases(name_en,name_zh),observer_runs(id,status,score,scenarios(name))':'*')
+    .select(props.allPhases?'*,phases(name_en,name_zh),observer_runs(id,status,score,scenarios(slug,name))':'*')
     .eq('team_id',team.value.id).eq('purpose','formal')
   if(!props.allPhases)request=request.eq('phase_id',competition.phaseId!)
   const result=await request.order('created_at',{ascending:false}).limit(props.limit)
@@ -46,7 +47,7 @@ onUnmounted(()=>window.clearInterval(timer))
         <td v-if="props.allPhases">{{ row.phases ? pick(row.phases.name_en,row.phases.name_zh) : '—' }}</td>
         <td>{{ statuses[row.status]??row.status }}<span v-if="row.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ pick('Not counted toward the daily limit','未计入次数') }}</span></td>
         <td class="m">{{ num(row.score) }}</td>
-        <td v-if="props.allPhases" class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block">{{ run.scenarios?.name ?? pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ run.score!=null ? num(run.score) : statuses[run.status]??run.status }}</span></td>
+        <td v-if="props.allPhases" class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block">{{ run.scenarios ? scenarioLabel(run.scenarios.slug, run.scenarios.name, locale) : pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ run.score!=null ? num(run.score) : statuses[run.status]??run.status }}</span></td>
         <td><router-link class="accent-l" :to="'/compete?track=project#batch-'+row.id" @click="remember('review','competition')">{{ pick('View progress and results','查看进度与结果') }}</router-link></td>
       </tr></tbody>
     </table></div>

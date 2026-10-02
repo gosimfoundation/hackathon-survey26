@@ -4,6 +4,7 @@ import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { boardScenarios, isProjectBoard, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
 import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 import { useAuth } from '../../stores/auth'
 import { fmtUtc, num } from '../../lib/format'
 import UserAvatar from '../UserAvatar.vue'
@@ -15,7 +16,7 @@ import TeamDetailDialog from '../leaderboard/TeamDetailDialog.vue'
 import BoardCardTabs from '../leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../leaderboard/CardBoardTable.vue'
 
-const { t, tf } = useI18n()
+const { t, tf, locale } = useI18n()
 const { team } = useAuth()
 const phase = ref<Phase | null>(null)
 const entries = ref<LeaderboardEntry[]>([])
@@ -35,7 +36,7 @@ const cardWanted = ref<string | null>(null)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
-  : tf('leaderboard.detail.board_card', { card: cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value }))
+  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
 let timer: number | undefined
 
 const top = computed(() => entries.value.slice(0, 10))
@@ -49,7 +50,9 @@ async function load() {
   if (!isSupabaseConfigured) { loading.value = false; error.value = true; return }
   refreshing.value = true
   try {
-    const phases = await loadPhases()
+    // Unfiltered: the home mini board must consider every LEADERBOARD_SLUGS phase, not just
+    // whichever one teams currently submit to (see usePhases.ts for the same fix on the full page).
+    const phases = await loadPhases(true)
     const allowedPhases = phases.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug))
     phase.value = homeBoardPhase(allowedPhases)
     hidden.value = phase.value?.leaderboard_mode === 'hidden'

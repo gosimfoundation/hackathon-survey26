@@ -4,12 +4,13 @@ import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
 import type { BoardCard, BoardLayout, LeaderboardEntry } from '../../lib/data'
 import { num } from '../../lib/format'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // The table of a card board. Overall tab: the mean and one column per card. Card tab: the card score, the
 // team's overall score where the phase has one, and whatever numeric score components the runs report.
 const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null }>()
 const emit = defineEmits<{ select: [entry: LeaderboardEntry] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const overallTab = computed(() => props.tab === null)
 const componentKeys = computed(() => {
@@ -36,7 +37,7 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
       <thead><tr>
         <th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th>
         <th class="r">{{ overallTab ? t('leaderboard.overall') : t('leaderboard.score') }}</th>
-        <template v-if="overallTab"><th v-for="c in cards" :key="c.slug" class="r" :data-testid="`card-col-${c.slug}`">{{ c.name }}</th></template>
+        <template v-if="overallTab"><th v-for="c in cards" :key="c.slug" class="r" :data-testid="`card-col-${c.slug}`">{{ scenarioLabel(c.slug, c.name, locale) }}</th></template>
         <th v-if="showOverall" class="r">{{ t('leaderboard.overall') }}</th>
         <th v-for="k in componentKeys" :key="k" class="r">{{ componentLabel(k) }}</th>
         <th v-if="showTiles" class="r">{{ t('leaderboard.tiles') }}</th>
