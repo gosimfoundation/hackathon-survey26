@@ -13,6 +13,7 @@ import PageHead from '../components/layout/PageHead.vue'
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
 
+const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
   { n: '02', title: 'resources.skill_v4', desc: 'resources.skill_v4_desc', href: appUrl('/skill-v4.md'), primary: false, label: 'common.view', view: true },
   { n: '03', title: 'resources.cards', desc: 'resources.cards_desc', href: '/cards', primary: false, label: 'common.view', route: true },
@@ -53,8 +54,14 @@ onMounted(async () => {
               <span v-else-if="cardFiles[c.id]" class="pill" :class="c.stage === 'practice' ? 'upcoming' : 'closed'">{{ c.stage === 'practice' ? t('resources.card_pending') : t('resources.card_locked') }}</span>
             </p>
           </article>
+          <article v-for="symbol in hiddenCards" :key="`hidden-${symbol}`" class="task-card-item" :data-testid="`resources-card-hidden-${symbol.toLowerCase()}`">
+            <span class="label">{{ t('resources.card_hidden_label') }}</span>
+            <h3 class="mt-2">{{ tf('resources.card_hidden_title', { card: symbol }) }}</h3>
+            <p class="task-card-actions">
+              <span class="pill closed">{{ t('resources.card_not_public') }}</span>
+            </p>
+          </article>
         </div>
-        <p class="text3 mt-4 text-sm">{{ t('cards_page.hidden_note') }}</p>
       </div>
 
       <div class="flow-band reveal mt-16">
