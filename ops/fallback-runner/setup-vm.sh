@@ -8,7 +8,7 @@
 #   bash ops/fallback-runner/setup-vm.sh
 #
 # Optional environment: RUNNER_REPOSITORY (AGENTIC-OBSERVER26-runner-13/observer-control),
-# RESOLVERS ("223.5.5.5 119.29.29.29"), APT_MIRROR (TUNA ubuntu-ports),
+# RESOLVERS ("223.5.5.5 119.29.29.29"), APT_MIRROR (TUNA ubuntu-ports), PIP_MIRROR (TUNA PyPI),
 # IMAGE (a local copy of the pinned image; it is checked against the pinned digest).
 # Re-running skips what exists. To start over: limactl delete the instance as observerfb.
 set -euo pipefail
@@ -20,6 +20,7 @@ instance=observer-fallback
 repository="${RUNNER_REPOSITORY:-AGENTIC-OBSERVER26-runner-13/observer-control}"
 resolvers="${RESOLVERS-223.5.5.5 119.29.29.29}"
 apt_mirror="${APT_MIRROR-https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports}"
+pip_mirror="${PIP_MIRROR-https://pypi.tuna.tsinghua.edu.cn/simple}"
 agents="$HOME/Library/LaunchAgents"
 [ "$(id -u)" -ne 0 ] || { echo "Run as the organizer's own account, not with sudo." >&2; exit 2; }
 vm() { sudo -n -H -u "$account" "$limactl" "$@"; }
@@ -92,12 +93,18 @@ check "the runner account reaches GitHub through the proxy" 200 vmsh sudo -u run
   curl -s -m 20 -o /dev/null -w '%{http_code}\n' -x http://192.168.5.2:18080 https://api.github.com/zen
 [ "$fail" -eq 0 ] || { echo "Isolation checks failed; the runner is not registered." >&2; exit 1; }
 
+# The restricted-egress forwarder image, pulled once (job cleanup keeps
+# registry images); through the Mac's proxy a first pull can outlast a job's
+# pull timeout.
+proxy_image="$(sed -n 's/^PROXY_IMAGE = "\(.*\)"$/\1/p' "$here/../../project_platform/egress.py")"
+[ -n "$proxy_image" ] && vmsh sudo docker pull -q "$proxy_image" >/dev/null
+
 echo "== runner on $repository"
 if ! vmsh sudo test -e /home/runner/actions-runner/.runner; then
   token="$(gh api -X POST "repos/$repository/actions/runners/registration-token" -q .token)"
   # The one-hour, register-only token travels on stdin, never on a command line.
   { printf 'export RUNNER_TOKEN=%q\n' "$token"; cat "$here/install-runner.sh"; } |
-    vmsh sudo RUNNER_URL="https://github.com/$repository" bash -s
+    vmsh sudo RUNNER_URL="https://github.com/$repository" PIP_INDEX_URL="$pip_mirror" bash -s
 fi
 for _ in $(seq 60); do
   status="$(gh api "repos/$repository/actions/runners" -q '.runners[] | select(.name=="observer-fallback-1") | .status')"

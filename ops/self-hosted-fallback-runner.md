@@ -20,9 +20,11 @@ these cases:
 | Every organization over quota | Every enabled organization is over its `monthly_minute_limit`. If no slot is free the job still runs GitHub-hosted in its own organization. |
 
 Transient GitHub errors (`github_unavailable`, timeouts) never move a job.
-`observer_fallback_job` moves the job (and, like `observer_failover_job`, the
-owner's placement when the organization changes) to the fallback
-organization's approved runtime and marks it `runner='self-hosted'`. The
+`observer_fallback_job` moves only the job to the fallback organization's
+approved runtime and marks it `runner='self-hosted'`. The owner's placement,
+and with it the participant repository the job reads and writes, stays where
+it is (`20261002000600_job_moves_keep_repository.sql`; moving it made a moved
+preparation job unclaimable). The
 dispatcher then sends the extra workflow input `runner=self-hosted`, which
 makes the control workflow use `runs-on: [self-hosted, linux, observer-fallback]`.
 A self-hosted job already accepted by GitHub is not re-dispatched; it holds its
@@ -68,6 +70,14 @@ for 14 days, and the runner updates itself while online).
   boot happens at most once a day, so a runner that never comes online does
   not keep the VM cycling.
 - The VM disk is sparse (40 GiB at most); keep that much free space on the Mac.
+- **Network through the Mac's proxy.** The runner and Docker
+  reach GitHub and registries through the egress proxy, which chains to the
+  local proxy and falls back to a direct connection when that proxy fails.
+  Python 3.12 for `actions/setup-python` is installed once at setup, and job
+  cleanup keeps registry images (content-addressed) so jobs do not re-pull
+  them; it removes every image built in the VM.
+- **A job whose run dies before it reports** stays claimed until its lease
+  expires (as on GitHub-hosted runners) and holds its fallback slot until then.
 
 ## Security boundary
 

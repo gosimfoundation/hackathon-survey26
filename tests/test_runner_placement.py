@@ -313,8 +313,9 @@ def test_fallback_moves_a_pending_job_to_a_free_self_hosted_slot(setup):
     row = query(uri, """select organization,repository_id,organization_id,workflow_sha,runner,status,error,
         dispatch_count from private.observer_jobs where id=%s""", (first,))[0]
     assert row == (ORG + '13', '3013', '1013', 'f' * 40, 'self-hosted', 'queued', '', 1)
+    # The owner's placement (and so the job's participant repository) stays put.
     assert query(uri, 'select organization from private.observer_placements where user_id=%s',
-                 (s['user'],)) == [(ORG + '13',)]
+                 (s['user'],)) == [(ORG + '8',)]
     with pytest.raises(psycopg.Error, match='job_conflict'):
         rpc(uri, 'observer_fallback_job', first)
     # The single slot stays taken until the self-hosted job finishes or expires.

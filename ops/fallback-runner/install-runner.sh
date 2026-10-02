@@ -39,6 +39,27 @@ tar -xzf "/tmp/$package" -C "$home" && rm -f "/tmp/$package"
 chown -R runner:runner "$home"
 "$home/bin/installdependencies.sh" >/dev/null
 
+# Python 3.12 for actions/setup-python, installed once into the tool cache
+# (job cleanup keeps it) so no job downloads it. Checked against the release
+# asset's digest; LD_LIBRARY_PATH as setup-python sets it for the job steps.
+py_release="$(curl -fsSL 'https://api.github.com/repos/actions/python-versions/releases?per_page=50' |
+  jq -c '[.[] | select((.tag_name | test("^3\\.12\\.[0-9]+-")) and (.prerelease | not))][0]')"
+py_asset="$(jq -c --arg n "linux-24.04-$arch.tar.gz" '.assets[] | select(.name | endswith($n))' <<<"$py_release")"
+py_sha="$(jq -r '.digest // empty' <<<"$py_asset" | sed 's/^sha256://')"
+[ -n "$py_sha" ] || { echo "Python 3.12 release digest not found" >&2; exit 1; }
+py_dir="$(mktemp -d)"
+curl -fsSL -o "$py_dir/python.tgz" "$(jq -r .browser_download_url <<<"$py_asset")"
+echo "$py_sha  $py_dir/python.tgz" | sha256sum -c -
+tar -xzf "$py_dir/python.tgz" -C "$py_dir" && rm -f "$py_dir/python.tgz"
+chown -R runner:runner "$py_dir"
+py_version="$(jq -r .tag_name <<<"$py_release" | cut -d- -f1)"
+tool="$home/_work/_tool"
+install -d -o runner -g runner "$home/_work" "$tool"
+(cd "$py_dir" && sudo -u runner env "${proxy_env[@]}" ${PIP_INDEX_URL:+PIP_INDEX_URL="$PIP_INDEX_URL"} \
+  RUNNER_TOOL_CACHE="$tool" LD_LIBRARY_PATH="$tool/Python/$py_version/$arch/lib" bash ./setup.sh >/dev/null)
+rm -rf "$py_dir"
+test -e "$tool/Python/$py_version/$arch.complete"
+
 sudo -u runner env "${proxy_env[@]}" "$home/config.sh" --unattended --replace --url "$RUNNER_URL" \
   --token "$RUNNER_TOKEN" --name "$RUNNER_NAME" --labels observer-fallback --work _work
 {
