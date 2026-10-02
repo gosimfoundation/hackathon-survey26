@@ -13,7 +13,7 @@ All participants use the same Participate page; the platform selects the active 
 | Task cards | Used for | Published |
 |---|---|---|
 | Practice cards α, β, γ, δ | Practice | Now: the card pages and every file (including the weather, forecast and event files), so scores can be reproduced locally |
-| Hackathon cards A, B, C, D | Online competition evaluations and the online board | When the competition starts (Oct 5 00:00, UTC+8): the card pages and the public inputs; weather, forecasts and events stay private |
+| Hackathon cards A, B, C, D | Online competition evaluations and the online board | When the competition starts — Oct 5, 00:00 Beijing time (Oct 4, 16:00 UTC; Oct 4, 09:00 PDT; Oct 4, 12:00 EDT): the card pages and the public inputs; weather, forecasts and events stay private |
 | Hidden cards E, F, G, H | The final evaluation after the deadline, which decides the final ranking | Never; participants do not see them during the event |
 
 The fourth card of each set (δ, D, H) is an extreme card: less observable time and more disruptions. Card pages are on [Task cards](/cards); downloads are on [Resources](/resources).
