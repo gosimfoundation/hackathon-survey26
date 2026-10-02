@@ -4,7 +4,6 @@ import { useScrollReveal } from '../composables/useScrollReveal'
 import HeroSection from '../components/sections/HeroSection.vue'
 import SectionRail from '../components/layout/SectionRail.vue'
 import FilmSection from '../components/sections/FilmSection.vue'
-import DemoReplaySection from '../components/sections/DemoReplaySection.vue'
 import QuestSection from '../components/sections/QuestSection.vue'
 import ParticipantsSection from '../components/sections/ParticipantsSection.vue'
 import SimpleVisionSection from '../components/sections/SimpleVisionSection.vue'
@@ -22,7 +21,6 @@ useScrollReveal()
 const railSections = [
   { id: 'top', key: 'home.rail.top' },
   { id: 'film', key: 'home.rail.film' },
-  { id: 'demo', key: 'home.rail.demo' },
   { id: 'quest', key: 'home.rail.quest' },
   { id: 'board', key: 'home.rail.board' },
   { id: 'participants', key: 'home.rail.participants' },
@@ -42,7 +40,6 @@ const railSections = [
     <SectionRail :sections="railSections" />
     <HeroSection />
     <FilmSection class="section-tint-b" />
-    <DemoReplaySection />
     <QuestSection />
     <LeaderboardSection id="board" class="section-tint-b" />
     <ParticipantsSection />

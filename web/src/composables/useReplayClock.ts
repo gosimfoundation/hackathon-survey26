@@ -1,7 +1,7 @@
 import { onMounted, onUnmounted, reactive, readonly } from 'vue'
 import demoReplay from '../content/demo/replay.json'
-import { outcomeClass, type OutcomeClass } from '../lib/report'
-import { prefersReducedMotion, type SkySite, type SkyTile } from '../lib/skymap'
+import type { OutcomeClass } from '../lib/report'
+import { prefersReducedMotion, type SkySite, type SkyTarget } from '../lib/skymap'
 
 /**
  * Shared clock for the bundled organizer example. Participant traces must never
@@ -13,15 +13,19 @@ import { prefersReducedMotion, type SkySite, type SkyTile } from '../lib/skymap'
  */
 export interface ReplaySlot { slot: string; night: string; t: string; startSec: number; open: boolean; seeing: number; transp: number; sky: number; eff: number }
 export interface ReplayAction {
-  i: string; slot: string; a: 'observe' | 'wait'; tile: string; program: string; outcome: string; cls: OutcomeClass
-  t: string; dt: number; score: number; penalty: number; startSec: number; doneSec: number
+  i: string; slot: string; a: 'observe' | 'wait'; targets: string[]; center: { ra: number; dec: number } | null
+  program: string; cls: OutcomeClass; t: string; dt: number; score: number; penalty: number; startSec: number; doneSec: number
 }
-export interface RawReplayTile { id: string; ra: number; dec: number; cls: string; region: string; exp: number }
+export interface RawReplayTarget { id: string; ra: number; dec: number; required: boolean }
 export interface RawReplaySlot { slot: string; night: string; t: string; open: boolean; seeing: number; transp: number; sky: number; eff: number }
-export interface RawReplayAction { i: string; slot: string; a: string; tile: string; program: string; outcome: string; t: string; dt: number; score: number; penalty: number }
+export interface RawReplayAction {
+  i: string; slot: string; a: string; targets: string[]; center: { ra: number; dec: number } | null
+  program: string; cls: string; t: string; dt: number; score: number; penalty: number
+}
 export interface RawReplay {
   site: SkySite
-  tiles: RawReplayTile[]
+  /** Point sources on the sky, each landed on by one fibre of some pointing; replaces the old fixed-patch "tiles". */
+  targets: RawReplayTarget[]
   weather: RawReplaySlot[]
   actions: RawReplayAction[]
   score: { total: number; base_science: number }
@@ -91,7 +95,7 @@ const SIDEREAL_DAY = 86164.0905
 export const replayMeta = reactive({ version: 0, source: 'demo' as 'demo' | 'champion', label: '' })
 
 export let replaySite: SkySite = { lat: 0, lon: 0, min_alt: 30 }
-export let replayTiles: SkyTile[] = []
+export let replayTargets: SkyTarget[] = []
 export let replaySlots: ReplaySlot[] = []
 export let replayActions: ReplayAction[] = []
 export let replayTotals = { finalScore: 0, baseScience: 0, completed: 0, nights: 0, requiredMissing: 0 }
@@ -274,12 +278,12 @@ function buildSegments() {
 
 export function setReplayData(raw: RawReplay, source: 'demo' | 'champion' = 'demo', label = '') {
   replaySite = raw.site
-  replayTiles = raw.tiles.map(t => ({ id: t.id, ra: t.ra, dec: t.dec, cls: t.cls === 'R' ? 'R' as const : 'F' as const, region: t.region, exp: t.exp }))
+  replayTargets = raw.targets.map(t => ({ id: t.id, ra: t.ra, dec: t.dec, required: t.required }))
   replaySlots = raw.weather.map(w => ({ ...w, startSec: Date.parse(w.t) / 1000 }))
   replayActions = raw.actions.map(a => {
     const startSec = Date.parse(a.t) / 1000
     const act = a.a === 'wait' ? 'wait' as const : 'observe' as const
-    return { ...a, a: act, cls: outcomeClass(a.outcome, act), startSec, doneSec: startSec + a.dt }
+    return { ...a, a: act, cls: a.cls as OutcomeClass, startSec, doneSec: startSec + a.dt }
   })
   replayTotals = {
     finalScore: raw.score.total, baseScience: raw.score.base_science,

@@ -25,11 +25,17 @@ export interface SkyFrame {
 }
 
 export const CLASS_COLORS: Record<SchedulingClass, string> = { R: '#f5f5f5', F: '#78a6ff' }
+/** A point source on the sky, landed on by one fibre of some pointing; the demo console's unit, replacing the fixed-patch "tile". */
+export interface SkyTarget { id: string; ra: number; dec: number; required: boolean }
+/** The current pointing being drawn live: its sky-average centre and the targets its fibres are landing on. */
+export interface LivePointing { ra: number; dec: number; targets: string[] }
 const RA_MAX = 360, DEC_MIN = -10, DEC_MAX = 70
 export const PAD = { left: 30, right: 10, top: 16, bottom: 18 }
 
 const DEG = Math.PI / 180
 const mod = (a: number, n: number) => ((a % n) + n) % n
+/** The RA band label a point falls in — same eight 45°-wide bands the grid draws, R00 at ra=0. */
+export const regionOf = (ra: number): string => `R0${Math.floor(mod(ra, 360) / 45)}`
 
 /** Local sidereal time in degrees (GMST + east longitude). */
 export function lstDeg(lon: number, unixSeconds: number): number {
@@ -92,18 +98,19 @@ function tilePath(ctx: CanvasRenderingContext2D, cls: SchedulingClass, cx: numbe
   }
 }
 
-export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: SkySite, frame: SkyFrame): void {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
+/** Projection for the RA/Dec plot box; shared by the tile map and the target map so both read identically. */
+function plot(canvas: HTMLCanvasElement) {
   const { w, h } = fitCanvas(canvas)
   const pw = w - PAD.left - PAD.right, ph = h - PAD.top - PAD.bottom
-  const x = (ra: number) => PAD.left + (ra / RA_MAX) * pw
-  const y = (dec: number) => PAD.top + ((DEC_MAX - dec) / (DEC_MAX - DEC_MIN)) * ph
-  ctx.clearRect(0, 0, w, h)
+  return { w, h, pw, ph, x: (ra: number) => PAD.left + (ra / RA_MAX) * pw, y: (dec: number) => PAD.top + ((DEC_MAX - dec) / (DEC_MAX - DEC_MIN)) * ph }
+}
+
+/** Graticule (8 RA regions, 20° dec bands) and the "now" meridian line, identical on both maps. */
+function drawGrid(ctx: CanvasRenderingContext2D, site: SkySite, nowSec: number | null, timeFade: number, geo: ReturnType<typeof plot>) {
+  const { w, pw, ph, x, y } = geo
+  ctx.clearRect(0, 0, geo.w, geo.h)
   ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace'
   ctx.textBaseline = 'middle'
-
-  // graticule: 8 RA regions (45°) and 20° declination bands
   ctx.lineWidth = 1
   ctx.strokeStyle = 'rgba(255,255,255,.12)'
   ctx.fillStyle = 'rgba(255,255,255,.4)'
@@ -112,7 +119,7 @@ export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: Sk
     ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
     ctx.textAlign = 'center'
     if (ra < 360) ctx.fillText(`R0${ra / 45}`, x(ra + 22.5), PAD.top / 2)
-    ctx.fillText(ra === 360 ? '360°' : `${ra}°`, px, h - PAD.bottom / 2)
+    ctx.fillText(ra === 360 ? '360°' : `${ra}°`, px, geo.h - PAD.bottom / 2)
   }
   ctx.textAlign = 'right'
   for (let dec = 0; dec <= DEC_MAX; dec += 20) {
@@ -123,10 +130,8 @@ export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: Sk
   ctx.strokeStyle = 'rgba(255,255,255,.25)'
   ctx.strokeRect(PAD.left + .5, PAD.top + .5, pw - 1, ph - 1)
 
-  // meridian ("now" position: ra = LST)
-  const timeFade = Math.max(0, Math.min(1, frame.timeFade ?? 1))
-  if (frame.nowSec != null && timeFade > 0.02) {
-    const px = Math.round(x(lstDeg(site.lon, frame.nowSec))) + .5
+  if (nowSec != null && timeFade > 0.02) {
+    const px = Math.round(x(lstDeg(site.lon, nowSec))) + .5
     ctx.strokeStyle = `rgba(49,94,251,${.75 * timeFade})`
     ctx.setLineDash([3, 3])
     ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + ph); ctx.stroke()
@@ -135,6 +140,15 @@ export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: Sk
     ctx.textAlign = px > w - 40 ? 'right' : 'left'
     ctx.fillText('LST', px + (px > w - 40 ? -4 : 4), PAD.top + 8)
   }
+}
+
+export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: SkySite, frame: SkyFrame): void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const geo = plot(canvas)
+  const { pw, x, y } = geo
+  const timeFade = Math.max(0, Math.min(1, frame.timeFade ?? 1))
+  drawGrid(ctx, site, frame.nowSec, timeFade, geo)
 
   const s = Math.max(4, Math.min(9, Math.round(pw / 90)))
   const half = s / 2
@@ -180,6 +194,100 @@ export function drawSkyMap(canvas: HTMLCanvasElement, tiles: SkyTile[], site: Sk
       ctx.lineWidth = tile.cls === 'R' ? 1.25 : 1
       ctx.globalAlpha = tile.cls === 'R' ? 1 : .8
       tilePath(ctx, tile.cls, cx, cy, half - .5)
+      ctx.stroke()
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+function targetPath(ctx: CanvasRenderingContext2D, required: boolean, cx: number, cy: number, half: number) {
+  ctx.beginPath()
+  if (required) {
+    const r = half * 1.45
+    ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath()
+  } else {
+    ctx.rect(cx - half, cy - half, half * 2, half * 2)
+  }
+}
+
+export interface TargetFrame extends SkyFrame {
+  /** The pointing being drawn live, if any — its 15-ish fibre hits are joined to its centre with thin spokes. */
+  livePointing?: LivePointing | null
+}
+
+/**
+ * Current-format sky map: point-source targets (◇ required, □ optional), each lit up once a pointing's
+ * fibre lands on it, plus — while a pointing is live — its field centre joined to each of its hits.
+ */
+export function drawTargetMap(canvas: HTMLCanvasElement, targets: SkyTarget[], site: SkySite, frame: TargetFrame): void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const geo = plot(canvas)
+  const { pw, x, y } = geo
+  const timeFade = Math.max(0, Math.min(1, frame.timeFade ?? 1))
+  drawGrid(ctx, site, frame.nowSec, timeFade, geo)
+
+  const s = Math.max(4, Math.min(9, Math.round(pw / 90)))
+  const half = s / 2
+  const pulse = frame.pulseSeconds ?? 0
+  const byId = frame.livePointing ? new Map(targets.map(t => [t.id, t])) : null
+
+  if (frame.livePointing && byId) {
+    const { ra, dec, targets: hits } = frame.livePointing
+    const cx = x(mod(ra, 360)), cy = y(dec)
+    ctx.strokeStyle = 'rgba(120,166,255,.55)'
+    ctx.lineWidth = 1
+    for (const id of hits) {
+      const t = byId.get(id)
+      if (!t) continue
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x(mod(t.ra, 360)), y(t.dec)); ctx.stroke()
+    }
+    ctx.strokeStyle = '#78a6ff'
+    ctx.lineWidth = 1.25
+    ctx.beginPath(); ctx.moveTo(cx - half * 1.8, cy); ctx.lineTo(cx + half * 1.8, cy); ctx.moveTo(cx, cy - half * 1.8); ctx.lineTo(cx, cy + half * 1.8); ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx, cy, half * 2.4, 0, Math.PI * 2); ctx.stroke()
+  }
+
+  for (const target of targets) {
+    const cx = x(mod(target.ra, 360)), cy = y(target.dec)
+    const outline = target.required ? CLASS_COLORS.R : CLASS_COLORS.F
+    const mark = frame.observed.get(target.id)
+    ctx.globalAlpha = 1
+    if (frame.nowSec != null && timeFade > 0.02 && altitudeDeg(site, target.ra, target.dec, frame.nowSec) >= site.min_alt) {
+      ctx.strokeStyle = `rgba(255,255,255,${.4 * timeFade})`
+      ctx.lineWidth = 1
+      ctx.beginPath(); ctx.arc(cx, cy, half + 4, 0, Math.PI * 2); ctx.stroke()
+    }
+    if (mark && mark.state !== 'completed') {
+      ctx.strokeStyle = OUTCOME_COLORS[mark.state]
+      ctx.lineWidth = 1.5
+      targetPath(ctx, target.required, cx, cy, half)
+      ctx.stroke()
+      continue
+    }
+    if (mark) {
+      const color = OUTCOME_COLORS.completed
+      if (pulse > 0 && frame.nowSec != null) {
+        const k = 1 - Math.min(1, Math.max(0, (frame.nowSec - mark.doneSec) / pulse))
+        if (k > 0) {
+          ctx.save()
+          ctx.globalAlpha = k * .9
+          ctx.shadowColor = color; ctx.shadowBlur = 10 + 10 * k
+          ctx.fillStyle = color
+          targetPath(ctx, target.required, cx, cy, half + 2 * k)
+          ctx.fill()
+          ctx.restore()
+        }
+      }
+      ctx.fillStyle = color
+      targetPath(ctx, target.required, cx, cy, half)
+      ctx.fill()
+      if (target.required) { ctx.strokeStyle = outline; ctx.lineWidth = 1; ctx.stroke() }
+    } else {
+      ctx.strokeStyle = outline
+      ctx.lineWidth = target.required ? 1.25 : 1
+      ctx.globalAlpha = target.required ? 1 : .8
+      targetPath(ctx, target.required, cx, cy, half - .5)
       ctx.stroke()
     }
   }
