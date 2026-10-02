@@ -1,5 +1,4 @@
 import { onMounted, onUnmounted, reactive, readonly } from 'vue'
-import demoReplay from '../content/demo/replay.json'
 import type { OutcomeClass } from '../lib/report'
 import { prefersReducedMotion, type SkySite, type SkyTarget } from '../lib/skymap'
 
@@ -434,7 +433,15 @@ function release() {
   runningSince = null
 }
 
-setReplayData(demoReplay as unknown as RawReplay, 'demo')
+// The bundled demo run is a ~280 KB JSON payload. AppFooter (every page) and the home hero both pull
+// from this module, so loading it eagerly put that weight in front of first paint everywhere. Seed a
+// safe empty run synchronously (buildSegments() already has a fallback segment for zero actions), then
+// fetch the real data as its own chunk; replayMeta.version bumps when it lands, which is what every
+// consumer already re-renders on.
+buildSegments()
+void import('../content/demo/replay.json').then(({ default: demoReplay }) => {
+  setReplayData(demoReplay as unknown as RawReplay, 'demo')
+})
 
 export function useReplayClock() {
   onMounted(acquire)
