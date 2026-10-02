@@ -79,11 +79,19 @@ function xlAutoGuess() {
   if (xl.value.codeCol < 0 && xlWidth.value === 1) xl.value.codeCol = 0
   xl.value.noteCol = header.findIndex(h => /备注|note|remark/i.test(h))
 }
+const xlDrag = ref(false)
+function onXlDrop(e: DragEvent) {
+  xlDrag.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) void loadXlFile(file)
+}
 async function onXlFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
+  try { if (file) await loadXlFile(file) } finally { input.value = '' }
+}
+async function loadXlFile(file: File) {
   xl.value.result = ''
-  if (!file) return
   try {
     xl.value.sheets = await readSheets(file)
     xl.value.fileName = file.name
@@ -92,7 +100,7 @@ async function onXlFile(e: Event) {
   } catch {
     xl.value.sheets = []
     flash.error(t('admin.credits.xl_bad_file'))
-  } finally { input.value = '' }
+  }
 }
 async function importExcel() {
   const provider = xl.value.provider.trim()
@@ -164,7 +172,12 @@ onMounted(async () => { try { await Promise.all([reload(), loadTeams()]) } catch
         <div class="hd"><h2>{{ t('admin.credits.xl_title') }}</h2><span class="label">{{ xl.fileName }}</span></div>
         <p class="text2 text-sm mb-4">{{ t('admin.credits.xl_lede') }}</p>
         <div class="grid-form">
-          <label class="field full"><span>{{ t('admin.credits.xl_file') }}</span><input data-testid="credits-excel-file" type="file" accept=".xlsx,.xls,.csv,.tsv" @change="onXlFile"></label>
+          <div class="field full"><span>{{ t('admin.credits.xl_file') }}</span>
+            <label class="xl-drop" :class="{ on: xlDrag }" @dragover.prevent="xlDrag = true" @dragleave="xlDrag = false" @drop.prevent="onXlDrop">
+              <input data-testid="credits-excel-file" type="file" accept=".xlsx,.xls,.csv,.tsv" class="xl-file" @change="onXlFile">
+              <span>{{ xl.fileName || t('admin.credits.xl_drop') }}</span>
+            </label>
+          </div>
           <template v-if="xl.sheets.length">
             <label v-if="xl.sheets.length > 1" class="field"><span>{{ t('admin.credits.xl_sheet') }}</span><select v-model.number="xl.sheet" class="input" @change="xlAutoGuess"><option v-for="(s, i) in xl.sheets" :key="i" :value="i">{{ s.name }}</option></select></label>
             <label class="field"><span>{{ t('admin.credits.xl_code_col') }}</span><select v-model.number="xl.codeCol" class="input" data-testid="credits-excel-code-col" required><option :value="-1" disabled>—</option><option v-for="(h, i) in xlHeader" :key="i" :value="i">{{ h }}</option></select></label>
@@ -263,3 +276,9 @@ onMounted(async () => { try { await Promise.all([reload(), loadTeams()]) } catch
     </div>
   </DashShell>
 </template>
+
+<style scoped>
+.xl-drop { position: relative; display: flex; align-items: center; justify-content: center; min-height: 5rem; padding: 1rem; border: 1px dashed rgba(255,255,255,.35); border-radius: .5rem; cursor: pointer; color: #bdbdbd; text-align: center; }
+.xl-drop.on { border-color: #fff; background: rgba(255,255,255,.06); }
+.xl-file { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+</style>
