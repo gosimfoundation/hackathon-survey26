@@ -27,6 +27,9 @@ vmsh() { vm shell --workdir / "$instance" -- "$@"; }
 vm --version >/dev/null || { echo "Run setup-host.sh first (limactl sudo rule missing)." >&2; exit 2; }
 [[ "$repository" =~ ^AGENTIC-OBSERVER26-runner-[0-9]+/observer-control$ ]] || { echo "bad RUNNER_REPOSITORY" >&2; exit 2; }
 
+# The watcher would stop a VM that is still being set up; this script starts it again at the end.
+launchctl bootout "gui/$(id -u)/org.agentic-observer.fallback-watcher" 2>/dev/null || true
+
 echo "== files in $shared (organizer-owned; observerfb can read, not write)"
 mkdir -p "$shared/images"
 chmod 755 "$shared" "$shared/images"
@@ -107,7 +110,6 @@ echo "runner observer-fallback-1 is online"
 echo "== stop the VM; the watcher starts it on demand"
 vm stop "$instance"
 install -m 644 "$here/org.agentic-observer.fallback-watcher.plist" "$agents/"
-launchctl bootout "gui/$(id -u)/org.agentic-observer.fallback-watcher" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$agents/org.agentic-observer.fallback-watcher.plist"
 sleep 5
 tail -n 3 "$shared/watcher.log"

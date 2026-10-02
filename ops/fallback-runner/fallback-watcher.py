@@ -123,9 +123,15 @@ def tick(github: GitHub, vm: VM, state: State, args, now: float) -> None:
     if online or not state.get("last_online"):
         state.set("last_online", now)  # first run: the runner was just registered
     if status != "Running":
-        due = registered and now - state.get("last_online") > MAINTENANCE_SECONDS
+        # At most one maintenance boot a day, even if the runner never comes online.
+        due = (registered and now - state.get("last_online") > MAINTENANCE_SECONDS
+               and now - state.get("maintenance") > 86400)
         if waiting or due:
-            log(f"starting the VM: {waiting} waiting job(s)" if waiting else "starting the VM for weekly maintenance")
+            if waiting:
+                log(f"starting the VM: {waiting} waiting job(s)")
+            else:
+                log("starting the VM for weekly maintenance")
+                state.set("maintenance", now)
             state.set("started", now)
             state.set("last_active", now)
             vm.start()

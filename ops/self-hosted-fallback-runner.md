@@ -60,10 +60,13 @@ for 14 days, and the runner updates itself while online).
   long-running process on the Mac, and a reinstall on every boot. Isolation
   between jobs does not depend on it: every job starts and ends with
   `job-cleanup.sh`, and each VM runs one job at a time.
-- **Stopping cannot cut off a job.** The watcher stops the VM only after
-  re-checking that no job is waiting and the runner is not busy; any error
-  while checking keeps the VM running. A job that arrives in the second
-  between that check and the shutdown stays queued and starts the VM again.
+- **Stopping.** The watcher stops the VM only after re-checking that no job
+  is waiting and the runner is not busy; any error while checking keeps the
+  VM running. A job assigned in the second or two between that re-check and
+  the shutdown is cancelled by GitHub; its platform job then expires and the
+  run fails as an infrastructure failure (never a score). The maintenance
+  boot happens at most once a day, so a runner that never comes online does
+  not keep the VM cycling.
 - The VM disk is sparse (40 GiB at most); keep that much free space on the Mac.
 
 ## Security boundary
@@ -153,7 +156,7 @@ Docker on the Mac.
    (`org.agentic-observer.fallback-watcher.plist`, log in
    `/Users/Shared/observer-fallback/watcher.log`).
 
-The VM is disposable: to re-register, delete it
+`setup-vm.sh` pauses the watcher while it runs. The VM is disposable: to re-register, delete it
 (`sudo -u observerfb -H limactl delete -f observer-fallback`), remove the
 runner under the repository's Actions → Runners and run `setup-vm.sh` again.
 

@@ -97,9 +97,15 @@ def test_weekly_maintenance_boot_and_restart_of_a_hung_vm(env):
     assert vm.actions == []
     watcher.tick(github, vm, state, ARGS, 100 + 7 * 86400 + 1)
     assert vm.actions == ['start']
+    # The runner never came online: the idle VM stops, and is not booted again the same day.
+    for minutes in (1, 16, 17, 60):
+        watcher.tick(github, vm, state, ARGS, 100 + 7 * 86400 + minutes * 60)
+    assert vm.actions == ['start', 'stop']
+    watcher.tick(github, vm, state, ARGS, 100 + 8 * 86400 + 2)
+    assert vm.actions == ['start', 'stop', 'start']
     github.runs = {9: [('queued', FALLBACK)]}
     vm.actions.clear()
-    watcher.tick(github, vm, state, ARGS, 100 + 7 * 86400 + 11 * 60)
+    watcher.tick(github, vm, state, ARGS, 100 + 8 * 86400 + 11 * 60)
     assert vm.actions == ['stop', 'start']
 
 
