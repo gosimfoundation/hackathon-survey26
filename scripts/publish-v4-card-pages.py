@@ -46,7 +46,7 @@ HIDDEN_WORDS = re.compile(r"seed|种子|pointing offset|指向偏差|efficiency 
 # Names of the files from which the weather and event timeline can be read (configure-v4-phases.py
 # never releases them for a formal card); a page must not point at them either.
 TIMELINE_NAMES = re.compile(r"v4_(bulletins|forecasts|weather_truth|events|slots|earthquake_effects|stress_events)\b|truth/", re.I)
-SHARED = ('Paranal|帕拉纳尔', '900', '1.08', '0.90', '`observe`', '`wait`', '`report`', '`finish`')
+SHARED = ('900', '1.08', '0.90', '`observe`', '`wait`', '`report`', '`finish`')
 HIDDEN_WEATHER = {'zh': ('不公开', '比赛开始'), 'en': ('Hidden', 'competition starts')}
 
 
@@ -67,10 +67,10 @@ def expected_facts(inputs, language):
     free = int(json.loads(inputs['config/v4_score_config.json'])['reporting'].get('false_report_free_allowance', 0))
     first, last, n = nights[0]['night_date'], nights[-1]['night_date'], len(nights)
     if language == 'zh':
-        facts = [f'{first} 至 {last}，共 {n} 夜', f'有 {len(targets):,} 个目标', f'其中 {required} 个是必观测目标', f'分为 {len(regions)} 块']
+        facts = [f'{first} 至 {last}，共 {n} 夜', f'有 {len(targets):,} 个目标', f'其中 {required:,} 个是必观测目标', f'分为 {len(regions)} 块']
         facts.append(f'前 {free} 次误报' if free else '没有免罚次数')
     else:
-        facts = [f'{first} to {last}, {n} nights', f'{len(targets):,} targets', f'{required} are required', f'in {len(regions)} regions']
+        facts = [f'{first} to {last}, {n} nights', f'{len(targets):,} targets', f'{required:,} are required', f'in {len(regions)} regions']
         facts.append(f'the first {free} false reports are free' if free else 'no free false reports')
     return facts
 
