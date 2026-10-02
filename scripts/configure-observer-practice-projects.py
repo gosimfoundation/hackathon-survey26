@@ -41,7 +41,7 @@ def plan(args):
     runtime = max(args.runtime, max(int(r) for r in runtimes))
     statements = [
         'insert into public.phases(id,slug,name_en,name_zh,allow_results,allow_agents,leaderboard_mode,counts_for_final,is_active,sort_order,starts_at,ends_at)'
-        ' values ('+','.join(map(q, (phase_id, SLUG, 'Practice · complete projects', '练习赛 · 完整项目', False, False,
+        ' values ('+','.join(map(q, (phase_id, SLUG, 'Practice board', '练习赛榜', False, False,
                                       practice['leaderboard_mode'], False, True, int(practice['sort_order'])+1)))
         +',now(),'+(q(practice['ends_at']) if practice['ends_at'] else 'null')+') on conflict(id) do update set is_active=true',
         'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,runtime_seconds,daily_batches,'

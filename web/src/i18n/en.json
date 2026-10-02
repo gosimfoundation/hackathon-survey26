@@ -544,7 +544,7 @@
         },
         {
           "title": "Run the baseline, make your changes",
-          "desc": "Download the kit and run it — a baseline score in 15 seconds. Then edit my_strategy.py and submit to the practice board.",
+          "desc": "Download the kit and run it — a baseline score in 15 seconds. Then edit my_strategy.py and submit to the Debug board.",
           "time": "~20 min",
           "to": "/start"
         },
@@ -1781,7 +1781,7 @@
       "lede": "Practice has two ways to take part, with separate boards:",
       "csv": "Upload a CSV result",
       "project": "Submit a complete project",
-      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the practice board. The CSV upload is being phased out — prefer a complete project.",
+      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Debug board. The CSV upload is being phased out — prefer a complete project.",
       "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
