@@ -71,7 +71,6 @@ async function download() {
           </div>
         </nav>
       </div>
-      <p class="text3 mt-4 text-sm">{{ t('cards_page.hidden_note') }}</p>
     </div></section>
     <section class="section"><div class="wrap" :data-testid="`card-${card.id}`">
       <p v-if="loading" class="text3 text-sm">{{ t('common.loading') }}</p>
