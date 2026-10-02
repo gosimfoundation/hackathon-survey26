@@ -199,3 +199,27 @@ Disable at any time with `fallback_capacity=0` (pending self-hosted jobs keep
 their slot until they finish or expire); the watcher stops the VM once it is
 idle. To stop watching altogether:
 `launchctl bootout gui/$(id -u)/org.agentic-observer.fallback-watcher`.
+
+## Production rollout record (2026-10-02)
+
+- Host setup on the organizer's Mac: `setup-host.sh` (one administrator
+  password), pf anchor reloaded twice for the SSH listener fix (#161);
+  `setup-vm.sh` passed all six isolation checks; runner `observer-fallback-1`
+  registered on `AGENTIC-OBSERVER26-runner-13/observer-control`; watcher loaded.
+- runner-13 runtime `0794cb2` (exported from main `9a924e9`) approved;
+  migrations `20261001000500`, `20261002000600`, `20261002000700` applied;
+  `observer-dispatch` with the fallback routing deployed (v13 from main
+  `9a924e9`; v15 is the later public-runner-pool deploy).
+- Drill with the hidden acceptance team, practice card "v4 public test": the
+  public-test engine job, dispatched GitHub-hosted to runner-1, was moved with
+  `observer_fallback_job` (the call the dispatcher makes). The runner-1 run
+  could no longer claim it; the self-hosted dispatch went out at 09:07:01 UTC,
+  the watcher started the stopped VM at 09:07:39, `observer-fallback-1`
+  claimed the job at 09:08:26 and the run was scored at 09:09:05; the VM
+  stopped again after 15 idle minutes.
+- `fallback_capacity=1` on runner-13.
+
+Earlier drill attempts found the problems fixed in #161 and #163: the SSH
+listener's replies blocked by pf, the system libpython breaking setup-python,
+image pulls through the Mac's proxy, and preparation jobs that cannot change
+organization.
