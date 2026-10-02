@@ -118,25 +118,6 @@ onMounted(async () => {
           <p v-else class="text2">{{ t('subs.empty') }}</p>
           <p class="mt-5"><router-link class="btn sm" :class="{ primary: quest.finished }" to="/compete">{{ t('dash.new_submission') }} →</router-link></p>
         </div>
-
-        <div class="panel mt-8">
-          <div class="hd"><h2>{{ t('dash.phases') }}</h2><router-link class="label accent" to="/leaderboard">{{ t('dash.quick.board') }} →</router-link></div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead><tr><th>{{ t('leaderboard.phase') }}</th><th>{{ t('common.status') }}</th><th>{{ t('common.utc') }}</th><th class="r">{{ t('rules_page.daily') }}</th><th class="r">{{ t('dash.quota') }}</th></tr></thead>
-              <tbody>
-                <tr v-for="p in phases" :key="p.id">
-                  <td>{{ pick(p.name_en, p.name_zh) }}</td>
-                  <td><StatusPill :status="p.status" ns="leaderboard.status" /></td>
-                  <td class="m xs whitespace-nowrap"><template v-if="p.starts_at || p.ends_at">{{ fmtUtc(p.starts_at, { short: true }) }} → {{ fmtUtc(p.ends_at, { short: true }) }}</template><template v-else>—</template></td>
-                  <td class="r m">{{ p.observer_settings?.daily_batches ?? p.daily_limit }}</td>
-                  <td class="r m">{{ p.status === 'open' && team ? `${quota[p.slug] ?? 0} / ${p.observer_settings?.daily_batches ?? p.daily_limit}` : '—' }}</td>
-                </tr>
-                <tr v-if="!phases.length"><td colspan="5" class="text3">{{ t('leaderboard.no_phases') }}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       <div>
