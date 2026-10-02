@@ -5,6 +5,7 @@ export const mainNavItems: NavItem[] = [
   { key: 'nav.start', to: '/start' },
   { key: 'nav.rules', to: '/rules' },
   { key: 'nav.leaderboard', to: '/leaderboard' },
+  { key: 'nav.teammates', to: '/teammates' },
 ]
 
 /** The fourth main item: the prominent Participate button in the header. */
@@ -17,5 +18,4 @@ export const moreNavItems: NavItem[] = [
   { key: 'nav.resources', to: '/resources' },
   { key: 'nav.faq', to: '/faq' },
   { key: 'nav.announcements', to: '/announcements' },
-  { key: 'nav.teammates', to: '/teammates' },
 ]
