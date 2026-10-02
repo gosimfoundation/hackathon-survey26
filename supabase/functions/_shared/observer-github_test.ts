@@ -3,6 +3,7 @@ import { createLocalJWKSet, exportJWK, exportPKCS8, generateKeyPair, SignJWT } f
 import {
   CONTROL_REPOSITORY,
   GitHubApp,
+  PUBLIC_POOL_REPOSITORY,
   GitHubError,
   isRunnerOrganization,
   placement,
@@ -25,6 +26,7 @@ function backend() {
   const calls: { method: string; path: string; body: any; authorization: string }[] = [];
   const repos = new Map<string, any>();
   const permissions = new Map<string, boolean>();
+  const refs = new Map<string, string>();
   let suspended = false;
   let installAccount = organization;
   let branchSha = sha;
@@ -92,7 +94,21 @@ function backend() {
         headers: { location: "https://codeload.github.com/" + full + "/legacy.zip/" + sha },
       });
     }
-    if (path.endsWith("/dispatches")) return new Response(null, { status: 204 });
+    if (path.endsWith("/dispatches")) {
+      return body.return_run_details ? Response.json({ workflow_run_id: 31337 }) : new Response(null, { status: 204 });
+    }
+    // Git Data API for backend-committed public-pool results.
+    if (path.endsWith("/git/blobs")) return Response.json({ sha: "blob-" + body.content }, { status: 201 });
+    if (path.endsWith("/git/trees")) return Response.json({ sha: "tree-" + JSON.stringify(body.tree) }, { status: 201 });
+    if (path.endsWith("/git/commits")) return Response.json({ sha: "c".repeat(40) }, { status: 201 });
+    if (path.endsWith("/git/refs") && method === "POST") {
+      refs.set(body.ref, body.sha);
+      return Response.json({}, { status: 201 });
+    }
+    if (path.includes("/git/ref/heads/")) {
+      const ref = "refs/heads/" + path.split("/git/ref/heads/")[1];
+      return refs.has(ref) ? Response.json({ object: { sha: refs.get(ref) } }) : Response.json({}, { status: 404 });
+    }
     return repos.has(full) ? Response.json(repos.get(full)) : Response.json({ message: "not found" }, { status: 404 });
   });
   return {
@@ -104,6 +120,7 @@ function backend() {
     wrongAccount: () => installAccount = "outsider",
     wrongBranch: () => branchSha = "b".repeat(40),
     tag: (value: string) => tagSha=value,
+    refs,
   };
 }
 
@@ -317,5 +334,56 @@ Deno.test("a valid GitHub signature from another repo, workflow, ref or attempt 
     ]
   ) {
     await assertRejects(async () => verifyWorkflowIdentity(await signed(invalid), expected, keys), GitHubError);
+  }
+});
+
+Deno.test("the public pool dispatches only its approved tag with an opaque job id and returns the run id", async () => {
+  const f = backend();
+  f.repos.set(organization + "/" + PUBLIC_POOL_REPOSITORY, { id: 77, private: false, fork: false });
+  await assertRejects(() => f.app.dispatchPublic(organization, "77", user, sha), GitHubError); // no tag
+  f.tag(sha);
+  assertEquals(await f.app.dispatchPublic(organization, "77", user, sha), "31337");
+  assertEquals(f.calls.at(-1)?.path, "/repos/" + organization + "/observer-public/actions/workflows/observer-engine.yml/dispatches");
+  assertEquals(f.calls.at(-1)?.body, { ref: "observer-runtime-" + sha, inputs: { job_id: user }, return_run_details: true });
+  await assertRejects(() => f.app.dispatchPublic(organization, "78", user, sha), GitHubError, "public_pool_repository_mismatch");
+  f.repos.set(organization + "/" + PUBLIC_POOL_REPOSITORY, { id: 77, private: true, fork: false });
+  await assertRejects(() => f.app.dispatchPublic(organization, "77", user, sha), GitHubError, "public_pool_repository_mismatch");
+});
+
+Deno.test("a backend-committed result is one fixed root commit on the run's result branch", async () => {
+  const f = backend();
+  const run = "00000000-0000-4000-8000-0000000000bb";
+  const files = [{ path: "decisions.csv", data: new TextEncoder().encode("a"), executable: false }];
+  const path = await f.app.commitResult(user, run, files);
+  assertEquals(path, "github:" + organization + "/" + assigned.privateRepository + "@" + "c".repeat(40));
+  const commit = f.calls.find((c) => c.path.endsWith("/git/commits"))!;
+  assertEquals(commit.body.parents, []);
+  assertEquals(commit.body.author.date, "2026-01-01T00:00:00Z");
+  assert(commit.body.message.startsWith("Evaluation result " + run + "\n\nSHA256 "));
+  assertEquals(f.refs.get("refs/heads/results/" + run), "c".repeat(40));
+  // Idempotent for the same content; a different existing result is a conflict.
+  assertEquals(await f.app.commitResult(user, run, files), path);
+  f.refs.set("refs/heads/results/" + run, "d".repeat(40));
+  await assertRejects(() => f.app.commitResult(user, run, files), GitHubError, "result_conflict");
+});
+
+Deno.test("public-pool OIDC needs the public repository, public visibility and the approved tag", async () => {
+  const ref = "refs/tags/observer-runtime-" + sha;
+  const repository = organization + "/" + PUBLIC_POOL_REPOSITORY;
+  const pub: WorkflowIdentity = { ...expected, repository: PUBLIC_POOL_REPOSITORY, visibility: "public" };
+  const ok = { repository, repository_visibility: "public", ref,
+    workflow_ref: repository + "/.github/workflows/observer-engine.yml@" + ref };
+  assertEquals((await verifyWorkflowIdentity(await signed(ok), pub, keys)).runId, "789");
+  for (
+    const invalid of [
+      { repository_visibility: "private" },
+      { ref: "refs/heads/main", workflow_ref: repository + "/.github/workflows/observer-engine.yml@refs/heads/main" },
+      { repository: organization + "/" + CONTROL_REPOSITORY },
+    ]
+  ) await assertRejects(async () => verifyWorkflowIdentity(await signed({ ...ok, ...invalid }), pub, keys), GitHubError);
+  // The private pool never accepts a public repository, and names are fixed.
+  await assertRejects(async () => verifyWorkflowIdentity(await signed(ok), expected, keys), GitHubError);
+  for (const config of [{ ...pub, visibility: "private" as const }, { ...pub, repository: "other" }]) {
+    await assertRejects(async () => verifyWorkflowIdentity(await signed(ok), config, keys), GitHubError, "invalid_workflow_configuration");
   }
 });

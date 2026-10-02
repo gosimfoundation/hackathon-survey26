@@ -61,7 +61,7 @@ class Http:
             raise JobError("job_network_error") from None
 
     def json(self, url: str, *, body: dict | None = None, bearer: str | None = None,
-             max_body: int = 1100000) -> dict:
+             max_body: int = 1100000, timeout: int = 60) -> dict:
         headers = {"Accept": "application/json"}
         data = None
         if body is not None:
@@ -71,7 +71,8 @@ class Http:
             headers["Content-Type"] = "application/json"
         if bearer is not None:
             headers["Authorization"] = "Bearer " + bearer
-        raw = self.request(url, data=data, headers=headers, method="POST" if body is not None else "GET")
+        raw = self.request(url, data=data, headers=headers, method="POST" if body is not None else "GET",
+                           timeout=timeout)
         try:
             value = json.loads(raw)
             if not isinstance(value, dict):
@@ -106,21 +107,29 @@ class GitHubIdentity:
 
 
 class JobClient:
-    def __init__(self, url: str, job_id: str, nonce: str, identity: Callable[[], str], *, http: Http | None = None):
+    def __init__(self, url: str, job_id: str, nonce: str | None, identity: Callable[[], str], *,
+                 http: Http | None = None, seal_key=None):
         self.http = http or Http()
         checked_url(url, local=self.http.local)
         if not re.fullmatch(r"[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}", job_id):
             raise JobError("invalid_job_id")
-        if not re.fullmatch(r"[A-Za-z0-9_-]{40,100}", nonce):
+        # A public-pool job has no nonce: its dispatch inputs are public, so the
+        # backend binds the claim to the exact GitHub run it dispatched instead,
+        # and everything it returns is sealed to this job's in-memory key.
+        if (seal_key is None) == (nonce is None):
+            raise JobError("invalid_job_nonce")
+        if nonce is not None and not re.fullmatch(r"[A-Za-z0-9_-]{40,100}", nonce):
             raise JobError("invalid_job_nonce")
         self.url, self.job_id, self.nonce, self.identity = url, job_id, nonce, identity
+        self.seal_key = seal_key
 
-    def _call(self, action: str, *, max_body: int = 1100000, **fields):
+    def _call(self, action: str, *, max_body: int = 1100000, timeout: int = 60, **fields):
         # Claim and receipt are backend-idempotent; retry exactly the same body.
         body = {"action": action, "job_id": self.job_id, **fields}
         for attempt in range(3):
             try:
-                response = self.http.json(self.url, body=body, bearer=self.identity(), max_body=max_body)
+                response = self.http.json(self.url, body=body, bearer=self.identity(), max_body=max_body,
+                                          timeout=timeout)
                 value = response.get("data")
                 if not isinstance(value, dict):
                     raise JobError("invalid_job_response")
@@ -132,7 +141,37 @@ class JobClient:
                 time.sleep(0.2 * (attempt + 1))
 
     def claim(self) -> dict:
-        return self._call("claim", nonce=self.nonce)
+        if self.seal_key is None:
+            return self._call("claim", nonce=self.nonce)
+        # The backend fetches, seals and stages the inputs before answering.
+        response = self._call("claim", runner_key=self.seal_key.public_text, timeout=150)
+        sealed = response.get("sealed")
+        if set(response) != {"sealed"} or not isinstance(sealed, str):
+            raise JobError("invalid_job_response")
+        try:
+            raw = base64.b64decode(sealed, validate=True)
+            value = json.loads(self.seal_key.open(raw, "claim:" + self.job_id))
+        except (ValueError, UnicodeError):
+            raise JobError("invalid_job_response") from None
+        if not isinstance(value, dict):
+            raise JobError("invalid_job_response")
+        return value
+
+    def result_upload(self) -> dict:
+        # Issued only now: a signed upload URL from claim time could expire
+        # during a long evaluation.
+        value = self._call("result_upload")
+        if set(value) != {"url", "path"} or not all(isinstance(v, str) for v in value.values()):
+            raise JobError("invalid_job_response")
+        return value
+
+    def store_sealed_result(self) -> str:
+        # The backend opens the sealed result it just received and commits it to
+        # the team's private repository; this runner never holds a repository token.
+        path = self._call("store_result").get("result_path")
+        if not isinstance(path, str) or not path.startswith("github:"):
+            raise JobError("invalid_job_response")
+        return path
 
     def artifact_repository(self) -> dict:
         # A fresh OIDC identity and short-lived token are obtained only when the

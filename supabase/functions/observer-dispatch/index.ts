@@ -4,7 +4,7 @@ import { databaseLocator, GitHubApp } from "../_shared/observer-github.ts";
 import { ProxyError } from "../_shared/observer-model.ts";
 import { scheduleRuns, scheduleScores } from "../_shared/observer-orchestrate.ts";
 import { schedulePreparations } from "../_shared/observer-prepare.ts";
-import { cleanupUploads } from "../_shared/observer-cleanup.ts";
+import { cleanupSealed, cleanupUploads } from "../_shared/observer-cleanup.ts";
 
 const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
   auth: { persistSession: false },
@@ -50,7 +50,11 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       const { error } = await service.storage.from("observer-staging").remove([path]);
       if (error) throw new ProxyError(503, "temporary_cleanup_failed");
     });
-    const data = { prepared, scheduled, rescoring, dispatched, cleaned };
+    const sealed = await cleanupSealed(rpc, async (paths) => {
+      const { error } = await service.storage.from("observer-staging").remove(paths);
+      if (error) throw new ProxyError(503, "temporary_cleanup_failed");
+    }).catch(() => 0);
+    const data = { prepared, scheduled, rescoring, dispatched, cleaned, sealed };
     return Response.json({ data }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof ProxyError ? error.code : "dispatch_unavailable" }, {

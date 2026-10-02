@@ -54,11 +54,49 @@ def export_control(destination: Path, *, source: Path = ROOT) -> dict:
     return inventory
 
 
+def export_public(destination: Path, *, source: Path = ROOT) -> dict:
+    """The public runner pool repository (ops/public-runner-pool.md).
+
+    Only the trusted runtime and the single public engine workflow: no tests
+    (no push or pull request workflow may exist in a public repository), no
+    other workflow, nothing that is not already public in this repository.
+    """
+    if destination.exists():
+        raise ValueError("Use a new export directory; existing files will not be overwritten.")
+    files = []
+    for package in ("project_platform", "challenge"):
+        files.extend((p, p.relative_to(source)) for p in (source / package).glob("*.py"))
+    files.append((source / "ops/public-pool/observer-engine.yml", Path(".github/workflows/observer-engine.yml")))
+    files.append((source / "ops/public-pool/requirements.txt", Path("public-pool-requirements.txt")))
+    if not (source / "project_platform/sealing.py").is_file():
+        raise ValueError("Trusted platform sources are missing.")
+    destination.mkdir(parents=True, exist_ok=False)
+    inventory = {}
+    for origin, relative in sorted(files):
+        if origin.is_symlink():
+            raise ValueError("Trusted source cannot be a symbolic link.")
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(origin, target)
+        inventory[relative.as_posix()] = hashlib.sha256(target.read_bytes()).hexdigest()
+    (destination / "control-inventory.json").write_text(json.dumps(inventory, sort_keys=True, indent=2) + "\n")
+    (destination / ".gitignore").write_text("__pycache__/\n*.py[cod]\n")
+    (destination / "README.md").write_text(
+        "# Agentic Observer public evaluation runtime\n\n"
+        "Organizer-reviewed engine code, exported from the public competition repository.\n"
+        "Runs are dispatched by the platform only and show a status line; every\n"
+        "private input and result is sealed with public-key encryption. This\n"
+        "repository holds no credential, participant data or scenario.\n"
+    )
+    return inventory
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--public", action="store_true", help="Export the public runner pool repository instead")
     args = parser.parse_args()
-    inventory = export_control(args.destination)
+    inventory = (export_public if args.public else export_control)(args.destination)
     print(f"Exported {len(inventory)} trusted files to {args.destination}")
 
 

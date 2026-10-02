@@ -14,12 +14,23 @@ type PendingJob = {
   organization: string;
   workflow_sha: string;
   encrypted_nonce: string;
-  runner?: "github-hosted" | "self-hosted";
+  runner?: "github-hosted" | "self-hosted" | "public-hosted";
   // Set by observer_pending_jobs while a self-hosted fallback slot is free.
   fallback?: "stalled" | "over_limit" | null;
+  // Set by observer_pending_jobs when the public runner pool should take the job.
+  public?: boolean | null;
 };
 
-type Outcome = { id: string; dispatched: boolean; error?: string; failover?: string; fallback?: string };
+type Outcome = {
+  id: string;
+  dispatched: boolean;
+  error?: string;
+  failover?: string;
+  fallback?: string;
+  public?: string;
+};
+
+type Dispatcher = Pick<GitHubApp, "dispatch"> & Partial<Pick<GitHubApp, "dispatchPublic">>;
 
 // Organization-level failures (missing/suspended installation, rejected or
 // quota-exhausted API calls, unapproved control repository) cannot fix
@@ -36,7 +47,7 @@ const ORGANIZATION_FAILURES = new Set([
 
 async function tryDispatch(
   rpc: Rpc,
-  app: Pick<GitHubApp, "dispatch">,
+  app: Dispatcher,
   job: { id: string; kind: string },
   organization: string,
   nonce: string,
@@ -56,13 +67,43 @@ async function tryDispatch(
   }
 }
 
+// The public-repository pool (ops/public-runner-pool.md): an overflow for
+// colocated engine jobs while private organizations are near their monthly
+// minutes or busy. The only dispatch input is the job id; the run id GitHub
+// returns binds the claim. Any failure sends the job straight back to its own
+// organization, so the public pool can never strand a job. Returns null when
+// the pool does not take the job (switched off, phase not enabled, at capacity).
+async function tryPublic(rpc: Rpc, app: Dispatcher, job: PendingJob, moved = false): Promise<Outcome | null> {
+  let target: { organization: string; approved_sha: string; repository_id: string } | null = null;
+  try {
+    target = await rpc(moved ? "observer_public_target" : "observer_public_job", { p_job: job.id });
+  } catch {
+    target = null;
+  }
+  if (!target?.organization) {
+    if (!moved) return null;
+    await rpc("observer_public_return_job", { p_job: job.id, p_error: "public_pool_unavailable" });
+    return { id: job.id, dispatched: false, error: "public_pool_unavailable" };
+  }
+  try {
+    if (!app.dispatchPublic) throw new GitHubError("public_pool_unavailable");
+    const run = await app.dispatchPublic(target.organization, target.repository_id, job.id, target.approved_sha);
+    await rpc("observer_mark_public_dispatched", { p_job: job.id, p_github_run: run });
+    return { id: job.id, dispatched: true, public: target.organization };
+  } catch (error) {
+    const code = error instanceof GitHubError ? error.code : "dispatch_unavailable";
+    await rpc("observer_public_return_job", { p_job: job.id, p_error: code });
+    return { id: job.id, dispatched: false, error: code };
+  }
+}
+
 // Last resort: the organizer's self-hosted fallback runner. Returns null when no
 // fallback slot is free, so the caller keeps its GitHub-hosted outcome. A split
 // run's partner job moves along; it is recorded in partners and dispatched on the
 // next round from its new row.
 async function tryFallback(
   rpc: Rpc,
-  app: Pick<GitHubApp, "dispatch">,
+  app: Dispatcher,
   job: PendingJob,
   nonce: string,
   partners: Set<string>,
@@ -82,9 +123,12 @@ async function tryFallback(
     : { id: job.id, dispatched: false, error: result.error };
 }
 
-export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">, masterKey: string) {
+export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: string) {
   await rpc("observer_reconcile_jobs", {});
   await rpc("observer_reconcile_sessions", {});
+  // Public-pool runs that never started go back to their own organization.
+  // Never let the optional pool hold up dispatching.
+  await rpc("observer_public_pool_reconcile", {}).catch(() => 0);
   const jobs: PendingJob[] = await rpc("observer_pending_jobs", { p_limit: 10 });
   const outcomes: Outcome[] = [];
   const partners = new Set<string>();
@@ -94,6 +138,21 @@ export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">
       continue;
     }
     try {
+      if (job.runner === "public-hosted") {
+        // Already in the pool (an ambiguous earlier dispatch): dispatched there
+        // again, or sent home and dispatched there next round.
+        outcomes.push(await tryPublic(rpc, app, job, true) ?? { id: job.id, dispatched: false });
+        continue;
+      }
+      if (job.public) {
+        const outcome = await tryPublic(rpc, app, job);
+        if (outcome?.dispatched) {
+          outcomes.push(outcome);
+          continue;
+        }
+        // Declined, or failed and sent back for good: this round's attempt goes
+        // to the job's own organization as usual.
+      }
       const nonce = await decryptCredential(job.encrypted_nonce, job.id + ":nonce", masterKey);
       if (job.fallback) {
         const moved = await tryFallback(rpc, app, job, nonce, partners);
@@ -132,8 +191,12 @@ export async function dispatchPending(rpc: Rpc, app: Pick<GitHubApp, "dispatch">
         error = retried.error;
         failed.push(next.organization);
       }
-      // No GitHub-hosted organization can take the job right now.
-      const moved = ORGANIZATION_FAILURES.has(error ?? "")
+      // No private organization can take the job right now: the public pool
+      // when it takes this job, else the self-hosted fallback.
+      const publicOutcome = ORGANIZATION_FAILURES.has(error ?? "") ? await tryPublic(rpc, app, job) : null;
+      const moved = publicOutcome?.dispatched
+        ? publicOutcome
+        : ORGANIZATION_FAILURES.has(error ?? "")
         ? await tryFallback(rpc, app, job, nonce, partners, failed)
         : null;
       outcomes.push(moved ?? { id: job.id, dispatched: false, error });

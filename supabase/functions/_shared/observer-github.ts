@@ -2,6 +2,7 @@
 import { createPrivateKey } from "node:crypto";
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "npm:jose@6.1.0";
 import type { JWTVerifyGetKey } from "npm:jose@6.1.0";
+import { toBase64 } from "./observer-seal.ts";
 
 /** Runner organization names; which of them are usable comes from the installation table. */
 export const RUNNER_ORGANIZATION = /^AGENTIC-OBSERVER26-runner-([1-9]|[1-9][0-9])$/;
@@ -10,6 +11,12 @@ export function isRunnerOrganization(value: unknown): value is string {
   return typeof value === "string" && RUNNER_ORGANIZATION.test(value);
 }
 export const CONTROL_REPOSITORY = "observer-control";
+/**
+ * The public-repository runner pool (ops/public-runner-pool.md): a public
+ * repository in one runner organization with the trusted engine workflow only.
+ * Its dispatch input is an opaque job id and all private data is sealed.
+ */
+export const PUBLIC_POOL_REPOSITORY = "observer-public";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA = /^[0-9a-f]{40}$/;
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
@@ -87,6 +94,33 @@ type Repository = {
 };
 type Token = { token: string; expires_at: string };
 export type GitHubTransport = typeof fetch;
+
+/** project_platform.package.project_digest: length-prefixed path, mode and bytes per file. */
+export async function projectDigest(files: { path: string; data: Uint8Array; executable: boolean }[]) {
+  const sorted = [...files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const parts: Uint8Array[] = [];
+  for (const file of sorted) {
+    for (
+      const field of [
+        new TextEncoder().encode(file.path),
+        new TextEncoder().encode(file.executable ? "x" : "-"),
+        file.data,
+      ]
+    ) {
+      const length = new Uint8Array(8);
+      new DataView(length.buffer).setBigUint64(0, BigInt(field.length));
+      parts.push(length, field);
+    }
+  }
+  const all = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    all.set(part, offset);
+    offset += part.length;
+  }
+  return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", all)), (b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 export class GitHubApp {
   private tokens = new Map<string, Token>();
@@ -307,6 +341,87 @@ export class GitHubApp {
     });
   }
 
+  /**
+   * Dispatch an engine job to the public pool repository. Anyone can read a
+   * public run, so the only input is the opaque job id; the returned run id is
+   * what the job's claim is bound to instead of a nonce. Only the approved
+   * runtime tag is dispatched, never a branch.
+   */
+  async dispatchPublic(organization: string, repositoryId: string, jobId: string, approvedSha: string) {
+    if (!UUID.test(jobId) || !SHA.test(approvedSha) || !/^\d+$/.test(repositoryId)) {
+      throw new GitHubError("invalid_job_dispatch");
+    }
+    const full = target(organization, PUBLIC_POOL_REPOSITORY);
+    const token = await this.installationToken(organization);
+    const repo = await this.repository(organization, PUBLIC_POOL_REPOSITORY);
+    if (repo.private || repo.fork || String(repo.id) !== repositoryId) {
+      throw new GitHubError("public_pool_repository_mismatch");
+    }
+    const ref = "observer-runtime-" + approvedSha;
+    const tag = await this.request("/repos/" + full + "/commits/" + ref, token);
+    if (tag.sha !== approvedSha) throw new GitHubError("control_revision_not_approved");
+    const run = await this.request(
+      "/repos/" + full + "/actions/workflows/observer-engine.yml/dispatches",
+      token,
+      "POST",
+      { ref, inputs: { job_id: jobId }, return_run_details: true },
+    );
+    const id = run?.workflow_run_id;
+    if (!Number.isSafeInteger(id) || id < 1) throw new GitHubError("dispatch_run_unknown");
+    return String(id);
+  }
+
+  /**
+   * Commit an opened public-pool result to the team's private repository, as
+   * the trusted job would (project_platform.repository.SnapshotRepository):
+   * one root commit with fixed author and date on refs/heads/results/<run>,
+   * never a force update. Uses a token limited to that one repository.
+   */
+  async commitResult(userId: string, runId: string, files: { path: string; data: Uint8Array; executable: boolean }[]) {
+    if (!UUID.test(runId) || !files.length) throw new GitHubError("invalid_result_snapshot");
+    const run = runId.toLowerCase();
+    const repo = await this.privateParticipantRepository(userId);
+    const full = repo.full_name;
+    const token = await this.snapshotWriteToken(userId, false);
+    const tree = [];
+    for (const file of files) {
+      const blob = await this.request("/repos/" + full + "/git/blobs", token, "POST", {
+        content: toBase64(file.data),
+        encoding: "base64",
+      });
+      tree.push({ path: file.path, mode: file.executable ? "100755" : "100644", type: "blob", sha: blob.sha });
+    }
+    const created = await this.request("/repos/" + full + "/git/trees", token, "POST", { tree });
+    const identity = { name: "Agentic Observer", email: "observer@create.gosim.org", date: "2026-01-01T00:00:00Z" };
+    const commit = await this.request("/repos/" + full + "/git/commits", token, "POST", {
+      message: "Evaluation result " + run + "\n\nSHA256 " + await projectDigest(files),
+      tree: created.sha,
+      parents: [],
+      author: identity,
+      committer: identity,
+    });
+    if (!SHA.test(commit?.sha)) throw new GitHubError("invalid_result_snapshot");
+    const ref = "results/" + run;
+    let existing;
+    try {
+      existing = await this.request("/repos/" + full + "/git/ref/heads/" + ref, token);
+    } catch (error) {
+      if (!(error instanceof GitHubError) || error.status !== 404) throw error;
+      try {
+        await this.request("/repos/" + full + "/git/refs", token, "POST", {
+          ref: "refs/heads/" + ref,
+          sha: commit.sha,
+        });
+      } catch (creation) {
+        // A concurrent identical store may have created it first.
+        if (!(creation instanceof GitHubError) || creation.status !== 422) throw creation;
+      }
+      existing = await this.request("/repos/" + full + "/git/ref/heads/" + ref, token);
+    }
+    if (existing?.object?.sha !== commit.sha) throw new GitHubError("result_conflict");
+    return "github:" + full + "@" + commit.sha;
+  }
+
   async archiveDownload(organization: string, repository: string, commit: string): Promise<string> {
     const full = target(organization, repository);
     if (!SHA.test(commit)) throw new GitHubError("invalid_source_commit");
@@ -334,6 +449,9 @@ export class GitHubApp {
 
 export type WorkflowIdentity = {
   repositoryId: string;
+  /** observer-control (private, default) or the public pool repository. */
+  repository?: string;
+  visibility?: "private" | "public";
   organizationId: string;
   organization: string;
   workflow: "observer-prepare.yml" | "observer-execute.yml" | "observer-engine.yml" | "observer-score.yml";
@@ -348,7 +466,12 @@ export async function verifyWorkflowIdentity(
   expected: WorkflowIdentity,
   keys: JWTVerifyGetKey = actionsKeys,
 ) {
-  if (!isRunnerOrganization(expected.organization) || !SHA.test(expected.approvedSha)) {
+  const name = expected.repository ?? CONTROL_REPOSITORY, visibility = expected.visibility ?? "private";
+  if (
+    !isRunnerOrganization(expected.organization) || !SHA.test(expected.approvedSha) ||
+    !(name === CONTROL_REPOSITORY && visibility === "private" ||
+      name === PUBLIC_POOL_REPOSITORY && visibility === "public")
+  ) {
     throw new GitHubError("invalid_workflow_configuration");
   }
   let claims;
@@ -364,12 +487,13 @@ export async function verifyWorkflowIdentity(
   } catch {
     throw new GitHubError("invalid_workflow_identity", 401);
   }
-  const repo = expected.organization + "/" + CONTROL_REPOSITORY;
-  const allowedRef = claims.ref === "refs/heads/main" ||
+  const repo = expected.organization + "/" + name;
+  // The public pool runs only its approved runtime tag.
+  const allowedRef = (claims.ref === "refs/heads/main" && visibility === "private") ||
     claims.ref === "refs/tags/observer-runtime-" + expected.approvedSha;
   if (
     claims.repository_id !== expected.repositoryId || claims.repository_owner_id !== expected.organizationId ||
-    claims.repository !== repo || claims.repository_visibility !== "private" ||
+    claims.repository !== repo || claims.repository_visibility !== visibility ||
     claims.workflow_ref !== repo + "/.github/workflows/" + expected.workflow + "@" + claims.ref ||
     claims.workflow_sha !== expected.approvedSha || claims.sha !== expected.approvedSha ||
     !allowedRef || claims.event_name !== "workflow_dispatch" ||

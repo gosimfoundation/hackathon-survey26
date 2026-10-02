@@ -141,7 +141,16 @@ function directory(zip: Uint8Array): Directory {
 
 function names(zip: Uint8Array, dir: Directory) {
   const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-  const result: { name: string; method: number; compressed: number; size: number; crc: number; local: number }[] = [];
+  const result: {
+    name: string;
+    method: number;
+    compressed: number;
+    size: number;
+    crc: number;
+    local: number;
+    flags: number;
+    mode: number;
+  }[] = [];
   let p = dir.offset;
   for (let i = 0; i < dir.count; i++) {
     if (p + 46 > dir.eocd || v.getUint32(p, true) !== 0x02014b50) throw new ZipError("invalid_zip");
@@ -154,6 +163,8 @@ function names(zip: Uint8Array, dir: Directory) {
       compressed: v.getUint32(p + 20, true),
       size: v.getUint32(p + 24, true),
       local: v.getUint32(p + 42, true),
+      flags: v.getUint16(p + 8, true),
+      mode: v.getUint32(p + 38, true) >>> 16,
     });
     p += 46 + length + extra + note;
   }
@@ -171,6 +182,38 @@ export async function singleFileZip(name: string, content: Uint8Array): Promise<
 export async function readZipEntry(zip: Uint8Array, name: string, limit: number): Promise<Uint8Array | null> {
   const found = names(zip, directory(zip)).find((e) => e.name === name);
   if (!found) return null;
+  return await entryData(zip, found, limit);
+}
+
+/**
+ * Every regular file of a trusted job archive (project_platform.artifacts.pack_files):
+ * plain relative paths, no links, special files, encryption or duplicates.
+ */
+export async function readZipFiles(zip: Uint8Array, limit: number, maxFiles = 10000) {
+  const entries = names(zip, directory(zip));
+  if (!entries.length || entries.length > maxFiles) throw new ZipError("invalid_zip");
+  const files: { path: string; data: Uint8Array; executable: boolean }[] = [];
+  const seen = new Set<string>();
+  let total = 0;
+  for (const e of entries) {
+    if (e.name.endsWith("/")) continue;
+    const type = e.mode & 0o170000;
+    if (
+      (e.flags & 1) || (type !== 0 && type !== 0o100000) || !e.name || e.name.startsWith("/") ||
+      e.name.includes("\\") || e.name.includes("\0") ||
+      e.name.split("/").some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git") ||
+      seen.has(e.name.toLowerCase())
+    ) throw new ZipError("invalid_zip");
+    seen.add(e.name.toLowerCase());
+    total += e.size;
+    if (total > limit) throw new ZipError("zip_entry_too_large");
+    files.push({ path: e.name, data: await entryData(zip, e, limit), executable: (e.mode & 0o111) !== 0 });
+  }
+  if (!files.length) throw new ZipError("invalid_zip");
+  return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
+async function entryData(zip: Uint8Array, found: ReturnType<typeof names>[number], limit: number) {
   const v = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
   const p = found.local;
   if (p + 30 > zip.length || v.getUint32(p, true) !== 0x04034b50) throw new ZipError("invalid_zip");

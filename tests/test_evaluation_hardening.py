@@ -515,7 +515,7 @@ def test_engine_job_applies_the_egress_switch_from_its_payload(monkeypatch, tmp_
                    "source_digest": "d" * 64, "manifest": manifest}
     (tmp_path / "project").mkdir()
     monkeypatch.setattr(job_runner, "RestrictedEgress", Egress)
-    monkeypatch.setattr(job_runner, "_participant_runtime", lambda payload, p, root, http: (
+    monkeypatch.setattr(job_runner, "_participant_runtime", lambda payload, p, root, http, sealed=None: (
         DockerWorkspace(tmp_path / "project", job_runner.ProjectManifest.parse(manifest), manifest["image"]),
         {"OBSERVER_API_URL": "https://platform.test/s", "OBSERVER_RUN_TOKEN": p["run_credential"],
          "OBSERVER_RUN_ID": run, "OPENAI_BASE_URL": p["model_base_url"], "OPENAI_API_KEY": p["run_credential"]}))
