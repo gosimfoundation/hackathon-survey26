@@ -2094,7 +2094,7 @@
     "kit_hint": "Unzip into your project’s cards/ folder.",
     "files_pending": "The card files are not online yet; once they are, download them here or on Resources.",
     "locked_title": "Not published yet",
-    "locked": "Hackathon card {card} is published when the competition starts (Oct 5 00:00, UTC+8): the card page and the public inputs (targets, sky footprint, site, telescope and fibres, observing calendar, score settings). Weather, forecasts and events stay private."
+    "locked": "Hackathon card {card} is published when the competition starts — Oct 5, 00:00 Beijing time (Oct 4, 16:00 UTC; Oct 4, 09:00 PDT; Oct 4, 12:00 EDT): the card page and the public inputs (targets, sky footprint, site, telescope and fibres, observing calendar, score settings). Weather, forecasts and events stay private."
   },
   "docs_page": {
     "kicker": "Docs",
