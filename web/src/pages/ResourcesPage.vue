@@ -76,8 +76,7 @@ onMounted(async () => {
             <h3 class="mt-3">{{ t(item.title) }}</h3>
             <p>{{ t(item.desc) }}</p>
             <p class="mt-5">
-              <router-link v-if="item.route" class="btn sm" :to="item.href">{{ t(item.label) }} →</router-link>
-              <a v-else class="btn sm" :href="item.href" :download="item.view ? undefined : ''" :target="item.view ? '_blank' : undefined">{{ t(item.label) }} {{ item.view ? '→' : '↓' }}</a>
+              <router-link class="btn sm" :to="item.href">{{ t(item.label) }} →</router-link>
             </p>
           </article>
         </div>
