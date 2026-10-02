@@ -59,7 +59,7 @@
       },
       "submit": {
         "title": "Participate",
-        "description": "Upload a decisions.csv or a complete project for evaluation."
+        "description": "Submit a complete project for evaluation."
       },
       "submissions": {
         "title": "Submissions",
@@ -329,7 +329,7 @@
         {
           "n": "03",
           "title": "Submit for evaluation",
-          "desc": "Practice accepts a decisions.csv file, or a complete project evaluated in the cloud on a separate board. The formal competition accepts complete projects only (public repository or private ZIP). Every team is scored by the same frozen scorer."
+          "desc": "Practice accepts a complete project evaluated in the cloud on a separate board. The formal competition accepts complete projects only (public repository or private ZIP). Every team is scored by the same frozen scorer."
         }
       ],
       "timeline": [
@@ -416,12 +416,12 @@
       "title": "How to enter a run",
       "items": [
         {
-          "title": "Projects and CSV",
-          "desc": "Practice accepts decisions.csv (50 per team per day, best score per scenario) or a complete project (5 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
+          "title": "Projects",
+          "desc": "Practice accepts a complete project (5 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
         },
         {
           "title": "Limits",
-          "desc": "Any language; model calls are optional. decisions.csv up to 20 MB, project ZIP up to 50 MB. Competition: 4 evaluations per team per day, each running cards A–D with 900 s per card."
+          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 4 evaluations per team per day, each running cards A–D with 900 s per card."
         }
       ],
       "link": "Submission docs"
@@ -719,9 +719,9 @@
         "kicker": "05 / Participant Job",
         "title": "Build a reproducibly runnable observer project",
         "paragraphs": [
-          "Any language is allowed. Practice submits a decisions.csv; the formal competition submits a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
+          "Any language is allowed. Submit a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
           "The server reveals current observations step by step and scores the actual decisions. Future weather and anomaly answers remain private.",
-          "When ready, upload decisions.csv or submit a complete project on Participate, then study replays to improve your strategy.",
+          "When ready, submit a complete project on Participate, then study replays to improve your strategy.",
           "The platform keeps the full record of every evaluation — the decisions file, the run log, and a slot-by-slot replay — for organizer review, and for you to inspect why each step went the way it did."
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -1432,7 +1432,7 @@
     "steps": [
       "Create your account (no e-mail confirmation needed)",
       "Create a team or join one with an invite code",
-      "Upload decisions.csv (Practice) or a complete project"
+      "Submit a complete project for evaluation"
     ],
     "about_you": "Participant profile",
     "about_you_note": "Your tiers appear on your participant card, helping entrants from different backgrounds find each other and form teams.",
@@ -1511,12 +1511,12 @@
         },
         "prepare": {
           "title": "Read the docs",
-          "hint": "Follow the docs to build your agent, then produce a decisions.csv.",
+          "hint": "Follow the docs to build your agent.",
           "action": "Open the docs"
         },
         "submit": {
           "title": "Make your first submission",
-          "hint": "Upload decisions.csv on Participate; the platform scores it automatically.",
+          "hint": "Submit a project on Participate; the platform scores it automatically.",
           "action": "Submit"
         },
         "review": {
@@ -1798,13 +1798,6 @@
       "call_failed": "The model call failed. Check your API and quota.",
       "invalid": "Check the endpoint, model and key.",
       "collapsed_hint": "Only projects that call a model need a key here; pure-code projects can skip this section."
-    },
-    "track": {
-      "lede": "Practice has two ways to take part, with separate boards:",
-      "csv": "Upload a CSV result",
-      "project": "Submit a complete project",
-      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Debug board. The CSV upload is being phased out — prefer a complete project.",
-      "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
   "subs": {
@@ -2011,7 +2004,7 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 50 decisions.csv submissions and 5 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
+        "a": "Practice: 5 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2496,10 +2489,9 @@
       "s2_lead": "Build your agent to the protocol in the docs.",
       "s2_desc": "Iterate on the decision logic to raise your score.",
       "s2_link": "Read the task description",
-      "s3_title": "Step 3 · Submit",
-      "s3_intro": "Log in and open Participate. Choose one way:",
+      "s3_title": "Step 3 · Submit a complete project",
+      "s3_intro": "Log in and open Participate:",
       "s3_points": [
-        "CSV: upload a decisions.csv file and get a score at once. 50 per team per day.",
         "Complete project: upload your code; the platform runs and scores it in the cloud. 5 per team per day."
       ],
       "s3_cta": "Go to Participate",

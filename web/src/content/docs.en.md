@@ -68,19 +68,9 @@ The platform records the source revision and launch configuration, tests the int
 
 Uploading and confirming do not use evaluations (up to 10 uploads per team per day). A version that was never evaluated can be withdrawn: it is hidden and can no longer be confirmed or evaluated. A version still being prepared can be withdrawn once preparation finishes.
 
-Each click on "Evaluate this version" uses one of the day's evaluations. In the formal competition one evaluation runs once on each of the hackathon cards A, B, C and D, with a runtime limit of 900 seconds per card; its score is the average of the four cards, and the online board keeps the team's best complete evaluation. On Practice, a complete-project evaluation runs once on each practice card (α, β, γ, δ), also 900 seconds per card, and scores go to a separate practice board ranked per card. The number of evaluations per day is the quota shown on Participate. Within the daily limit you may evaluate as often as you like; competition participants should choose a final version (section 8) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
+Each click on "Evaluate this version" uses one of the day's evaluations. In the formal competition one evaluation runs once on each of the hackathon cards A, B, C and D, with a runtime limit of 900 seconds per card; its score is the average of the four cards, and the online board keeps the team's best complete evaluation. On Practice, a complete-project evaluation runs once on each practice card (α, β, γ, δ), also 900 seconds per card, and scores go to a separate practice board ranked per card. The number of evaluations per day is the quota shown on Participate. Within the daily limit you may evaluate as often as you like; competition participants should choose a final version (section 7) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
 
-## 6. Practice: decisions.csv
-
-Before the formal competition (and throughout Practice), you can upload a `decisions.csv` file as an alternative to a complete project.
-
-Open [Participate](/compete), choose the scenario and upload your `decisions.csv`. The columns are `decision_id, slot_id, action, tile_id, program, request_id, reason`. Maximum file size is 20 MB; each team can submit up to 50 times per day, subject to the displayed quota. After submission, inspect evaluation status, score components, completion and replay. Practice ranks each scenario separately on the team's best score; its boards are for practice and do not decide awards.
-
-The published scorer and scenario configuration define the exact formulas and constants.
-
-Check the scenario, CSV columns, file size and daily quota if an upload is rejected.
-
-## 7. Optional personal model APIs
+## 6. Optional personal model APIs
 
 Bring your own API and quota if your algorithm needs a model. The platform does not provide model credits. Do not commit keys to your repository or ZIP.
 
@@ -95,7 +85,7 @@ Your program calls the model through the environment variables `OPENAI_BASE_URL`
 
 Deterministic algorithms do not need a key, but awards require agent techniques in at least two stages (Rules, section 3). Explanation length does not increase the performance score.
 
-## 8. Fixed task cards, final version and the hidden final
+## 7. Fixed task cards, final version and the hidden final
 
 The online competition evaluates on four **fixed** hackathon cards (A, B, C and D). They are the same for every team and every evaluation: there is no per-team randomization. Their [task card](/cards) pages and public inputs are published when the competition starts; weather, forecasts and events are not, and your project receives bulletins and forecasts one step at a time during an evaluation. The score is the total defined in [Rules](/rules); an evaluation's score is the mean over the four cards. The result ZIP of each of your own evaluations can be downloaded as before.
 
@@ -105,7 +95,7 @@ An evaluation includes all four cards and ranks only when they all finish. The *
 
 **Hidden final.** After the online competition ends, the organizers evaluate each team's final version exactly once on four hidden cards E, F, G and H that nobody has seen. It does not use your daily evaluations. Their data, run logs and results stay private until the organizers publish the final results, and **only the mean score over E–H decides the final ranking**. No team page is open during it: **if your program calls a large model, switch the model API to “Save encrypted” before the competition ends; otherwise model calls will fail in the hidden final evaluation.** Teams that do not use a model are unaffected. Exact ties on the hidden score are settled by the organizers and announced with the results.
 
-## 9. Results and reproduction
+## 8. Results and reproduction
 
 The result records decisions, scores, runtime status and logs; download it from Participate. Results of the hidden final evaluation become available only after the final results are published. The platform's private audit record retains the source revision and file digests so organizers can re-score the decisions. Future data and private credentials are never included in participant downloads.
 
