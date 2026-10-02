@@ -1580,8 +1580,7 @@
       "not_eligible": "你的队伍还需在练习赛获得一次成功评分。",
       "no_codes_left": "暂时没有可领取的 Kimi Coding Plan 兑换码。",
       "need_team": "请先创建或加入队伍。"
-    },
-    "usage": "使用方法：在「参赛」页的「模型 API」中，接口填 https://api.kimi.com/coding/v1 ，模型填 kimi-for-coding（或 k3），密钥填兑换后得到的 API Key。注意不是 api.moonshot.cn，也不是 api.kimi.ai。"
+    }
   },
   "profile": {
     "title": "个人资料",
