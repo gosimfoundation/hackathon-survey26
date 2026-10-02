@@ -3,6 +3,17 @@ import type { Rpc } from "./observer-model.ts";
 import { RUNNER_ORGANIZATION_PATTERN, verifyWorkflowIdentity } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
 import { AGENT_LOG_BYTES } from "./observer-agent-log.ts";
+import {
+  decodeKey,
+  encodeKey,
+  openSealed,
+  publicKeyFor,
+  seal,
+  SEAL_OVERHEAD,
+  SealError,
+  toBase64,
+} from "./observer-seal.ts";
+import { readZipFiles, ZipError } from "./observer-zip.ts";
 
 const PARTICIPANT_REPOSITORY = new RegExp("^" + RUNNER_ORGANIZATION_PATTERN + "\\/participant-[0-9a-f]{32}$");
 
@@ -16,14 +27,58 @@ export type JobDependencies = {
   sourceDownload?: (path: string) => Promise<string>;
   /** Stores the scrubbed participant log beside the run's private result. */
   storeAgentLog?: (run: string, log: Uint8Array) => Promise<void>;
+  /** Public runner pool only (ops/public-runner-pool.md). */
+  publicPool?: PublicPoolDependencies;
 };
+
+/**
+ * The public-repository pool's sealed transfers. A public run's inputs and
+ * logs are visible to anyone, so nothing private reaches it in clear text:
+ * the scenario and project bytes are sealed to the job's in-memory runner key
+ * and staged as ciphertext, the claim payload is sealed the same way, and the
+ * result arrives sealed to resultKey, whose private half only this backend has.
+ */
+export type PublicPoolDependencies = {
+  /** X25519 private key (OBSERVER_RESULT_SEAL_KEY); results are sealed to its public key. */
+  resultKey: Uint8Array;
+  readScenario: (path: string) => Promise<Uint8Array>;
+  readArchive: (reference: string) => Promise<Uint8Array>;
+  /** Stores ciphertext at sealed/<job>/<name>.zip and returns a short-lived download URL. */
+  stage: (job: string, name: "scenario" | "project", sealed: Uint8Array) => Promise<string>;
+  /** A fresh short-lived signed upload URL for sealed/<job>/result.zip, issued just before upload. */
+  resultUpload: (job: string) => Promise<{ url: string; path: string }>;
+  readResult: (job: string) => Promise<Uint8Array>;
+  commitResult: (
+    user: string,
+    run: string,
+    files: { path: string; data: Uint8Array; executable: boolean }[],
+  ) => Promise<string>;
+};
+
+const RESULT_EXPANDED_BYTES = 100 * 1024 * 1024;
+// The staging bucket's object limit; a sealed object is SEAL_OVERHEAD larger than its input.
+const STAGED_BYTES = 50 * 1024 * 1024;
+
+async function sealedInput(runnerKey: Uint8Array, data: Uint8Array, context: string) {
+  if (data.length + SEAL_OVERHEAD > STAGED_BYTES) throw new ProxyError(503, "sealed_input_too_large");
+  return await seal(runnerKey, data, context);
+}
 
 const RECEIPT_BODY_LIMIT = 1100000;
 const AGENT_LOG_BODY_LIMIT = 3 * 1024 * 1024;
 
-function validateArtifactUpload(value: unknown, id: string, filename: string) {
+function validateArtifactUpload(value: unknown, id: string, filename: string, sealedJob?: string) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ProxyError(503, "invalid_job_payload");
   const upload = value as Record<string, unknown>;
+  if (sealedJob !== undefined) {
+    // Public pool: the sealed result goes to the backend's staging object only;
+    // its upload URL is issued when the result is ready (result_upload).
+    if (
+      Object.keys(upload).sort().join(",") !== "kind,path" || upload.kind !== "sealed" ||
+      upload.path !== "sealed/" + sealedJob + "/result.zip"
+    ) throw new ProxyError(503, "invalid_job_payload");
+    return;
+  }
   if (Object.keys(upload).join(",") === "kind" && upload.kind === "github") return;
   if (
     Object.keys(upload).sort().join(",") !== "path,url" || typeof upload.url !== "string" ||
@@ -77,6 +132,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "archive_url",
       "colocated",
       "restricted_egress",
+      "result_key",
     ],
     // The independent rescore: the scenario and the run's stored result, no
     // session capability (a score job can never publish or finish a session).
@@ -107,6 +163,14 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
   if (
     !fields[kind] || value.kind !== kind || value.job_id !== job ||
     Object.keys(value).some((key) => !fields[kind].includes(key))
+  ) throw new ProxyError(503, "invalid_job_payload");
+  // The public pool takes colocated public-scenario engine jobs only, always
+  // with a sealed result; a private-pool job never carries sealing fields.
+  const sealed = expected.visibility === "public";
+  if (
+    sealed && (kind !== "engine" || value.colocated === undefined || value.instance !== undefined ||
+        typeof value.result_key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value.result_key)) ||
+    !sealed && value.result_key !== undefined
   ) throw new ProxyError(503, "invalid_job_payload");
   const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
   const hash = /^[0-9a-f]{64}$/;
@@ -195,7 +259,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     ) {
       throw new ProxyError(503, "invalid_job_payload");
     }
-    validateArtifactUpload(value.artifact_upload, string("run_id", uuid), "result");
+    validateArtifactUpload(value.artifact_upload, string("run_id", uuid), "result", sealed ? job : undefined);
     if (value.instance !== undefined) {
       const instance = value.instance as Record<string, unknown>;
       if (
@@ -245,7 +309,7 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
   if (
     !body || typeof body !== "object" || Array.isArray(body) ||
     typeof body.job_id !== "string" || !/^[0-9a-f-]{36}$/.test(body.job_id) ||
-    !["claim", "complete", "artifact_repository", "agent_log"].includes(body.action)
+    !["claim", "complete", "artifact_repository", "agent_log", "result_upload", "store_result"].includes(body.action)
   ) throw new ProxyError(400, "invalid_job_request");
   // Only the participant log may use the larger request size.
   if (body.action !== "agent_log" && JSON.stringify(body).length > RECEIPT_BODY_LIMIT) {
@@ -255,10 +319,19 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
   if (!identity) throw new ProxyError(404, "job_unavailable");
   const expected: WorkflowIdentity = {
     ...identity,
+    repository: identity.repository ?? undefined,
+    visibility: identity.visibility ?? undefined,
     runId: identity.runId ?? undefined,
     runAttempt: identity.runAttempt ?? undefined,
   };
   const verified = await (deps.verify ?? verifyWorkflowIdentity)(bearer[1], expected);
+  const isPublic = expected.visibility === "public";
+  if (isPublic && (!deps.publicPool || !["claim", "complete", "result_upload", "store_result"].includes(body.action))) {
+    throw new ProxyError(403, "public_pool_action_denied");
+  }
+  if (!isPublic && ["result_upload", "store_result"].includes(body.action)) {
+    throw new ProxyError(403, "artifact_access_denied");
+  }
   const repository = async () => {
     if (expected.workflow === "observer-execute.yml" || !deps.repositoryCredentials) {
       throw new ProxyError(403, "artifact_access_denied");
@@ -278,14 +351,20 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
     };
   };
   const claimedInput = async () => {
-    if (typeof body.nonce !== "string" || !/^[A-Za-z0-9_-]{40,100}$/.test(body.nonce)) {
+    // A public-pool job has no nonce (its dispatch inputs are public): the
+    // database binds its claim to the run id GitHub returned at dispatch.
+    if (
+      isPublic
+        ? body.nonce !== undefined
+        : typeof body.nonce !== "string" || !/^[A-Za-z0-9_-]{40,100}$/.test(body.nonce)
+    ) {
       throw new ProxyError(400, "invalid_job_nonce");
     }
     // Idempotent for the GitHub run that already claimed the job; any other
     // run, nonce, workflow or finished job is refused by the database.
     const ciphertext = await deps.rpc("observer_claim_job", {
       p_job: body.job_id,
-      p_nonce: body.nonce,
+      p_nonce: isPublic ? null : body.nonce,
       p_github_run: verified.runId,
       p_attempt: verified.runAttempt,
       p_repository: expected.repositoryId,
@@ -295,6 +374,11 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
     return await decryptCredential(ciphertext, body.job_id, deps.masterKey);
   };
   if (body.action === "artifact_repository") return await repository();
+  if (body.action === "result_upload") {
+    await claimedEngine(body.job_id, verified, deps);
+    return await deps.publicPool!.resultUpload(body.job_id);
+  }
+  if (body.action === "store_result") return await storeSealedResult(deps.publicPool!, body.job_id, verified, deps);
   if (body.action === "agent_log") {
     // Only the executor has participant output. The run is taken from the
     // claimed job's own encrypted input, never from the request.
@@ -332,6 +416,14 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
     return { accepted: true };
   }
   if (body.action === "claim") {
+    let runnerKey: Uint8Array | undefined;
+    if (isPublic) {
+      try {
+        runnerKey = decodeKey(body.runner_key);
+      } catch {
+        throw new ProxyError(400, "invalid_runner_key");
+      }
+    }
     const cleartext = await claimedInput();
     let parsed;
     try {
@@ -364,7 +456,13 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         ) {
           throw new ProxyError(503, "invalid_job_payload");
         }
-        parsed.scenario_url = await deps.scenarioDownload(ref.path);
+        parsed.scenario_url = runnerKey
+          ? await deps.publicPool!.stage(
+            body.job_id,
+            "scenario",
+            await sealedInput(runnerKey, await deps.publicPool!.readScenario(ref.path), "scenario:" + body.job_id),
+          )
+          : await deps.scenarioDownload(ref.path);
         delete parsed.scenario_ref;
       }
       if (parsed.result_ref !== undefined) {
@@ -383,7 +481,17 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         if (parsed.archive_url !== undefined || !deps.archiveDownload || typeof parsed.archive_ref !== "string") {
           throw new ProxyError(503, "invalid_job_payload");
         }
-        parsed.archive_url = await deps.archiveDownload(parsed.archive_ref, parsed.kind !== "prepare");
+        parsed.archive_url = runnerKey
+          ? await deps.publicPool!.stage(
+            body.job_id,
+            "project",
+            await sealedInput(
+              runnerKey,
+              await deps.publicPool!.readArchive(parsed.archive_ref),
+              "project:" + body.job_id,
+            ),
+          )
+          : await deps.archiveDownload(parsed.archive_ref, parsed.kind !== "prepare");
         delete parsed.archive_ref;
       }
       if (parsed.kind === "prepare" && parsed.repository && !parsed.repository.token) {
@@ -394,7 +502,18 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         parsed.repository = { full_name: fresh.full_name, token: fresh.token };
       }
     }
-    return validateJobPayload(parsed, expected, body.job_id);
+    if (runnerKey && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      parsed.artifact_upload = { kind: "sealed", path: "sealed/" + body.job_id + "/result.zip" };
+      parsed.result_key = encodeKey(publicKeyFor(deps.publicPool!.resultKey));
+    }
+    const payload = validateJobPayload(parsed, expected, body.job_id);
+    if (!runnerKey) return payload;
+    const sealedPayload = await seal(
+      runnerKey,
+      new TextEncoder().encode(JSON.stringify(payload)),
+      "claim:" + body.job_id,
+    );
+    return { sealed: toBase64(sealedPayload) };
   }
   await deps.rpc("observer_finish_job", {
     p_job: body.job_id,
@@ -404,4 +523,39 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
     p_error: typeof body.error === "string" ? body.error : "",
   });
   return { accepted: true };
+}
+
+/**
+ * Open the public-pool result the claimed run uploaded, commit it to the
+ * team's private repository and return its result path for session finish.
+ * Only the run that holds the claim can store, and only its own run's result.
+ */
+async function claimedEngine(job: string, verified: { runId: string; runAttempt: string }, deps: JobDependencies) {
+  const target = await deps.rpc("observer_job_artifact_target", {
+    p_job: job,
+    p_github_run: verified.runId,
+    p_attempt: verified.runAttempt,
+  });
+  if (!target?.user_id || !target?.artifact_id || target.kind !== "engine") {
+    throw new ProxyError(403, "artifact_access_denied");
+  }
+  return target as { user_id: string; artifact_id: string };
+}
+
+async function storeSealedResult(
+  pool: PublicPoolDependencies,
+  job: string,
+  verified: { runId: string; runAttempt: string },
+  deps: JobDependencies,
+) {
+  const target = await claimedEngine(job, verified, deps);
+  let files;
+  try {
+    const archive = await openSealed(pool.resultKey, await pool.readResult(job), "result:" + job);
+    files = await readZipFiles(archive, RESULT_EXPANDED_BYTES);
+  } catch (error) {
+    if (error instanceof SealError || error instanceof ZipError) throw new ProxyError(400, "invalid_job_result");
+    throw error;
+  }
+  return { result_path: await pool.commitResult(target.user_id, target.artifact_id, files) };
 }

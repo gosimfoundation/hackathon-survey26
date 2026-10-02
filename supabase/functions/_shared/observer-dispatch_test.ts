@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { encryptCredential } from "./observer-model.ts";
 import { dispatchPending } from "./observer-dispatch.ts";
 import { GitHubError } from "./observer-github.ts";
@@ -37,6 +37,7 @@ Deno.test("dispatcher decrypts only the nonce and acknowledges the fixed workflo
   assertEquals(calls, [
     "observer_reconcile_jobs",
     "observer_reconcile_sessions",
+    "observer_public_pool_reconcile",
     "observer_pending_jobs",
     "github",
     "observer_mark_dispatched",
@@ -304,4 +305,181 @@ Deno.test("a split run's partner moved along with its job waits for the next rou
   ]);
   // The partner is never dispatched GitHub-hosted from its stale row.
   assertEquals(dispatches, [ids[0] + "@AGENTIC-OBSERVER26-runner-13:self-hosted"]);
+});
+
+const PUBLIC_JOB = "00000000-0000-4000-8000-0000000000aa";
+const POOL = { organization: "AGENTIC-OBSERVER26-runner-12", approved_sha: "b".repeat(40), repository_id: "42" };
+
+function publicRpc(
+  job: Record<string, unknown>,
+  overrides: Record<string, (args: Record<string, unknown>) => unknown> = {},
+) {
+  const calls: { name: string; args: Record<string, unknown> }[] = [];
+  const rpc = (name: string, args: Record<string, unknown>) => {
+    calls.push({ name, args });
+    if (overrides[name]) return Promise.resolve().then(() => overrides[name](args));
+    if (name === "observer_pending_jobs") return Promise.resolve([job]);
+    return Promise.resolve(null);
+  };
+  return { rpc, calls };
+}
+
+Deno.test("a public-pool job is dispatched with its job id only and bound to the returned run", async () => {
+  const { rpc, calls } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: "AGENTIC-OBSERVER26-runner-3",
+      workflow_sha: "a".repeat(40),
+      encrypted_nonce: "not decrypted",
+      runner: "github-hosted",
+      public: true,
+    },
+    { observer_public_job: () => POOL },
+  );
+  const dispatched: unknown[] = [];
+  const result = await dispatchPending(rpc, {
+    dispatch: () => Promise.reject(new Error("private dispatch must not run")),
+    dispatchPublic: (...args) => {
+      dispatched.push(args);
+      return Promise.resolve("987654");
+    },
+  }, btoa("k".repeat(32)));
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true, public: POOL.organization }]);
+  assertEquals(dispatched, [[POOL.organization, "42", PUBLIC_JOB, POOL.approved_sha]]);
+  assertEquals(calls.at(-1), {
+    name: "observer_mark_public_dispatched",
+    args: { p_job: PUBLIC_JOB, p_github_run: "987654" },
+  });
+});
+
+Deno.test("a failed public dispatch sends the job home for good and dispatches it there at once", async () => {
+  const key = btoa("k".repeat(32)), nonce = "n".repeat(43);
+  const { rpc, calls } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: "AGENTIC-OBSERVER26-runner-3",
+      workflow_sha: "a".repeat(40),
+      encrypted_nonce: await encryptCredential(nonce, PUBLIC_JOB + ":nonce", key),
+      runner: "github-hosted",
+      public: true,
+    },
+    { observer_public_job: () => POOL },
+  );
+  const result = await dispatchPending(rpc, {
+    dispatch: (org, _workflow, _job, token) => {
+      assertEquals([org, token], ["AGENTIC-OBSERVER26-runner-3", nonce]);
+      return Promise.resolve();
+    },
+    dispatchPublic: () => Promise.reject(new GitHubError("github_request_failed", 422)),
+  }, key);
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true }]);
+  assertEquals(calls.map((c) => c.name).slice(-3), [
+    "observer_public_job",
+    "observer_public_return_job",
+    "observer_mark_dispatched",
+  ]);
+  assertEquals(calls.find((c) => c.name === "observer_public_return_job")?.args, {
+    p_job: PUBLIC_JOB,
+    p_error: "github_request_failed",
+  });
+});
+
+Deno.test("when every organization fails and the public pool fails too, the self-hosted fallback is still tried", async () => {
+  const key = btoa("k".repeat(32)), nonce = "n".repeat(43);
+  const { rpc, calls } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: "AGENTIC-OBSERVER26-runner-3",
+      workflow_sha: "a".repeat(40),
+      encrypted_nonce: await encryptCredential(nonce, PUBLIC_JOB + ":nonce", key),
+      runner: "github-hosted",
+    },
+    {
+      observer_organizations_by_load: () => [],
+      observer_public_job: () => POOL,
+      observer_fallback_job: () => ({ organization: "AGENTIC-OBSERVER26-runner-13", approved_sha: "c".repeat(40) }),
+    },
+  );
+  const result = await dispatchPending(rpc, {
+    dispatch: (org) =>
+      org === "AGENTIC-OBSERVER26-runner-13"
+        ? Promise.resolve()
+        : Promise.reject(new GitHubError("organization_not_installed")),
+    dispatchPublic: () => Promise.reject(new GitHubError("github_request_failed", 422)),
+  }, key);
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true, fallback: "AGENTIC-OBSERVER26-runner-13" }]);
+  assert(calls.some((c) => c.name === "observer_public_return_job"));
+});
+
+Deno.test("a broken public-pool reconcile never stops private dispatching", async () => {
+  const key = btoa("k".repeat(32)), nonce = "n".repeat(43);
+  const { rpc } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: "AGENTIC-OBSERVER26-runner-3",
+      workflow_sha: "a".repeat(40),
+      encrypted_nonce: await encryptCredential(nonce, PUBLIC_JOB + ":nonce", key),
+      runner: "github-hosted",
+    },
+    {
+      observer_public_pool_reconcile: () => {
+        throw new Error("function does not exist");
+      },
+    },
+  );
+  const result = await dispatchPending(rpc, { dispatch: () => Promise.resolve() }, key);
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true }]);
+});
+
+Deno.test("when the public pool declines, the job is dispatched to its own organization", async () => {
+  const key = btoa("k".repeat(32)), nonce = "n".repeat(43);
+  const { rpc, calls } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: "AGENTIC-OBSERVER26-runner-3",
+      workflow_sha: "a".repeat(40),
+      encrypted_nonce: await encryptCredential(nonce, PUBLIC_JOB + ":nonce", key),
+      runner: "github-hosted",
+      public: true,
+    },
+    {
+      observer_public_job: () => {
+        throw new Error("public_pool_unavailable");
+      },
+    },
+  );
+  const result = await dispatchPending(rpc, {
+    dispatch: (org) => {
+      assertEquals(org, "AGENTIC-OBSERVER26-runner-3");
+      return Promise.resolve();
+    },
+    dispatchPublic: () => Promise.reject(new Error("public dispatch must not run")),
+  }, key);
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true }]);
+  assertEquals(calls.at(-1)?.name, "observer_mark_dispatched");
+});
+
+Deno.test("a queued public job whose pool was switched off returns home", async () => {
+  const { rpc, calls } = publicRpc(
+    {
+      id: PUBLIC_JOB,
+      kind: "engine",
+      organization: POOL.organization,
+      workflow_sha: POOL.approved_sha,
+      encrypted_nonce: "x",
+      runner: "public-hosted",
+      public: null,
+    },
+  );
+  const result = await dispatchPending(rpc, {
+    dispatch: () => Promise.reject(new Error("no private dispatch")),
+    dispatchPublic: () => Promise.reject(new Error("no public dispatch")),
+  }, btoa("k".repeat(32)));
+  assertEquals(result, [{ id: PUBLIC_JOB, dispatched: false, error: "public_pool_unavailable" }]);
+  assertEquals(calls.map((c) => c.name).slice(-2), ["observer_public_target", "observer_public_return_job"]);
 });

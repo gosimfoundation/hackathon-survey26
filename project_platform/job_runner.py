@@ -15,7 +15,8 @@ from .egress import RestrictedEgress
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
 from .manifest import ProjectError, ProjectManifest
-from .package import extract_project, project_digest, read_project_zip
+from .package import MAX_ARCHIVE_BYTES, extract_project, project_digest, read_project_zip
+from .sealing import OVERHEAD, SealKey, decode_key, seal
 from .preparation import prepare_project
 from .session import SessionClient
 from .scenario_job import prepare_bounded
@@ -79,8 +80,44 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
             'diagnostics':{'stage':'execute','code':'completed','log':log}, AGENT_LOG_KEY: full}
 
 
-def _participant_runtime(payload: dict, participant: dict, root: Path, http: Http):
-    files = download_project(http, payload["archive_url"])
+class SealedTransfer:
+    """Public runner pool: inputs arrive sealed to this job's in-memory key and
+    the result leaves sealed to the backend's public key (project_platform.sealing).
+    Signed URLs only ever see ciphertext, and this runner never receives a
+    repository token: the backend commits the opened result itself."""
+
+    def __init__(self, client: JobClient):
+        if client.seal_key is None:
+            raise JobError("sealed_transfer_unavailable")
+        self.client = client
+
+    def download(self, http: Http, url: str, name: str, digest: str | None = None):
+        raw = http.request(url, limit=MAX_ARCHIVE_BYTES + OVERHEAD, timeout=120)
+        data = self.client.seal_key.open(raw, name + ":" + self.client.job_id)
+        if digest is not None and hashlib.sha256(data).hexdigest() != digest:
+            raise JobError("archive_digest_mismatch")
+        return read_project_zip(data)
+
+    def publish(self, http: Http, payload: dict, archive: bytes) -> str:
+        if len(archive) + OVERHEAD > MAX_ARCHIVE_BYTES:
+            raise JobError("artifact_too_large")
+        sealed = seal(decode_key(payload.get("result_key")), archive, "result:" + self.client.job_id)
+        upload = self.client.result_upload()
+        if upload["path"] != payload["artifact_upload"].get("path"):
+            raise JobError("invalid_artifact_destination")
+        http.request(upload["url"], data=sealed, method="PUT", headers={"Content-Type": "application/zip"},
+                     limit=65536)
+        return self.client.store_sealed_result()
+
+
+def _download(http: Http, url: str, digest: str | None, sealed: SealedTransfer | None, name: str):
+    if sealed is None:
+        return download_project(http, url, digest)
+    return sealed.download(http, url, name, digest)
+
+
+def _participant_runtime(payload: dict, participant: dict, root: Path, http: Http, sealed=None):
+    files = _download(http, payload["archive_url"], None, sealed, "project")
     if project_digest(files) != participant["source_digest"]:
         raise JobError("project_digest_mismatch")
     manifest = ProjectManifest.parse(participant["manifest"])
@@ -94,8 +131,10 @@ def _participant_runtime(payload: dict, participant: dict, root: Path, http: Htt
     return DockerWorkspace(workspace, manifest, manifest.image), environment
 
 
-def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=None) -> dict:
-    files = download_project(http, payload["scenario_url"], payload["scenario_digest"])
+def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=None, sealed=None) -> dict:
+    if ((payload.get("artifact_upload") or {}).get("kind") == "sealed") != (sealed is not None):
+        raise JobError("sealed_transfer_mismatch")
+    files = _download(http, payload["scenario_url"], payload["scenario_digest"], sealed, "scenario")
     scenario, output = root / "scenario", root / "result"
     extract_project(files, scenario)
     client = SessionClient(payload["session_url"], payload["run_credential"])
@@ -107,7 +146,7 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         # Public scenarios only: the scheduler never colocates a private instance.
         if payload.get("instance") is not None:
             raise JobError("colocated_private_instance")
-        runtime, environment = _participant_runtime(payload, participant, root, http)
+        runtime, environment = _participant_runtime(payload, participant, root, http, sealed)
         secrets = (payload["run_credential"], participant["run_credential"])
         # Organizer switch (observer_hardening.restricted_egress), carried in the
         # payload: the running project reaches the model proxy and nothing else.
@@ -146,7 +185,10 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
                          truncated=bool(runtime.transport and runtime.transport.log_truncated))
         if text:
             (output / "agent.log").write_text(text)
-        return _publish_result(payload, client, output, result, digest, http, repository_credentials)
+        return _publish_result(payload, client, output, result, digest, http, repository_credentials, sealed)
+    if sealed is not None:
+        # The public pool takes colocated public-scenario runs only.
+        raise JobError("sealed_transfer_mismatch")
     record = None
     if payload.get("instance") is not None:
         instance = payload["instance"]
@@ -168,9 +210,11 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
     return _publish_result(payload, client, output, result, digest, http, repository_credentials)
 
 
-def _publish_result(payload, client, output, result, digest, http, repository_credentials) -> dict:
+def _publish_result(payload, client, output, result, digest, http, repository_credentials, sealed=None) -> dict:
     archive = pack_results(output)
-    if payload['artifact_upload'] == {'kind': 'github'}:
+    if sealed is not None:
+        path = sealed.publish(http, payload, archive)
+    elif payload['artifact_upload'] == {'kind': 'github'}:
         path = store_private_artifact(read_project_zip(archive), payload['run_id'], 'results', repository_credentials)
     else:
         path = upload_artifact(http, payload["artifact_upload"], archive)
@@ -229,7 +273,9 @@ def run_claimed(kind: str, client: JobClient, root: Path) -> None:
     try:
         handler = {
             'execute': execute_job,
-            'engine': lambda payload, root, http: engine_job(payload, root, http, repository_credentials=client.artifact_repository),
+            'engine': lambda payload, root, http: engine_job(
+                payload, root, http, repository_credentials=client.artifact_repository,
+                sealed=SealedTransfer(client) if client.seal_key is not None else None),
             'score': score_job,
             'prepare': lambda payload, root, http: prepare_project(payload, http, repository_credentials=client.artifact_repository),
         }.get(kind)
@@ -268,8 +314,14 @@ def main() -> int:
     parser.add_argument("kind", choices=("execute", "engine", "prepare", "score"))
     args = parser.parse_args()
     try:
+        # The public-repository pool (ops/public-runner-pool.md) dispatches only
+        # an opaque job id; its engine jobs use sealed transfers end to end.
+        public = os.environ.get("OBSERVER_POOL") == "public"
+        if public and args.kind != "engine":
+            raise JobError("public_pool_engine_only")
         client = JobClient(os.environ.get("OBSERVER_JOB_URL", ""), os.environ.get("OBSERVER_JOB_ID", ""),
-                           os.environ.get("OBSERVER_JOB_NONCE", ""), GitHubIdentity())
+                           None if public else os.environ.get("OBSERVER_JOB_NONCE", ""), GitHubIdentity(),
+                           seal_key=SealKey() if public else None)
         with tempfile.TemporaryDirectory(prefix="observer-job-") as temporary:
             run_claimed(args.kind, client, Path(temporary))
         print("Observer job completed.")
