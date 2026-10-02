@@ -48,8 +48,8 @@ def test_practice_cards_use_only_practice_wording(card, language):
     assert match is None, f"formal-stage wording on a Playground card: {match.group(0)!r}"
     assert "900" in text
     assert "{{" not in text, "unfilled card field"
-    # Playground cards publish their weather files; the agent still only gets bulletins step by step.
-    assert ("public" in text and "bulletin" in text) if language == "en" else ("公开" in text and "简报" in text)
+    # Practice cards keep their weather hidden; the agent only gets briefings and forecasts step by step.
+    assert ("Not public" in text and "briefing" in text) if language == "en" else ("不公开" in text and "简报" in text)
 
 
 @pytest.mark.parametrize("language", ["en", "zh"])

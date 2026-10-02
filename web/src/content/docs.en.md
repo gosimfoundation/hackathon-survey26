@@ -31,7 +31,7 @@ Use a suitable container image and build command for your language. `run` and ea
 {"schema_version": "observer-project-v1", "image": "rust:1-bookworm", "build": [["cargo", "build", "--release"]], "run": ["./target/release/agent"], "environment": {"CARGO_HOME": "/workspace/.cargo"}}
 ```
 
-**Without `observer.project.json`**, the platform tries to generate an adapter with the model you set under Model API; with no model set, or a failing model call, preparation fails. ZIPs made by the starter kit's `pack_agent.py` already include the file.
+**Without `observer.project.json`**, the platform tries to generate an adapter with the model you set under Model API; with no model set, or a failing model call, preparation fails.
 
 **Build and internet access:** the `build` commands run before your program starts, in the same image and with internet access, so package managers can download dependencies (pip, npm, cargo and others). The build runs as a non-root user on a read-only system with a 10-minute limit; only the project folder (`/workspace`) and `/tmp` (256 MB) are writable, so install into the project folder: pip with `--target .deps` plus `"environment": {"PYTHONPATH": ".deps"}`; npm with `"NPM_CONFIG_CACHE": "/tmp/npm-cache"` (`node_modules` stays in the project); cargo with `"CARGO_HOME": "/workspace/.cargo"`. Commit a lock file so every build uses the same dependency versions.
 
@@ -70,24 +70,15 @@ Uploading and confirming do not use evaluations (up to 10 uploads per team per d
 
 Each click on "Evaluate this version" uses one of the day's evaluations. In the formal competition one evaluation runs once on each of the hackathon cards A, B, C and D, with a runtime limit of 900 seconds per card; its score is the average of the four cards, and the online board keeps the team's best complete evaluation. On Practice, a complete-project evaluation runs once on each practice card (α, β, γ, δ), also 900 seconds per card, and scores go to a separate practice board ranked per card. The number of evaluations per day is the quota shown on Participate. Within the daily limit you may evaluate as often as you like; competition participants should choose a final version (section 8) before the competition ends. Evaluations that fail because of the platform (evaluation engine, scheduling, network, timeouts and similar) are not counted and are marked "Not counted toward the daily limit"; failures caused by your program (build failure, crash, output that violates the protocol) are counted. Evaluating an already evaluated version again asks for confirmation. The daily count resets at 00:00 UTC (08:00 Beijing time) and the page shows how many evaluations are left today.
 
-## 6. Practice: local runs and decisions.csv
+## 6. Practice: decisions.csv
 
-Before the formal competition (and throughout Practice), you can practice locally and upload result files.
+Before the formal competition (and throughout Practice), you can upload a `decisions.csv` file as an alternative to a complete project.
 
-Run locally:
+Open [Participate](/compete), choose the scenario and upload your `decisions.csv`. The columns are `decision_id, slot_id, action, tile_id, program, request_id, reason`. Maximum file size is 20 MB; each team can submit up to 50 times per day, subject to the displayed quota. After submission, inspect evaluation status, score components, completion and replay. Practice ranks each scenario separately on the team's best score; its boards are for practice and do not decide awards.
 
-```sh
-python3 local_runner.py --scenario scenarios/dev-reference --agent agent/minimal_agent.py --wallclock 600 --out run_output
-python3 score_decisions.py --scenario scenarios/dev-reference --decisions run_output/decisions.csv
-```
+The published scorer and scenario configuration define the exact formulas and constants.
 
-Use `scenarios/demo-week` for a shorter demonstration. Edit `choose_action(candidates, snapshot, memory)` in `agent/my_strategy.py`, rerun and compare scores. Any implementation language is allowed. Custom programs exchange JSON messages over standard input/output following the kit's protocol; write ordinary logs to standard error. Model calls are optional — the deterministic baseline needs no key — and credentials must never appear in result files or public code.
-
-Open [Participate](/compete), choose the scenario you used locally and upload `run_output/decisions.csv`. The columns are `decision_id, slot_id, action, tile_id, program, request_id, reason`. Maximum file size is 20 MB; each team can submit up to 50 times per day, subject to the displayed quota. After submission, inspect evaluation status, score components, completion and replay. Practice ranks each scenario separately on the team's best score; its boards are for practice and do not decide awards.
-
-`config/` contains rules. `outputs/reference/` contains tiles, targets, calendar, slots, weather, forecasts, events and requests; public files are downloadable from Resources. Local runs of the practice scenarios with the starter kit use the `participant-agent-protocol-v1` contract. Complete-project cloud evaluations use `participant-agent-protocol-v2` (the version in their logs): answer each request with the `protocol_version` it carries. The kit's agent accepts both. The platform and the kit use the same scorer; the published scorer and scenario configuration define the exact formulas and constants.
-
-Read `agent.log` after a program error. Check the scenario, CSV columns, file size and daily quota. The scoring command above independently reproduces the score. The kit's `SKILL.md`, `QUICKSTART.md` and `README.md` contain full command and field references.
+Check the scenario, CSV columns, file size and daily quota if an upload is rejected.
 
 ## 7. Optional personal model APIs
 
