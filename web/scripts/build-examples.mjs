@@ -52,12 +52,11 @@ function buildDocsEntries(zipRoot) {
   const mediaDir = resolve(root, 'public', 'media', 'docs', 'v4-guide')
   const entries = {}
 
-  const zhRaw = readFileSync(resolve(contentDir, 'docs.zh.md'), 'utf8')
-  const zhRewritten = zhRaw.replaceAll('__BASE_URL__media/docs/v4-guide/', 'images/')
-  entries[`${zipRoot}/docs/participant-guide.zh.md`] = [Buffer.from(zhRewritten, 'utf8'), { mtime, level: 9 }]
-
-  const enRaw = readFileSync(resolve(contentDir, 'docs.en.md'), 'utf8')
-  entries[`${zipRoot}/docs/participant-guide.en.md`] = [Buffer.from(enRaw, 'utf8'), { mtime, level: 9 }]
+  const rewriteImages = (raw) => raw.replaceAll('__BASE_URL__media/docs/v4-guide/', 'images/')
+  for (const [lang, file] of [['zh', 'docs.zh.md'], ['en', 'docs.en.md']]) {
+    const raw = readFileSync(resolve(contentDir, file), 'utf8')
+    entries[`${zipRoot}/docs/participant-guide.${lang}.md`] = [Buffer.from(rewriteImages(raw), 'utf8'), { mtime, level: 9 }]
+  }
 
   if (existsSync(mediaDir)) {
     for (const name of readdirSync(mediaDir).sort()) {

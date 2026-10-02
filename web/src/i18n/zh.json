@@ -1979,7 +1979,7 @@
     "example_github": "在 GitHub 上查看",
     "example_python_desc": "完整的智能体项目：规划、记忆、两个大模型环节、协议与动作校验。",
     "example_typescript_desc": "同一套策略的 TypeScript（Node.js）实现：规划、记忆、两个大模型环节、协议与动作校验。",
-    "example_rust_desc": "即将上线。",
+    "example_rust_desc": "同一套策略的 Rust 实现：规划、记忆、两个大模型环节、协议与动作校验。",
     "flow2": "参考资料",
     "flow2_hint": "这些是你编写和提交智能体时要用的参考资料。"
   },

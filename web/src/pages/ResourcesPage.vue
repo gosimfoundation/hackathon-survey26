@@ -14,16 +14,16 @@ const { t, tf, locale } = useI18n()
 const flash = useFlash()
 
 // A language's card only appears once examples/<lang>/ is published and its ZIP is built --
-// see web/scripts/build-examples.mjs. Adding Rust later is one entry here (available: true).
+// see web/scripts/build-examples.mjs. Adding another language later is one entry here.
 const exampleProjects = [
   { lang: 'python', name: 'Python', descKey: 'resources.example_python_desc', available: true },
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
-  { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: false },
+  { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
 ] as const
 
 const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
-  { n: '01', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true, view: false },
+  { n: '01', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
 ])
 const language = computed<CardLanguage>(() => locale.value === 'zh' ? 'zh' : 'en')
 const taskCards = [...practiceCards, ...FORMAL_CARDS]

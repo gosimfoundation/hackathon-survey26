@@ -1979,7 +1979,7 @@
     "example_github": "View on GitHub",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
-    "example_rust_desc": "Coming soon.",
+    "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
     "flow2": "Reference",
     "flow2_hint": "These are the references for building and submitting your own agent."
   },
