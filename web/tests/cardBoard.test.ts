@@ -38,6 +38,18 @@ test('card board rows keep the observer_board fields and add card scores and com
   assert.equal(parseCardBoard({ layout: 'something-else' }).layout, 'overall')
 })
 
+test('parseCardBoard orders real v4 card slugs canonically (alpha/beta/gamma/delta, A-D), not by slug text', () => {
+  const practice = parseCardBoard({ layout: 'cards_overall', cards: [
+    { slug: 'v4-practice-delta', name: 'Practice card δ' }, { slug: 'v4-practice-gamma', name: 'Practice card γ' },
+    { slug: 'v4-practice-alpha', name: 'Practice card α' }, { slug: 'v4-practice-beta', name: 'Practice card β' },
+  ] })
+  assert.deepEqual(practice.cards.map(c => c.slug), ['v4-practice-alpha', 'v4-practice-beta', 'v4-practice-gamma', 'v4-practice-delta'])
+  const formal = parseCardBoard({ layout: 'cards', cards: [
+    { slug: 'v4-c', name: 'Card C' }, { slug: 'v4-a', name: 'Card A' }, { slug: 'v4-d', name: 'Card D' }, { slug: 'v4-b', name: 'Card B' },
+  ] })
+  assert.deepEqual(formal.cards.map(c => c.slug), ['v4-a', 'v4-b', 'v4-c', 'v4-d'])
+})
+
 test('v3 board rows map exactly as before (no card fields)', () => {
   const row = toLeaderboardEntry({ team_id: 't', total_score: '12.5', completed_tiles: null, coverage_bonus: 0 }, 3)
   assert.equal(row.rank, 4)

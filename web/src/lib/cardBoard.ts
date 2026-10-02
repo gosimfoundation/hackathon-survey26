@@ -1,5 +1,6 @@
 // Pure row mapping for the leaderboards and the card boards (no Supabase client), so it can be unit-tested.
 import type { LeaderboardEntry } from './data'
+import { scenarioOrder } from './scenarioLabels.ts'
 
 const numberOrNull = (value: unknown) => value == null ? null : Number(value)
 function numberMap(value: unknown): Record<string, number> | null {
@@ -71,6 +72,9 @@ export function pickCardTab(board: Pick<CardBoard, 'layout' | 'cards'> | null, w
 
 export function parseCardBoard(data: any): CardBoard {
   const layout: BoardLayout = data?.layout === 'cards' || data?.layout === 'cards_overall' ? data.layout : 'overall'
-  const cards = Array.isArray(data?.cards) ? (data.cards as any[]).filter(c => c && c.slug).map(c => ({ slug: String(c.slug), name: String(c.name ?? c.slug) })) : []
+  const cards = Array.isArray(data?.cards)
+    ? (data.cards as any[]).filter(c => c && c.slug).map(c => ({ slug: String(c.slug), name: String(c.name ?? c.slug) }))
+      .sort((a, b) => scenarioOrder(a.slug) - scenarioOrder(b.slug))
+    : []
   return { layout, cards, scenario: data?.scenario ? String(data.scenario) : null, rows: (Array.isArray(data?.rows) ? data.rows : []).map(toLeaderboardEntry) }
 }

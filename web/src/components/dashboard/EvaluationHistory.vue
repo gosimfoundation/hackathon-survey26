@@ -7,7 +7,7 @@ import { useI18n } from '../../composables/useI18n'
 import { num } from '../../lib/format'
 import { formatDateTime } from '../../lib/projectText'
 import { useQuestFlags } from '../../composables/useQuestFlags'
-import { scenarioLabel } from '../../lib/scenarioLabels'
+import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 // `quiet` keeps the new-submission button secondary while the dashboard quest leads.
 // `allPhases` is the records page: every complete-project evaluation with its scenario scores.
 const props=withDefaults(defineProps<{limit?:number;quiet?:boolean;allPhases?:boolean;hideEmpty?:boolean}>(),{limit:50,quiet:false,allPhases:false,hideEmpty:false})
@@ -18,7 +18,7 @@ type Batch={id:string;status:string;score:number|null;created_at:string;quota_re
 const rows=ref<Batch[]>([]),loading=ref(true),error=ref(false)
 let timer:number|undefined
 const statuses=computed(()=>pick<Record<string,string>>({queued:'Queued',starting:'Starting',running:'Running',awaiting_csv:'Waiting for CSV',scored:'Scored',failed:'Failed',cancelled:'Cancelled'}, {queued:'排队中',starting:'启动中',running:'运行中',awaiting_csv:'等待 CSV',scored:'已评分',failed:'失败',cancelled:'已取消'}))
-const runs=(b:Batch)=>[...(b.observer_runs??[])].sort((x,y)=>(x.scenarios?.name??'').localeCompare(y.scenarios?.name??''))
+const runs=(b:Batch)=>[...(b.observer_runs??[])].sort((x,y)=>scenarioOrder(x.scenarios?.slug??'')-scenarioOrder(y.scenarios?.slug??''))
 async function load(){
   if(!team.value || (!props.allPhases && !competition.phaseId)){loading.value=false;return}
   let request=supabase.from('observer_batches')
