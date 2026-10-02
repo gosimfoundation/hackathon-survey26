@@ -91,7 +91,7 @@ Each card is scored by the published scorer with the parameters in that card's `
 | Second Prize | $1,000 | 2 |
 | Third Prize | $500 | 3 |
 
-Amounts are gross. Winning teams are invited to Awards Day at GOSIM Shenzhen on October 17, 2026; attendance is not required to receive a prize.
+Amounts are gross. The top three teams are invited to Awards Day at GOSIM Shenzhen on October 17, 2026; attendance is not required to receive a prize.
 
 Design evaluation is separate from the performance board. It considers code, run
 records and reproducibility, not explanation length. Participants can save
