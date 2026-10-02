@@ -1949,7 +1949,7 @@
     "cards": "Task cards",
     "cards_desc": "Each card’s site, survey dates, number of targets, time limit, whether its weather is public, and what the agent receives and sends.",
     "flow_cards": "Step 2 · Take a practice card",
-    "flow_cards_hint": "Every file of a practice card is public (weather included), so your local score matches the platform. Hackathon cards A–D publish their card page and public inputs when the competition starts.",
+    "flow_cards_hint": "Cards A–D are for debugging during the main competition.",
     "card_view": "Read the card",
     "card_zip": "Download ZIP",
     "card_pending": "files not online yet",
