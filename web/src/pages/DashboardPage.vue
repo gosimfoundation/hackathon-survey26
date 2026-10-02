@@ -5,7 +5,6 @@ import UserAvatar from '../components/UserAvatar.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
-import { appUrl } from '../composables/api'
 import { supabase } from '../lib/supabase'
 import { loadPhases, SUBMISSION_SELECT, PENDING_STATUSES, type Phase } from '../lib/data'
 import { fmtUtc, num } from '../lib/format'
@@ -139,7 +138,6 @@ onMounted(async () => {
             <router-link class="btn sm" to="/start">{{ t('nav.start') }} →</router-link>
             <router-link class="btn sm" to="/resources" @click="remember('prepare')">{{ t('dash.quick.kit') }} →</router-link>
             <router-link class="btn sm" to="/docs">{{ t('dash.quick.docs') }} →</router-link>
-            <a class="btn sm" :href="appUrl(competition.mode==='practice' ? '/skill.md' : '/skill-v4.md')" target="_blank" rel="noopener">SKILL.md →</a>
           </div>
         </div>
       </div>

@@ -3,7 +3,6 @@ import { useScrollReveal } from '../composables/useScrollReveal'
 useScrollReveal()
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
-import { appUrl } from '../composables/api'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards'
 import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
@@ -15,9 +14,7 @@ const flash = useFlash()
 
 const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
-  { n: '02', title: 'resources.skill_v4', desc: 'resources.skill_v4_desc', href: appUrl('/skill-v4.md'), primary: false, label: 'common.view', view: true },
-  { n: '03', title: 'resources.cards', desc: 'resources.cards_desc', href: '/cards', primary: false, label: 'common.view', route: true },
-  { n: '04', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
+  { n: '01', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
 ])
 const language = computed<CardLanguage>(() => locale.value === 'zh' ? 'zh' : 'en')
 const taskCards = [...practiceCards, ...FORMAL_CARDS]
@@ -43,7 +40,7 @@ onMounted(async () => {
     <PageHead :kicker="t('resources.kicker')" :title="t('resources.title')" :lede="t('resources.lede')" />
     <section class="section"><div class="wrap">
       <div class="flow-band reveal">
-        <div class="flow-head"><span class="flow-step">1</span><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
+        <div class="flow-head"><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
         <div class="task-card-grid">
           <article v-for="c in taskCards" :key="c.id" class="task-card-item" :data-testid="`resources-card-${c.id}`">
             <span class="label" :class="{ accent: c.stage === 'practice' }">{{ c.stage === 'practice' ? t('cards_page.practice') : t('cards_page.formal') }}</span>
@@ -72,8 +69,8 @@ onMounted(async () => {
       </div>
 
       <div class="flow-band reveal mt-16">
-        <div class="flow-head"><span class="flow-step">2</span><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
-        <div class="cards cards-3 reveal-stagger">
+        <div class="flow-head"><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
+        <div class="cards cards-1 reveal-stagger">
           <article v-for="item in kit" :key="item.title" v-tilt class="card card-lift">
             <span class="label accent">{{ item.n }}</span>
             <h3 class="mt-3">{{ t(item.title) }}</h3>
@@ -92,9 +89,6 @@ onMounted(async () => {
 
 <style scoped>
 .flow-head { display: flex; align-items: flex-start; gap: 1.1rem; margin-bottom: 1.4rem; }
-.flow-step { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex: none;
-  border: 1px solid rgba(251,191,36,.55); color: #fbbf24; font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 1.25rem; font-weight: 600; background: rgba(251,191,36,.08); }
 .flow-head h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; color: #f5f7ff; }
 .flow-head p { margin-top: .25rem; font-size: .85rem; color: #aeb6c8; }
 .flow-primary { border-color: rgba(251,191,36,.4); }
