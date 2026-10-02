@@ -1,4 +1,4 @@
-# Task card γ (gamma): Unsettled season
+# Practice card γ
 
 On top of the weather, part of your recent data can be lost once.
 

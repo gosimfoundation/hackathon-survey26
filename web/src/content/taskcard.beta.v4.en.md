@@ -1,4 +1,4 @@
-# Task card β (beta): Moving sky
+# Practice card β
 
 A season from mid-October: the sky moves with the season, and the targets lie in other parts of it.
 

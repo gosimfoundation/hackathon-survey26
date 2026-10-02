@@ -1,4 +1,4 @@
-# Task card α (alpha): Opening season
+# Practice card α
 
 A full season at Paranal with only the weather to handle.
 

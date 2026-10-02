@@ -40,16 +40,16 @@ CARDS = ROOT / "cards"
 CONTENT = ROOT / "web" / "src" / "content"
 SYMBOLS = {"alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ"}
 
-# Per-card wording the facts cannot give: a title and a one-sentence story (en, zh).
+# Per-card wording the facts cannot give: a one-sentence story (en, zh).
 STORIES = {
-    "alpha": (("Opening season", "A full season at Paranal with only the weather to handle."),
-              ("开局之季", "帕拉纳尔的一整个季节，只有天气需要应对。")),
-    "beta": (("Moving sky", "A season from mid-October: the sky moves with the season, and the targets lie in other parts of it."),
-             ("移动的天空", "从十月中旬开始的一季：天空随季节移动，目标分布在天空的其他位置。")),
-    "gamma": (("Unsettled season", "On top of the weather, part of your recent data can be lost once."),
-              ("动荡之季", "除了天气，最近的一部分数据还可能丢失一次。")),
-    "delta": (("Extreme season", "A larger share of the targets is required, and part of your recent data can be lost once."),
-              ("极限之季", "必观测目标的比例更高，最近的一部分数据还可能丢失一次。")),
+    "alpha": ("A full season at Paranal with only the weather to handle.",
+              "帕拉纳尔的一整个季节，只有天气需要应对。"),
+    "beta": ("A season from mid-October: the sky moves with the season, and the targets lie in other parts of it.",
+             "从十月中旬开始的一季：天空随季节移动，目标分布在天空的其他位置。"),
+    "gamma": ("On top of the weather, part of your recent data can be lost once.",
+              "除了天气，最近的一部分数据还可能丢失一次。"),
+    "delta": ("A larger share of the targets is required, and part of your recent data can be lost once.",
+              "必观测目标的比例更高，最近的一部分数据还可能丢失一次。"),
 }
 # Site names as the pages show them, keyed by the bundle's site name.
 SITES = {
@@ -147,7 +147,7 @@ def render_page(card_json: Path, language: str) -> str:
     card_id = f["card_id"]
     symbol = SYMBOLS[card_id]
     zh = language == "zh"
-    title, story = STORIES[card_id][1 if zh else 0]
+    story = STORIES[card_id][1 if zh else 0]
     template = (CONTENT / f"taskcard.template.v4.{language}.md").read_text(encoding="utf-8")
     text = re.sub(r"\A<!--.*?-->\n\n", "", template, flags=re.S)
     lat, lon = _deg(f["site"]["latitude_deg"]), _deg(f["site"]["longitude_deg"])
@@ -214,7 +214,7 @@ def render_page(card_json: Path, language: str) -> str:
     exposure = f"{f['exposure'][0]}–{f['exposure'][1]}"
     text = _swap(text, "60–3600", exposure)
     fields = {
-        "CARD_ID": f"{symbol}（{card_id}）" if zh else f"{symbol} ({card_id})", "CARD_TITLE": title,
+        "SYMBOL": symbol,
         "ONE_SENTENCE_STORY": story, "START_DATE": f["first_night"], "END_DATE": f["last_night"],
         "NIGHTS": str(f["nights"]), "TARGETS": _num(f["targets"]), "AREA_DEG2": _num(f["area"]),
         "REGIONS": str(f["regions"]), "COMPONENTS": str(f["regions"]), "REQUIRED": _num(f["required"]),

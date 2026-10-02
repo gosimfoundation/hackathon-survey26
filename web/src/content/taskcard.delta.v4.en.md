@@ -1,4 +1,4 @@
-# Task card δ (delta): Extreme season
+# Practice card δ
 
 A larger share of the targets is required, and part of your recent data can be lost once.
 

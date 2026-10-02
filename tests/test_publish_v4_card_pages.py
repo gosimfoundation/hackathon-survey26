@@ -41,7 +41,7 @@ def card_page(card, lang, *, free=2, required=3):
     text = re.sub(r'<!--.*?-->\n*', '', (CONTENT / f'taskcard.template.v4.{lang}.md').read_text(encoding='utf-8'), flags=re.S)
     zh = lang == 'zh'
     fields = {
-        'CARD_ID': card.upper(), 'CARD_TITLE': 'Test', 'ONE_SENTENCE_STORY': 'Test.', 'START_DATE': '2030-01-01',
+        'SYMBOL': card.upper(), 'ONE_SENTENCE_STORY': 'Test.', 'START_DATE': '2030-01-01',
         'END_DATE': '2030-01-03', 'NIGHTS': '3', 'AREA_DEG2': '10', 'COMPONENTS': '2', 'TARGETS': '5', 'REQUIRED': str(required),
         'WALLCLOCK': '900',
         'WEATHER': '不公开。比赛开始时发布公开输入。' if zh else 'Hidden. The public inputs are published when the competition starts.',
