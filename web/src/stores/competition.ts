@@ -12,7 +12,7 @@ export async function loadCompetition(force=false) {
     if (!error && data) {
       state.mode=data.mode==='competition'?'competition':'practice'
       state.phaseId=typeof data.phase_id==='string'?data.phase_id:null
-      // Playground only: the separate complete-project board next to CSV practice.
+      // Practice only: the separate complete-project board next to CSV practice.
       state.projectPhaseId=typeof data.project_phase_id==='string'?data.project_phase_id:null
       fetched=Date.now()
     }

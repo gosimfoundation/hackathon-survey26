@@ -267,7 +267,7 @@ def test_beta_entry_serves_only_its_team_while_the_site_stays_practice(portal_si
     s=run_setup;uri=s['uri'];password='local-browser-beta-password-17'
     other,_=identity(uri)
     legacy=uuid.uuid4()
-    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,%s,'Playground','练习赛')",(legacy,'practice'))
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,%s,'Practice','练习赛')",(legacy,'practice'))
     query(uri,'insert into public.phase_scenarios values(%s,%s)',(legacy,s['scenario']))
     query(uri,"update private.observer_site_mode set mode='practice',phase_id=%s",(legacy,))
     query(uri,'update public.observer_phase_settings set access_team_id=%s where phase_id=%s',(s['team'],s['phase']))
@@ -328,7 +328,7 @@ def test_beta_entry_follows_team_changes_within_a_session(portal_site,run_setup)
         legacy=legacy[0][0]
     else:
         legacy=uuid.uuid4()
-        query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Playground','练习赛')",(legacy,))
+        query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Practice','练习赛')",(legacy,))
     query(uri,"insert into public.phases(id,slug,name_en,name_zh,sort_order) values(%s,'acceptance-b','Beta B','验收B',10100)",(phase_b,))
     query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,access_team_id) values(%s,true,false,%s)',(phase_b,team_b))
     query(uri,'insert into public.phase_scenarios values(%s,%s)',(legacy,s['scenario']))

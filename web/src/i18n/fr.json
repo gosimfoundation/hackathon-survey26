@@ -243,7 +243,7 @@
     "steps": [
       "Créez votre compte (sans confirmation par e-mail)",
       "Créez une équipe ou rejoignez-en une avec un code d'invitation",
-      "Téléversez decisions.csv (Playground) ou un projet complet"
+      "Téléversez decisions.csv (entraînement) ou un projet complet"
     ],
     "about_you": "Profil de participant",
     "about_you_note": "Les niveaux figurent sur votre carte de participant et aident des profils complémentaires à se trouver pour former une équipe.",
@@ -398,7 +398,7 @@
           "desc": "Observer une tuile, ou attendre. Une action par créneau, avec sa raison."
         }
       ],
-      "closing": "Aucun bagage en astronomie n'est requis. Deux formations en ligne, les 2 et 3 octobre (horaires annoncés plus tard), présentent la tâche d'astronomie et la compétition avec des agents ; vous pouvez aussi répéter le déroulement de la compétition avec un projet complet sur le Playground.",
+      "closing": "Aucun bagage en astronomie n'est requis. Deux formations en ligne, les 2 et 3 octobre (horaires annoncés plus tard), présentent la tâche d'astronomie et la compétition avec des agents ; vous pouvez aussi répéter le déroulement de la compétition avec un projet complet sur le entraînement.",
       "cardKicker": "Comment arrive le sujet",
       "cardTitle": "Une carte de mission de relevé",
       "cardLede": "Chaque manche commence par une carte de mission. Tout ce qui vous engage y est écrit :",
@@ -456,7 +456,7 @@
         {
           "n": "03",
           "title": "Soumettre pour évaluation",
-          "desc": "Au Playground, téléversez le decisions.csv produit sur votre machine, ou soumettez un projet complet (classement séparé). La compétition accepte un projet complet ou le CSV d'une session locale officielle. Chaque équipe est notée par le même évaluateur figé."
+          "desc": "À l'entraînement, téléversez le decisions.csv produit sur votre machine, ou soumettez un projet complet (classement séparé). La compétition accepte un projet complet ou le CSV d'une session locale officielle. Chaque équipe est notée par le même évaluateur figé."
         }
       ],
       "timeline": [
@@ -516,7 +516,7 @@
       "items": [
         {
           "title": "Projets et CSV",
-          "desc": "Le Playground accepte decisions.csv, ou un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte un projet complet par dépôt public ou ZIP privé, ou le CSV exporté par une session locale officielle."
+          "desc": "L'entraînement accepte decisions.csv, ou un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte un projet complet par dépôt public ou ZIP privé, ou le CSV exporté par une session locale officielle."
         },
         {
           "title": "Limites",
@@ -853,10 +853,10 @@
       "invalid": "Vérifiez le point d'accès, le modèle et la clé."
     },
     "track": {
-      "lede": "Le Playground propose deux façons de participer, avec des classements séparés :",
+      "lede": "L'entraînement propose deux façons de participer, avec des classements séparés :",
       "csv": "Téléverser un CSV",
       "project": "Soumettre un projet complet",
-      "csv_help": "Exécutez-le sur votre machine et téléversez decisions.csv. Les scores vont au classement du Playground.",
+      "csv_help": "Exécutez-le sur votre machine et téléversez decisions.csv. Les scores vont au classement de l'entraînement.",
       "project_help": "Soumettez un dépôt GitHub public ou un ZIP. La plateforme exécute votre programme tour par tour dans le cloud, comme en compétition, sur les scénarios publics dev-fortnight et dev-reference (5 heures par scénario) ; les scores vont au classement séparé des projets complets. 5 évaluations par équipe et par jour (remise à zéro à 00:00 UTC) ; les appels de modèle utilisent uniquement la clé d'API de votre équipe."
     }
   },

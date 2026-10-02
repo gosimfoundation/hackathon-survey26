@@ -111,7 +111,7 @@ def test_playground_project_board_is_offered_only_in_practice_mode(database):
     uri=database
     assert rpc(uri,'current_competition',role='anon').get('project_phase_id') is None
     board,scenario=uuid.uuid4(),uuid.uuid4()
-    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice-projects','Playground projects','练习赛·完整项目')",(board,))
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice-projects','Practice projects','练习赛·完整项目')",(board,))
     # Without settings the phase has no workflow and is not offered.
     assert rpc(uri,'current_competition',role='anon').get('project_phase_id') is None
     query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,daily_batches) values(%s,true,5)',(board,))

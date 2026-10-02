@@ -4,7 +4,7 @@
     python3 scripts/make_v4_demo_card.py [--v4-source DIR] [--out starter_kit_v4/cards/demo]
 
 The demo card is small (7 nights, 2,400 targets) and PUBLIC. It uses a fixed, non-secret seed
-and is NOT one of the Playground / competition cards (alpha, beta, A-H). It exists so participants can
+and is NOT one of Practice / competition cards (alpha, beta, A-H). It exists so participants can
 run the starter kit end to end in about a minute.
 
 --v4-source is a checkout whose challenge/ holds the vendored v4 generators (this repository once the

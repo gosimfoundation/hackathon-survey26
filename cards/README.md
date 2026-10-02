@@ -1,6 +1,6 @@
 # v4 practice task cards: v4-practice-a, -b, -c, -d (specs only)
 
-**Status: practice cards (Playground α, β, γ, δ).** These are debugging cards for
+**Status: practice cards (Practice α, β, γ, δ).** These are debugging cards for
 participants, not the hackathon cards A–D (`v4-a`..`v4-d`) or the hidden cards E–H,
 which are generated separately with secret seeds. This directory carries only the
 **generator specs** for the four practice cards, so that organizers can review the parameters and

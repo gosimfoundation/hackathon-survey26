@@ -10,7 +10,7 @@ import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 const {t,pick}=useI18n(),{team,refreshMe}=useAuth()
 const phase=ref<Phase|null>(null),projectPhase=ref<Phase|null>(null),loading=ref(true),failed=ref(false)
-// Playground with a complete-project board: participants choose a complete project (default) or the legacy CSV upload.
+// Practice with a complete-project board: participants choose a complete project (default) or the legacy CSV upload.
 const track=ref<'csv'|'project'>('project')
 // The current phase and its database settings decide the available workflow.
 const interactive=computed(()=>phase.value?.observer_settings?.projects_enabled||phase.value?.observer_settings?.local_sessions_enabled)

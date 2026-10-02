@@ -22,7 +22,7 @@ docs/                organizer and participant documentation: competition-format
 scripts/             one-off organizer scripts: phase/secrets/runner configuration, backend deploy, live tests, the release-site publisher
 ops/                 the "Agentic Observer 2026 Evaluator" GitHub App manifest/installations and the control-workflow YAMLs dispatched for project jobs
 legacy-event/        the former event website; still built by the site publisher to serve the /survey26/ event root page (which redirects to the platform)
-archive/             old versions kept for reference: starter_kit_v3/ (v3 starter kit, still packaged into the Playground download), legacy/ (first self-hosted FastAPI platform)
+archive/             old versions kept for reference: starter_kit_v3/ (v3 starter kit, still packaged into the practice download), legacy/ (first self-hosted FastAPI platform)
 .github/workflows/   CI: tests.yml, the self-dispatching worker.yml evaluator, publish-site.yml (GitHub Pages deploy)
 ```
 
@@ -49,7 +49,7 @@ archive/             old versions kept for reference: starter_kit_v3/ (v3 starte
    `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… python -m worker.main seed`, `python -m worker.main promote-admin you@org`.
    Default seed: `demo-week` (7 nights, public, the copy shipped in the starter kit), `dev-reference` (180 nights,
    public), `dev-fortnight` (14 nights, public), `eval-a`/`eval-b` (30 nights, hidden, 3600 s wall clock) and
-   phases `practice`/`online`. The Playground complete-project board (phase `practice-projects`, 5 evaluations per
+   phases `practice`/`online`. The practice complete-project board (phase `practice-projects`, 5 evaluations per
    team per day, team's own model key only) is created with `scripts/configure-observer-practice-projects.py`. Which phase accepts which submission route is recorded in
    [docs/competition-format.md](docs/competition-format.md).
 3. More scenarios: `python -m worker.main gen-scenario --slug eval-c --seed 777 --days 30 --start-date 2026-10-05 --wallclock 3600 --hidden-weather --hidden-forecasts`

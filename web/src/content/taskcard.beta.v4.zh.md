@@ -76,6 +76,6 @@
 2. 运行 `python3 local_runner.py --card cards/beta`。最后一行是你的得分。天气文件是公开的，所以同样的决策在本地和平台上得分相同。
 3. 和 `python3 local_runner.py --card cards/beta --agent examples/idle_agent.py`（什么都不做的智能体）比一比。
 4. 修改 `agent/planner.py`，再运行，再比较。
-5. 用 `python3 pack_agent.py --out ../my-agent.zip` 打包，在「参赛」页提交。Playground 会在云端运行卡片 β，时间限制同样是 900 秒。每日次数见规则页。
+5. 用 `python3 pack_agent.py --out ../my-agent.zip` 打包，在「参赛」页提交。练习赛会在云端运行全部练习卡 α、β、γ、δ，时间限制同样是 900 秒。每日次数见规则页。
 
 练习赛成绩只用于练习，不决定奖项。

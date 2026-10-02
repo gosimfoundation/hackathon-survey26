@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the v4 PRACTICE cards (Playground α β γ δ) from their committed specs, and write their pages.
+"""Build the v4 PRACTICE cards (Practice α β γ δ) from their committed specs, and write their pages.
 
     python3 scripts/build-v4-practice-cards.py OUT_ROOT [--card v4-practice-a] [--zip]
     python3 scripts/build-v4-practice-cards.py --pages          # (re)write web/src/content/taskcard.<id>.v4.*.md
@@ -150,7 +150,7 @@ def render_page(spec: Path, language: str) -> str:
                   f"2. 运行 `python3 local_runner.py --card cards/{card_id}`。最后一行是你的得分。天气文件是公开的，所以同样的决策在本地和平台上得分相同。\n"
                   f"3. 和 `python3 local_runner.py --card cards/{card_id} --agent examples/idle_agent.py`（什么都不做的智能体）比一比。\n"
                   "4. 修改 `agent/planner.py`，再运行，再比较。\n"
-                  f"5. 用 `python3 pack_agent.py --out ../my-agent.zip` 打包，在「参赛」页提交。Playground 会在云端运行卡片 {symbol}，时间限制同样是 {f['wallclock']} 秒。每日次数见规则页。\n\n"
+                  f"5. 用 `python3 pack_agent.py --out ../my-agent.zip` 打包，在「参赛」页提交。练习赛会在云端运行全部练习卡 α、β、γ、δ，时间限制同样是 {f['wallclock']} 秒。每日次数见规则页。\n\n"
                   "练习赛成绩只用于练习，不决定奖项。")
         rows = [
             ("| 站点 | 智利帕拉纳尔（虚拟站点）。纬度 −24.62°，经度 −70.40°。 |", f"| 站点 | {site}。纬度 {lat}，经度 {lon}。 |"),
@@ -177,8 +177,8 @@ def render_page(spec: Path, language: str) -> str:
                   f"2. Run `python3 local_runner.py --card cards/{card_id}`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.\n"
                   f"3. Compare with `python3 local_runner.py --card cards/{card_id} --agent examples/idle_agent.py` (an agent that does nothing).\n"
                   "4. Change `agent/planner.py`, run again, and compare.\n"
-                  f"5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. The Playground runs card {symbol} in the cloud, with the same {f['wallclock']} s limit. Daily limits are on the Rules page.\n\n"
-                  "Playground scores are for practice. They do not decide awards.")
+                  f"5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. Practice runs all practice cards α, β, γ and δ in the cloud, with the same {f['wallclock']} s limit. Daily limits are on the Rules page.\n\n"
+                  "Practice scores do not decide awards.")
         rows = [
             ("| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |", f"| Site | {site}. Latitude {lat}, longitude {lon}. |"),
             ("| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |",

@@ -46,7 +46,7 @@ const cardItems = computed(() => t('home.mission.cardItems') as { term: string; 
           <div v-tilt class="reveal mission-sheet mt-12 paper-sheet p-7 md:p-10">
             <div class="relative z-10 flex flex-wrap items-center justify-between gap-3">
               <span class="font-mono text-xs uppercase tracking-[.1em] text-[#9c5c38]">{{ t('home.mission.cardKicker') }}</span>
-              <span class="mission-serial">SMC · 2026 · {{ competition.mode==='practice' ? 'PLAYGROUND' : 'COMPETITION' }}</span>
+              <span class="mission-serial">SMC · 2026 · {{ competition.mode==='practice' ? 'PRACTICE' : 'COMPETITION' }}</span>
             </div>
             <h3 class="relative z-10 mt-4 text-2xl font-semibold tracking-[-.03em] md:text-3xl">{{ t('home.mission.cardTitle') }}</h3>
             <p class="relative z-10 mt-4 max-w-2xl text-sm leading-relaxed text-[#101d29]/75">{{ t('home.mission.cardLede') }}</p>

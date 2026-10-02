@@ -76,10 +76,10 @@ async function saveCreditsNote() {
   <DashShell admin :kicker="t('admin.kicker')" :title="t('admin.nav.settings')">
     <section class="panel max-w-2xl mb-8" data-testid="competition-mode-settings">
       <div class="hd"><h2>{{ pick('Current competition','当前比赛') }}</h2></div>
-      <p class="text2">{{ competition.mode==='practice' ? pick('Playground','练习赛 / Playground') : pick('Competition','正式比赛') }}</p>
+      <p class="text2">{{ competition.mode==='practice' ? pick('Practice','练习赛') : pick('Competition','正式比赛') }}</p>
       <p class="help mt-3">{{ pick('Participants see only this competition. Switching preserves all scores and keeps the same submission entry.','选手只看到当前比赛。切换后仍使用同一个提交入口，所有已有成绩保留。') }}</p>
       <p v-if="modeError" class="errors" role="alert">{{ modeError }}</p>
-      <button class="btn primary sm mt-4" data-testid="competition-mode-switch" :disabled="modeBusy || busy" @click="switchCompetition">{{ competition.mode==='practice' ? pick('Switch to competition','切换为正式比赛') : pick('Switch to Playground','切换为练习赛') }}</button>
+      <button class="btn primary sm mt-4" data-testid="competition-mode-switch" :disabled="modeBusy || busy" @click="switchCompetition">{{ competition.mode==='practice' ? pick('Switch to competition','切换为正式比赛') : pick('Switch to 练习赛','切换为练习赛') }}</button>
     </section>
     <form class="panel max-w-2xl" @submit.prevent="save">
       <label class="check"><input v-model="registrationOpen" type="checkbox"> {{ t('admin.settings.registration_open') }}</label>

@@ -53,7 +53,7 @@ def schedule(edge_stack):
     uri = edge_stack['harness'].db_uri
     practice, online, beta = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     starts = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=9, hours=6)
-    query(uri, "insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Playground','练习赛 / Playground')", (practice,))
+    query(uri, "insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Practice','练习赛')", (practice,))
     query(uri, "insert into public.phases(id,slug,name_en,name_zh,starts_at,sort_order) values(%s,'online','Online Competition','线上比赛',%s,10)",
           (online, starts))
     query(uri, "insert into public.phases(id,slug,name_en,name_zh,starts_at,sort_order) values(%s,'beta-acceptance','Beta acceptance','内测验收',%s,5)",
@@ -81,7 +81,7 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
         expect(stage).to_contain_text('还有 9 天')
         expect(stage.locator('.phase-countdown')).to_be_visible()
         expect(stage).not_to_contain_text('内测验收')
-        expect(desktop.get_by_test_id('phase-strip')).to_contain_text('练习赛 / Playground')
+        expect(desktop.get_by_test_id('phase-strip')).to_contain_text('练习赛')
         expect(desktop.get_by_test_id('phase-pill')).to_have_attribute('title', re.compile('下一阶段：线上比赛'))
         # The first-visit walkthrough shades only the sky map, never the hero title beside it.
         expect(desktop.locator('.sky-tour-shade')).to_be_visible()

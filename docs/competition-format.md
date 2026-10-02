@@ -7,7 +7,7 @@ versions and evaluation batches. A prominent Submit button links to that workspa
 
 ## Current policy (2026-09-27)
 
-| | Current Playground | Formal competition after the administrator switches |
+| | Practice | Formal competition after the administrator switches |
 |---|---|---|
 | Entry | `/compete` | `/compete` |
 | Input | locally generated `decisions.csv` (50 per team per day); or a complete project on the separate `practice-projects` board (5 evaluations per team per day, 18000 s per scenario) | complete repository or private project ZIP; no CSV; 10 batches per team per day, 3600 s per scenario |
@@ -48,7 +48,7 @@ Final version and hidden final (organizer decision 2026-09-26, migration 2026092
   (`private.observer_auto_purge_provider_keys`, hourly) only once `final-hidden` is published and the retention
   period (7 days) after the latest ends_at of every key-using phase has passed (migration 20260927001200); the
   online ends_at never triggers it on its own. Production data: `drafts/hidden-final-data.sql` (outside the repo).
-Before that, including the October 2–3 trainings, teams rehearse the formal flow on the Playground
+Before that, including the October 2–3 trainings, teams rehearse the formal flow on Practice
 complete-project board (`scripts/configure-observer-practice-projects.py`), which never uses formal scenarios.
 
 See `randomized-evaluation.md` for calibration (now used only by internal acceptance phases) and

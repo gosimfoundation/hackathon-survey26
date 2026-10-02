@@ -1022,7 +1022,7 @@ i.user-avatar { vertical-align: middle; }
 /* Grids sized to their actual card count: no exposed gap-color cells */
 .cards-fit { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 
-/* The Playground mission card reads like an actual card */
+/* Practice mission card reads like an actual card */
 .mission-sheet { position: relative; }
 .mission-sheet::after { content: ''; position: absolute; inset: 9px; border: 1px dashed rgba(16,29,41,.3); pointer-events: none; }
 .mission-serial { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .66rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(16,29,41,.6); border: 1px solid rgba(16,29,41,.35); padding: .32rem .6rem; }

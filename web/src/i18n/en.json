@@ -271,7 +271,7 @@
           "desc": "Observe a tile, or wait. One action per slot, and the reason for it."
         }
       ],
-      "closing": "You don't need an astronomy background. Online trainings on October 2 and 3 (times to be announced) introduce the astronomy task and the competition with agents. You can also submit a complete project on the Playground to rehearse with the same evaluation flow as the competition.",
+      "closing": "You don't need an astronomy background. Online trainings on October 2 and 3 (times to be announced) introduce the astronomy task and the competition with agents. You can also submit a complete project on Practice to rehearse with the same evaluation flow as the competition.",
       "cardKicker": "How the challenge arrives",
       "cardTitle": "One Survey Mission Card",
       "cardLede": "Every round of the challenge starts from a mission card. Everything that round holds you to is written on it:",
@@ -544,7 +544,7 @@
         },
         {
           "title": "Run the baseline, make your changes",
-          "desc": "Download the kit and run it — a baseline score in 15 seconds. Then edit my_strategy.py and submit to the Playground board.",
+          "desc": "Download the kit and run it — a baseline score in 15 seconds. Then edit my_strategy.py and submit to the practice board.",
           "time": "~20 min",
           "to": "/start"
         },
@@ -1425,7 +1425,7 @@
     "steps": [
       "Create your account (no e-mail confirmation needed)",
       "Create a team or join one with an invite code",
-      "Upload decisions.csv (Playground) or a complete project"
+      "Upload decisions.csv (Practice) or a complete project"
     ],
     "about_you": "Participant profile",
     "about_you_note": "Your tiers appear on your participant card, helping entrants from different backgrounds find each other and form teams.",
@@ -1564,7 +1564,7 @@
   "kimi_plan": {
     "title": "Kimi Coding Plan",
     "kicker": "One per team",
-    "lede": "Every team that runs through the Playground (at least one successful practice score) gets one Kimi Coding Plan code. The captain claims it; every member can see it here.",
+    "lede": "Every team that runs through Practice (at least one successful practice score) gets one Kimi Coding Plan code. The captain claims it; every member can see it here.",
     "coming_soon": "Kimi Coding Plan codes are coming soon. Captains of teams that have run through the practice round can claim theirs here.",
     "eligible": "Your team qualifies.",
     "not_eligible": "Your team still needs one successful score in the practice round.",
@@ -1778,10 +1778,10 @@
       "collapsed_hint": "Only projects that call a model need a key here; pure-code projects can skip this section."
     },
     "track": {
-      "lede": "The Playground has two ways to take part, with separate boards:",
+      "lede": "Practice has two ways to take part, with separate boards:",
       "csv": "Upload a CSV result",
       "project": "Submit a complete project",
-      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the Playground board. The CSV upload is being phased out — prefer a complete project.",
+      "csv_help": "Run it on your own machine and upload decisions.csv. Scores go to the practice board. The CSV upload is being phased out — prefer a complete project.",
       "project_help": "Submit a public GitHub repository or a ZIP. The platform runs your program round by round in the cloud, the same flow as the competition, on the public scenarios dev-fortnight and dev-reference (5 hours per scenario); scores go to the separate complete-project board. 5 evaluations per team per day, reset at 00:00 UTC; model calls use your team's own API key only."
     }
   },
@@ -2024,7 +2024,7 @@
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on the Playground, in the competition and on the hidden cards; local_runner.py uses the same limit, or a shorter one set with --wallclock. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
+        "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on Practice, in the competition and on the hidden cards; local_runner.py uses the same limit, or a shorter one set with --wallclock. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
       },
       {
         "q": "What is hidden on the competition scenarios?",
