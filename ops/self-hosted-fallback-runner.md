@@ -31,6 +31,41 @@ slot until it finishes or its lease expires.
 The fallback depends on GitHub's API and Actions service just like the hosted
 runners; it does not help during a GitHub-wide outage.
 
+## On demand: the VM is stopped until a job needs it
+
+The VM (6 GiB) is normally stopped. `ops/fallback-runner/fallback-watcher.py`,
+a LaunchAgent of the organizer's account, checks every 30 seconds whether a
+queued job of the fallback organization's `observer-control` waits for the
+`observer-fallback` label, and if so starts the VM as `observerfb`. The
+runner service starts with the VM and picks the job up; the watcher stops the
+VM after 15 minutes without waiting jobs while the runner is idle, and boots it
+once a week while unused (GitHub removes self-hosted runners that are offline
+for 14 days, and the runner updates itself while online).
+
+- **What it reads, what it holds.** Only GitHub job and runner metadata of that
+  one repository, through the organizer's existing `gh` login. No database
+  credential, no participant code, no job payload. It acts on the VM only
+  through a sudo rule that lets the organizer run `limactl` as `observerfb`.
+- **Boot latency.** A stopped VM is ready and its runner online about a minute
+  or two after the job is queued (longer when the runner has to update
+  itself). `observer_fallback_job` therefore gives a moved job a fresh
+  thirty-minute claim window and shifts its run's session by the time the job
+  had already waited, so the team keeps its full evaluation window. If the
+  runner is still offline ten minutes after a start, the watcher restarts the
+  VM.
+- **A persistent registration, not an ephemeral runner.** The runner stays
+  registered while the VM is stopped (GitHub shows it offline and queues the
+  job for it). An ephemeral runner would need a fresh registration token for
+  every job, i.e. a GitHub credential that can administer the repository in a
+  long-running process on the Mac, and a reinstall on every boot. Isolation
+  between jobs does not depend on it: every job starts and ends with
+  `job-cleanup.sh`, and each VM runs one job at a time.
+- **Stopping cannot cut off a job.** The watcher stops the VM only after
+  re-checking that no job is waiting and the runner is not busy; any error
+  while checking keeps the VM running. A job that arrives in the second
+  between that check and the shutdown stays queued and starts the VM again.
+- The VM disk is sparse (40 GiB at most); keep that much free space on the Mac.
+
 ## Security boundary
 
 Participant code must never reach the organizer's Mac. Four layers, from the
@@ -67,71 +102,60 @@ inside out:
      registries, PyPI, gVisor, Supabase) and chains to the local proxy.
      IP literals, loopback names and other ports are refused.
 
-## One-time setup (organizer's Mac, needs an administrator once)
+## One-time setup (organizer's Mac)
 
-Prerequisites: Lima (`brew install lima`). No Docker on the Mac.
+Prerequisites: Lima (`brew install lima`), the organizer's `gh` login. No
+Docker on the Mac.
 
-1. Host boundary (administrator):
-
-   ```sh
-   # A standard account that only runs the VM (no login use).
-   sudo sysadminctl -addUser observerfb -fullName "Observer fallback VM" -password -
-   # Egress proxy, run by the organizer's own account.
-   sudo mkdir -p /Users/Shared/observer-fallback
-   sudo cp ops/fallback-runner/egress-proxy.py /Users/Shared/observer-fallback/
-   cp ops/fallback-runner/org.agentic-observer.egress-proxy.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/org.agentic-observer.egress-proxy.plist
-   # pf anchor, loaded at boot.
-   sudo cp ops/fallback-runner/pf.anchor /etc/pf.anchors/observer-fallback
-   printf 'anchor "observer-fallback"\nload anchor "observer-fallback" from "/etc/pf.anchors/observer-fallback"\n' \
-     | sudo tee -a /etc/pf.conf
-   sudo cp ops/fallback-runner/org.agentic-observer.pf.plist /Library/LaunchDaemons/
-   sudo launchctl load /Library/LaunchDaemons/org.agentic-observer.pf.plist
-   sudo pfctl -a observer-fallback -s rules   # the four rules are listed
-   ```
-
-2. Create and boot the VM as `observerfb`. `HostProxyPort` is the egress
-   proxy. `Resolvers` is needed when the Mac's resolver returns a local
-   proxy's fake IPs (`198.18.0.0/15`), which the VM refuses; `AptMirror` is
-   optional:
+1. **Administrator part, once** (asks for the password once; idempotent):
 
    ```sh
-   sudo cp ops/fallback-runner/observer-fallback.yaml /Users/Shared/observer-fallback/
-   sudo -u observerfb -H limactl create --name observer-fallback \
-     --set '.param.HostProxyPort="18080" | .param.Resolvers="223.5.5.5 119.29.29.29" | .param.AptMirror="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"' \
-     /Users/Shared/observer-fallback/observer-fallback.yaml
-   sudo -u observerfb -H limactl start observer-fallback
-   sudo -u observerfb -H limactl shell observer-fallback -- sudo cloud-init status --wait
+   bash ops/fallback-runner/setup-host.sh
    ```
 
-   If the Ubuntu image download is slow, fetch the same image from a mirror,
-   compare its SHA-256 with `https://cloud-images.ubuntu.com/noble/current/SHA256SUMS`
-   and add `| .images=[{"location":"/path/to.img","arch":"aarch64","digest":"sha256:<sum>"}]`
-   to the `--set` expression.
+   It creates the hidden standard account `observerfb` that only runs the VM,
+   installs the pf anchor (`ops/fallback-runner/pf.anchor`, loaded now and at
+   boot by `org.agentic-observer.pf.plist`) and a sudoers rule
+   (`/etc/sudoers.d/observer-fallback`) that lets the organizer run `limactl`,
+   and nothing else, as `observerfb` without a password. Undo commands are at
+   the top of the script.
 
-3. Check every layer (each command must print `blocked`):
+2. **VM, checks, runner, watcher** (no password):
 
    ```sh
-   vm() { sudo -u observerfb -H limactl shell observer-fallback -- "$@"; }
-   vm ls /Users 2>/dev/null || echo blocked                          # no host files
-   vm sudo docker info | grep -q 'Default Runtime: runsc' && echo gvisor
-   vm sudo -u runner docker run --rm alpine:3.20 sh -c \
-     'nc -z -w 3 192.168.5.2 18800 || echo blocked'                   # containers
-   # Even VM root, with the in-VM guard bypassed, must not reach the browser:
-   vm sudo sh -c 'iptables -I OUTPUT 1 -j ACCEPT; curl -s -m 5 http://192.168.5.2:18800/json/version || echo blocked;
-     curl -s -m 5 -x http://192.168.5.2:18080 http://127.0.0.1:18800/json/version || echo blocked;
-     iptables -D OUTPUT 1'
+   bash ops/fallback-runner/setup-vm.sh
    ```
 
-4. Register the runner on the fallback organization's `observer-control`
-   (runner-13 by default). The VM is disposable: to re-register, recreate it.
+   It copies the proxy, watcher and VM definition to
+   `/Users/Shared/observer-fallback` (organizer-owned; `observerfb` can read,
+   not write), starts the egress proxy LaunchAgent (`127.0.0.1:18080`,
+   upstream `127.0.0.1:1082`), checks the pinned Ubuntu image (downloaded
+   unless `IMAGE=` points to a copy, for example from a mirror; the SHA-256
+   must match the digest in `observer-fallback.yaml`), creates and boots the
+   VM as `observerfb` with `HostProxyPort=18080`, public `Resolvers` (the
+   Mac's resolver may answer with a local proxy's fake IPs, which the VM
+   refuses) and an `AptMirror`, then checks every layer against a
+   loopback-only canary service on the Mac:
 
-   ```sh
-   token=$(gh api -X POST repos/AGENTIC-OBSERVER26-runner-13/observer-control/actions/runners/registration-token -q .token)
-   sudo -u observerfb -H limactl shell observer-fallback sudo env RUNNER_TOKEN="$token" \
-     RUNNER_URL=https://github.com/AGENTIC-OBSERVER26-runner-13/observer-control \
-     bash -s < ops/fallback-runner/install-runner.sh
-   ```
+   | Check | Expected |
+   |---|---|
+   | host files inside the VM | none |
+   | Docker's default runtime | `runsc` |
+   | a container connecting to the Mac | blocked |
+   | VM root with the in-VM guard bypassed connecting to the Mac | blocked (pf) |
+   | VM root asking the egress proxy for the Mac's loopback | refused |
+   | the runner account reaching GitHub through the proxy | 200 |
+
+   Only if every check passes it registers the runner on
+   `AGENTIC-OBSERVER26-runner-13/observer-control` (`install-runner.sh`; the
+   one-hour register-only token goes over stdin), waits until GitHub shows it
+   online, stops the VM and starts the watcher
+   (`org.agentic-observer.fallback-watcher.plist`, log in
+   `/Users/Shared/observer-fallback/watcher.log`).
+
+The VM is disposable: to re-register, delete it
+(`sudo -u observerfb -H limactl delete -f observer-fallback`), remove the
+runner under the repository's Actions → Runners and run `setup-vm.sh` again.
 
 ## Rollout checklist (production)
 
@@ -145,7 +169,8 @@ Prerequisites: Lima (`brew install lima`). No Docker on the Mac.
    new workflows accept the optional `runner` input; other organizations may
    keep their current runtime because the input is only sent to the fallback.
 4. Set up the host boundary and the VM and register the runner (above);
-   confirm it is "Idle" under the repository's Actions → Runners.
+   the runner is listed (offline while the VM is stopped) under the
+   repository's Actions → Runners and the watcher log shows it watching.
 5. Enable: `update private.observer_installations set fallback_capacity=1
    where organization='AGENTIC-OBSERVER26-runner-13';`
    `fallback_capacity` is the number of fallback VMs registered there; each
@@ -154,4 +179,6 @@ Prerequisites: Lima (`brew install lima`). No Docker on the Mac.
    that are not colocated need two VMs to use the fallback.
 
 Disable at any time with `fallback_capacity=0` (pending self-hosted jobs keep
-their slot until they finish or expire), then `limactl stop observer-fallback`.
+their slot until they finish or expire); the watcher stops the VM once it is
+idle. To stop watching altogether:
+`launchctl bootout gui/$(id -u)/org.agentic-observer.fallback-watcher`.
