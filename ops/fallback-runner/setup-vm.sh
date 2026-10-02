@@ -93,6 +93,12 @@ check "the runner account reaches GitHub through the proxy" 200 vmsh sudo -u run
   curl -s -m 20 -o /dev/null -w '%{http_code}\n' -x http://192.168.5.2:18080 https://api.github.com/zen
 [ "$fail" -eq 0 ] || { echo "Isolation checks failed; the runner is not registered." >&2; exit 1; }
 
+# The restricted-egress forwarder image, pulled once (job cleanup keeps
+# registry images); through the Mac's proxy a first pull can outlast a job's
+# pull timeout.
+proxy_image="$(sed -n 's/^PROXY_IMAGE = "\(.*\)"$/\1/p' "$here/../../project_platform/egress.py")"
+[ -n "$proxy_image" ] && vmsh sudo docker pull -q "$proxy_image" >/dev/null
+
 echo "== runner on $repository"
 if ! vmsh sudo test -e /home/runner/actions-runner/.runner; then
   token="$(gh api -X POST "repos/$repository/actions/runners/registration-token" -q .token)"

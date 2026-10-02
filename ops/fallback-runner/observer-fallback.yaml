@@ -188,12 +188,20 @@ provision:
     UNIT
 
     # Runs before and after every job: nothing a participant built survives.
-    # It removes every container, so a VM hosts exactly one runner.
+    # It removes every container, so a VM hosts exactly one runner. Images
+    # pulled from a registry by digest are content-addressed and kept (pulling
+    # them again through the Mac's proxy can exceed the jobs' pull timeout);
+    # every image without a registry digest, i.e. anything built here, is removed.
     cat > /opt/observer/job-cleanup.sh <<'CLEAN'
     #!/bin/bash
     set -u
     docker ps -aq | xargs -r docker rm -f >/dev/null 2>&1
-    docker system prune -af --volumes >/dev/null 2>&1
+    docker images --digests --format '{{.ID}} {{.Digest}}' | awk '$2 == "<none>" {print $1}' |
+      sort -u | xargs -r docker rmi -f >/dev/null 2>&1
+    docker image prune -f >/dev/null 2>&1
+    docker builder prune -af >/dev/null 2>&1
+    docker volume prune -af >/dev/null 2>&1
+    docker network prune -f >/dev/null 2>&1
     find /tmp /var/tmp -mindepth 1 -maxdepth 1 -user "$(id -u)" -exec rm -rf {} + 2>/dev/null
     exit 0
     CLEAN
