@@ -29,16 +29,18 @@ function fetchPhases(): Promise<void> {
   if (inflight) return inflight
   if (Date.now() - fetchedAt < 60_000 && loaded.value) return Promise.resolve()
   inflight = (async () => {
-    // A slow backend must not hold the page in limbo. Show no invented date while
-    // unavailable; a late successful answer still replaces the empty lists.
+    // A slow backend must not hold the page in limbo, so this stops waiting after 4s — but
+    // `loaded` (which gates the "no further phase" copy) only flips once real data lands,
+    // never on the timeout itself; otherwise a slow first answer reads as a confirmed empty
+    // schedule for however long the real fetch takes, instead of a quiet loading state.
     const attempt: Promise<[Phase[], ScheduledPhase[]]> = isSupabaseConfigured
       ? Promise.all([loadPhases().catch(() => []), loadUpcoming().catch(() => [])])
       : Promise.resolve([[], []])
-    const apply = ([current, later]: [Phase[], ScheduledPhase[]]) => { shared.value = current; upcoming.value = later }
+    const apply = ([current, later]: [Phase[], ScheduledPhase[]]) => { shared.value = current; upcoming.value = later; loaded.value = true; fetchedAt = Date.now() }
     const result = await Promise.race([attempt, new Promise<null>(resolve => window.setTimeout(() => resolve(null), 4000))])
     if (result) apply(result)
-    else void attempt.then(lists => { apply(lists); fetchedAt = Date.now() })
-    loaded.value = true; fetchedAt = Date.now(); inflight = null
+    else void attempt.then(apply)
+    inflight = null
   })()
   return inflight
 }
