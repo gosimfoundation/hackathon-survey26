@@ -25,6 +25,8 @@ const form = ref({ title: '', kind: 'repository', url: '' })
 const selectedFile = ref<File | null>(null), review = ref<ProjectRevision | null>(null)
 /** 0–100 while a ZIP is uploading; null the rest of the time. */
 const uploadPercent = ref<number | null>(null)
+/** Set while a dropped connection is being retried automatically; cleared once the attempt settles. */
+const retryStatus = ref('')
 const reviewPanel = ref<HTMLElement | null>(null)
 const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref('')
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
@@ -68,7 +70,7 @@ const words = computed(() => pick({
   manifest: 'Execution settings', changes: 'Added adapter files', unchanged: 'This project supplies its own interface; no adapter files were added.',
   check: 'I reviewed the execution settings and adapter code, and confirm this exact version.', approve: 'Confirm version',
   approveHint: 'Tick the self-check box above to enable the confirmation button.', fileSelected: 'Selected file',
-  uploading: 'Uploading {n}%',
+  uploading: 'Uploading {n}%', retrying: 'Network unstable, retrying…',
   testPassed: 'Public scenario test passed', testResult: 'Download public test result', projectDownload: 'Download this project version', phase: 'Evaluation phase', evaluate: 'Evaluate this version',
   batches: 'Evaluations', local: 'Start local CSV session', localHelp: 'Run locally with the same step-by-step information. Upload the resulting decisions.csv after the session.',
   download: 'Download private result', uploadCsv: 'Upload matching CSV', average: 'Combined score',
@@ -113,7 +115,7 @@ const words = computed(() => pick({
   original: '原始代码指纹', manifest: '运行设置', changes: '新增的适配文件', unchanged: '项目自带接口，没有新增适配文件。',
   check: '我已检查运行设置和适配代码，确认使用这个版本。', approve: '确认版本',
   approveHint: '先勾选上面的自查框，才能点确认版本。', fileSelected: '已选文件',
-  uploading: '正在上传 {n}%', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
+  uploading: '正在上传 {n}%', retrying: '网络不稳定，正在重试…', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
   phase: '评测赛程', evaluate: '评测此版本', batches: '评测记录', local: '启动本地 CSV 会话',
   localHelp: '在本机运行，按步骤获得相同信息；运行结束后上传生成的 decisions.csv。', download: '下载私有结果',
   uploadCsv: '上传匹配的 CSV', average: '综合成绩', api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
@@ -188,6 +190,8 @@ function errorMessage(e: unknown) {
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
     upload_failed: pick('The file upload failed, possibly due to the network. Please try again.', '文件上传失败，可能是网络问题，请重试。'),
+    upload_not_found: pick('The upload session expired or could not be found. Choose the file again and retry.', '上传会话已过期或找不到，请重新选择文件后再试一次。'),
+    upload_not_finished: pick('The file has not finished uploading yet. Wait a moment and try again.', '文件还没有上传完成，请稍等再试一次。'),
     portal_unavailable: pick('Could not reach the server. Check your connection and try again.', '无法连接服务器，请检查网络后重试。'),
   }
   return code === 'cancelled' ? '' : messages[code] ?? words.value.failed
@@ -215,25 +219,26 @@ async function reload() {
 }
 async function action(work: () => Promise<void>, success = words.value.done, key = '') {
   if (busy.value || (key && locked.value.has(key))) return
-  busy.value = true; pending.value = key; error.value = ''; notice.value = ''
-  try { await work() } catch (e) { error.value = errorMessage(e); busy.value = false; pending.value = ''; return }
+  busy.value = true; pending.value = key; error.value = ''; notice.value = ''; retryStatus.value = ''
+  try { await work() } catch (e) { error.value = errorMessage(e); busy.value = false; pending.value = ''; retryStatus.value = ''; return }
   // The request succeeded even if the refresh below fails; never invite a retry.
   if (key) locked.value.add(key)
-  notice.value = success
+  notice.value = success; retryStatus.value = ''
   try { await reload() } catch { /* the periodic refresh retries and unlocks */ } finally { busy.value = false; pending.value = '' }
 }
 function submit() {
   const url = form.value.kind === 'repository' ? form.value.url : null
   if (recentDuplicate(data.value?.projects, form.value.title, url) && !window.confirm(words.value.duplicate)) return
+  const onRetry = () => { retryStatus.value = words.value.retrying }
   void action(async () => {
-    if (url !== null) await portal('submit_repository', { title: form.value.title, url })
+    if (url !== null) await portal('submit_repository', { title: form.value.title, url }, onRetry)
     else {
       if (!selectedFile.value) throw new Error('wrong_file_type')
       uploadPercent.value = 0
       let upload_id: string
-      try { upload_id = await uploadProjectFile(selectedFile.value, 'source', p => { uploadPercent.value = p }) }
+      try { upload_id = await uploadProjectFile(selectedFile.value, 'source', p => { uploadPercent.value = p }, onRetry) }
       finally { uploadPercent.value = null }
-      await portal('submit_zip', { title: form.value.title, upload_id })
+      await portal('submit_zip', { title: form.value.title, upload_id }, onRetry)
     }
     form.value = { title: '', kind: form.value.kind, url: '' }; selectedFile.value = null
     const file = document.querySelector<HTMLInputElement>('[data-testid="project-zip"]'); if (file) file.value = ''
@@ -398,6 +403,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           {{ words.uploading.replace('{n}', String(uploadPercent)) }}
           <progress class="upload-progress" :value="uploadPercent" max="100"></progress>
         </p>
+        <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
         <p class="help mb-4">{{ words.privacy }}</p>
         <button class="btn primary" :disabled="busy || locked.has('submit')" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
       </form>

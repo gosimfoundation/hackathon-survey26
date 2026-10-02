@@ -1,4 +1,7 @@
+import { StorageApiError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { withNetworkRetry } from './networkRetry'
+import { isAlreadyUploaded, isDuplicateUploadResponse } from './uploadConflict'
 import type { EvaluationQuota, FinalVersion } from './projectEvaluation'
 
 export type ProjectRevision = {
@@ -31,34 +34,59 @@ export type PortalData = {
   final_versions?: FinalVersion[] | null
 }
 
-export async function portal<T>(action: string, fields: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('observer-portal', { body: { action, ...fields } })
-  if (error) {
-    let code = 'portal_unavailable'
-    if (error.context instanceof Response) {
-      try { code = (await error.context.clone().json()).error ?? code } catch { /* safe generic error */ }
-    }
-    throw new Error(code)
+/** Thrown by portal(); networkError means the request never reached the server (safe to retry). */
+class PortalError extends Error {
+  networkError: boolean
+  constructor(code: string, networkError: boolean) {
+    super(code)
+    this.networkError = networkError
   }
-  if (data?.error) throw new Error(data.error)
-  return data.data as T
 }
 
-export async function uploadProjectFile(file: File, purpose: 'source' | 'csv', onProgress?: (percent: number) => void) {
+export async function portal<T>(
+  action: string, fields: Record<string, unknown> = {}, onRetry?: (attempt: number) => void,
+): Promise<T> {
+  return withNetworkRetry(async () => {
+    const { data, error } = await supabase.functions.invoke('observer-portal', { body: { action, ...fields } })
+    if (error) {
+      let code = 'portal_unavailable'
+      // A Response means the server actually answered (even with an error); anything
+      // else (a dropped connection, a TLS reset) never reached it and is safe to retry.
+      const reachedServer = error.context instanceof Response
+      if (reachedServer) {
+        try { code = (await error.context.clone().json()).error ?? code } catch { /* safe generic error */ }
+      }
+      throw new PortalError(code, !reachedServer)
+    }
+    if (data?.error) throw new Error(data.error)
+    return data.data as T
+  }, e => e instanceof PortalError && e.networkError, onRetry)
+}
+
+/** A PUT that never reached the server (the dropped-connection case; safe to resend). */
+class UploadNetworkError extends Error {
+  constructor() { super('upload_failed') }
+}
+
+export async function uploadProjectFile(
+  file: File, purpose: 'source' | 'csv', onProgress?: (percent: number) => void, onRetry?: (attempt: number) => void,
+) {
   const ext = purpose === 'source' ? '.zip' : '.csv'
   if (!file.name.toLowerCase().endsWith(ext)) throw new Error('wrong_file_type')
   if (!file.size || file.size > (purpose === 'source' ? 50 : 20) * 1024 * 1024) throw new Error('file_too_large')
-  const slot = await portal<{ id: string; path: string; token: string }>('upload', { purpose })
+  const slot = await portal<{ id: string; path: string; token: string }>('upload', { purpose }, onRetry)
   // With a progress listener the upload goes through XHR: supabase-js fetch uploads
   // never report upload progress. Same endpoint and payload as uploadToSignedUrl.
   if (onProgress) {
-    await uploadWithProgress(slot.path, slot.token, file, onProgress)
+    await withNetworkRetry(() => uploadWithProgress(slot.path, slot.token, file, onProgress), e => e instanceof UploadNetworkError, onRetry)
     return slot.id
   }
-  const { error } = await supabase.storage.from('observer-staging').uploadToSignedUrl(slot.path, slot.token, file, {
-    contentType: purpose === 'source' ? 'application/zip' : 'text/csv',
-  })
-  if (error) throw new Error('upload_failed')
+  await withNetworkRetry(async () => {
+    const { error } = await supabase.storage.from('observer-staging').uploadToSignedUrl(slot.path, slot.token, file, {
+      contentType: purpose === 'source' ? 'application/zip' : 'text/csv',
+    })
+    if (error && !isAlreadyUploaded(error)) throw error
+  }, e => !(e instanceof StorageApiError), onRetry)
   return slot.id
 }
 
@@ -72,8 +100,12 @@ function uploadWithProgress(path: string, token: string, file: File, onProgress:
     body.append('', file)
     const xhr = new XMLHttpRequest()
     xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100)) }
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error('upload_failed')))
-    xhr.onerror = () => reject(new Error('upload_failed'))
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve()
+      if (isDuplicateUploadResponse(xhr.status, xhr.responseText)) return resolve()
+      reject(new Error('upload_failed'))
+    }
+    xhr.onerror = () => reject(new UploadNetworkError())
     xhr.open('PUT', url)
     for (const [name, value] of Object.entries(api.headers)) xhr.setRequestHeader(name, value)
     xhr.setRequestHeader('x-upsert', 'false')
