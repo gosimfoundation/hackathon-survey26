@@ -12,12 +12,14 @@ leaderboard_mode is set to 'published'. Operating procedure: docs/hidden-final-r
 Dry run by default: prints what would be created, the run settings of the target
 phase and an estimate of runner minutes and duration. --apply creates the
 evaluations in one transaction (private.observer_run_hidden_final, migrations
-20260927000800 and 20261001000200). A team that already has an evaluation there
-on the current card set is skipped. A failed one is recreated only with
---retry-failed, and only when the platform caused the failure; a failure caused
-by the team's own project (build, crash, protocol) is final unless organizers
-decide otherwise and pass --retry-participant-failures. --team limits the run to
-one team (slug, name or id); --before-freeze allows that single-team test before
+20260927000800, 20261001000200 and 20261001000900). A team that already has an
+evaluation there on the current card set is skipped. A card the team itself fails
+(build, crash or protocol failure of its project, or a rejected trace) scores 0
+and the other cards still run; the evaluation completes with the mean over all four cards.
+A failure caused by the platform fails the evaluation, which is recreated with
+--retry-failed. Recreating an evaluation for any other reason is an organizer
+decision (--retry-participant-failures, only for an evaluation that failed without
+a platform cause). --team limits the run to one team (slug, name or id); --before-freeze allows that single-team test before
 the public phase has ended. --limit N creates at most N evaluations per call (a
 canary first, then the rest with a second --apply); the dispatcher schedules
 queued runs in creation order anyway, so no further batching is needed. v4 task
@@ -26,7 +28,8 @@ cards run only colocated, so the target phase needs colocated=true.
 --status prints the progress of the hidden evaluations (batches, runs, runner
 minutes so far). --results prints the organizer ranking: per team the score on
 every card and their mean, ranked over complete evaluations of teams that are not
-hidden; --csv PATH also writes it to a local file. Neither prints card contents,
+hidden; a card the team itself failed shows 0, marked *, and counts in the mean.
+--csv PATH also writes it to a local file. Neither prints card contents,
 and neither changes anything. After the runs, scripts/verify-v4-run.py replays any
 v4 result against its bundle.
 
@@ -159,6 +162,14 @@ def estimate(users, scenarios, runtime_seconds, capacity):
     return '\n'.join(lines)
 
 
+# How a failed hidden evaluation is classified (as in private.observer_run_hidden_final): 'participant' only
+# when every failed or cancelled card is the team's own failure, else 'platform'.
+FAILURE = """case when exists(select 1 from public.observer_runs r where r.batch_id={batch}
+    and private.observer_participant_failure(r.id))
+  and not exists(select 1 from public.observer_runs r where r.batch_id={batch}
+    and r.status in ('failed','cancelled') and not private.observer_participant_failure(r.id))
+  then 'participant' else 'platform' end"""
+
 CURRENT_BATCHES = """
 with cur as (
   select distinct on (b.team_id) b.* from public.observer_batches b
@@ -179,8 +190,7 @@ def status(target):
         count(j.finished_at) as finished
       from public.observer_runs r join cur on cur.id=r.batch_id
       join private.observer_jobs j on j.run_id=r.id and j.kind='engine'"""), 'job totals')
-    failures = deploy.query(cte + """select case when exists(select 1 from public.observer_runs r where r.batch_id=cur.id
-          and private.observer_participant_failure(r.id)) then 'participant' else 'platform' end as failure, count(*) as n
+    failures = deploy.query(cte + 'select ' + FAILURE.format(batch='cur.id') + """ as failure, count(*) as n
       from cur where cur.status in ('failed','cancelled') group by 1 order by 1""")
     fmt = lambda rows: ', '.join(f"{r['status' if 'status' in r else 'failure']}={r['n']}" for r in rows) or 'none'
     # Runs still queued in a failed batch are never scheduled; count only live batches.
@@ -201,9 +211,9 @@ def results(target):
     cte = CURRENT_BATCHES.format(target=q(target))
     rows = deploy.query(cte + """select t.id as team_id, t.name as team_name, t.is_hidden, cur.id as batch_id,
         cur.status, cur.score, cur.revision_id, cur.finished_at,
-        case when cur.status in ('failed','cancelled') then case when exists(select 1 from public.observer_runs r
-          where r.batch_id=cur.id and private.observer_participant_failure(r.id)) then 'participant' else 'platform' end end as failure,
-        (select jsonb_object_agg(s.slug, jsonb_build_object('status',r.status,'score',r.score,'error',nullif(r.error,'')))
+        case when cur.status in ('failed','cancelled') then """ + FAILURE.format(batch='cur.id') + """ end as failure,
+        (select jsonb_object_agg(s.slug, jsonb_build_object('status',r.status,'score',r.score,'error',nullif(r.error,''),
+            'participant_failure',private.observer_participant_failure(r.id)))
           from public.observer_runs r join public.scenarios s on s.id=r.scenario_id where r.batch_id=cur.id) as runs
       from cur join public.teams t on t.id=cur.team_id""")
     cards = sorted(r['slug'] for r in deploy.query(
@@ -213,6 +223,8 @@ def results(target):
     for r in rows:
         r['runs'] = jsonish(r['runs']) or {}
         r['score'] = None if r['score'] is None else float(r['score'])
+        # A card the team itself failed scores 0 and still counts in the mean (the batch score already does).
+        r['unfinished'] = sorted(c for c, run in r['runs'].items() if run.get('participant_failure')) if r['status'] == 'scored' else []
     ranked = sorted((r for r in rows if r['status'] == 'scored' and not r['is_hidden']),
                     key=lambda r: (-r['score'], r['team_name'], str(r['team_id'])))
     rank, previous = 0, None
@@ -223,17 +235,24 @@ def results(target):
     return ranked + others, cards, mode
 
 
+def card_score(r, card):
+    """The score of one card: 0 for a card the team itself failed."""
+    return 0.0 if card in r['unfinished'] else r['runs'].get(card, {}).get('score')
+
+
 def format_results(rows, cards, mode):
     lines = [f'RESULTS (leaderboard_mode={mode}; participants see nothing until it is published)',
              '  ' + ' '.join(['rank', f"{'team':<40}", *(f'{c:>9}' for c in cards), f"{'mean':>9}", ' status'])]
     for r in rows:
-        score = lambda c: r['runs'].get(c, {}).get('score')
-        cell = lambda v: f'{v:9.2f}' if v is not None else f"{'-':>9}"
+        cell = lambda v, mark='': (f'{v:8.2f}' if v is not None else f"{'-':>8}") + (mark or ' ')
         note = r['status'] + (f" ({r['failure']})" if r['failure'] else '') + (' hidden-team' if r['is_hidden'] else '')
         lines.append(f"  {str(r.get('rank', '-')):>4} {r['team_name'][:40]:<40} "
-                     + ' '.join(cell(score(c)) for c in cards) + f" {cell(r['score'])}  {note}")
+                     + ' '.join(cell(card_score(r, c), '*' if c in r['unfinished'] else '') for c in cards)
+                     + f" {cell(r['score'])}  {note}")
     ranked = sum(1 for r in rows if 'rank' in r)
     lines.append(f'  ranked={ranked}, not ranked={len(rows) - ranked} (incomplete, failed or hidden teams)')
+    if any(r['unfinished'] for r in rows):
+        lines.append("  * failed because of the team's project (build, crash, protocol) or a rejected trace: 0, counted in the mean")
     return '\n'.join(lines)
 
 
@@ -241,11 +260,11 @@ def write_csv(path, rows, cards):
     with open(path, 'w', newline='', encoding='utf-8') as handle:
         out = csv.writer(handle)
         out.writerow(['rank', 'team_id', 'team_name', 'hidden_team', 'revision_id', 'batch_id', 'status', 'failure',
-                      *cards, 'mean'])
+                      *cards, 'mean', 'unfinished_cards'])
         for r in rows:
             out.writerow([r.get('rank', ''), r['team_id'], r['team_name'], r['is_hidden'], r['revision_id'], r['batch_id'],
-                          r['status'], r['failure'] or '', *(r['runs'].get(c, {}).get('score', '') for c in cards),
-                          '' if r['score'] is None else r['score']])
+                          r['status'], r['failure'] or '', *('' if (v := card_score(r, c)) is None else v for c in cards),
+                          '' if r['score'] is None else r['score'], ' '.join(r['unfinished'])])
 
 
 def main():
