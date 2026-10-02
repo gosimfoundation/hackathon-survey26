@@ -89,6 +89,15 @@ async function download() {
         <p class="mt-4">{{ tf('cards_page.locked', { card: card.symbol }) }}</p>
       </div>
     </div></section>
+    <section class="section tight"><div class="wrap">
+      <div class="hidden-cards-note" data-testid="cards-hidden-cards-note">
+        <h3>{{ t('resources.hidden_note_title') }}</h3>
+        <p>{{ t('resources.hidden_note_p1') }}</p>
+        <p>{{ t('resources.hidden_note_p2') }}</p>
+        <p>{{ t('resources.hidden_note_p3') }}</p>
+        <p>{{ t('resources.hidden_note_p4') }}</p>
+      </div>
+    </div></section>
   </main>
 </template>
 
@@ -99,4 +108,7 @@ async function download() {
 .card-sets .tabs a { text-transform: none; letter-spacing: .04em; font-size: .85rem; }
 .card-files { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
 .locked { max-width: 42rem; }
+.hidden-cards-note { max-width: 42rem; border: 1px solid rgba(251,191,36,.3); background: rgba(251,191,36,.06); padding: 1.1rem 1.2rem; }
+.hidden-cards-note h3 { font-size: .95rem; color: #fbbf24; margin-bottom: .5rem; }
+.hidden-cards-note p { font-size: .875rem; line-height: 1.5; color: rgba(245,247,255,.78); margin-top: .4rem; }
 </style>
