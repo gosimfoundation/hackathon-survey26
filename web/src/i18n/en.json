@@ -2317,7 +2317,21 @@
       "errors": {
         "already_assigned": "This team already has a code for that provider. Tick \"replace\" to revoke it first.",
         "no_codes_left": "No codes left for this provider."
-      }
+      },
+      "xl_title": "Import from Excel",
+      "xl_lede": "Pick an .xlsx or .csv file. It is parsed locally in your browser and never uploaded. Codes are masked in the preview. Empty rows and duplicates are skipped.",
+      "xl_file": "File",
+      "xl_sheet": "Sheet",
+      "xl_code_col": "Code column",
+      "xl_note_col": "Note column (optional)",
+      "xl_none": "None",
+      "xl_default_note": "Default note",
+      "xl_has_header": "First row is a header",
+      "xl_col": "Column",
+      "xl_summary": "{n} codes will be imported; {skipped} rows skipped (empty or duplicate).",
+      "xl_submit": "Import {n} codes",
+      "xl_result": "Imported {n}; {dup} already existed; {skipped} empty/duplicate rows skipped.",
+      "xl_bad_file": "Could not read this file. Save it as .xlsx or .csv and try again."
     },
     "settings": {
       "registration_open": "registration open",

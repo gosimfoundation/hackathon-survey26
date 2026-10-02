@@ -5,6 +5,7 @@ import { useAdmin } from '../../composables/useAdmin'
 import DashShell from '../../components/layout/DashShell.vue'
 import SkeletonRows from '../../components/layout/SkeletonRows.vue'
 import StatusPill from '../../components/layout/StatusPill.vue'
+import { guessCodeColumn, maskCode, readSheets, type Sheet } from '../../lib/sheetImport'
 
 interface Stat { provider: string; available: number; assigned: number; revoked: number; total: number; note: string }
 interface CodeRow { id: number; provider: string; code: string; note: string; status: string; team_id: string | null; team_name: string | null; assigned_by_email: string | null; assigned_at: string | null; created_at: string }
@@ -52,6 +53,60 @@ async function importCodes() {
   importForm.value.codes = ''
   await reload()
   flash.success(tf('admin.credits.imported', { n: inserted }))
+}
+const xl = ref({ fileName: '', sheets: [] as Sheet[], sheet: 0, hasHeader: true, codeCol: -1, noteCol: -1, provider: 'kimi', note: '', result: '' })
+const xlRows = computed(() => xl.value.sheets[xl.value.sheet]?.rows ?? [])
+const xlWidth = computed(() => Math.max(0, ...xlRows.value.slice(0, 50).map(r => r.length)))
+const xlHeader = computed(() => Array.from({ length: xlWidth.value }, (_, i) => (xl.value.hasHeader ? xlRows.value[0]?.[i]?.trim() : '') || `${t('admin.credits.xl_col')} ${i + 1}`))
+const xlBody = computed(() => (xl.value.hasHeader ? xlRows.value.slice(1) : xlRows.value))
+const xlPlan = computed(() => {
+  const seen = new Set<string>()
+  const groups = new Map<string, string[]>()
+  let skipped = 0
+  if (xl.value.codeCol < 0) return { groups, total: 0, skipped }
+  for (const r of xlBody.value) {
+    const code = (r[xl.value.codeCol] ?? '').trim()
+    if (!code || seen.has(code)) { if (r.some(c => c.trim())) skipped++; continue }
+    seen.add(code)
+    const note = (xl.value.noteCol >= 0 ? (r[xl.value.noteCol] ?? '').trim() : '') || xl.value.note.trim()
+    groups.set(note, [...(groups.get(note) ?? []), code])
+  }
+  return { groups, total: seen.size, skipped }
+})
+function xlAutoGuess() {
+  const header = xl.value.hasHeader ? (xlRows.value[0] ?? []) : []
+  xl.value.codeCol = guessCodeColumn(header)
+  if (xl.value.codeCol < 0 && xlWidth.value === 1) xl.value.codeCol = 0
+  xl.value.noteCol = header.findIndex(h => /备注|note|remark/i.test(h))
+}
+async function onXlFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  xl.value.result = ''
+  if (!file) return
+  try {
+    xl.value.sheets = await readSheets(file)
+    xl.value.fileName = file.name
+    xl.value.sheet = Math.max(0, xl.value.sheets.findIndex(s => s.rows.some(r => r.some(c => c.trim()))))
+    xlAutoGuess()
+  } catch {
+    xl.value.sheets = []
+    flash.error(t('admin.credits.xl_bad_file'))
+  } finally { input.value = '' }
+}
+async function importExcel() {
+  const provider = xl.value.provider.trim()
+  const plan = xlPlan.value
+  if (!provider || !plan.total) return
+  let inserted = 0
+  const ok = await run(async () => {
+    for (const [note, codes] of plan.groups) inserted += Number(await rpc<number>('admin_import_redeem_codes', { p_provider: provider, p_codes: codes.join('\n'), p_note: note }))
+  })
+  if (!ok) return
+  xl.value.result = tf('admin.credits.xl_result', { n: inserted, dup: plan.total - inserted, skipped: plan.skipped })
+  xl.value.sheets = []
+  await reload()
+  flash.success(xl.value.result)
 }
 async function assignCode() {
   const provider = assignForm.value.provider.trim()
@@ -103,6 +158,36 @@ onMounted(async () => { try { await Promise.all([reload(), loadTeams()]) } catch
           <label class="field full"><span>{{ t('admin.credits.import_codes') }}</span><textarea data-testid="credits-import-codes" v-model="importForm.codes" rows="6" required spellcheck="false"></textarea></label>
         </div>
         <button data-testid="credits-import-submit" class="btn primary sm" type="submit" :disabled="busy">{{ t('admin.credits.import_submit') }}</button>
+      </form>
+
+      <form class="panel lg:col-span-2" data-testid="credits-excel" @submit.prevent="importExcel">
+        <div class="hd"><h2>{{ t('admin.credits.xl_title') }}</h2><span class="label">{{ xl.fileName }}</span></div>
+        <p class="text2 text-sm mb-4">{{ t('admin.credits.xl_lede') }}</p>
+        <div class="grid-form">
+          <label class="field full"><span>{{ t('admin.credits.xl_file') }}</span><input data-testid="credits-excel-file" type="file" accept=".xlsx,.xls,.csv,.tsv" @change="onXlFile"></label>
+          <template v-if="xl.sheets.length">
+            <label v-if="xl.sheets.length > 1" class="field"><span>{{ t('admin.credits.xl_sheet') }}</span><select v-model.number="xl.sheet" class="input" @change="xlAutoGuess"><option v-for="(s, i) in xl.sheets" :key="i" :value="i">{{ s.name }}</option></select></label>
+            <label class="field"><span>{{ t('admin.credits.xl_code_col') }}</span><select v-model.number="xl.codeCol" class="input" data-testid="credits-excel-code-col" required><option :value="-1" disabled>—</option><option v-for="(h, i) in xlHeader" :key="i" :value="i">{{ h }}</option></select></label>
+            <label class="field"><span>{{ t('admin.credits.xl_note_col') }}</span><select v-model.number="xl.noteCol" class="input"><option :value="-1">{{ t('admin.credits.xl_none') }}</option><option v-for="(h, i) in xlHeader" :key="i" :value="i">{{ h }}</option></select></label>
+            <label class="field"><span>{{ t('admin.credits.import_provider') }}</span><input v-model="xl.provider" type="text" required list="credits-provider-names" autocomplete="off"></label>
+            <label class="field"><span>{{ t('admin.credits.xl_default_note') }}</span><input v-model="xl.note" type="text"></label>
+          </template>
+        </div>
+        <template v-if="xl.sheets.length">
+          <label class="check"><input v-model="xl.hasHeader" type="checkbox" @change="xlAutoGuess"> {{ t('admin.credits.xl_has_header') }}</label>
+          <div class="table-wrap my-4">
+            <table class="tbl">
+              <thead><tr><th v-for="(h, i) in xlHeader" :key="i">{{ h }}<template v-if="i === xl.codeCol"> · {{ t('admin.credits.code') }}</template></th></tr></thead>
+              <tbody>
+                <tr v-for="(r, ri) in xlBody.slice(0, 3)" :key="ri"><td v-for="(_, i) in xlHeader" :key="i" class="mono">{{ i === xl.codeCol ? maskCode(r[i] ?? '') : (r[i] ?? '') }}</td></tr>
+                <tr v-if="!xlBody.length"><td :colspan="xlHeader.length || 1" class="text3">{{ t('common.no_data') }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text2 text-sm mb-4">{{ tf('admin.credits.xl_summary', { n: xlPlan.total, skipped: xlPlan.skipped }) }}</p>
+          <button data-testid="credits-excel-submit" class="btn primary sm" type="submit" :disabled="busy || !xlPlan.total">{{ tf('admin.credits.xl_submit', { n: xlPlan.total }) }}</button>
+        </template>
+        <p v-if="xl.result" class="text2 text-sm mt-4" data-testid="credits-excel-result">{{ xl.result }}</p>
       </form>
 
       <form class="panel" @submit.prevent="assignCode">
