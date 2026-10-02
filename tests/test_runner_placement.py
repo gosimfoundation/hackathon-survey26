@@ -330,6 +330,26 @@ def test_fallback_moves_a_pending_job_to_a_free_self_hosted_slot(setup):
             rpc(uri, 'observer_fallback_job', second, role=role, user=s['user'])
 
 
+def test_a_job_moved_to_the_fallback_keeps_time_for_the_vm_to_boot(setup):
+    s = setup; uri = s['uri']
+    fallback_ready(uri, 1)
+    job = queued_job(s, ORG + '8')
+    run = query(uri, 'select run_id from private.observer_jobs where id=%s', (job,))[0][0]
+    # Stalled for fourteen minutes: three dispatches, then ten minutes without a claim.
+    query(uri, """update private.observer_jobs set status='dispatched',dispatch_count=3,
+        created_at=now()-interval '14 minutes',expires_at=now()+interval '16 minutes' where id=%s""", (job,))
+    query(uri, """insert into private.observer_sessions(run_id,participant_hash,engine_hash,expires_at,
+        token_limit,call_limit,concurrency_limit) values(%s,%s,%s,now()+interval '40 minutes',1,1,1)""",
+          (run, secrets.token_bytes(32), secrets.token_bytes(32)))
+    rpc(uri, 'observer_fallback_job', job)
+    claim, window = query(uri, """select extract(epoch from j.expires_at-now()),extract(epoch from s.expires_at-now())
+        from private.observer_jobs j join private.observer_sessions s on s.run_id=j.run_id where j.id=%s""", (job,))[0]
+    assert 29 * 60 < claim <= 30 * 60
+    assert 53 * 60 < window <= 54 * 60
+    query(uri, "update private.observer_jobs set status='failed' where status in ('queued','dispatched','claimed')")
+    query(uri, 'update private.observer_installations set fallback_capacity=0')
+
+
 def pending(uri):
     return {j['id']: j for j in rpc(uri, 'observer_pending_jobs', 20)}
 

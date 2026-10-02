@@ -1,11 +1,8 @@
 #!/bin/bash
 # Registers the self-hosted fallback runner inside the observer-fallback VM.
-# Run from the Mac (the token is a one-hour, register-only token of the single
-# observer-control repository; no personal credential enters the VM):
-#
-#   limactl shell observer-fallback sudo env RUNNER_TOKEN=<token> \
-#     RUNNER_URL=https://github.com/AGENTIC-OBSERVER26-runner-13/observer-control \
-#     bash -s < ops/fallback-runner/install-runner.sh
+# setup-vm.sh runs it from the Mac with RUNNER_URL set and RUNNER_TOKEN, a
+# one-hour, register-only token of the single observer-control repository,
+# exported on stdin ahead of this script; no personal credential enters the VM.
 #
 # A repository-level runner serves only observer-control, so participant
 # repositories in the same organization can never schedule work on it.

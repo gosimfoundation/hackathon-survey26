@@ -72,6 +72,11 @@ end $$;
 -- needs a slot too; it is dispatched on the next round. Like
 -- observer_failover_job, the owner's placement follows the organization. The
 -- job returns to 'queued' so an ambiguous fallback dispatch is retried.
+-- The fallback VM is started on demand (ops/fallback-runner/fallback-watcher.py)
+-- and needs a few minutes to boot, so a moved job gets a fresh thirty-minute
+-- claim window, and the session of its run (or of its preparation's adaptation
+-- run) is shifted by the time the job already waited: the team keeps the whole
+-- window it had when the job was created.
 create function public.observer_fallback_job(p_job uuid,p_avoid text[] default '{}')
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare v private.observer_jobs; v_partner private.observer_jobs; v_target private.observer_installations;
@@ -97,14 +102,19 @@ begin
   if not found then raise exception 'fallback_unavailable'; end if;
   update private.observer_jobs set organization=v_target.organization,repository_id=v_target.repository_id,
     organization_id=v_target.organization_id,workflow_sha=v_target.approved_sha,runner='self-hosted',
-    status='queued',error='',dispatch_count=1,last_dispatch_at=now()
+    status='queued',error='',dispatch_count=1,last_dispatch_at=now(),
+    expires_at=greatest(expires_at,now()+interval '30 minutes')
     where id=p_job;
   if v_partner.id is not null then
     update private.observer_jobs set organization=v_target.organization,repository_id=v_target.repository_id,
       organization_id=v_target.organization_id,workflow_sha=v_target.approved_sha,runner='self-hosted',
-      status='queued',error='',dispatch_count=0,last_dispatch_at=null
+      status='queued',error='',dispatch_count=0,last_dispatch_at=null,
+      expires_at=greatest(expires_at,now()+interval '30 minutes')
       where id=v_partner.id;
   end if;
+  update private.observer_sessions s set expires_at=s.expires_at+(now()-v.created_at)
+    where s.expires_at>now() and s.deadline_at is null and s.run_id in
+      (v.run_id,(select p.model_run_id from private.observer_preparations p where p.revision_id=v.revision_id));
   if v_target.organization<>v.organization then
     select coalesce(b.user_id,pr.owner_id) into v_owner
       from private.observer_jobs j
