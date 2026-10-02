@@ -19,6 +19,8 @@ class Settings:
         self.runs_dir = self.data_dir / "runs"
         self.kinds = [k.strip() for k in env.get("SAC_WORKER_KINDS", "agent,results").split(",") if k.strip()]
         self.poll_seconds = float(env.get("SAC_POLL_SECONDS", "3"))
+        # idle backoff: doubles from poll_seconds up to this cap while the queue is empty, resets on a claim
+        self.poll_backoff_max_seconds = float(env.get("SAC_POLL_BACKOFF_MAX_SECONDS", "30"))
         self.stale_minutes = int(env.get("SAC_STALE_MINUTES", "30"))
         # sandbox
         self.sandbox_mode = env.get("SAC_SANDBOX_MODE", "subprocess")
