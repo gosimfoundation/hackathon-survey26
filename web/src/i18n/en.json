@@ -220,7 +220,7 @@
       "tour_done": "Start watching",
       "tour_skip": "Skip",
       "tour": {
-        "axes": "The horizontal axis is right ascension — the sky's longitude — going all the way round from 0° to 360°. The vertical axis is declination, its latitude. R00–R07 across the top are the eight regions the sky is split into by right ascension.",
+        "axes": "The horizontal axis is right ascension — the sky's longitude — cropped to the slice this catalogue's targets actually sit in. The vertical axis is declination, its latitude.",
         "tiles": "Each mark is a target: ◇ must be finished (REQUIRED), □ is optional (FLEXIBLE). A ring means it is high enough to shoot right now; filled in means some pointing's fibre has already landed on it. While a pointing is live, thin lines join it to the targets its 16 fibres are hitting.",
         "meridian": "The dashed blue line is where the telescope is pointing right now. It drifts to the right as the Earth turns, and moves quicker around dawn, where a whole daytime is skipped.",
         "hud": "The row underneath is the current slot, the weather at that moment and the progress. The four weather figures are seeing, transparency, sky brightness and instrument efficiency — hover them for an explanation. The score climbs as targets light up, and that is the number competitors are trying to maximise."

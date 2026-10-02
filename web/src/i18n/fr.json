@@ -352,7 +352,7 @@
       "tour_done": "Regarder",
       "tour_skip": "Passer",
       "tour": {
-        "axes": "L'axe horizontal est l'ascension droite — la « longitude » du ciel — qui fait un tour complet de 0° à 360°. L'axe vertical est la déclinaison, sa « latitude ». R00–R07, en haut, sont les 8 régions du ciel.",
+        "axes": "L'axe horizontal est l'ascension droite — la « longitude » du ciel — recadrée sur la portion où se trouvent les cibles de ce catalogue. L'axe vertical est la déclinaison, sa « latitude ».",
         "tiles": "Chaque marque est une tuile à photographier : ◇ doit être terminée (REQUIRED), □ est optionnelle (FLEXIBLE). Un anneau signifie qu'elle est assez haute pour être photographiée maintenant ; pleine, elle est déjà faite.",
         "meridian": "La ligne bleue en pointillés est la direction que vise le télescope à cet instant ; elle dérive vers la droite avec la rotation de la Terre. Au passage à la nuit suivante, elle saute d'un coup : toute une journée a été passée.",
         "hud": "La ligne du bas donne le créneau en cours, la météo du moment et la progression. Les quatre valeurs météo sont le seeing, la transparence, la luminosité du ciel et l'efficacité de l'instrument — survolez-les pour une explication. Le score grimpe à mesure que les tuiles s'allument : c'est le nombre que les participants cherchent à maximiser."

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { replayActions, replayMeta, replayNetPrefix, replayNights, replayObserves, replaySite, replaySlots, replayTargets, replayTimeAt, replayTotals, replayHasCursor, replayPulseSec, settledCountAt, useReplayClock, SLOT_SECONDS } from '../../composables/useReplayClock'
-import { drawTargetMap, lstDeg, regionOf, PAD, type LivePointing, type ObservedMark } from '../../lib/skymap'
+import { drawTargetMap, lstDeg, regionOf, targetRaBounds, raBoundsFrac, PAD, type LivePointing, type ObservedMark } from '../../lib/skymap'
 import { OUTCOME_COLORS } from '../../lib/report'
 import { fmtUtc, num } from '../../lib/format'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
@@ -34,11 +34,17 @@ const targetById = computed(() => { void replayMeta.version; return new Map(repl
 const narration = computed(() => tf(`hero.console.beat.${beat.value.key}`, { region: beat.value.region, night: beat.value.nightNo, nights: replayTotals.nights, n: beat.value.n }))
 /** Where the meridian sits inside the canvas box, so the walkthrough can point at the line wherever it is. */
 const meridianLeft = ref('50%')
+/** False while the LST line is off the (cropped) RA window — the map draws an edge arrow instead, and the
+ * hover strip and tooltip follow suit rather than sitting over empty axis space. */
+const meridianOnScreen = ref(true)
 function trackMeridian(nowSec: number) {
   const el = canvas.value
   if (!el || !el.clientWidth) return
-  const plot = el.clientWidth - PAD.left - PAD.right
-  const px = PAD.left + (lstDeg(replaySite.lon, nowSec) / 360) * plot
+  const plotW = el.clientWidth - PAD.left - PAD.right
+  const frac = raBoundsFrac(targetRaBounds(replayTargets), lstDeg(replaySite.lon, nowSec))
+  meridianOnScreen.value = frac != null
+  if (frac == null) return
+  const px = PAD.left + frac * plotW
   meridianLeft.value = `${(px / el.clientWidth) * 100}%`
 }
 
@@ -161,8 +167,8 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOv
     <div class="sky-stage">
       <canvas ref="canvas" class="sky-canvas" role="img" :aria-label="t('hero.console.aria')"></canvas>
       <!-- Hover label for the cursor: only when a cursor is drawn, and only for a mouse — a tap sends no "leave" and pinned it open. -->
-      <div v-if="cursorShown" class="sky-meridian-hit" :style="{ left: meridianLeft }" aria-hidden="true" @pointerenter="e => { if (e.pointerType === 'mouse') lstOpen = true }" @pointerleave="lstOpen = false"></div>
-      <div v-if="lstOpen && cursorShown" class="sky-lst" :style="{ left: meridianLeft }">{{ tf('hero.console.lst', { lst: hud.lst }) }}</div>
+      <div v-if="cursorShown && meridianOnScreen" class="sky-meridian-hit" :style="{ left: meridianLeft }" aria-hidden="true" @pointerenter="e => { if (e.pointerType === 'mouse') lstOpen = true }" @pointerleave="lstOpen = false"></div>
+      <div v-if="lstOpen && cursorShown && meridianOnScreen" class="sky-lst" :style="{ left: meridianLeft }">{{ tf('hero.console.lst', { lst: hud.lst }) }}</div>
       <div v-if="tourOpen" class="sky-tour" role="dialog" aria-modal="false" :aria-label="t('hero.console.tour_title')">
         <!-- The spotlight's shade stops at the sky map; unclipped it darkened the whole hero, title and buttons included. -->
         <div class="sky-tour-shade" aria-hidden="true">
@@ -202,7 +208,6 @@ onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOv
       <span><i style="border-color:#78a6ff"></i>{{ t('hero.console.legend_flexible') }}</span>
       <span><i :style="{ background: OUTCOME_COLORS.completed, borderColor: OUTCOME_COLORS.completed }"></i>{{ t('hero.console.legend_completed') }}</span>
       <span><i :style="{ borderColor: OUTCOME_COLORS.interrupted }"></i>{{ t('hero.console.legend_interrupted') }}</span>
-      <span v-if="cursorShown"><i class="ring"></i>{{ t('hero.console.legend_visible') }}</span>
       <span v-if="cursorShown"><i class="meridian"></i>{{ t('hero.console.legend_meridian') }}</span>
     </div>
     <dl class="sky-hud" aria-live="off">
