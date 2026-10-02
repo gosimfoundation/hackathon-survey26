@@ -2037,7 +2037,7 @@
       },
       {
         "q": "Must I open-source my agent?",
-        "a": "Not to take part: you can submit a private ZIP. Award-winning entries must be released as open source; we recommend a license such as Apache or MIT. Before awards are confirmed, organizers may re-run top teams' final versions and ask for the complete code and the external services and models used, to reproduce the result."
+        "a": "Award-winning entries must be released as open source, open to public scrutiny."
       },
       {
         "q": "What happens if my agent crashes or times out?",
