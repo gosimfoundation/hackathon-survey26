@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
 import { useRouter } from 'vue-router'
+import 'katex/dist/katex.min.css'
+
+marked.use(markedKatex({ throwOnError: false, nonStandard: true }))
 
 export interface TocItem { id: string; text: string; level: number }
 const props = defineProps<{ source: string }>()
