@@ -1,14 +1,15 @@
 {
   "meta": {
-    "title": "サーベイ・エージェント · GOSIM ハッカソン",
-    "brand": "サーベイ・エージェント",
+    "title": "Agentic Observer ハッカソン · GOSIM",
+    "brand": "Agentic Observer ハッカソン",
     "description": "GOSIM サーベイハッカソン：天文台のための観測エージェントを書く——公開された空の状態は見えるが、本当の天気は見えないまま、15 分ごとに次にどの空を撮るかを決める。",
     "pages": {
       "start": {
         "title": "3 ステップで開始",
         "description": "ドキュメントを読み、エージェントを作って提出——最初の参加はこの 3 ステップだけ。"
       }
-    }
+    },
+    "wordmark_note": "Agentic Observer"
   },
   "common": {
     "save": "保存",
@@ -93,22 +94,22 @@
       "items": [
         {
           "n": "01",
-          "name": "サーベイ・エージェント",
-          "sub": "Agentic Observer",
+          "name": "Agentic Observer ハッカソン",
+          "sub": "深圳 2026 · Agentic Observer",
           "href": "",
           "current": true
         },
         {
           "n": "02",
           "name": "Agentic App ハッカソン",
-          "sub": "The Intent Is the App",
+          "sub": "深圳 2026 · Agentic App",
           "href": "https://create.gosim.org/agenticapp26/",
           "current": false
         },
         {
           "n": "03",
-          "name": "Agentic Factory 国際ハッカソン",
-          "sub": "OAIC · Agentic Factory",
+          "name": "Agentic Software Factory ハッカソン",
+          "sub": "深圳 2026 · OAIC",
           "href": "https://create.gosim.org/factory26/",
           "current": false
         }
@@ -141,10 +142,10 @@
     "tagline": "同じサーベイ計画、天気リプレイ、追加リクエスト、シミュレーター、採点ルール。変数は戦略だけ。",
     "location": "オンライン開発と統一評価 · 10 月 17 日 GOSIM 深圳",
     "button": "今すぐ登録",
-    "tag": "2026 / GOSIM / AGENT OBSERVER"
+    "tag": "2026 / GOSIM / AGENTIC OBSERVER"
   },
   "footer": {
-    "copyright": "2026 GOSIM · サーベイ・エージェント",
+    "copyright": "2026 GOSIM · Agentic Observer ハッカソン",
     "mainSite": "GOSIM",
     "lockup": "OPEN / OBSERVER",
     "links": {
@@ -283,8 +284,12 @@
   },
   "hero": {
     "eyebrow": "GOSIM ハッカソン · インテリジェント・サーベイ",
-    "system": "サーベイ・エージェント",
-    "subtitle": "Agentic Observer",
+    "system": "Agentic Observer ハッカソン",
+    "titleLines": [
+      "Agentic Observer",
+      "ハッカソン"
+    ],
+    "subtitle": "インテリジェント・サーベイ",
     "lede": "サーベイ望遠鏡を一晩運用するエージェントを書く：空の状態を読み、主担当観測者のように判断し、シミュレーション時間で15分ごとに次の観測を選ぶ。",
     "pipeline": [
       {
@@ -933,6 +938,7 @@
       "s2_lead": "ドキュメントのプロトコルに従ってエージェントを作ります。",
       "s2_desc": "決定ロジックを変更して、スコアを上げましょう。",
       "s2_link": "タスク説明を見る",
+      "s2_examples_link": "サンプルプロジェクトを見る",
       "s3_title": "ステップ 3 · 完全なプロジェクトを提出",
       "s3_intro": "ログインして「参加する」を開きます：",
       "s3_points": [
@@ -954,6 +960,7 @@
       "s2_lead": "ドキュメントのプロトコルに従ってエージェントを作ります。",
       "s2_desc": "決定ロジックを変更して、ステップ 3 に進みましょう。",
       "s2_link": "タスク説明を見る",
+      "s2_examples_link": "サンプルプロジェクトを見る",
       "s3_title": "ステップ 3 · 完全なプロジェクトを提出",
       "s3_intro": "ログインして「参加する」を開きます：コードをアップロード → バージョンを確認 → 評価を開始。",
       "s3_points": [

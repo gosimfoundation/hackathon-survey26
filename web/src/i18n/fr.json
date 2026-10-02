@@ -1,14 +1,15 @@
 {
   "meta": {
-    "title": "Agent Observateur · Hackathon GOSIM",
-    "brand": "Agent Observateur",
+    "title": "Hackathon Agentic Observer · GOSIM",
+    "brand": "Hackathon Agentic Observer",
     "description": "Hackathon GOSIM de relevé du ciel : écrivez un agent d'observation pour un observatoire — il voit l'état public du ciel mais jamais la vraie météo, et décide toutes les 15 minutes quelle zone photographier.",
     "pages": {
       "start": {
         "title": "Démarrer en 3 étapes",
         "description": "Lisez la documentation, construisez votre agent et soumettez — trois étapes pour un premier score."
       }
-    }
+    },
+    "wordmark_note": "Agentic Observer"
   },
   "common": {
     "save": "Enregistrer",
@@ -93,22 +94,22 @@
       "items": [
         {
           "n": "01",
-          "name": "Agent Observateur",
-          "sub": "Agentic Observer",
+          "name": "Hackathon Agentic Observer",
+          "sub": "Shenzhen 2026 · Agentic Observer",
           "href": "",
           "current": true
         },
         {
           "n": "02",
           "name": "Hackathon Agentic App",
-          "sub": "The Intent Is the App",
+          "sub": "Shenzhen 2026 · Agentic App",
           "href": "https://create.gosim.org/agenticapp26/",
           "current": false
         },
         {
           "n": "03",
-          "name": "Hackathon international Agentic Factory",
-          "sub": "OAIC · Agentic Factory",
+          "name": "Hackathon Agentic Software Factory",
+          "sub": "Shenzhen 2026 · OAIC",
           "href": "https://create.gosim.org/factory26/",
           "current": false
         }
@@ -141,10 +142,10 @@
     "tagline": "Même plan de relevé, même rejeu météo, mêmes requêtes, même simulateur, même barème. La seule variable, c'est la stratégie.",
     "location": "Développement en ligne, évaluation unifiée · 17 octobre, GOSIM Shenzhen",
     "button": "S'inscrire",
-    "tag": "2026 / GOSIM / AGENT OBSERVER"
+    "tag": "2026 / GOSIM / AGENTIC OBSERVER"
   },
   "footer": {
-    "copyright": "2026 GOSIM · Agent Observateur",
+    "copyright": "2026 GOSIM · Hackathon Agentic Observer",
     "mainSite": "GOSIM",
     "lockup": "OPEN / OBSERVER",
     "links": {
@@ -283,8 +284,12 @@
   },
   "hero": {
     "eyebrow": "Hackathon GOSIM · Relevé du ciel intelligent",
-    "system": "Agent Observateur",
-    "subtitle": "巡天智能体",
+    "system": "Hackathon Agentic Observer",
+    "titleLines": [
+      "Hackathon",
+      "Agentic Observer"
+    ],
+    "subtitle": "Relevé du ciel intelligent",
     "lede": "Écrivez un agent qui pilote un télescope de relevé pendant la nuit : il lit l'état du ciel, décide comme un observateur principal et choisit la prochaine observation toutes les 15 minutes simulées.",
     "pipeline": [
       {
@@ -933,6 +938,7 @@
       "s2_lead": "Construisez votre agent selon le protocole de la documentation.",
       "s2_desc": "Améliorez la logique de décision pour augmenter le score.",
       "s2_link": "Lire la description de la tâche",
+      "s2_examples_link": "Voir les projets exemples",
       "s3_title": "Étape 3 · Soumettre un projet complet",
       "s3_intro": "Connectez-vous et ouvrez Participer :",
       "s3_points": [
@@ -954,6 +960,7 @@
       "s2_lead": "Construisez votre agent selon le protocole de la documentation.",
       "s2_desc": "Améliorez la logique de décision, puis passez à l’étape 3.",
       "s2_link": "Lire la description de la tâche",
+      "s2_examples_link": "Voir les projets exemples",
       "s3_title": "Étape 3 · Soumettre un projet complet",
       "s3_intro": "Connectez-vous et ouvrez Participer : envoyez votre code → confirmez la version → lancez une évaluation.",
       "s3_points": [

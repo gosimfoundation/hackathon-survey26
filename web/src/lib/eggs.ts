@@ -69,7 +69,7 @@ export function consoleGreeting() {
       `%c
    ✦        ·           ✦
         _____
-       /  ◉  \\     AGENTIC OBSERVER · 巡天智能体
+       /  ◉  \\     AGENTIC OBSERVER HACKATHON · 智能体巡天黑客松
       |_______|
        /     \\          ·
   ·                承 900 秒一次的凝视

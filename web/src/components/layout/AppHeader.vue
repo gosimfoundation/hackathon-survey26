@@ -58,7 +58,7 @@ async function logout() {
   <header class="cosmos-header sticky top-0 z-50 border-b border-border backdrop-blur">
     <div class="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-6 sm:px-5 md:px-10 xl:px-14">
       <div class="flex items-center gap-3">
-        <router-link to="/" aria-label="Agentic Observer home" class="flex items-center gap-3">
+        <router-link to="/" :aria-label="`${t('meta.brand')} · ${t('meta.pages.home.title')}`" class="flex items-center gap-3">
           <span class="cosmos-wordmark shrink-0 whitespace-nowrap text-lg text-[#f5f5f5]">GOSIM <span class="hidden sm:inline text-[#315efb]">Create</span></span>
         </router-link>
         <span class="hidden h-4 w-px bg-white/25 sm:block"></span>

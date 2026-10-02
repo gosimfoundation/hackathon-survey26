@@ -9,7 +9,7 @@ const messages: Record<string, Messages> = Object.fromEntries(LOCALES.map(locale
   JSON.parse(readFileSync(new URL(`../src/i18n/${locale}.json`, import.meta.url), 'utf8')),
 ]))
 
-// Mirror of tests/test_current_competition_browser.py: each stage must never name the other one.
+// The three-step walkthrough keeps the two stages' submission instructions separate.
 const COMPETITION_WORDS = /正式赛|正式比赛|线上比赛|online competition|finals-preview|competition scenarios|正式大会|オンライン大会|compétition en ligne/i
 const PRACTICE_WORDS = /练习赛|练习场景|Playground|\bpractice\b|練習|entraînement/i
 
@@ -19,8 +19,8 @@ function* flatten(value: unknown): Generator<string> {
   else if (value && typeof value === 'object') for (const item of Object.values(value)) yield* flatten(item)
 }
 
-const STEP_KEYS = ['subtitle', 's1_title', 's1_desc', 's1_cta', 's2_title', 's2_lead', 's2_cmd', 's2_desc',
-  's2_link', 's3_title', 's3_intro', 's3_points', 's3_cta', 'help_prefix', 'help_faq', 'help_or', 'help_rules', 'help_suffix']
+const STEP_KEYS = ['subtitle', 's1_title', 's1_desc', 's1_cta', 's2_title', 's2_lead', 's2_desc',
+  's2_link', 's2_examples_link', 's3_title', 's3_intro', 's3_points', 's3_cta', 'help_prefix', 'help_faq', 'help_or', 'help_rules', 'help_suffix']
 
 test('every locale carries the full three-step copy for both stages', () => {
   for (const locale of LOCALES) {
@@ -48,10 +48,10 @@ test('the practice copy never names the competition stage and vice versa', () =>
   }
 })
 
-test('the local command and the submission limits match the starter kit and the rules', () => {
+test('the walkthrough uses current project guidance and preserves the submission limits', () => {
   for (const locale of LOCALES) {
-    assert.equal(messages[locale]!.start3.practice.s2_cmd, 'python3 local_runner.py')
-    assert.equal(messages[locale]!.start3.competition.s2_cmd, 'python3 local_runner.py')
+    // The starter-kit download was retired; new participants use the docs and example projects.
+    assert.doesNotMatch([...flatten(messages[locale]!.start3)].join(' '), /local_runner\.py|agent-observer-starter-kit/)
   }
   assert.match(messages.zh!.start3.practice.s3_points.join(' '), /5 次/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /每队每天 4 次评测/)

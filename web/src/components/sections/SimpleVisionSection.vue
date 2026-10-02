@@ -35,7 +35,7 @@ const slides = computed(() => [
       'An agent observer weighing weather, sky tiles and survey progress into an observing plan',
       '观测智能体把天气、天区与巡天进度权衡成一份观测计划',
     ),
-    stamp: pick('AGENT OBSERVER / SURVEY STRATEGY', '观测智能体 / 巡天策略'),
+    stamp: pick('AGENTIC OBSERVER / SURVEY STRATEGY', '观测智能体 / 巡天策略'),
     caption: pick(
       'We let the agent take over: the same sky tiles, the same weather and progress, and it proposes the next pointing.',
       '我们让智能体接手：同样的天区、同样的天气与进度，由它给出下一个指向。',

@@ -36,7 +36,7 @@ test('optional parameters keep their static prefix and required ones are skipped
 
 test('route pages are copies of the finished shell with their own title', () => {
   const shell = '<!doctype html><html><head>\n<script src="/survey26/platform/restore-route.js"></script>\n'
-    + '<title>巡天智能体 · Agentic Observer</title>\n<meta name="description" content="generic" />\n'
+    + '<title>智能体巡天黑客松 · Agentic Observer</title>\n<meta name="description" content="generic" />\n'
     + '<meta property="og:title" content="old" />\n<script type="module" crossorigin src="/survey26/platform/assets/index-abc.js"></script>\n'
     + '</head><body><div id="app"></div></body></html>'
   const directory = mkdtempSync(join(tmpdir(), 'route-pages-'))
@@ -45,15 +45,15 @@ test('route pages are copies of the finished shell with their own title', () => 
     assert.equal(written.length, Object.keys(STATIC_ROUTES).length)
     assert.ok(written.includes('rules/index.html') && written.includes('leaderboard/online/index.html') && written.includes('admin/phases/index.html'))
     const rules = readFileSync(join(directory, 'rules/index.html'), 'utf8')
-    assert.match(rules, /<title>规则 · 巡天智能体<\/title>/)
-    assert.match(rules, /<meta property="og:title" content="规则 · 巡天智能体" \/>/)
+    assert.match(rules, /<title>规则 · 智能体巡天黑客松<\/title>/)
+    assert.match(rules, /<meta property="og:title" content="规则 · 智能体巡天黑客松" \/>/)
     assert.match(rules, new RegExp(`<meta name="description" content="${zh.meta.pages.rules.description}" />`))
     assert.ok(rules.startsWith(`<!doctype html><html><head>\n${CANONICAL_PATH_SCRIPT}\n<script src="/survey26/platform/restore-route.js">`))
     const bare = html => html.replace(CANONICAL_PATH_SCRIPT + '\n', '').replace(/<title>.*<\/title>|<meta [^>]*>/g, '')
     assert.equal(bare(rules), bare(shell))
-    assert.match(readFileSync(join(directory, 'vision/index.html'), 'utf8'), /<title>完整赛事说明 · 巡天智能体<\/title>/)
-    assert.match(readFileSync(join(directory, 'login/index.html'), 'utf8'), /<title>报名 · 巡天智能体<\/title>/)
-    assert.match(readFileSync(join(directory, 'leaderboard/practice/index.html'), 'utf8'), /<title>排行榜 · 巡天智能体<\/title>/)
+    assert.match(readFileSync(join(directory, 'vision/index.html'), 'utf8'), /<title>完整赛事说明 · 智能体巡天黑客松<\/title>/)
+    assert.match(readFileSync(join(directory, 'login/index.html'), 'utf8'), /<title>报名 · 智能体巡天黑客松<\/title>/)
+    assert.match(readFileSync(join(directory, 'leaderboard/practice/index.html'), 'utf8'), /<title>排行榜 · 智能体巡天黑客松<\/title>/)
   } finally { rmSync(directory, { recursive: true, force: true }) }
 })
 

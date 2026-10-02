@@ -54,9 +54,9 @@ if (config.platform) {
   writeFileSync(join(destination, 'deployment.json'), JSON.stringify({ repository: `https://github.com/${config.repository}.git`, revision }))
   writeFileSync(join(output, 'index.html'), `<!doctype html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>巡天智能体 · Agent Observer</title><link rel="icon" href="${appBase}favicon.svg">
+<title>智能体巡天黑客松 · Agentic Observer Hackathon</title><link rel="icon" href="${appBase}favicon.svg">
 <script>window.location.replace('${appBase}' + window.location.search + window.location.hash)</script>
-<meta http-equiv="refresh" content="0; url=${appBase}"></head><body><a href="${appBase}">巡天智能体 · Agent Observer</a></body></html>\n`)
+<meta http-equiv="refresh" content="0; url=${appBase}"></head><body><a href="${appBase}">智能体巡天黑客松 · Agentic Observer Hackathon</a></body></html>\n`)
 }
 const requiredFiles = config.platform ? ['index.html', 'platform/index.html', 'platform/restore-route.js', 'platform/deployment.json'] : ['index.html']
 for (const file of [...requiredFiles, ...routePages]) if (!existsSync(join(output, file))) throw new Error(`Missing ${file}`)

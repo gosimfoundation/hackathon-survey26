@@ -11,7 +11,7 @@ import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
 const { current, next, nextStart, nextStartsAt, usingFallback, countdown, loaded } = usePhaseClock()
-const heroTitleLines = computed(() => locale.value === 'zh' ? ['巡天智能体'] : ['Agent Observer'])
+const heroTitleLines = computed(() => t('hero.titleLines') as string[])
 const pad = (n: number) => String(n).padStart(2, '0')
 const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
 const parts = computed(() => [
@@ -183,7 +183,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 .hero-title-line { display: block; }
-.hero-title-zh { font-size: clamp(3.2rem, 5.6vw, 5.8rem); line-height: 1.04; }
+.hero-title-zh { max-width: none; font-size: clamp(3.2rem, 5.6vw, 5.8rem); line-height: 1.04; }
 
 .hero-action {
   position: relative;
@@ -300,7 +300,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 
 @media (max-width: 720px) {
   .hero-title { font-size: clamp(3rem, 15vw, 4.5rem); }
-  .hero-title-zh { font-size: clamp(2.8rem, 14vw, 4rem); }
+  .hero-title-zh { max-width: none; font-size: clamp(2.8rem, 14vw, 4rem); }
   .hero-action { min-width: calc(50% - .4rem); }
   .phase-countdown { gap: .9rem; }
 }

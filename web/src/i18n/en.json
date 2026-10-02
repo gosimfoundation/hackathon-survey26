@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "Agentic Observer · GOSIM Hackathon",
+    "title": "Agentic Observer Hackathon · GOSIM",
     "description": "The GOSIM survey-agent hackathon: write an observing agent for a telescope that sees the published sky but not the real weather, and decides what to point at next every 15 minutes.",
-    "wordmark_note": "AGENTIC OBSERVER",
-    "brand": "Agentic Observer",
+    "wordmark_note": "Agentic Observer",
+    "brand": "Agentic Observer Hackathon",
     "pages": {
       "home": {
         "title": "Home",
@@ -11,11 +11,11 @@
       },
       "brief": {
         "title": "Full event brief",
-        "description": "Mission, timeline, prizes and evaluation of the Agentic Observer hackathon."
+        "description": "Mission, timeline, prizes and evaluation of the Agentic Observer Hackathon."
       },
       "rules": {
         "title": "Rules",
-        "description": "Eligibility, submission limits, scoring and conduct rules for the Agentic Observer hackathon."
+        "description": "Eligibility, submission limits, scoring and conduct rules for the Agentic Observer Hackathon."
       },
       "cards": {
         "title": "Task cards",
@@ -39,7 +39,7 @@
       },
       "announcements": {
         "title": "Announcements",
-        "description": "Organizer announcements for the Agentic Observer hackathon."
+        "description": "Organizer announcements for the Agentic Observer Hackathon."
       },
       "register": {
         "title": "Register",
@@ -122,22 +122,22 @@
       "items": [
         {
           "n": "01",
-          "name": "巡天智能体",
-          "sub": "Agentic Observer",
+          "name": "Agentic Observer Hackathon",
+          "sub": "Shenzhen 2026 · Agentic Observer",
           "href": "",
           "current": true
         },
         {
           "n": "02",
           "name": "Agentic App Hackathon",
-          "sub": "The Intent Is the App",
+          "sub": "Shenzhen 2026 · Agentic App",
           "href": "https://create.gosim.org/agenticapp26/",
           "current": false
         },
         {
           "n": "03",
-          "name": "Agentic Factory International Hackathon",
-          "sub": "OAIC · Agentic Factory",
+          "name": "Agentic Software Factory Hackathon",
+          "sub": "Shenzhen 2026 · OAIC",
           "href": "https://create.gosim.org/factory26/",
           "current": false
         }
@@ -147,8 +147,12 @@
   },
   "hero": {
     "eyebrow": "GOSIM Hackathon · Intelligent Survey Operations",
-    "system": "Agentic Observer",
-    "subtitle": "巡天智能体",
+    "system": "Agentic Observer Hackathon",
+    "titleLines": [
+      "Agentic Observer",
+      "Hackathon"
+    ],
+    "subtitle": "Intelligent Survey Operations",
     "lede": "Write an agent that runs a survey telescope through the night: it reads the sky state, decides like a lead observer, and picks the next observation every 15 simulated minutes.",
     "pipeline": [
       {
@@ -578,7 +582,7 @@
     }
   },
   "vision": {
-    "pageTitle": "Agentic Observer",
+    "pageTitle": "Agentic Observer Hackathon",
     "pageSubtitle": "A GOSIM Hackathon for Intelligent Survey Operations",
     "intro": "This participant briefing explains why survey operations need agent observers, what a human leading observer does, how the challenge works across three planning horizons, what you submit, how scoring works, the astronomy you need, and the event schedule.",
     "backToHome": "Back to home",
@@ -1277,10 +1281,10 @@
     "tagline": "Same survey plan, weather replay, inserted requests, simulator, and scoring rule. The only variable is strategy.",
     "location": "Online development and evaluation · October 17 at GOSIM Shenzhen",
     "button": "Register now",
-    "tag": "2026 / GOSIM / AGENT OBSERVER"
+    "tag": "2026 / GOSIM / AGENTIC OBSERVER"
   },
   "footer": {
-    "copyright": "2026 GOSIM · Agentic Observer",
+    "copyright": "2026 GOSIM · Agentic Observer Hackathon",
     "license": {
       "prefix": "Challenge data, task cards, evaluation code and example projects are provided under ",
       "linkText": "CC BY-NC 4.0",

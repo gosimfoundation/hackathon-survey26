@@ -49,7 +49,7 @@ const kickerText = (kicker: string) => kicker.replace(/^\d+ \/ /, '')
           </router-link>
         </div>
         <div>
-          <span class="font-mono text-xs uppercase tracking-[.1em] text-[#315efb]">{{ pick('AGENT OBSERVER / PARTICIPANT BRIEFING / 01—08', '巡天智能体 / 参赛说明 / 01—08') }}</span>
+          <span class="font-mono text-xs uppercase tracking-[.1em] text-[#315efb]">{{ pick('AGENTIC OBSERVER HACKATHON / PARTICIPANT BRIEFING / 01—08', '智能体巡天黑客松 / 参赛说明 / 01—08') }}</span>
           <h1 class="mt-7 max-w-[14ch] text-balance text-[clamp(3rem,6.5vw,6.75rem)] font-semibold leading-[1.02] tracking-[-.055em] text-[#f5f5f5]">{{ t('vision.pageTitle') }}</h1>
           <p class="mt-8 max-w-2xl text-base font-medium leading-[1.7] text-white/80 md:text-lg">{{ t('vision.pageSubtitle') }}</p>
           <p class="mt-7 max-w-3xl border-t border-white/30 pt-6 text-sm leading-relaxed text-white/65 md:text-base">{{ t('vision.intro') }}</p>

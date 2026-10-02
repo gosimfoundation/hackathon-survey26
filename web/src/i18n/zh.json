@@ -1,17 +1,17 @@
 {
   "meta": {
-    "title": "巡天智能体 · GOSIM 黑客松",
-    "description": "GOSIM 智能巡天黑客松：为天文台写一个观测智能体——它看得到公开的天空状态，却看不到真实天气，每 15 分钟决定下一步拍哪片天。",
-    "wordmark_note": "AGENTIC OBSERVER",
-    "brand": "巡天智能体",
+    "title": "智能体巡天黑客松 · GOSIM",
+    "description": "GOSIM 智能体巡天黑客松：为天文台写一个观测智能体——它看得到公开的天空状态，却看不到真实天气，每 15 分钟决定下一步拍哪片天。",
+    "wordmark_note": "智能体巡天",
+    "brand": "智能体巡天黑客松",
     "pages": {
       "home": {
         "title": "首页",
-        "description": "GOSIM 智能巡天黑客松：为天文台写一个观测智能体——它看得到公开的天空状态，却看不到真实天气，每 15 分钟决定下一步拍哪片天。"
+        "description": "GOSIM 智能体巡天黑客松：为天文台写一个观测智能体——它看得到公开的天空状态，却看不到真实天气，每 15 分钟决定下一步拍哪片天。"
       },
       "brief": {
         "title": "完整赛事说明",
-        "description": "巡天智能体黑客松的任务、日程、奖金与评测方式。"
+        "description": "智能体巡天黑客松的任务、日程、奖金与评测方式。"
       },
       "rules": {
         "title": "规则",
@@ -122,22 +122,22 @@
       "items": [
         {
           "n": "01",
-          "name": "巡天智能体",
-          "sub": "Agentic Observer",
+          "name": "智能体巡天黑客松",
+          "sub": "深圳 2026 · 智能体巡天",
           "href": "",
           "current": true
         },
         {
           "n": "02",
-          "name": "Agentic App 黑客松",
-          "sub": "意图，即应用 · The Intent Is the App",
+          "name": "智能体应用 黑客松",
+          "sub": "深圳 2026 · 智能体应用",
           "href": "https://create.gosim.org/agenticapp26/",
           "current": false
         },
         {
           "n": "03",
-          "name": "智能体工厂国际黑客松与大奖赛",
-          "sub": "OAIC · Agentic Factory",
+          "name": "智能体软件工厂 黑客松",
+          "sub": "深圳 2026 · OAIC",
           "href": "https://create.gosim.org/factory26/",
           "current": false
         }
@@ -147,8 +147,12 @@
   },
   "hero": {
     "eyebrow": "GOSIM 黑客松 · 智能巡天",
-    "system": "巡天智能体",
-    "subtitle": "Agentic Observer",
+    "system": "智能体巡天黑客松",
+    "titleLines": [
+      "智能体巡天",
+      "黑客松"
+    ],
+    "subtitle": "智能巡天",
     "lede": "写一个替巡天望远镜值夜的智能体：读取天空状态，像主值观测员那样判断，每 15 分钟（模拟时间）选择下一次观测。",
     "pipeline": [
       {
@@ -578,7 +582,7 @@
     }
   },
   "vision": {
-    "pageTitle": "巡天智能体",
+    "pageTitle": "智能体巡天黑客松",
     "pageSubtitle": "面向智能巡天的 GOSIM 黑客松",
     "intro": "这份参赛说明介绍巡天运行为什么需要观测智能体、人类主值观测员的职责、挑战赛的三层规划范围、参赛者要提交什么、如何计分、所需的天文概念，以及完整赛程。",
     "backToHome": "返回首页",
@@ -1277,10 +1281,10 @@
     "tagline": "同一巡天计划、天气回放、新增请求、模拟器与计分规则；唯一的变量是策略。",
     "location": "线上开发与统一评测 · 10 月 17 日 GOSIM 深圳",
     "button": "立即报名",
-    "tag": "2026 / GOSIM / AGENT OBSERVER"
+    "tag": "2026 / GOSIM / AGENTIC OBSERVER"
   },
   "footer": {
-    "copyright": "2026 GOSIM · 巡天智能体",
+    "copyright": "2026 GOSIM · 智能体巡天黑客松",
     "license": {
       "prefix": "比赛数据、任务卡、评测程序与示例项目按 ",
       "linkText": "CC BY-NC 4.0",
@@ -1471,9 +1475,9 @@
     "team_full_notice": "参赛队伍已满 {limit} 支，报名已关闭：不能再创建新队伍。你仍可以注册账号，并用队长给的邀请码加入已有队伍。"
   },
   "mail": {
-    "verify_subject": "验证你的巡天智能体账号",
+    "verify_subject": "验证你的智能体巡天黑客松账号",
     "verify_body": "打开以下链接验证邮箱：\n{url}\n",
-    "reset_subject": "重置巡天智能体密码",
+    "reset_subject": "重置智能体巡天黑客松密码",
     "reset_body": "打开以下链接设置新密码（两小时内有效）：\n{url}\n"
   },
   "dash": {
