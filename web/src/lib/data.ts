@@ -59,6 +59,8 @@ export interface LeaderboardEntry {
   calibrated?: boolean; raw_total_score?: number | null
   /** Card boards (observer_card_board) only: per-card scores on the overall tab, the overall score and rank on a card tab. */
   card_scores?: Record<string, number> | null; overall_score?: number | null; overall_rank?: number | null
+  /** Hidden final only: cards the team itself failed, shown as 0 (overall tab: their slugs; card tab: this card). */
+  unfinished_cards?: string[]; unfinished?: boolean
   targets_observed?: number | null; components?: Record<string, number> | null
 }
 

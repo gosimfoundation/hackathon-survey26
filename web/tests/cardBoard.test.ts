@@ -46,3 +46,17 @@ test('v3 board rows map exactly as before (no card fields)', () => {
   assert.equal(row.coverage_bonus, 0)
   assert.ok(!('card_scores' in row) && !('components' in row))
 })
+
+test('hidden final rows keep the cards the team itself failed (shown as 0)', () => {
+  const board = parseCardBoard({
+    layout: 'cards_overall', scenario: null, cards,
+    rows: [{ rank: 1, team_id: 't1', team_name: 'Team', total_score: 25, card_scores: { 'card-a': 50, 'card-b': 0 },
+      unfinished_cards: ['card-b'], overall_score: 25, overall_rank: 1 }],
+  })
+  assert.deepEqual(board.rows[0]!.card_scores, { 'card-a': 50, 'card-b': 0 })
+  assert.deepEqual(board.rows[0]!.unfinished_cards, ['card-b'])
+  const cardRow = toLeaderboardEntry({ team_id: 't1', total_score: 0, unfinished: true, overall_score: 25 }, 0)
+  assert.equal(cardRow.unfinished, true)
+  const plain = toLeaderboardEntry({ team_id: 't2', total_score: 10, card_scores: { 'card-a': 10 } }, 0)
+  assert.deepEqual([plain.unfinished_cards, plain.unfinished], [[], false])
+})

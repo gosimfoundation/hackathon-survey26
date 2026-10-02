@@ -49,8 +49,8 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
             @click="emit('select', row)" @keydown.enter.prevent="emit('select', row)">
           <td class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
           <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="teamId === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
-          <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}</td>
-          <template v-if="overallTab"><td v-for="c in cards" :key="c.slug" class="r m">{{ row.card_scores?.[c.slug] == null ? '—' : num(row.card_scores[c.slug]!) }}</td></template>
+          <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}<small v-if="!overallTab && row.unfinished" class="unfinished" :title="t('leaderboard.unfinished_help')" data-testid="card-unfinished">{{ t('leaderboard.unfinished') }}</small></td>
+          <template v-if="overallTab"><td v-for="c in cards" :key="c.slug" class="r m">{{ row.card_scores?.[c.slug] == null ? '—' : num(row.card_scores[c.slug]!) }}<small v-if="row.unfinished_cards?.includes(c.slug)" class="unfinished" :title="t('leaderboard.unfinished_help')" data-testid="card-unfinished">{{ t('leaderboard.unfinished') }}</small></td></template>
           <td v-if="showOverall" class="r m">{{ row.overall_score == null ? '—' : num(row.overall_score) }}<small v-if="row.overall_rank" class="text3"> · #{{ row.overall_rank }}</small></td>
           <td v-for="k in componentKeys" :key="k" class="r m" :class="{ 'text-[#ff6b6b]': (row.components?.[k] ?? 0) < 0 }">{{ row.components?.[k] == null ? '—' : signed(row.components[k]!) }}</td>
           <td v-if="showTiles" class="r m">{{ row.completed_tiles ?? '—' }}</td>
@@ -67,4 +67,5 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
 .lb-click { cursor: pointer; transition: background-color .2s ease; }
 .lb-click:hover { background: rgba(49,94,251,.08); }
 .lb-click:focus-visible { outline: 2px solid #78a6ff; outline-offset: -2px; }
+.unfinished { margin-left: .4em; font-size: .75em; color: #ff9b6b; white-space: nowrap; }
 </style>

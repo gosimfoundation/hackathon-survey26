@@ -2,7 +2,7 @@
 
 比赛（`online`）截止后，主办方用每队的**最终版本**在隐藏任务卡 E、F、G、H 上各跑一次，最终成绩为四张卡得分的算术平均（规则第 5 节第 13 条、第 6 节）。本手册是这一步的完整操作流程。所有命令都在仓库根目录执行，需要环境变量 `SUPABASE_PROJECT_REF`、`SUPABASE_ACCESS_TOKEN`（与其他主办方脚本相同），**不要把输出贴到公开渠道**。
 
-工具：`scripts/run-hidden-final.py`（默认只预览，`--apply` 才写入）。数据库逻辑在 `private.observer_run_hidden_final`（迁移 `20260927000800`、`20261001000200`）。
+工具：`scripts/run-hidden-final.py`（默认只预览，`--apply` 才写入）。数据库逻辑在 `private.observer_run_hidden_final`（迁移 `20260927000800`、`20261001000200`、`20261001000900`）。
 
 ## 1 · 规则在系统里如何落地
 
@@ -10,8 +10,8 @@
 |---|---|
 | 每队「最终版本」 | 队伍在 `online` 期间选定的版本；未选则用该队 `online` 最高分评测（四卡全部完成的那次，均分最高，同分取较早）的版本。`online.ends_at` 后锁定。管理后台「队伍 → 最终版本」可逐队查看。 |
 | 每队在 E–H 各跑一次 | 每队一个 formal 批次，批次里每张挂在 `final-hidden` 上的卡一个 run（共 4 个），不占每日额度。 |
-| 只评测一次；平台原因失败不计 | 已有当前卡组批次的队伍不会重复创建。失败批次分两类：**平台失败**（调度、runner、引擎等，`--retry-failed` 重跑整批 4 张卡）；**选手失败**（项目构建失败、崩溃、协议错误，`private.observer_participant_failure`）默认不重跑，只有主办方另行决定时用 `--retry-participant-failures`。 |
-| 最终成绩 = E–H 均分 | 批次全部 4 个 run 计分后批次状态为 `scored`，`score` 即四卡均分。`--results` 按均分降序排名（同分同名次，规则规定同分处理由主办方决定）。不完整或失败的队伍、隐藏队伍列出但不排名。 |
+| 只评测一次；平台原因失败不计 | 已有当前卡组批次的队伍不会重复创建。某张卡因**选手自身原因**失败（项目构建失败、崩溃、协议错误或轨迹核验被 rejected，`private.observer_participant_failure`）时该卡记 0 分，批次不会因此失败，其余卡照常调度（迁移 `20261001000900`，只对 sealed 且计入决赛的阶段生效）。只要有一张卡因**平台原因**（调度、runner、引擎、过期等）失败，批次即失败，`--retry-failed` 重跑整批 4 张卡。`--retry-participant-failures` 只用于此规则之前就因选手原因失败的旧批次，属主办方决定。 |
+| 最终成绩 = E–H 均分 | 4 个 run 都计分或因选手原因失败后批次状态为 `scored`，`score` 即四卡均分（选手原因失败的卡按 0 计）。`--results` 中这类卡显示 `0.00*`，CSV 的 `unfinished_cards` 列出它们；公布后的卡榜上显示 0 并标「未完成」。`--results` 按均分降序排名（同分同名次，规则规定同分处理由主办方决定）。不完整或失败的队伍、隐藏队伍列出但不排名。 |
 | 公布前保密 | `final-hidden` 是 sealed 阶段：`leaderboard_mode` 不为 `published` 时，选手看不到该阶段、卡名、批次、run、日志和结果下载，也不能自己在该阶段发起评测。隐藏卡文件在公布后也不公开。 |
 | 旧卡组的批次 | 只有恰好跑了当前 4 张卡的批次才算数。切换到 v4 之前的测试批次（v3 `eval-final`）既不挡住队伍、也不进入结果和卡榜。 |
 
@@ -59,7 +59,7 @@ python3 scripts/run-hidden-final.py --results --csv ~/hidden-final-results.csv
 | `already_evaluated` | 已有当前卡组的批次（排队、运行中或已计分） | 无需处理 |
 | `failed_settling` | 批次已判失败，但还有 run 在运行 | 等这些 run 结束后再判断、再重跑 |
 | `failed_platform` | 上次因平台原因失败 | `--retry-failed`（同时取消旧批次里不会再被调度的排队 run） |
-| `failed_participant` | 上次因选手项目失败 | 按规则不重跑；如主办方决定重跑，用 `--retry-participant-failures` |
+| `failed_participant` | 旧批次（迁移 `20261001000900` 之前）只因选手原因失败，其余卡没跑 | 如主办方决定重跑，用 `--retry-participant-failures` |
 | `version_not_materialized` | 最终版本没有可运行的物化包 | 人工检查该版本 |
 | `no_active_member` | 队伍没有未封禁的成员 | 人工处理 |
 | 未列出的队伍 | 没有最终版本（既没选，也没有完整计分的 `online` 评测） | 不参加决赛评测 |
@@ -76,7 +76,7 @@ python3 scripts/run-hidden-final.py --results --csv ~/hidden-final-results.csv
 
 ## 5 · 核验与公布
 
-1. `--results` 确认所有应参赛队伍都有 `scored` 结果；`failed (participant)` 的队伍按规则处理（不重跑；没有完整批次的队伍不会出现在公布后的卡榜上，其成绩如何记录由主办方决定并随成绩公布）。
+1. `--results` 确认所有应参赛队伍都有 `scored` 结果（选手原因失败的卡已按 0 计入，标 `*`）；仍为 `failed (platform)` 的先 `--retry-failed`。
 2. 前列复现：对前列队伍的 run 用 `scripts/verify-v4-run.py --bundle <卡包> --result <结果包>` 回放核对（只输出总分、计数和摘要，不输出卡内容）；规则第 6 节第 4 条的复现核验另按约定进行。
 3. 公布：在管理后台「阶段」把 `final-hidden` 的榜单模式改为 `published`（或 `update public.phases set leaderboard_mode='published' where slug='final-hidden'`）。公布后选手可看到该阶段卡榜（每卡 + 总榜）和自己的结果；隐藏卡文件仍不公开。加密保存的模型密钥在公布且保留期满后自动删除（迁移 `20260927001200`）。
 
