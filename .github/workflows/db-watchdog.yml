@@ -1,0 +1,48 @@
+name: DB watchdog
+
+# Checks the Supabase project every ~5 min and restarts it on a sustained
+# outage. No notifications are sent anywhere; see ops/db-watchdog.md.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log the restart decision but never call the restart API
+        type: boolean
+        default: false
+      simulate_fail:
+        description: Force every check to report failure (for testing the restart branch)
+        type: boolean
+        default: false
+
+concurrency:
+  group: db-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Fetch watchdog script
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            scripts/db_watchdog.py
+          sparse-checkout-cone-mode: false
+      - name: Check project health and restart if needed
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          SIMULATE_FAIL: ${{ github.event.inputs.simulate_fail || 'false' }}
+        run: python3 scripts/db_watchdog.py
