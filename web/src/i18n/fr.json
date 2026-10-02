@@ -243,7 +243,7 @@
     "steps": [
       "Créez votre compte (sans confirmation par e-mail)",
       "Créez une équipe ou rejoignez-en une avec un code d'invitation",
-      "Téléversez decisions.csv (entraînement) ou un projet complet"
+      "Soumettez un projet complet pour l'évaluation"
     ],
     "about_you": "Profil de participant",
     "about_you_note": "Les niveaux figurent sur votre carte de participant et aident des profils complémentaires à se trouver pour former une équipe.",
@@ -456,7 +456,7 @@
         {
           "n": "03",
           "title": "Soumettre pour évaluation",
-          "desc": "À l'entraînement, téléversez un decisions.csv, ou soumettez un projet complet (classement séparé). La compétition accepte uniquement un projet complet (dépôt public ou ZIP privé). Chaque équipe est notée par le même évaluateur figé."
+          "desc": "À l'entraînement, soumettez un projet complet (classement séparé). La compétition accepte uniquement un projet complet (dépôt public ou ZIP privé). Chaque équipe est notée par le même évaluateur figé."
         }
       ],
       "timeline": [
@@ -515,12 +515,12 @@
       "title": "Modes de soumission",
       "items": [
         {
-          "title": "Projets et CSV",
-          "desc": "L'entraînement accepte decisions.csv, ou un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
+          "title": "Projets",
+          "desc": "L'entraînement accepte un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
         },
         {
           "title": "Limites",
-          "desc": "Tout langage est accepté ; les modèles sont facultatifs. ZIP : 50 Mo ; CSV : 20 Mo. Chaque scénario a une durée commune. Compétition : 10 évaluations complètes de tous les scénarios par équipe et par jour."
+          "desc": "Tout langage est accepté ; les modèles sont facultatifs. ZIP : 50 Mo. Chaque scénario a une durée commune. Compétition : 10 évaluations complètes de tous les scénarios par équipe et par jour."
         }
       ],
       "link": "Documentation des soumissions"
@@ -851,13 +851,6 @@
       "working": "Appel de votre API…",
       "call_failed": "L'appel du modèle a échoué. Vérifiez votre API et votre quota.",
       "invalid": "Vérifiez le point d'accès, le modèle et la clé."
-    },
-    "track": {
-      "lede": "L'entraînement propose deux façons de participer, avec des classements séparés :",
-      "csv": "Téléverser un CSV",
-      "project": "Soumettre un projet complet",
-      "csv_help": "Exécutez-le sur votre machine et téléversez decisions.csv. Les scores vont au classement de l'entraînement.",
-      "project_help": "Soumettez un dépôt GitHub public ou un ZIP. La plateforme exécute votre programme tour par tour dans le cloud, comme en compétition, sur les scénarios publics dev-fortnight et dev-reference (5 heures par scénario) ; les scores vont au classement séparé des projets complets. 5 évaluations par équipe et par jour (remise à zéro à 00:00 UTC) ; les appels de modèle utilisent uniquement la clé d'API de votre équipe."
     }
   },
   "dash": {
@@ -877,12 +870,12 @@
         },
         "prepare": {
           "title": "Lire la documentation",
-          "hint": "Suivez la documentation pour coder votre agent, puis produisez un decisions.csv.",
+          "hint": "Suivez la documentation pour coder votre agent.",
           "action": "Ouvrir la documentation"
         },
         "submit": {
           "title": "Première soumission",
-          "hint": "Téléversez decisions.csv sur la page Participer ; la plateforme la note automatiquement.",
+          "hint": "Soumettez un projet sur la page Participer ; la plateforme la note automatiquement.",
           "action": "Soumettre"
         },
         "review": {
@@ -937,10 +930,9 @@
       "s2_lead": "Construisez votre agent selon le protocole de la documentation.",
       "s2_desc": "Améliorez la logique de décision pour augmenter le score.",
       "s2_link": "Lire la description de la tâche",
-      "s3_title": "Étape 3 · Soumettre",
-      "s3_intro": "Connectez-vous et ouvrez Participer. Choisissez une option :",
+      "s3_title": "Étape 3 · Soumettre un projet complet",
+      "s3_intro": "Connectez-vous et ouvrez Participer :",
       "s3_points": [
-        "CSV : envoyez un decisions.csv, score immédiat. 50 par équipe et par jour.",
         "Projet complet : envoyez votre code, la plateforme l’exécute et le note dans le cloud. 5 par équipe et par jour."
       ],
       "s3_cta": "Aller à Participer",

@@ -28,7 +28,7 @@ test('every locale carries the full three-step copy for both stages', () => {
       const copy = messages[locale]!.start3?.[mode]
       assert.ok(copy, `${locale} start3.${mode} missing`)
       for (const key of STEP_KEYS) assert.ok(copy[key], `${locale} start3.${mode}.${key} missing`)
-      assert.ok(copy.s3_points.length >= 2, `${locale} ${mode} needs the submission options`)
+      assert.ok(copy.s3_points.length >= 1, `${locale} ${mode} needs the submission options`)
     }
   }
 })
@@ -53,12 +53,10 @@ test('the local command and the submission limits match the starter kit and the 
     assert.equal(messages[locale]!.start3.practice.s2_cmd, 'python3 local_runner.py')
     assert.equal(messages[locale]!.start3.competition.s2_cmd, 'python3 local_runner.py')
   }
-  assert.match(messages.zh!.start3.practice.s3_points.join(' '), /50 次/)
   assert.match(messages.zh!.start3.practice.s3_points.join(' '), /5 次/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /每队每天 4 次评测/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /A–D.*900 秒/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /隐藏任务卡 E–H/)
-  assert.match(messages.en!.start3.practice.s3_points.join(' '), /50 per team per day/)
   assert.match(messages.en!.start3.practice.s3_points.join(' '), /5 per team per day/)
   assert.match(messages.en!.start3.competition.s3_points.join(' '), /4 evaluations per team per day/)
   assert.match(messages.en!.start3.competition.s3_points.join(' '), /A–D, 900 s per card/)
