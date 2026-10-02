@@ -60,7 +60,6 @@ onMounted(load)
       <p v-if="state !== 'claimed'" class="mt-2 text-sm" :class="status.eligible ? 'accent-l' : 'text3'" data-testid="kimi-plan-eligibility">
         {{ status.eligible ? t('kimi_plan.eligible') : status.qualified && status.hidden ? t('kimi_plan.hidden') : t('kimi_plan.not_eligible') }}
       </p>
-      <p v-if="state === 'sold_out'" class="text3 mt-2 text-sm">{{ t('kimi_plan.sold_out') }}</p>
       <p v-else-if="state === 'wait_captain'" class="text2 mt-2 text-sm">{{ t('kimi_plan.wait_captain') }}</p>
       <div v-else-if="state === 'claimable'" class="mt-3">
         <button type="button" class="btn sm primary" data-testid="kimi-plan-claim" :disabled="busy" @click="claim">{{ busy ? t('common.working') : t('kimi_plan.claim') }} →</button>
