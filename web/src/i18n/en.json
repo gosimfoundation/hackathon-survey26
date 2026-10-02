@@ -1281,6 +1281,11 @@
   },
   "footer": {
     "copyright": "2026 GOSIM · Agentic Observer",
+    "license": {
+      "prefix": "Challenge data, task cards, evaluation code and example projects are provided under ",
+      "linkText": "CC BY-NC 4.0",
+      "suffix": " (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Challenge."
+    },
     "mainSite": "GOSIM",
     "lockup": "OPEN / OBSERVER",
     "links": {

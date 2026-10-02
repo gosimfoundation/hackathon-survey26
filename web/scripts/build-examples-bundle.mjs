@@ -101,6 +101,7 @@ for (const card of readdirSync(resolve(localRoot, 'cards')).sort()) {
 }
 addTree(entries, resolve(localRoot, 'runner'), `${ZIP_ROOT}/runner`)
 entries[`${ZIP_ROOT}/README.md`] = [readFileSync(resolve(localRoot, 'BUNDLE_README.md')), { mtime, level: 9 }]
+entries[`${ZIP_ROOT}/LICENSE.md`] = [readFileSync(resolve(examplesRoot, 'LICENSE.md')), { mtime, level: 9 }]
 Object.assign(entries, buildDocsEntries())
 
 const zip = zipSync(entries, { level: 9, mtime })

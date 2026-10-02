@@ -87,6 +87,7 @@ const whenLabel = computed(() => {
         <div>
           <div class="text-2xl font-semibold tracking-[-.05em] text-[#f5f5f5]">OPEN <span class="text-[#315efb]">/</span> OBSERVER</div>
           <div class="mt-3 max-w-xl text-xs leading-relaxed text-white/60">{{ t('footer.copyright') }}</div>
+          <p class="mt-1 max-w-xl text-[11px] leading-relaxed text-white/35">{{ t('footer.license.prefix') }}<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener" class="underline transition-colors hover:text-white/60">{{ t('footer.license.linkText') }}</a>{{ t('footer.license.suffix') }}</p>
           <WechatGroup compact class="mt-6 text-white/80" />
         </div>
         <nav class="flex flex-wrap gap-5 font-mono text-xs uppercase tracking-[.12em] text-white/70">

@@ -110,5 +110,6 @@ prizes will be announced separately.
 1. Registration data (name, email, affiliation, GitHub handle) is used only to run the event and to contact winners.
 2. Private ZIP projects, results, run records and score reports are visible only to the submitting team and organizers and are kept by the organizers and may be used for academic research and publications; published material is anonymized unless the team agrees otherwise. Forks of public repositories remain public; use ZIP for private projects. Model keys never enter project repositories or frontend code.
 3. Team names, scores, and ranks are public.
+4. Challenge data, task cards, evaluation code and example projects provided by the organizers are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Challenge when using them. Your own agent code is not restricted by this. The organizers will publish an article on this benchmark; once out, please cite it.
 
 Contact: hackathon@gosim.org

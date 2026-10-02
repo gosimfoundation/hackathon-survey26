@@ -133,3 +133,9 @@ set -a && source .env && set +a && node dist/index.js < some_transcript.jsonl
 `v4_bulletins.jsonl`/`v4_forecasts.jsonl`。智能体对本次运行的全部了解都来自 `initialize` 消息和
 运行期经 stdin 实时收到的 `new_messages`，与它在平台上的处境完全一致。它只会执行文档中列出的四种
 动作（`observe`、`wait`、`report`、`finish`），也只读取协议交给它的内容。
+
+## 许可 / 引用
+
+任务卡、模拟数据、评测代码与本示例项目按 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)
+提供（署名、非商业）；使用请引用 GOSIM 2026 Agentic Observer Challenge。选手自己编写的代码不受此限制。
+详见 `LICENSE.md`。
