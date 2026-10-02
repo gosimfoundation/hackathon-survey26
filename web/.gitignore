@@ -4,5 +4,6 @@ dist
 .env.local
 public/downloads/
 public/examples/
+dist-bundle/
 public/skill.md
 public/skill-v4.md

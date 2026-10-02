@@ -3,7 +3,6 @@ import { useScrollReveal } from '../composables/useScrollReveal'
 useScrollReveal()
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
-import { appUrl } from '../composables/api'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards'
 import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
@@ -12,6 +11,8 @@ import PageHead from '../components/layout/PageHead.vue'
 
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
+
+const EXAMPLES_BUNDLE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/latest/download/gosim-observer-examples.zip'
 
 // A language's card only appears once examples/<lang>/ is published and its ZIP is built --
 // see web/scripts/build-examples.mjs. Adding another language later is one entry here.
@@ -79,13 +80,15 @@ onMounted(async () => {
 
       <div id="examples" class="flow-band reveal mt-16">
         <div class="flow-head"><div><h2>{{ t('resources.flow_examples') }}</h2><p>{{ t('resources.flow_examples_hint') }}</p></div></div>
+        <p class="examples-bundle-cta">
+          <a class="btn primary" :href="EXAMPLES_BUNDLE_URL" data-testid="examples-bundle-download">{{ t('resources.examples_bundle_download') }} ↓</a>
+        </p>
         <div class="cards cards-3 reveal-stagger">
           <article v-for="ex in exampleProjects" :key="ex.lang" v-tilt class="card card-lift" :data-testid="`example-card-${ex.lang}`">
             <span class="label accent">{{ ex.name }}</span>
             <h3 class="mt-3">{{ ex.name }}</h3>
             <p>{{ t(ex.descKey) }}</p>
             <p v-if="ex.available" class="example-actions mt-5">
-              <a class="btn sm" :href="appUrl(`examples/${ex.lang}.zip`)" download :data-testid="`example-zip-${ex.lang}`">{{ t('resources.card_zip') }} ↓</a>
               <a class="btn sm" :href="`https://github.com/gosimfoundation/hackathon-survey26/tree/main/examples/${ex.lang}`" target="_blank" rel="noopener">{{ t('resources.example_github') }} →</a>
             </p>
             <p v-else class="mt-5"><span class="pill upcoming">{{ t('resources.card_pending') }}</span></p>
@@ -126,4 +129,5 @@ onMounted(async () => {
 .hidden-cards-note h3 { font-size: .95rem; color: #fbbf24; margin-bottom: .5rem; }
 .hidden-cards-note p { font-size: .875rem; line-height: 1.5; color: rgba(245,247,255,.78); margin-top: .4rem; }
 .example-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.examples-bundle-cta { margin-bottom: 1.25rem; }
 </style>
