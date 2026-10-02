@@ -194,7 +194,7 @@ const tierNames = (kind: 'astro' | 'ai') => t(`tiers.${kind}`) as string[]
       <div v-else-if="filtered.length" class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="wall-grid">
         <article v-for="e in filtered" :key="e.id" v-tilt class="wall-card wall-card-lg">
           <div class="wall-card-head">
-            <UserAvatar :name="e.name" :github="e.github" /><h3>{{ e.name }}</h3>
+            <UserAvatar :name="e.name" :github="e.github" :avatar-url="e.avatar_url" /><h3>{{ e.name }}</h3>
             <span v-if="isLoggedIn && complementary && compScore(e) >= 2" class="wall-comp">{{ t('teammates.comp_chip') }}</span>
             <span v-else-if="lookingChip(e)" class="wall-looking"><span class="live-dot h-1.5 w-1.5"></span>{{ lookingChip(e) }}</span>
           </div>

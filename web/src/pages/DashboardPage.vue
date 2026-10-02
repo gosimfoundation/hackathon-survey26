@@ -129,7 +129,7 @@ onMounted(async () => {
             <dt>{{ t('team.invite_code') }}</dt><dd class="m">{{ team.invite_code }}</dd>
           </dl>
           <ul class="text2 mt-4 text-sm">
-            <li v-for="m in members" :key="m.id"><UserAvatar :name="m.name" :github="m.github" /> {{ m.name }}<template v-if="m.is_leader"> · <span class="label accent">{{ t('team.leader') }}</span></template></li>
+            <li v-for="m in members" :key="m.id"><UserAvatar :name="m.name" :github="m.github" :avatar-url="m.avatar_url" /> {{ m.name }}<template v-if="m.is_leader"> · <span class="label accent">{{ t('team.leader') }}</span></template></li>
           </ul>
         </div>
         <KimiPlanPanel class="mt-8" />

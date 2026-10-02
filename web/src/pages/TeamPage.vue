@@ -14,7 +14,7 @@ import SoloTeamButton from '../components/SoloTeamButton.vue'
 import { useTeamCapacity } from '../composables/useTeamCapacity'
 import { showsTeamPlaces, teamCreationBlocked } from '../lib/teamCapacity'
 
-interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number }
+interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number; avatar_url: string | null }
 
 const { t, tf } = useI18n()
 const i18n = useI18n()
@@ -119,7 +119,7 @@ onMounted(load)
             <thead><tr><th>{{ t('common.name') }}</th><th>{{ t('auth.github') }}</th><th>{{ t('auth.affiliation') }}</th><th></th></tr></thead>
             <tbody>
               <tr v-for="m in members" :key="m.id">
-                <td><UserAvatar :name="m.name" :github="m.github" /> {{ m.name }} <span v-if="m.is_leader" class="pill accent ml-1">{{ t('team.leader') }}</span>
+                <td><UserAvatar :name="m.name" :github="m.github" :avatar-url="m.avatar_url" /> {{ m.name }} <span v-if="m.is_leader" class="pill accent ml-1">{{ t('team.leader') }}</span>
                   <span class="wall-badges wall-badges-inline"><TierBadge kind="astro" :level="m.astro_level" /><TierBadge kind="ai" :level="m.ai_level" /></span>
                 </td>
                 <td class="m text-sm">{{ m.github || '—' }}</td>

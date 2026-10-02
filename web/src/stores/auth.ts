@@ -12,6 +12,7 @@ export interface Me {
   looking_for_team: boolean; locale: string | null; is_admin: boolean; is_banned: boolean; team: MeTeam | null
   astro_level: number; ai_level: number; city: string | null; contact: string | null
   heard_from: string | null; blurb: string | null; show_on_wall: boolean; seeking: string; seeking_count: number
+  avatar_url: string
 }
 
 const state = reactive({
