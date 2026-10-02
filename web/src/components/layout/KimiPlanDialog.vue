@@ -30,7 +30,7 @@ watch(() => team.value?.id, async id => {
     if (state !== 'claimable' && state !== 'wait_captain') return
     captain.value = state === 'claimable'
     teamId.value = id
-    requestOverlay(OVERLAY)
+    requestOverlay(OVERLAY, { modal: true })
   } catch { /* not shown */ }
 }, { immediate: true })
 

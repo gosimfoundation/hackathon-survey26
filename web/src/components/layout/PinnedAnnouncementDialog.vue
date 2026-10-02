@@ -30,7 +30,7 @@ onMounted(async () => {
   if (!next) return
   pinnedIds.value = pinnedRows(rows).map(row => String(row.id))
   item.value = next
-  requestOverlay(OVERLAY)
+  requestOverlay(OVERLAY, { modal: true })
 })
 
 // The announcements page already shows everything: do not cover it, and keep the popup for later.
