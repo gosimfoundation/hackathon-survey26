@@ -9,6 +9,7 @@ import { useFlash } from '../stores/flash'
 import TierBadge from '../components/TierBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import TeamDirectory from '../components/TeamDirectory.vue'
+import WechatGroup from '../components/WechatGroup.vue'
 import { teamAction } from '../stores/teamNotifications'
 
 const { t, tf } = useI18n()
@@ -141,6 +142,8 @@ const tierNames = (kind: 'astro' | 'ai') => t(`tiers.${kind}`) as string[]
           </template>
         </div>
       </div>
+
+      <div class="panel mt-8"><WechatGroup /></div>
 
       <TeamDirectory />
 

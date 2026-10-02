@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
+import WechatGroup from '../WechatGroup.vue'
 import { replayMeta, replaySlots, useReplayClock } from '../../composables/useReplayClock'
 const { t, pick } = useI18n()
 
@@ -54,6 +55,7 @@ const progressPct = computed(() => `${(state.progress * 100).toFixed(1)}%`)
         <div>
           <div class="text-2xl font-semibold tracking-[-.05em] text-[#f5f5f5]">OPEN <span class="text-[#315efb]">/</span> OBSERVER</div>
           <div class="mt-3 max-w-xl text-xs leading-relaxed text-white/60">{{ t('footer.copyright') }}</div>
+          <WechatGroup compact class="mt-6 text-white/80" />
         </div>
         <nav class="flex flex-wrap gap-5 font-mono text-xs uppercase tracking-[.12em] text-white/70">
           <router-link to="/rules" class="transition-colors hover:text-[#78a6ff]">{{ t('footer.links.rules') }}</router-link>
