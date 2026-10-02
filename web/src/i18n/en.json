@@ -1580,8 +1580,7 @@
       "not_eligible": "Your team needs one successful score in the practice round first.",
       "no_codes_left": "No Kimi Coding Plan codes are available right now.",
       "need_team": "Create or join a team first."
-    },
-    "usage": "How to use it: on the Participate page, under Model API, set the endpoint to https://api.kimi.com/coding/v1, the model to kimi-for-coding (or k3), and the key to the API key you get after redeeming. Not api.moonshot.cn and not api.kimi.ai."
+    }
   },
   "profile": {
     "title": "Profile",
