@@ -52,7 +52,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="team" class="panel" data-testid="kimi-plan-panel" :data-state="loading ? 'loading' : state">
+  <div v-if="team" id="kimi-plan" class="panel" data-testid="kimi-plan-panel" :data-state="loading ? 'loading' : state">
     <div class="hd"><h2>{{ t('kimi_plan.title') }}</h2><span class="label">{{ t('kimi_plan.kicker') }}</span></div>
     <p class="text2 text-sm">{{ t('kimi_plan.lede') }}</p>
     <a class="btn sm mt-3" data-testid="kimi-plan-guide" :href="guidePdf" download="Kimi API Credit Usage Instructions.pdf">{{ t('kimi_plan.guide') }} ↓</a>

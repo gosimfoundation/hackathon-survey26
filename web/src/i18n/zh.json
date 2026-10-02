@@ -1580,7 +1580,11 @@
       "not_eligible": "你的队伍还需在练习赛获得一次成功评分。",
       "no_codes_left": "暂时没有可领取的 Kimi Coding Plan 兑换码。",
       "need_team": "请先创建或加入队伍。"
-    }
+    },
+    "popup_title": "你的队伍可以领取 Kimi Coding Plan 兑换码",
+    "popup_captain": "你的队伍已跑通练习赛，可领取一个 Kimi Coding Plan 兑换码。作为队长，请到控制台领取，领取后全队成员都能看到。",
+    "popup_member": "你的队伍已跑通练习赛，可领取一个 Kimi Coding Plan 兑换码。请提醒队长到控制台领取，领取后全队成员都能看到。",
+    "popup_go": "去控制台领取"
   },
   "profile": {
     "title": "个人资料",
