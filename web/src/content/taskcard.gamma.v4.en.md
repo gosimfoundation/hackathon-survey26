@@ -11,7 +11,7 @@ On top of the weather, part of your recent data can be lost once.
 | Targets | 9,900 targets on 1,980 deg² of sky, in 3 regions. 495 are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
-| Weather | The full weather and event files of this card are public (Resources page). Your agent does not get them: during a run it only receives a short bulletin every 15 minutes and a forecast about once a week. |
+| Weather | Not public. During a run the agent receives a briefing every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). Possibly one `state_resync` message. It means part of your recent data was lost. It lists the targets that still count and their best scores. Rebuild your list of finished targets from it. The time already spent is not returned. |
 
 ## Your goal
@@ -68,14 +68,9 @@ least 0.50, so it would still count as missing.
 - Short exposures on faint targets. Exposures do not add up; only the best one counts.
 - Pointing low in a direction a bulletin warns about.
 - Reporting a fault after one bad exposure. Weather also lowers scores.
-- Reading the weather files from your agent. On the platform your agent only has its own folder.
 
 ## Try it
 
-1. Download card γ from the Resources page and put the card folder into your project's `cards/` folder.
-2. Run `python3 local_runner.py --card cards/gamma`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
-3. Compare with `python3 local_runner.py --card cards/gamma --agent examples/idle_agent.py` (an agent that does nothing).
-4. Change `agent/planner.py`, run again, and compare.
-5. Pack with `python3 pack_agent.py --out ../my-agent.zip` and submit it on Participate. Practice runs all practice cards α, β, γ and δ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
+Pack your whole agent project as a zip and upload it on the Participate page. Practice runs all practice cards α, β, γ and δ in the cloud, with the same 900 s limit. Daily limits are on the Rules page.
 
 Practice scores do not decide awards.

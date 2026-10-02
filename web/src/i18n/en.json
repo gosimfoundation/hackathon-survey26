@@ -329,7 +329,7 @@
         {
           "n": "03",
           "title": "Submit for evaluation",
-          "desc": "Practice accepts a locally generated decisions.csv, or a complete project evaluated in the cloud on a separate board. The formal competition accepts complete projects only (public repository or private ZIP). Every team is scored by the same frozen scorer."
+          "desc": "Practice accepts a decisions.csv file, or a complete project evaluated in the cloud on a separate board. The formal competition accepts complete projects only (public repository or private ZIP). Every team is scored by the same frozen scorer."
         }
       ],
       "timeline": [
@@ -381,7 +381,7 @@
     "evaluation": {
       "kicker": "05 / Evaluation",
       "title": "Objective, public scoring rules",
-      "lede": "The scoring program is published and frozen before the competition starts and never changes afterwards. What one observation earns depends on the weather and moonlight at that moment; scheduling the right program on the right night and completing temporary observation requests on time earn extra credit, while rule violations cost points. Every formula, constant and the scorer's source code are downloadable — the score you compute locally matches the platform exactly.",
+      "lede": "The scoring program is published and frozen before the competition starts and never changes afterwards. What one observation earns depends on the weather and moonlight at that moment; scheduling the right program on the right night and completing temporary observation requests on time earn extra credit, while rule violations cost points.",
       "formula": "total = base_science + program_bonus + request_reward\n      − unsafe_observation − invalid_action − avoidable_wait\n      − required_miss − flexible_shortfall − request_miss\nbase  = Σ_segments V_tile · (dt / t_nominal) · combined\ncombined = min(eff · transp · sky / (seeing · airmass), 3) · lunar",
       "criteria": [
         {
@@ -719,9 +719,9 @@
         "kicker": "05 / Participant Job",
         "title": "Build a reproducibly runnable observer project",
         "paragraphs": [
-          "Any language is allowed. Practice submits a locally generated decisions.csv; the formal competition submits a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
+          "Any language is allowed. Practice submits a decisions.csv; the formal competition submits a complete project (public repository or private ZIP) that the platform evaluates round by round in the cloud. See Docs for the interface.",
           "The server reveals current observations step by step and scores the actual decisions. Future weather and anomaly answers remain private.",
-          "Run the public scenarios, study replays and improve your strategy; when ready, upload decisions.csv or submit a complete project on Participate.",
+          "When ready, upload decisions.csv or submit a complete project on Participate, then study replays to improve your strategy.",
           "The platform keeps the full record of every evaluation — the decisions file, the run log, and a slot-by-slot replay — for organizer review, and for you to inspect why each step went the way it did."
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -1511,7 +1511,7 @@
         },
         "prepare": {
           "title": "Read the docs",
-          "hint": "Unzip it and run the example agent to produce your first decisions.csv locally.",
+          "hint": "Follow the docs to build your agent, then produce a decisions.csv.",
           "action": "Open the docs"
         },
         "submit": {
@@ -1604,7 +1604,7 @@
     "new2": "Repeat new password",
     "change": "Change password",
     "token_title": "API token",
-    "token_lede": "Use this token with sac_submit.py or the JSON API. Rotating it invalidates the old one.",
+    "token_lede": "Use this token with the JSON API. Rotating it invalidates the old one.",
     "rotate": "Rotate token",
     "language": "Interface language",
     "saved": "Profile saved.",
@@ -1713,7 +1713,6 @@
     "scenario": "Scenario",
     "file": "File",
     "file_results": "decisions.csv",
-    "file_agent": "One file is enough: my_strategy.py alone (the platform adds the rest of the agent). A folder or .zip is used as is when it has minimal_agent.py, agent.py or main.py at its root.",
     "title_field": "Label (optional)",
     "notes": "Notes (optional, private to your team)",
     "button": "Upload and queue",
@@ -1747,18 +1746,15 @@
     "no_scenario": "No scenarios are configured for this phase yet.",
     "all_scenarios": "All scenarios of the phase",
     "agent_hints": [
-      "If you changed only my_strategy.py, upload that single file; the platform completes the package with the standard files.",
       "If you call a large model, drag the whole agent folder in: include .env (your API key, never shown to anyone) and requirements.txt (installed before the clock starts).",
-      "For a fully self-written agent: a .zip with minimal_agent.py, agent.py or main.py at the root, speaking participant-agent-protocol-v1/v2 over stdin/stdout.",
       "Limits: 20 MB per upload, 2,000 files, 50 MB uncompressed, no symlinks. Caches, scratch/ and run_output/ are left out automatically."
     ],
-    "results_public_only": "Practice scenarios publish their weather, so scores can be reproduced locally. Submit complete projects on the Participate page.",
     "wallclock": "Time budget",
     "wallclock_note": "Each scenario gives you one time budget, counting down from the initialize message; no per-step timeout. Anything committed before it runs out still scores.",
     "wallclock_results_note": "A results file is replayed offline and costs no budget; the budget only applies to agents running on the platform.",
     "weather_public": "weather public",
     "weather_hidden": "weather hidden",
-    "drop_agent": "Drop your my_strategy.py, your whole agent folder, or a .zip here",
+    "drop_agent": "Drop your whole agent folder, or a .zip, here",
     "drop_results": "Drop your decisions.csv here",
     "pick_folder": "Choose a folder (we zip it for you)",
     "packed": "Packed {n} file(s) in the browser",
@@ -1962,10 +1958,6 @@
     "kicker": "Resources",
     "title": "Data",
     "lede": "Task card pages and card files.",
-    "kit": "v3 starter kit (zip)",
-    "kit_desc": "agent/ (minimal agent, optional LLM via .env), challenge/ (workflow, scorer, preview, simulators, replay), scenarios/dev-reference, local_runner.py, score_decisions.py, make_scenario.py, pack_agent.py, sac_submit.py, SKILL.md.",
-    "kit_v4": "v4 starter kit (zip)",
-    "kit_v4_desc": "agent/ (a working baseline agent, its planner, sky maths, an optional LLM hook and observer.project.json), examples/idle_agent.py, cards/demo (a public demo card), local_runner.py, pack_agent.py, challenge/ (simulator and v4 scorer), README.md, SKILL.md. Python 3.9+ standard library only. On cards/demo the baseline agent scores 1082.572141 (1 required target missing, 1 time-limited observation request completed), which checks your local setup.",
     "skill_v4": "SKILL.md (v4)",
     "skill_v4_desc": "One-file v4 instructions an AI coding agent can follow: the protocol, the score, improve, pack and submit.",
     "cards": "Task cards",
@@ -1980,13 +1972,10 @@
     "nights": "nights",
     "tiles_n": "tiles",
     "cli": "Command line",
-    "kit_file": "agent-observer-starter-kit.zip",
     "docs": "Documentation",
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
-    "flow1": "Step 1 · Grab the kit and run",
-    "flow1_hint": "This one download is all you need: unzip it and run python3 local_runner.py for a score on the demo card in seconds.",
     "flow2": "Step 3 · Write your own strategy",
-    "flow2_hint": "Change agent/planner.py, run again and compare; these are the references."
+    "flow2_hint": "These are the references for building and submitting your own agent."
   },
   "faq": {
     "kicker": "FAQ",
@@ -1994,11 +1983,11 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Edit one function in agent/my_strategy.py: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or None to wait. See the Docs for how to run and submit."
+        "a": "Your agent only needs one decision function: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or none to wait. See the Docs for the interface and how to submit."
       },
       {
         "q": "Do I need an astronomy background?",
-        "a": "Not much, though it helps. Essentially, your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear, and scoring_preview.py already turns a snapshot into a ranked list of candidates. You could also team up with someone who has an astronomy background."
+        "a": "Not much, though it helps. Essentially, your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear. You could also team up with someone who has an astronomy background."
       },
       {
         "q": "Can I compete alone?",
@@ -2014,11 +2003,11 @@
       },
       {
         "q": "What is the global wall clock?",
-        "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on Practice, in the competition and on the hidden cards; local_runner.py uses the same limit, or a shorter one set with --wallclock. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
+        "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on Practice, in the competition and on the hidden cards. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
       },
       {
         "q": "What is hidden on the competition scenarios?",
-        "a": "weather.csv, weather_forecasts.csv and weather_events.csv. Your agent still sees the current slot's weather, each candidate's effective conditions (directional events applied), the forecasts issued so far and the active requests — everything the snapshots publish — but never future weather. On the practice scenarios all three files are public so that a local score_decisions.py run reproduces the platform report."
+        "a": "weather.csv, weather_forecasts.csv and weather_events.csv. Your agent still sees the current slot's weather, each candidate's effective conditions (directional events applied), the forecasts issued so far and the active requests — everything the snapshots publish — but never future weather. The practice scenarios are hidden the same way."
       },
       {
         "q": "How many submissions can I make?",
@@ -2503,15 +2492,14 @@
       "s1_title": "Step 1 · Read the docs",
       "s1_desc": "The docs describe the task, the agent interface and scoring.",
       "s1_cta": "Open the docs",
-      "s2_title": "Step 2 · Run it locally",
-      "s2_lead": "Build your agent and run it on the public scenarios.",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "When you see a score, it works. Then change the decision logic in the example program to raise the score.",
+      "s2_title": "Step 2 · Build your agent",
+      "s2_lead": "Build your agent to the protocol in the docs.",
+      "s2_desc": "Iterate on the decision logic to raise your score.",
       "s2_link": "Read the task description",
       "s3_title": "Step 3 · Submit",
       "s3_intro": "Log in and open Participate. Choose one way:",
       "s3_points": [
-        "CSV: upload the decisions.csv you generated locally and get a score at once. 50 per team per day.",
+        "CSV: upload a decisions.csv file and get a score at once. 50 per team per day.",
         "Complete project: upload your code; the platform runs and scores it in the cloud. 5 per team per day."
       ],
       "s3_cta": "Go to Participate",
@@ -2526,10 +2514,9 @@
       "s1_title": "Step 1 · Read the docs",
       "s1_desc": "The docs describe the task, the agent interface and scoring.",
       "s1_cta": "Open the docs",
-      "s2_title": "Step 2 · Run it locally",
-      "s2_lead": "Build your agent and test it locally.",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "When you see a score, it works. Then change the decision logic in the example program.",
+      "s2_title": "Step 2 · Build your agent",
+      "s2_lead": "Build your agent to the protocol in the docs.",
+      "s2_desc": "Iterate on the decision logic, then move to Step 3.",
       "s2_link": "Read the task description",
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",

@@ -329,7 +329,7 @@
         {
           "n": "03",
           "title": "提交评测",
-          "desc": "练习赛上传本地运行生成的 decisions.csv，或提交完整项目云端评测（单独榜单）；正式比赛只接受完整项目（公开仓库或私有 ZIP）。所有队伍由同一个冻结的评分器评分。"
+          "desc": "练习赛上传 decisions.csv，或提交完整项目云端评测（单独榜单）；正式比赛只接受完整项目（公开仓库或私有 ZIP）。所有队伍由同一个冻结的评分器评分。"
         }
       ],
       "timeline": [
@@ -381,7 +381,7 @@
     "evaluation": {
       "kicker": "05 / 评测",
       "title": "客观公开的评分规则",
-      "lede": "评分程序在开赛前公开并冻结，之后不再改动。一次观测能得多少分，由当时的天气和月光条件决定；在合适的夜晚安排合适的观测项目、按时完成临时观测请求，会获得额外加分；违规操作会被扣分。全部公式、参数与评分器源码均可下载——你在本地算出的分数，与平台公布的分数完全一致。",
+      "lede": "评分程序在开赛前公开并冻结，之后不再改动。一次观测能得多少分，由当时的天气和月光条件决定；在合适的夜晚安排合适的观测项目、按时完成临时观测请求，会获得额外加分；违规操作会被扣分。",
       "formula": "total = base_science + program_bonus + request_reward\n      − unsafe_observation − invalid_action − avoidable_wait\n      − required_miss − flexible_shortfall − request_miss\nbase  = Σ_segments V_tile · (dt / t_nominal) · combined\ncombined = min(eff · transp · sky / (seeing · airmass), 3) · lunar",
       "criteria": [
         {
@@ -719,9 +719,9 @@
         "kicker": "05 / 参赛任务",
         "title": "构建可复现运行的观测智能体项目",
         "paragraphs": [
-          "语言不限。练习赛上传本地运行生成的 decisions.csv；正式比赛提交完整项目（公开仓库或私有 ZIP），平台在云端逐轮评测。接口约定见文档页。",
+          "语言不限。练习赛上传 decisions.csv；正式比赛提交完整项目（公开仓库或私有 ZIP），平台在云端逐轮评测。接口约定见文档页。",
           "服务器逐步提供当前观测信息，并对实际执行的决策评分；未来天气与异常答案不公开。",
-          "运行公开场景，研究回放并改进策略；准备好后在「参赛」页上传 decisions.csv 或提交完整项目。",
+          "准备好后在「参赛」页上传 decisions.csv 或提交完整项目，再通过回放研究、改进策略。",
           "每次评测的完整运行记录——决策文件、运行日志与逐时隙回放——平台都会保留，供主办方复核，也供你自己检查每一步为什么这么走。"
         ],
         "actionCode": "return {\n    \"action\": \"observe\",\n    \"tile_id\": \"T00037\",\n    \"program\": \"DARK\",\n    \"request_id\": \"\",\n    \"reason\": \"highest preview estimate\",\n}"
@@ -1511,7 +1511,7 @@
         },
         "prepare": {
           "title": "阅读文档",
-          "hint": "解压后运行示例智能体，在本地跑出第一份 decisions.csv。",
+          "hint": "按文档开发你的智能体，并生成 decisions.csv。",
           "action": "查看文档"
         },
         "submit": {
@@ -1604,7 +1604,7 @@
     "new2": "重复新密码",
     "change": "修改密码",
     "token_title": "API 令牌",
-    "token_lede": "用于 sac_submit.py 或 JSON API。轮换后旧令牌失效。",
+    "token_lede": "用于 JSON API。轮换后旧令牌失效。",
     "rotate": "轮换令牌",
     "language": "界面语言",
     "saved": "资料已保存。",
@@ -1713,7 +1713,6 @@
     "scenario": "场景",
     "file": "文件",
     "file_results": "decisions.csv",
-    "file_agent": "只传一个文件就够：上传 my_strategy.py，平台会补齐其余标准文件。如果传文件夹或 .zip，根目录有 minimal_agent.py、agent.py 或 main.py 就会原样运行。",
     "title_field": "备注名称（可选）",
     "notes": "备注（可选，仅队伍可见）",
     "button": "上传并排队评测",
@@ -1747,18 +1746,15 @@
     "no_scenario": "本阶段还没有配置场景。",
     "all_scenarios": "本阶段全部场景",
     "agent_hints": [
-      "只改动 my_strategy.py 时，直接上传这一个文件即可，平台会用标准文件补齐程序包。",
       "调用大模型时，把整个 agent 文件夹拖进来：.env（你的 API key，不会展示给任何人）与 requirements.txt（开钟前安装）一并带上。",
-      "完全自写的智能体：根目录含 minimal_agent.py、agent.py 或 main.py 的 .zip，通过 stdin/stdout 使用 participant-agent-protocol-v1/v2。",
       "限制：单次 20 MB、2,000 个文件、解压后 50 MB、不含符号链接。缓存、scratch/ 与 run_output/ 会自动剔除。"
     ],
-    "results_public_only": "练习场景天气公开，可在本地复现评分。完整项目请在「参赛」页提交。",
     "wallclock": "总时长",
     "wallclock_note": "每个场景给你一个总时长，从 initialize 消息发出时开始倒数；单步不限时。倒计时归零前提交的动作照常算分。",
     "wallclock_results_note": "结果文件是离线回放，不占用总时长；总时长只在平台上跑智能体时才计。",
     "weather_public": "天气公开",
     "weather_hidden": "天气隐藏",
-    "drop_agent": "把 my_strategy.py、整个 agent 文件夹或 .zip 拖到这里",
+    "drop_agent": "把整个 agent 文件夹或 .zip 拖到这里",
     "drop_results": "把 decisions.csv 拖到这里",
     "pick_folder": "选择文件夹（网站替你打包）",
     "packed": "已在浏览器内打包 {n} 个文件",
@@ -1962,10 +1958,6 @@
     "kicker": "资源",
     "title": "数据",
     "lede": "任务卡说明与卡片文件。",
-    "kit": "v3 入门包（zip）",
-    "kit_desc": "agent/（最小智能体，可通过 .env 启用大模型）、challenge/（workflow、评分器、preview、模拟器、回放）、scenarios/dev-reference、local_runner.py、score_decisions.py、make_scenario.py、pack_agent.py、sac_submit.py、SKILL.md。",
-    "kit_v4": "v4 入门包（zip）",
-    "kit_v4_desc": "agent/（可运行的基线智能体、规划器、天球几何、可选大模型钩子与 observer.project.json）、examples/idle_agent.py、cards/demo（公开示例卡）、local_runner.py、pack_agent.py、challenge/（模拟器与 v4 评分器）、README.md、SKILL.md。只需 Python 3.9+ 标准库。在 cards/demo 上运行基线智能体应得 1082.572141 分（漏 1 个必观测目标，完成 1 个限时观测请求），可用来核对本地环境。",
     "skill_v4": "SKILL.md（v4）",
     "skill_v4_desc": "AI 编程助手可直接照做的 v4 单文件说明：协议、计分、改进、打包提交。",
     "cards": "任务卡",
@@ -1980,13 +1972,10 @@
     "nights": "夜",
     "tiles_n": "天区",
     "cli": "命令行",
-    "kit_file": "agent-observer-starter-kit.zip",
     "docs": "参赛文档",
     "docs_desc": "报名组队、完整项目提交、启动配置、模型 API、评测次数与最终版本。",
-    "flow1": "第一步 · 拿包就跑",
-    "flow1_hint": "只需要这一个下载：解压后运行 python3 local_runner.py，几秒内在示例卡上出分。",
     "flow2": "第三步 · 写你自己的策略",
-    "flow2_hint": "改 agent/planner.py，再运行、再比较；这些是查手册的地方。"
+    "flow2_hint": "这些是你编写和提交智能体时要用的参考资料。"
   },
   "faq": {
     "kicker": "常见问题",
@@ -1994,11 +1983,11 @@
     "items": [
       {
         "q": "我编程基础一般，最少要做什么？",
-        "a": "只改 agent/my_strategy.py 里的一个函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个或 None 等待。运行与提交方法见「文档」。"
+        "a": "你的智能体只需要一个决策函数：它收到「现在能观测的候选」（已排好序），返回要观测的那个，或留空等待。接口细节与提交方法见「文档」。"
       },
       {
         "q": "需要天文背景吗？",
-        "a": "天文背景需要得不多，但会有帮助。基本上，智能体收到的是 JSON 快照：当前时隙天气、带高度、airmass、月光因子、有效条件与 tile_science_value 的候选天区、迄今发布的预报与请求，以及进度。文档解释了会出现的少数术语，scoring_preview.py 也已经能把快照变成候选排序。当然，你也可以考虑找一个有天文背景的搭子组队？"
+        "a": "天文背景需要得不多，但会有帮助。基本上，智能体收到的是 JSON 快照：当前时隙天气、带高度、airmass、月光因子、有效条件与 tile_science_value 的候选天区、迄今发布的预报与请求，以及进度。文档解释了会出现的少数术语。当然，你也可以考虑找一个有天文背景的搭子组队？"
       },
       {
         "q": "可以个人参赛吗？",
@@ -2014,11 +2003,11 @@
       },
       {
         "q": "什么是全局时钟？",
-        "a": "每张任务卡有一个 900 秒的总时长（global_wallclock_seconds，随 initialize 消息下发），练习赛、正式比赛和隐藏卡评测都一样；local_runner.py 使用同一上限，也可用 --wallclock 设得更短。它从第一条 decision_request 开始计时，覆盖全部决策，包括你的思考时间、模型调用和平台处理时间，没有单次决策限制。到期时智能体被停止，此前的观测照常计分，终局扣分照常适用。"
+        "a": "每张任务卡有一个 900 秒的总时长（global_wallclock_seconds，随 initialize 消息下发），练习赛、正式比赛和隐藏卡评测都一样。它从第一条 decision_request 开始计时，覆盖全部决策，包括你的思考时间、模型调用和平台处理时间，没有单次决策限制。到期时智能体被停止，此前的观测照常计分，终局扣分照常适用。"
       },
       {
         "q": "比赛场景隐藏了什么？",
-        "a": "weather.csv、weather_forecasts.csv 与 weather_events.csv。智能体仍能看到当前时隙天气、每个候选的有效条件（已应用方向性事件）、迄今发布的预报与活动请求——快照发布的一切——但永远看不到未来天气。练习场景三份文件全部公开，本地运行 score_decisions.py 可复现平台报告。"
+        "a": "weather.csv、weather_forecasts.csv 与 weather_events.csv。智能体仍能看到当前时隙天气、每个候选的有效条件（已应用方向性事件）、迄今发布的预报与活动请求——快照发布的一切——但永远看不到未来天气。练习场景同样不公开这些文件。"
       },
       {
         "q": "可以提交多少次？",
@@ -2503,15 +2492,14 @@
       "s1_title": "第 1 步 · 阅读文档",
       "s1_desc": "文档说明了任务、智能体接口和计分方式。",
       "s1_cta": "查看文档",
-      "s2_title": "第 2 步 · 在本地跑通",
-      "s2_lead": "开发你的智能体，在公开场景上运行。",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑，让分数变高。",
+      "s2_title": "第 2 步 · 开发你的智能体",
+      "s2_lead": "按文档里的协议开发你的智能体。",
+      "s2_desc": "修改决策逻辑，提高分数。",
       "s2_link": "看任务说明",
       "s3_title": "第 3 步 · 提交",
       "s3_intro": "登录后进入「参赛」，两种方式选一种：",
       "s3_points": [
-        "交 CSV：上传本地生成的 decisions.csv，马上出分。每队每天 50 次。",
+        "交 CSV：上传 decisions.csv，马上出分。每队每天 50 次。",
         "交完整项目：上传代码，平台在云端运行并打分。每队每天 5 次。"
       ],
       "s3_cta": "去参赛",
@@ -2526,10 +2514,9 @@
       "s1_title": "第 1 步 · 阅读文档",
       "s1_desc": "文档说明了任务、智能体接口和计分方式。",
       "s1_cta": "查看文档",
-      "s2_title": "第 2 步 · 在本地跑通",
-      "s2_lead": "开发你的智能体，并在本地测试。",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "看到分数，就说明跑通了。然后修改示例程序里的决策逻辑。",
+      "s2_title": "第 2 步 · 开发你的智能体",
+      "s2_lead": "按文档里的协议开发你的智能体。",
+      "s2_desc": "修改决策逻辑，然后进入第 3 步。",
       "s2_link": "看任务说明",
       "s3_title": "第 3 步 · 提交完整项目",
       "s3_intro": "登录后进入「参赛」：上传代码 → 确认版本 → 开始评测。",

@@ -456,7 +456,7 @@
         {
           "n": "03",
           "title": "Soumettre pour évaluation",
-          "desc": "À l'entraînement, téléversez le decisions.csv produit sur votre machine, ou soumettez un projet complet (classement séparé). La compétition accepte un projet complet ou le CSV d'une session locale officielle. Chaque équipe est notée par le même évaluateur figé."
+          "desc": "À l'entraînement, téléversez un decisions.csv, ou soumettez un projet complet (classement séparé). La compétition accepte uniquement un projet complet (dépôt public ou ZIP privé). Chaque équipe est notée par le même évaluateur figé."
         }
       ],
       "timeline": [
@@ -508,7 +508,7 @@
     "evaluation": {
       "kicker": "05 / Évaluation",
       "title": "Un barème objectif et public",
-      "lede": "Le programme de notation est publié et figé avant la compétition, puis ne change plus. Les points d'une observation dépendent de la météo et du clair de lune du moment ; programmer la bonne observation la bonne nuit et honorer à temps les requêtes rapporte des bonus, les infractions coûtent des points. Formules, paramètres et code source du correcteur sont téléchargeables — le score calculé chez vous est identique à celui publié par la plateforme."
+      "lede": "Le programme de notation est publié et figé avant la compétition, puis ne change plus. Les points d'une observation dépendent de la météo et du clair de lune du moment ; programmer la bonne observation la bonne nuit et honorer à temps les requêtes rapporte des bonus, les infractions coûtent des points."
     },
     "submission": {
       "kicker": "06 / Soumettre",
@@ -516,7 +516,7 @@
       "items": [
         {
           "title": "Projets et CSV",
-          "desc": "L'entraînement accepte decisions.csv, ou un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte un projet complet par dépôt public ou ZIP privé, ou le CSV exporté par une session locale officielle."
+          "desc": "L'entraînement accepte decisions.csv, ou un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
         },
         {
           "title": "Limites",
@@ -877,7 +877,7 @@
         },
         "prepare": {
           "title": "Lire la documentation",
-          "hint": "Décompressez-le et lancez l’agent d’exemple pour produire votre premier decisions.csv en local.",
+          "hint": "Suivez la documentation pour coder votre agent, puis produisez un decisions.csv.",
           "action": "Ouvrir la documentation"
         },
         "submit": {
@@ -931,17 +931,16 @@
     "practice": {
       "subtitle": "Aucune connaissance en astronomie requise. Pour une première participation, suivez simplement ces trois étapes dans l’ordre.",
       "s1_title": "Étape 1 · Lire la documentation",
-      "s1_desc": "Il contient un programme d’exemple, un outil de notation local et des scénarios publics.",
+      "s1_desc": "Il décrit la tâche, l’interface de l’agent et la notation.",
       "s1_cta": "Ouvrir la documentation",
-      "s2_title": "Étape 2 · Exécuter en local",
-      "s2_lead": "Construisez votre agent et lancez-le sur les scénarios publics.",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple pour l’améliorer.",
+      "s2_title": "Étape 2 · Construire votre agent",
+      "s2_lead": "Construisez votre agent selon le protocole de la documentation.",
+      "s2_desc": "Améliorez la logique de décision pour augmenter le score.",
       "s2_link": "Lire la description de la tâche",
       "s3_title": "Étape 3 · Soumettre",
       "s3_intro": "Connectez-vous et ouvrez Participer. Choisissez une option :",
       "s3_points": [
-        "CSV : envoyez le decisions.csv généré en local, score immédiat. 50 par équipe et par jour.",
+        "CSV : envoyez un decisions.csv, score immédiat. 50 par équipe et par jour.",
         "Projet complet : envoyez votre code, la plateforme l’exécute et le note dans le cloud. 5 par équipe et par jour."
       ],
       "s3_cta": "Aller à Participer",
@@ -954,12 +953,11 @@
     "competition": {
       "subtitle": "Aucune connaissance en astronomie requise. Suivez ces trois étapes dans l’ordre pour participer.",
       "s1_title": "Étape 1 · Lire la documentation",
-      "s1_desc": "Il contient un programme d’exemple et un outil de notation local.",
+      "s1_desc": "Il décrit la tâche, l’interface de l’agent et la notation.",
       "s1_cta": "Ouvrir la documentation",
-      "s2_title": "Étape 2 · Exécuter en local",
-      "s2_lead": "Construisez votre agent et testez-le en local.",
-      "s2_cmd": "python3 local_runner.py",
-      "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple.",
+      "s2_title": "Étape 2 · Construire votre agent",
+      "s2_lead": "Construisez votre agent selon le protocole de la documentation.",
+      "s2_desc": "Améliorez la logique de décision, puis passez à l’étape 3.",
       "s2_link": "Lire la description de la tâche",
       "s3_title": "Étape 3 · Soumettre un projet complet",
       "s3_intro": "Connectez-vous et ouvrez Participer : envoyez votre code → confirmez la version → lancez une évaluation.",
