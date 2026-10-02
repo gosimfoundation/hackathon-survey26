@@ -2049,7 +2049,7 @@
       },
       {
         "q": "Does the platform provide API credits?",
-        "a": "The platform does not provide model credits. Cloud runs of complete projects use your own API key, set on the Participate page. Teams that complete the practice round (at least one successful practice score) each get one sponsor code, such as Kimi Coding Plan. Codes are coming soon; the captain claims it on the dashboard."
+        "a": "The platform does not provide model credits. Cloud runs of complete projects use your own API key, set on the Participate page. The first 100 teams to complete the practice round (at least one successful practice score) get a Kimi perk: one Kimi Coding Plan code per team, first come, first served. Once the organizers release the codes, the captain claims it on the dashboard."
       }
     ]
   },
