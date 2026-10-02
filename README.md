@@ -56,7 +56,8 @@ archive/             old versions kept for reference: starter_kit_v3/ (v3 starte
    authoritative scorer and checksummed before upload.
 4. Edge function: `supabase functions deploy leaderboard --no-verify-jwt --use-api`.
 5. Worker: `.github/workflows/worker.yml` keeps one evaluator alive on a GitHub-hosted runner
-   (`python -m worker.main run --max-seconds 19800`, polling every 5 s, secrets `SUPABASE_URL` and
+   (`python -m worker.main run --max-seconds 19800`, polling every 5 s when busy and backing off to 30 s while
+   idle, secrets `SUPABASE_URL` and
    `SUPABASE_SERVICE_ROLE_KEY`) and re-dispatches itself with the workflow token before it ends; the cron is only
    a backstop. It publishes a heartbeat (`site_settings.worker_heartbeat`) that the submission page shows with the
    queue position. Wall clocks of 1–2 h per scenario mean extra runners are advisable for the online phase:

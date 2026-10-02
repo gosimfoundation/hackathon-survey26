@@ -16,6 +16,7 @@ import argparse
 import json
 import re
 import logging
+import random
 import secrets
 import shutil
 import sys
@@ -359,14 +360,27 @@ def heartbeat(sb: Supa, *, busy: bool, processed: int) -> None:
         log.warning("heartbeat: %s", exc)
 
 
+def idle_backoff_seconds(idle_streak: int, base: float, max_seconds: float, jitter: float = 0.2) -> float:
+    """Idle-poll backoff: doubles from `base` each consecutive empty claim, capped at `max_seconds`, with
+    +/-jitter fraction of randomness so parallel workers don't all poll in lockstep."""
+    interval = min(base * (2 ** idle_streak), max_seconds)
+    spread = interval * jitter
+    return max(0.0, interval + random.uniform(-spread, spread))
+
+
 def run_loop(once: bool = False, max_seconds: Optional[float] = None) -> int:
     """Claim and evaluate submissions. `once` drains the queue and returns; `max_seconds` bounds a long-running
-    worker (GitHub-hosted runners are limited to 6 h per job; the workflow re-dispatches itself)."""
+    worker (GitHub-hosted runners are limited to 6 h per job; the workflow re-dispatches itself).
+
+    Idle polling backs off (doubling from poll_seconds up to poll_backoff_max_seconds, jittered) while the queue
+    is empty, and resets to the fast interval as soon as a claim succeeds, to cut load on the database while a
+    busy queue is still drained at full speed."""
     s = get_settings()
     sb = client()
     n = 0
     last_stale = 0.0
     last_beat = 0.0
+    idle_streak = 0
     started = time.monotonic()
     heartbeat(sb, busy=False, processed=n)
     while True:
@@ -388,6 +402,7 @@ def run_loop(once: bool = False, max_seconds: Optional[float] = None) -> int:
             time.sleep(5)
         if did:
             n += 1
+            idle_streak = 0
             heartbeat(sb, busy=False, processed=n)
             last_beat = time.monotonic()
             continue
@@ -396,7 +411,8 @@ def run_loop(once: bool = False, max_seconds: Optional[float] = None) -> int:
         if max_seconds is not None and time.monotonic() - started > max_seconds:
             log.info("max run time reached after %d submissions", n)
             return n
-        time.sleep(s.poll_seconds)
+        time.sleep(idle_backoff_seconds(idle_streak, s.poll_seconds, s.poll_backoff_max_seconds))
+        idle_streak += 1
 
 
 # ---------------------------------------------------------------------------
