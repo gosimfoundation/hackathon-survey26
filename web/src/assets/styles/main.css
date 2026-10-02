@@ -1018,6 +1018,9 @@ img.user-avatar { width: 30px; height: 30px; border-radius: 999px; object-fit: c
 .wall-card-head .user-avatar { margin-right: .55rem; }
 td .user-avatar, li .user-avatar { margin-right: .35rem; }
 i.user-avatar { vertical-align: middle; }
+.avatar-row { display: flex; align-items: center; gap: 1rem; }
+.avatar-row .avatar-lg.user-avatar { width: 64px; height: 64px; font-size: 1.1rem; }
+.avatar-controls { display: flex; flex-direction: column; gap: .35rem; }
 
 /* Grids sized to their actual card count: no exposed gap-color cells */
 .cards-fit { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }

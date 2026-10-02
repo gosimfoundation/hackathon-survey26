@@ -1609,7 +1609,22 @@
     "language": "Interface language",
     "saved": "Profile saved.",
     "email_note": "Your email address is your login and cannot be changed here.",
-    "locale_note": "Interface language is stored on your profile and used for emails."
+    "locale_note": "Interface language is stored on your profile and used for emails.",
+    "avatar_title": "Avatar",
+    "avatar_hint": "PNG, JPG or WEBP, up to 2 MB. It will be cropped to a square.",
+    "avatar_upload": "Upload avatar",
+    "avatar_change": "Change avatar",
+    "avatar_remove": "Remove avatar",
+    "avatar_uploading": "Uploading…",
+    "avatar_updated": "Avatar updated.",
+    "avatar_removed": "Avatar removed.",
+    "errors": {
+      "avatar_bad_type": "Please choose a PNG, JPG or WEBP image.",
+      "avatar_too_large": "That image is larger than 2 MB.",
+      "avatar_invalid_image": "That file could not be read as an image.",
+      "avatar_invalid_url": "That avatar could not be saved. Please try uploading again.",
+      "avatar_not_found": "That avatar could not be saved. Please try uploading again."
+    }
   },
   "team": {
     "title": "Team",

@@ -1609,7 +1609,22 @@
     "language": "界面语言",
     "saved": "资料已保存。",
     "email_note": "邮箱是你的登录账号，无法在此修改。",
-    "locale_note": "界面语言保存在你的资料中，也用于邮件通知。"
+    "locale_note": "界面语言保存在你的资料中，也用于邮件通知。",
+    "avatar_title": "头像",
+    "avatar_hint": "支持 PNG、JPG 或 WEBP，最大 2 MB，会自动裁剪为正方形。",
+    "avatar_upload": "上传头像",
+    "avatar_change": "更换头像",
+    "avatar_remove": "移除头像",
+    "avatar_uploading": "上传中…",
+    "avatar_updated": "头像已更新。",
+    "avatar_removed": "头像已移除。",
+    "errors": {
+      "avatar_bad_type": "请选择 PNG、JPG 或 WEBP 格式的图片。",
+      "avatar_too_large": "图片大小超过 2 MB。",
+      "avatar_invalid_image": "无法读取该图片文件。",
+      "avatar_invalid_url": "头像保存失败，请重新上传。",
+      "avatar_not_found": "头像保存失败，请重新上传。"
+    }
   },
   "team": {
     "title": "队伍",

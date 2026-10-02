@@ -60,7 +60,7 @@ const statItems = computed(() => stats.value ? [
             <div class="wall-track" aria-hidden="false">
               <article v-for="e in entries" :key="e.id" class="wall-card">
                 <div class="wall-card-head">
-                  <UserAvatar :name="e.name" :github="e.github" /><h3>{{ e.name }}</h3>
+                  <UserAvatar :name="e.name" :github="e.github" :avatar-url="e.avatar_url" /><h3>{{ e.name }}</h3>
                   <span v-if="lookingChip(e)" class="wall-looking"><span class="live-dot h-1.5 w-1.5"></span>{{ lookingChip(e) }}</span>
                 </div>
                 <div class="wall-badges"><TierBadge kind="astro" :level="e.astro_level" /><TierBadge kind="ai" :level="e.ai_level" /></div>
@@ -71,7 +71,7 @@ const statItems = computed(() => stats.value ? [
             <div class="wall-track" aria-hidden="true">
               <article v-for="e in entries" :key="`dup-${e.id}`" class="wall-card">
                 <div class="wall-card-head">
-                  <UserAvatar :name="e.name" :github="e.github" /><h3>{{ e.name }}</h3>
+                  <UserAvatar :name="e.name" :github="e.github" :avatar-url="e.avatar_url" /><h3>{{ e.name }}</h3>
                   <span v-if="lookingChip(e)" class="wall-looking"><span class="live-dot h-1.5 w-1.5"></span>{{ lookingChip(e) }}</span>
                 </div>
                 <div class="wall-badges"><TierBadge kind="astro" :level="e.astro_level" /><TierBadge kind="ai" :level="e.ai_level" /></div>
@@ -83,7 +83,7 @@ const statItems = computed(() => stats.value ? [
           <template v-else>
             <article v-for="e in entries" :key="e.id" class="wall-card">
               <div class="wall-card-head">
-                <UserAvatar :name="e.name" :github="e.github" /><h3>{{ e.name }}</h3>
+                <UserAvatar :name="e.name" :github="e.github" :avatar-url="e.avatar_url" /><h3>{{ e.name }}</h3>
                 <span v-if="lookingChip(e)" class="wall-looking"><span class="live-dot h-1.5 w-1.5"></span>{{ lookingChip(e) }}</span>
               </div>
               <div class="wall-badges"><TierBadge kind="astro" :level="e.astro_level" /><TierBadge kind="ai" :level="e.ai_level" /></div>

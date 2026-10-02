@@ -5,13 +5,17 @@ import { supabase } from '../lib/supabase'
 import { describeError } from '../lib/errors'
 import { useAuth } from '../stores/auth'
 import { useFlash } from '../stores/flash'
+import { uploadMyAvatar, removeMyAvatar } from '../lib/avatar'
 import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const { t, locale, setLocale } = useI18n()
 const i18n = useI18n()
 const flash = useFlash()
 const { me, refreshMe } = useAuth()
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarBusy = ref(false)
 const form = ref({
   name: '', nickname: '', github: '', affiliation: '', role: '', seeking: '', seeking_count: 1, locale: 'zh' as Locale,
   astro_level: 0, ai_level: 0, city: '', contact: '', blurb: '', show_on_wall: false,
@@ -61,6 +65,33 @@ async function save() {
   finally { busy.value = false }
 }
 
+function pickAvatar() { avatarInput.value?.click() }
+
+async function onAvatarChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || !me.value) return
+  avatarBusy.value = true
+  try {
+    await uploadMyAvatar(me.value.id, file)
+    await refreshMe()
+    flash.success(t('profile.avatar_updated'))
+  } catch (e) { flash.error(describeError(e, i18n, ['profile.errors'])) }
+  finally { avatarBusy.value = false }
+}
+
+async function removeAvatar() {
+  if (!me.value || !me.value.avatar_url) return
+  avatarBusy.value = true
+  try {
+    await removeMyAvatar(me.value.id, me.value.avatar_url)
+    await refreshMe()
+    flash.success(t('profile.avatar_removed'))
+  } catch (e) { flash.error(describeError(e, i18n, ['profile.errors'])) }
+  finally { avatarBusy.value = false }
+}
+
 async function changePassword() {
   if (pw.value.password.length < 8) { flash.error(t('auth.errors.password_too_short')); return }
   if (pw.value.password !== pw.value.password2) { flash.error(t('auth.errors.password_mismatch')); return }
@@ -81,6 +112,18 @@ async function changePassword() {
     <div v-else class="dash-grid">
       <div class="panel">
         <div class="hd"><h2>{{ t('profile.title') }}</h2><span class="m text3 text-sm">{{ me?.email }}</span></div>
+        <div class="avatar-row mb-4" v-if="me">
+          <UserAvatar :name="me.name" :github="me.github" :avatar-url="me.avatar_url" class="avatar-lg" />
+          <div class="avatar-controls">
+            <p class="label">{{ t('profile.avatar_title') }}</p>
+            <div class="actions-inline">
+              <button type="button" class="btn sm" :disabled="avatarBusy" @click="pickAvatar">{{ avatarBusy ? t('profile.avatar_uploading') : (me.avatar_url ? t('profile.avatar_change') : t('profile.avatar_upload')) }}</button>
+              <button v-if="me.avatar_url" type="button" class="btn sm" :disabled="avatarBusy" @click="removeAvatar">{{ t('profile.avatar_remove') }}</button>
+            </div>
+            <small class="help">{{ t('profile.avatar_hint') }}</small>
+            <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onAvatarChange">
+          </div>
+        </div>
         <form @submit.prevent="save" novalidate>
           <div class="grid-form">
             <label class="field"><span>{{ t('auth.name') }}</span><input data-testid="profile-name" v-model="form.name" type="text" required maxlength="120"></label>
