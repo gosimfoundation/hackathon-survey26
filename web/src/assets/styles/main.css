@@ -749,8 +749,6 @@ details.plain summary { cursor: pointer; }
   .skeleton-row i, .live-dot { animation: none !important; }
 }
 
-.header-phase-pill { display: none; align-items: center; height: 1.6rem; }
-@media (min-width: 1024px) { .header-phase-pill { display: inline-flex; } }
 @media (min-width: 1024px) { .toc-chips { display: none; } }
 
 /* sponsor API credits (redeem codes) */

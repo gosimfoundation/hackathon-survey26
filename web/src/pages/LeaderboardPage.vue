@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
+import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -26,10 +27,6 @@ const updatedAt = ref<Date | null>(null)
 const selected = ref<LeaderboardEntry | null>(null)
 let timer: number | undefined
 
-// Only these three phases are ever shown to contestants, in this order — any other phase
-// (internal rehearsal/staging/observer boards) is filtered out even if the DB returns it.
-const LEADERBOARD_SLUGS = ['practice-projects', 'practice', 'online'] as const
-const TAB_LABEL_KEYS: Record<string, string> = { 'practice-projects': 'leaderboard.tabs.practice', practice: 'leaderboard.tabs.debug', online: 'leaderboard.tabs.competition' }
 const visiblePhases = computed(() => LEADERBOARD_SLUGS.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p))
 const phase = computed<Phase | null>(() => {
   const slug = route.params.phase as string | undefined
@@ -96,7 +93,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
-        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }">{{ t(TAB_LABEL_KEYS[p.slug]) }}</router-link>
+        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }">{{ t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]) }}</router-link>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 

@@ -11,7 +11,7 @@ import { isFullMoonToday } from '../../lib/eggs'
 import { mainNavItems, moreNavItems, participateItem } from '../../lib/nav'
 import { computed } from 'vue'
 
-const { t, tf, pick, toggleLocale, locale } = useI18n()
+const { t, pick, toggleLocale, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, isAdmin, signOut } = useAuth()
@@ -24,14 +24,7 @@ const flash = useFlash()
 const mobileOpen = ref(false)
 const nextLocaleLabel = computed(() => ({ zh: 'EN', en: '日本語', ja: 'FR', fr: '中文' } as const)[locale.value])
 const fullMoon = isFullMoonToday()
-const { current, next, nextLine, usingFallback, countdown } = usePhaseClock()
-const pad = (n: number) => String(n).padStart(2, '0')
-const phasePill = computed(() => {
-  if (current.value) return { text: `${pick(current.value.name_en, current.value.name_zh)} · ${t('leaderboard.status.open')}`, cls: 'open' }
-  const name = next.value ? pick(next.value.name_en, next.value.name_zh) : usingFallback.value ? t('phase_clock.fallback_next') : null
-  if (!name || (!next.value && !usingFallback.value)) return null
-  return { text: `${name} · ${tf('phase_clock.in', { d: countdown.value.days, h: pad(countdown.value.hours) })}`, cls: 'upcoming' }
-})
+const { nextLine } = usePhaseClock()
 
 const items = mainNavItems
 const more = moreNavItems
@@ -106,7 +99,6 @@ async function logout() {
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
           <span v-if="unreadTeamNotifications" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ unreadTeamNotifications > 99 ? '99+' : unreadTeamNotifications }}</span>
         </router-link>
-        <router-link v-if="phasePill" to="/leaderboard" class="pill header-phase-pill" :class="phasePill.cls" :title="nextLine || undefined" data-testid="phase-pill">{{ phasePill.text }}</router-link>
         <span v-if="fullMoon" class="moon-chip hidden md:inline-flex" :title="pick('Full moon tonight.', '今晚满月。')">🌕</span>
         <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
           {{ nextLocaleLabel }}
