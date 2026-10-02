@@ -4,7 +4,6 @@
 2. A team has 1 to 3 members. A person belongs to at most one team. Submissions are made on behalf of a team.
 3. Organizers, evaluation-platform maintainers, and their immediate collaborators are excluded from awards. Their teams are marked hidden on the boards.
 4. Team names and content must follow the code of conduct (section 8).
-5. The competition accepts at most 150 teams (hidden organizer and test teams do not count). Once that number is reached, team registration closes automatically and no new team can be created. Individual accounts can still sign up and join an existing team that has room, using its invite code.
 
 ## 2. Schedule and task cards
 
@@ -14,7 +13,7 @@ All participants use the same Participate page; the platform selects the active 
 |---|---|---|
 | Practice cards α, β, γ, δ | Practice | Now: the card pages and every file (including the weather, forecast and event files), so scores can be reproduced locally |
 | Hackathon cards A, B, C, D | Online competition evaluations and the online board | When the competition starts — Oct 5, 00:00 Beijing time (Oct 4, 16:00 UTC; Oct 4, 09:00 PDT; Oct 4, 12:00 EDT): the card pages and the public inputs; weather, forecasts and events stay private |
-| Hidden cards E, F, G, H | The final evaluation after the deadline, which decides the final ranking | Never; participants do not see them during the event |
+| Hidden cards E, F, G, H | The final evaluation after the deadline, which decides the final ranking | Not before the hackathon ends; participants do not see them during the event |
 
 The fourth card of each set (δ, D, H) is an extreme card: less observable time and more disruptions. Card pages are on [Task cards](/cards); downloads are on [Resources](/resources).
 
@@ -24,8 +23,8 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 | Online training | Oct 2–3 | Introduces the simulator and participant protocol; details in announcements |
 | Competition | Oct 5 00:00 – Oct 7 23:59 | Submit complete projects; every evaluation runs once on each of the cards A–D; the online board updates live; choose your final version |
 | Hidden-card final evaluation | After Oct 7 23:59 | Organizers evaluate each team's final version once on the hidden cards E–H |
-| Verification and results | After the hidden evaluation | Organizers verify the top teams, then publish the final standings (hidden-card scores only) |
-| Awards Day | Oct 17 | GOSIM Shenzhen |
+| Verification and results | After the hidden evaluation completes; expected before Oct 10 | Organizers verify the top teams, then publish the final standings (hidden-card scores only) |
+| Awards Day | Oct 17 | GOSIM Shenzhen conference (top three teams invited) |
 
 ### Practice rules
 
@@ -91,7 +90,9 @@ Each card is scored by the published scorer with the parameters in that card's `
 | Second Prize | $1,000 | 2 |
 | Third Prize | $500 | 3 |
 
-Amounts are gross. The first- and second-prize teams are invited to Awards Day at GOSIM Shenzhen on October 17, 2026. In principle, GOSIM covers their travel and accommodation. Each team gets a booth and a roll-up banner on site to present itself and its project to conference attendees, and goes on stage to receive its award at the closing ceremony. GOSIM conference staff will contact the winners with details after the competition. Attendance is not required to receive a prize.
+Amounts are gross. The first- and second-prize teams are invited to the GOSIM Shenzhen conference on October 16–17, 2026, and go on stage to receive their awards at the closing ceremony on October 17. In principle, GOSIM covers their travel and accommodation. Each team gets a booth and a roll-up banner on site to present itself and its project to conference attendees. GOSIM conference staff will contact the winners with details after the competition. Attendance is not required to receive a prize.
+
+**Open source.** Award-winning entries must be released as open source; we recommend a license such as Apache or MIT.
 
 Design evaluation is separate from the performance board. It considers code, run
 records and reproducibility, not explanation length. Participants can save
@@ -100,7 +101,7 @@ prizes will be announced separately.
 
 ## 8. Code of conduct
 
-1. Be respectful. Harassment, discrimination, and abusive content in team names, notes, or agent output are not tolerated.
+1. Be respectful to one another. Harassment, discrimination, and abusive content in team names, notes, agent output, or posts and messages in WeChat groups or on other social media are not tolerated.
 2. Do not share accounts, do not submit another team's work, and do not create multiple teams to multiply the daily limit.
 3. Report platform defects to the organizers instead of exploiting them. Reports of scorer or sandbox issues are welcome and credited.
 4. Decisions of the organizers on eligibility, disqualification, and awards are final.
@@ -110,6 +111,6 @@ prizes will be announced separately.
 1. Registration data (name, email, affiliation, GitHub handle) is used only to run the event and to contact winners.
 2. Private ZIP projects, results, run records and score reports are visible only to the submitting team and organizers and are kept by the organizers and may be used for academic research and publications; published material is anonymized unless the team agrees otherwise. Forks of public repositories remain public; use ZIP for private projects. Model keys never enter project repositories or frontend code.
 3. Team names, scores, and ranks are public.
-4. Challenge data, task cards, evaluation code and example projects provided by the organizers are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Challenge when using them. Your own agent code is not restricted by this. The organizers will publish an article on this benchmark; once out, please cite it.
+4. Challenge data, task cards, evaluation code and example projects provided by the organizers are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Hackathon ([https://create.gosim.org/survey26/](https://create.gosim.org/survey26/)) when using them. Your own agent code is not restricted by this. The organizers will publish an article on this benchmark; once out, please cite it.
 
 Contact: hackathon@gosim.org

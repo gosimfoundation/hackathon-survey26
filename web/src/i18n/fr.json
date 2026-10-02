@@ -647,8 +647,8 @@
   },
   "teammates": {
     "kicker": "Mur des participants",
-    "title": "Se trouver par niveaux",
-    "lede": "Participants au profil astronomie et au profil ingénierie se cherchent ici. Avec le tri par complémentarité, les candidats qui complètent vos compétences passent en premier.",
+    "title": "Trouver des coéquipiers",
+    "lede": "Les participants aux profils astronomie, IA et ingénierie peuvent trouver ici des coéquipiers aux compétences complémentaires. Avec le tri par complémentarité, les candidats qui complètent vos compétences passent en premier.",
     "self_title": "Ma carte",
     "self_on": "Affichée",
     "self_off": "Non affichée",

@@ -748,7 +748,7 @@
         "kicker": "08 / Timeline",
         "title": "Three stages from training to awards",
         "paragraphs": [
-          "The event has three stages: online training from October 2–3, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17.",
+          "The event has three stages: online training from October 2–3, online competition from October 5–7, and Awards Day at GOSIM Shenzhen on October 17. Final results are expected to be published before October 10, ahead of Awards Day.",
           "Training covers the simulator and participant protocol; details will be announced. The competition accepts complete projects. The server reveals current information step by step and scores each complete multi-scenario batch."
         ],
         "rounds": [
@@ -773,7 +773,7 @@
             "name": "Awards Day",
             "dates": "Oct 17",
             "format": "GOSIM Shenzhen",
-            "challenge": "Final results are announced and prizes are presented.",
+            "challenge": "Prizes are presented at the closing ceremony of the GOSIM Shenzhen conference. Final results are expected to be published before October 10.",
             "participants": "First- and second-prize teams and invited participants."
           }
         ]
@@ -1166,7 +1166,7 @@
         "name": "Awards Day",
         "dates": "Oct 17",
         "format": "GOSIM Shenzhen",
-        "challenge": "Final results are announced and prizes are presented.",
+        "challenge": "Prizes are presented at the closing ceremony of the GOSIM Shenzhen conference. Final results are expected to be published before October 10.",
         "participants": "First- and second-prize teams and invited participants."
       }
     ]
@@ -1288,7 +1288,7 @@
     "license": {
       "prefix": "Challenge data, task cards, evaluation code and example projects are provided under ",
       "linkText": "CC BY-NC 4.0",
-      "suffix": " (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Challenge."
+      "suffix": " (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Hackathon (https://create.gosim.org/survey26/)."
     },
     "mainSite": "GOSIM",
     "lockup": "OPEN / OBSERVER",
@@ -2025,11 +2025,11 @@
       },
       {
         "q": "Is the leaderboard score the final result?",
-        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated once on the hidden cards E–H, and only the mean over E–H decides the final ranking; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams before awards are confirmed on October 17."
+        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated once on the hidden cards E–H, and only the mean over E–H decides the final ranking; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams and then publish the final results, expected before October 10."
       },
       {
         "q": "Do I have to attend in Shenzhen?",
-        "a": "No. The competition is online. The first- and second-prize teams are invited to Awards Day at GOSIM Shenzhen on October 17. In principle, GOSIM covers their travel and accommodation; each team gets a booth and a roll-up banner on site and goes on stage at the closing ceremony. Conference staff will contact the winners with details after the competition. Remote acceptance is possible."
+        "a": "No. The competition is online. The first- and second-prize teams are invited to the GOSIM Shenzhen conference on October 16–17 and go on stage at the closing ceremony on October 17. In principle, GOSIM covers their travel and accommodation; each team gets a booth and a roll-up banner on site. Conference staff will contact the winners with details after the competition. Remote acceptance is possible."
       },
       {
         "q": "Is the platform free?",
@@ -2037,7 +2037,7 @@
       },
       {
         "q": "Must I open-source my agent?",
-        "a": "Not required. Before awards are confirmed, organizers may re-run top teams' final versions and ask for the complete code and the external services and models used, to reproduce the result."
+        "a": "Not to take part: you can submit a private ZIP. Award-winning entries must be released as open source; we recommend a license such as Apache or MIT. Before awards are confirmed, organizers may re-run top teams' final versions and ask for the complete code and the external services and models used, to reproduce the result."
       },
       {
         "q": "What happens if my agent crashes or times out?",
@@ -2070,7 +2070,7 @@
   "cards_page": {
     "kicker": "Task cards",
     "title": "Task cards",
-    "lede": "Each task card is one complete simulated survey season. Practice cards α–δ are public now; hackathon cards A–D are published when the competition starts; hidden cards E–H are never published.",
+    "lede": "Each task card is one complete simulated survey season. Practice cards α–δ are public now; hackathon cards A–D are published when the competition starts; hidden cards E–H are not published before the hackathon ends.",
     "practice": "Practice cards",
     "formal": "Hackathon cards",
     "download": "Download card files (ZIP)",
@@ -2459,8 +2459,8 @@
   },
   "teammates": {
     "kicker": "Participants wall",
-    "title": "Find each other by tier",
-    "lede": "Participants with astronomy and engineering backgrounds find each other here. With complementary sorting on, candidates whose strengths complement yours are shown first.",
+    "title": "Find teammates",
+    "lede": "Participants with astronomy, AI and engineering backgrounds can find teammates with complementary skills here. With complementary sorting on, candidates whose strengths complement yours are shown first.",
     "self_title": "My card",
     "self_on": "On the wall",
     "self_off": "Not on the wall",
