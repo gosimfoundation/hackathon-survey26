@@ -12,7 +12,12 @@ import PageHead from '../components/layout/PageHead.vue'
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
 
-const EXAMPLES_BUNDLE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/latest/download/gosim-observer-examples.zip'
+// Pinned to the examples-2026-10-02 release tag, not releases/latest/download/... -- this
+// repo's own site-publish workflow (.github/workflows/publish-site.yml) mints a new "Website"
+// release and marks it --latest on every successful push to main, so "latest" here would almost
+// immediately redirect to a site tarball instead of this zip. Re-run scripts/build-examples-bundle.sh
+// to update the asset on this same tag.
+const EXAMPLES_BUNDLE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/download/examples-2026-10-02/gosim-observer-examples.zip'
 
 // A language's card only appears once examples/<lang>/ is published and its ZIP is built --
 // see web/scripts/build-examples.mjs. Adding another language later is one entry here.
