@@ -24,13 +24,32 @@ const state = reactive({
 
 let readyPromise: Promise<void> | null = null
 
+// `me` is fetched on every page mount across the site; dedupe concurrent calls and let a fresh
+// fetch stay valid for a short window so navigating between dashboard/profile/submissions pages
+// doesn't refetch it every time. Mutations (join team, update profile, ...) call refreshMe()
+// directly, which always hits the network and refreshes this window for the next cached read.
+const ME_CACHE_MS = 30000
+let meFetchedAt = 0
+let meInFlight: Promise<Me | null> | null = null
+
 export async function refreshMe(): Promise<Me | null> {
+  if (!state.session) { state.me = null; meFetchedAt = 0; return null }
+  if (meInFlight) return meInFlight
+  meInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('me')
+      if (!error) { state.me = (data as Me | null) ?? null; meFetchedAt = Date.now() }
+    } catch { /* keep the previous snapshot */ }
+    return state.me
+  })()
+  try { return await meInFlight } finally { meInFlight = null }
+}
+
+/** Read-only variant for page mounts: reuses the snapshot fetched within the last 30s instead of refetching. */
+export async function refreshMeCached(): Promise<Me | null> {
   if (!state.session) { state.me = null; return null }
-  try {
-    const { data, error } = await supabase.rpc('me')
-    if (!error) state.me = (data as Me | null) ?? null
-  } catch { /* keep the previous snapshot */ }
-  return state.me
+  if (state.me && Date.now() - meFetchedAt < ME_CACHE_MS) return state.me
+  return refreshMe()
 }
 
 export function initAuth(): Promise<void> {
@@ -63,6 +82,7 @@ export async function signOut() {
   try { await supabase.auth.signOut() } catch { /* ignore */ }
   state.session = null
   state.me = null
+  meFetchedAt = 0
 }
 
 export function useAuth() {
@@ -73,6 +93,7 @@ export function useAuth() {
     me: computed(() => state.me),
     team: computed(() => state.me?.team ?? null),
     refreshMe,
+    refreshMeCached,
     signOut,
     whenReady: () => initAuth(),
   }

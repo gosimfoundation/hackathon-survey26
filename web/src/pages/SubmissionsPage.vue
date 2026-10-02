@@ -13,7 +13,7 @@ import StatusPill from '../components/layout/StatusPill.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 
 const { t, pick } = useI18n()
-const { team, refreshMe } = useAuth()
+const { team, refreshMeCached } = useAuth()
 const rows = ref<any[]>([])
 const loading = ref(true)
 const watcher = useSubmissionWatch(load, () => rows.value.some(r => PENDING_STATUSES.has(r.status)))
@@ -25,7 +25,7 @@ async function load() {
 }
 
 onMounted(async () => {
-  await refreshMe()
+  await refreshMeCached()
   try { await load() } finally { loading.value = false }
   if (team.value) watcher.start(team.value.id)
 })

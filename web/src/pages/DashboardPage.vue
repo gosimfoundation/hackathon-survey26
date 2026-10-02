@@ -22,7 +22,7 @@ import { questProgress } from '../lib/quest'
 const { t, tf, pick } = useI18n()
 const route = useRoute()
 const flash = useFlash()
-const { me, team, refreshMe } = useAuth()
+const { me, team, refreshMeCached } = useAuth()
 const phases = ref<Phase[]>([])
 const quota = ref<Record<string, number>>({})
 const submissions = ref<any[]>([])
@@ -63,7 +63,7 @@ async function loadSubmissions() {
 
 onMounted(async () => {
   if (route.query.denied) flash.error(t('errors.admin_required'))
-  await refreshMe()
+  await refreshMeCached()
   try {
     phases.value = await loadPhases()
     if (team.value) {

@@ -80,12 +80,14 @@ async function loadBoard() {
 }
 
 watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario], () => { void loadBoard() })
+function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && document.visibilityState === 'visible') void loadBoard() }
 onMounted(async () => {
   await reload()
   await loadBoard()
-  timer = window.setInterval(() => { if (phase.value?.leaderboard_mode === 'live') void loadBoard() }, 30_000)
+  timer = window.setInterval(pollBoard, 60_000)
+  document.addEventListener('visibilitychange', pollBoard)
 })
-onUnmounted(() => { if (timer) window.clearInterval(timer) })
+onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEventListener('visibilitychange', pollBoard) })
 </script>
 
 <template>
