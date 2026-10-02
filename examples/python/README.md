@@ -177,5 +177,5 @@ list it in `requirements.txt` **and** add a matching `build` step to
 
 Task cards, simulated data, evaluation code and this example project are licensed under
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial);
-please cite the GOSIM 2026 Agentic Observer Challenge. Your own agent code is not restricted
+please cite the GOSIM 2026 Agentic Observer Hackathon (https://create.gosim.org/survey26/). Your own agent code is not restricted
 by this. See `LICENSE.md` for details.

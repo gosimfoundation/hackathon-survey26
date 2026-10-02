@@ -9,7 +9,7 @@ International License (CC BY-NC 4.0)**.
 > https://creativecommons.org/licenses/by-nc/4.0/ or see the full legal code at
 > https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
-Attribution: please cite the **GOSIM 2026 Agentic Observer Challenge**. The organizers will
+Attribution: please cite the **GOSIM 2026 Agentic Observer Hackathon** (https://create.gosim.org/survey26/). The organizers will
 publish an article on this benchmark; once it is out, please cite that article instead.
 
 This license covers materials provided by the organizers only. It does not apply to code
