@@ -171,7 +171,8 @@ onMounted(async () => {
 .flow-head p { margin-top: .25rem; font-size: .85rem; color: #aeb6c8; }
 .flow-primary { border-color: rgba(251,191,36,.4); }
 .cards.cards-1 { grid-template-columns: minmax(0, 1fr); }
-.task-card-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.task-card-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+@media (min-width: 900px) { .task-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .task-card-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
 .task-card-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
 .task-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
