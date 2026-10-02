@@ -54,6 +54,13 @@ onMounted(async () => {
               <span v-else-if="cardFiles[c.id]" class="pill" :class="c.stage === 'practice' ? 'upcoming' : 'closed'">{{ c.stage === 'practice' ? t('resources.card_pending') : t('resources.card_locked') }}</span>
             </p>
           </article>
+          <div class="hidden-cards-note" data-testid="resources-hidden-cards-note">
+            <h3>{{ t('resources.hidden_note_title') }}</h3>
+            <p>{{ t('resources.hidden_note_p1') }}</p>
+            <p>{{ t('resources.hidden_note_p2') }}</p>
+            <p>{{ t('resources.hidden_note_p3') }}</p>
+            <p>{{ t('resources.hidden_note_p4') }}</p>
+          </div>
           <article v-for="symbol in hiddenCards" :key="`hidden-${symbol}`" class="task-card-item" :data-testid="`resources-card-hidden-${symbol.toLowerCase()}`">
             <span class="label">{{ t('resources.card_hidden_label') }}</span>
             <h3 class="mt-2">{{ tf('resources.card_hidden_title', { card: symbol }) }}</h3>
@@ -97,4 +104,7 @@ onMounted(async () => {
 .task-card-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
 .task-card-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
 .task-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
+.hidden-cards-note { grid-column: 1 / -1; border: 1px solid rgba(251,191,36,.3); background: rgba(251,191,36,.06); padding: 1.1rem 1.2rem; }
+.hidden-cards-note h3 { font-size: .95rem; color: #fbbf24; margin-bottom: .5rem; }
+.hidden-cards-note p { font-size: .875rem; line-height: 1.5; color: rgba(245,247,255,.78); margin-top: .4rem; }
 </style>
