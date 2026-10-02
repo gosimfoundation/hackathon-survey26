@@ -12,26 +12,21 @@ import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } f
 import { useFlash } from '../stores/flash'
 import { competition } from '../stores/competition'
 import PageHead from '../components/layout/PageHead.vue'
-import { useQuestFlags } from '../composables/useQuestFlags'
 
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
-// A signed-in download counts as the dashboard quest's kit step.
-const { remember } = useQuestFlags()
 const scenarios = ref<Scenario[]>([])
 const loading = ref(true)
 const busy = ref<string | null>(null)
 const GROUPS: ScenarioFileGroup[] = ['config', 'data', 'weather', 'forecasts', 'events']
 
 const kit = computed(() => [
-  { n: '01', title: 'resources.kit_v4', desc: 'resources.kit_v4_desc', href: appUrl('/downloads/agent-observer-starter-kit-v4.zip'), primary: true, label: 'common.download' },
   { n: '02', title: 'resources.skill_v4', desc: 'resources.skill_v4_desc', href: appUrl('/skill-v4.md'), primary: false, label: 'common.view', view: true },
   { n: '03', title: 'resources.cards', desc: 'resources.cards_desc', href: '/cards', primary: false, label: 'common.view', route: true },
   { n: '04', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
 ])
 // The earlier v3 practice (decisions.csv warm-up on the v3 scenarios) keeps its own kit and scorer.
 const legacy = computed(() => [
-  { n: 'v3', title: 'resources.kit', desc: 'resources.kit_desc', href: appUrl('/downloads/agent-observer-starter-kit.zip'), label: 'common.download' },
   { n: 'v3', title: 'resources.reference', desc: 'resources.reference_desc', href: 'https://github.com/BH3GEI/observer-project-example', label: 'common.view', view: true },
   { n: 'v3', title: 'resources.scorer', desc: 'resources.scorer_desc', href: appUrl('/downloads/scoring_core.py'), label: 'common.download' },
   { n: 'v3', title: 'resources.skill', desc: 'resources.skill_desc', href: appUrl('/skill.md'), label: 'common.view', view: true },
@@ -46,12 +41,6 @@ async function downloadCard(card: TaskCard) {
   catch { flash.error(t('subs.download_failed')) }
   finally { cardBusy.value = null }
 }
-const cli = `unzip agent-observer-starter-kit-v4.zip && cd agent-observer-starter-kit-v4
-python3 local_runner.py                                   # baseline agent on the demo card
-python3 local_runner.py --agent examples/idle_agent.py    # the "do nothing" score, for comparison
-# a practice card from this page: unzip taskcard-alpha.zip into cards/ (cards/alpha/config, public, truth)
-python3 local_runner.py --card cards/alpha
-python3 pack_agent.py --out ../my-agent.zip               # upload on the Participate page`
 const filesFor = (group: ScenarioFileGroup) => SCENARIO_FILES.filter(f => f.group === group)
 const groupVisible = (s: Scenario, group: ScenarioFileGroup) => filesFor(group).some(f => scenarioFileVisible(s, f))
 const fmtClock = (v: number | null | undefined) => v == null ? '—' : v >= 3600 ? `${(v / 3600).toFixed(v % 3600 ? 1 : 0)} h` : `${Math.round(v / 60)} min`
@@ -83,19 +72,7 @@ onMounted(async () => {
     <PageHead :kicker="t('resources.kicker')" :title="t('resources.title')" :lede="t('resources.lede')" />
     <section class="section"><div class="wrap">
       <div class="flow-band reveal">
-        <div class="flow-head"><span class="flow-step">1</span><div><h2>{{ t('resources.flow1') }}</h2><p>{{ t('resources.flow1_hint') }}</p></div></div>
-        <div class="cards cards-1">
-          <article v-tilt class="card card-lift flow-primary">
-            <span class="label accent">{{ kit[0].n }}</span>
-            <h3 class="mt-3">{{ t(kit[0].title) }}</h3>
-            <p>{{ t(kit[0].desc) }}</p>
-            <p class="mt-5"><a class="btn primary" :href="kit[0].href" download data-testid="kit-v4" @click="remember('prepare')">{{ t(kit[0].label) }} ↓</a></p>
-          </article>
-        </div>
-      </div>
-
-      <div class="flow-band reveal mt-16">
-        <div class="flow-head"><span class="flow-step">2</span><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
+        <div class="flow-head"><span class="flow-step">1</span><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
         <div class="task-card-grid">
           <article v-for="c in taskCards" :key="c.id" class="task-card-item" :data-testid="`resources-card-${c.id}`">
             <span class="label" :class="{ accent: c.stage === 'practice' }">{{ c.stage === 'practice' ? t('cards_page.practice') : t('cards_page.formal') }}</span>
@@ -111,9 +88,9 @@ onMounted(async () => {
       </div>
 
       <div class="flow-band reveal mt-16">
-        <div class="flow-head"><span class="flow-step">3</span><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
+        <div class="flow-head"><span class="flow-step">2</span><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
         <div class="cards cards-3 reveal-stagger">
-          <article v-for="item in kit.slice(1)" :key="item.title" v-tilt class="card card-lift">
+          <article v-for="item in kit" :key="item.title" v-tilt class="card card-lift">
             <span class="label accent">{{ item.n }}</span>
             <h3 class="mt-3">{{ t(item.title) }}</h3>
             <p>{{ t(item.desc) }}</p>
@@ -123,8 +100,6 @@ onMounted(async () => {
             </p>
           </article>
         </div>
-        <h2 class="label accent mt-12 mb-4">{{ t('resources.cli') }}</h2>
-        <pre class="code-block" tabindex="0">{{ cli }}</pre>
       </div>
 
       <div class="flow-band reveal mt-16">

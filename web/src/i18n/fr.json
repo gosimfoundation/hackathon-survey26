@@ -6,7 +6,7 @@
     "pages": {
       "start": {
         "title": "Démarrer en 3 étapes",
-        "description": "Téléchargez le kit, exécutez-le en local et soumettez — trois étapes pour un premier score."
+        "description": "Lisez la documentation, construisez votre agent et soumettez — trois étapes pour un premier score."
       }
     }
   },
@@ -451,7 +451,7 @@
         {
           "n": "02",
           "title": "Construire votre agent",
-          "desc": "Téléchargez le kit de démarrage, exécutez l'agent minimal en local avec le même workflow et le même correcteur que la plateforme, puis itérez sur les scénarios publics — code déterministe, LLM via votre propre .env, ou les deux."
+          "desc": "Construisez votre agent à partir de la documentation et itérez sur les scénarios publics de développement."
         },
         {
           "n": "03",
@@ -634,7 +634,7 @@
       "kicker": "Exemple officiel",
       "title": "Exemple officiel : replay de l'agent de référence sur un scénario d'entraînement public",
       "facts": "Scénario {scenario} · graine {seed} · {nights} nuits · {rounds} décisions · score final {score}",
-      "note": "Sortie réelle du scoreur et du moteur de replay de la plateforme pour l'agent de référence du kit. Lecture à 8× ; faites glisser le ciel pour changer de vue."
+      "note": "Sortie réelle du scoreur et du moteur de replay de la plateforme pour un agent de référence. Lecture à 8× ; faites glisser le ciel pour changer de vue."
     }
   },
   "teammates": {
@@ -876,9 +876,9 @@
           "action": "Former une équipe"
         },
         "prepare": {
-          "title": "Télécharger le kit de démarrage",
+          "title": "Lire la documentation",
           "hint": "Décompressez-le et lancez l’agent d’exemple pour produire votre premier decisions.csv en local.",
-          "action": "Télécharger le kit"
+          "action": "Ouvrir la documentation"
         },
         "submit": {
           "title": "Première soumission",
@@ -898,9 +898,9 @@
           "action": "Former une équipe"
         },
         "prepare": {
-          "title": "Préparer votre projet (kit et documentation)",
+          "title": "Préparer votre projet (documentation)",
           "hint": "Appuyez-vous sur le projet d’exemple complet et la documentation de l’interface pour coder votre agent dans le langage de votre choix.",
-          "action": "Ouvrir le kit et la documentation"
+          "action": "Ouvrir la documentation"
         },
         "submit": {
           "title": "Soumettre le projet et lancer une évaluation",
@@ -930,11 +930,11 @@
   "start3": {
     "practice": {
       "subtitle": "Aucune connaissance en astronomie requise. Pour une première participation, suivez simplement ces trois étapes dans l’ordre.",
-      "s1_title": "Étape 1 · Télécharger le kit de démarrage",
+      "s1_title": "Étape 1 · Lire la documentation",
       "s1_desc": "Il contient un programme d’exemple, un outil de notation local et des scénarios publics.",
-      "s1_cta": "Télécharger le kit",
+      "s1_cta": "Ouvrir la documentation",
       "s2_title": "Étape 2 · Exécuter en local",
-      "s2_lead": "Décompressez-le et lancez dans le dossier du kit :",
+      "s2_lead": "Construisez votre agent et lancez-le sur les scénarios publics.",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple pour l’améliorer.",
       "s2_link": "Lire la description de la tâche",
@@ -953,11 +953,11 @@
     },
     "competition": {
       "subtitle": "Aucune connaissance en astronomie requise. Suivez ces trois étapes dans l’ordre pour participer.",
-      "s1_title": "Étape 1 · Télécharger le kit de démarrage",
+      "s1_title": "Étape 1 · Lire la documentation",
       "s1_desc": "Il contient un programme d’exemple et un outil de notation local.",
-      "s1_cta": "Télécharger le kit",
+      "s1_cta": "Ouvrir la documentation",
       "s2_title": "Étape 2 · Exécuter en local",
-      "s2_lead": "Décompressez-le et lancez dans le dossier du kit :",
+      "s2_lead": "Construisez votre agent et testez-le en local.",
       "s2_cmd": "python3 local_runner.py",
       "s2_desc": "Si vous voyez un score, ça marche. Modifiez ensuite la logique de décision du programme d’exemple.",
       "s2_link": "Lire la description de la tâche",

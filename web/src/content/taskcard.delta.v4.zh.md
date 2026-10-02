@@ -72,7 +72,7 @@
 
 ## 动手试试
 
-1. 在资源页下载 v4 入门包和卡片 δ。把卡片文件夹放进入门包的 `cards/` 目录。
+1. 在资源页下载卡片 δ，把卡片文件夹放进项目的 `cards/` 目录。
 2. 运行 `python3 local_runner.py --card cards/delta`。最后一行是你的得分。天气文件是公开的，所以同样的决策在本地和平台上得分相同。
 3. 和 `python3 local_runner.py --card cards/delta --agent examples/idle_agent.py`（什么都不做的智能体）比一比。
 4. 修改 `agent/planner.py`，再运行，再比较。

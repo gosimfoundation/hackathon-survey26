@@ -72,7 +72,7 @@ least 0.50, so it would still count as missing.
 
 ## Try it
 
-1. Download the v4 starter kit and card δ from the Resources page. Put the card folder into the kit's `cards/` folder.
+1. Download card δ from the Resources page and put the card folder into your project's `cards/` folder.
 2. Run `python3 local_runner.py --card cards/delta`. The last line shows your score. The weather files are public, so the same decisions give the same score here and on the platform.
 3. Compare with `python3 local_runner.py --card cards/delta --agent examples/idle_agent.py` (an agent that does nothing).
 4. Change `agent/planner.py`, run again, and compare.

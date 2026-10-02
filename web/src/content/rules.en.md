@@ -29,11 +29,11 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 
 ### Practice rules
 
-1. Download the v4 starter kit and the practice cards, run your agent locally and check its score, then pack the agent and submit it as a complete project (public GitHub repository or ZIP) on Participate: the Practice board. The platform runs it round by round in the cloud (same evaluation flow as the competition). Every evaluation runs once on each practice card, with a runtime limit of 900 seconds per card.
+1. Download the practice cards, run your agent locally and check its score, then pack the agent and submit it as a complete project (public GitHub repository or ZIP) on Participate: the Practice board. The platform runs it round by round in the cloud (same evaluation flow as the competition). Every evaluation runs once on each practice card, with a runtime limit of 900 seconds per card.
 2. The daily number of evaluations is the quota shown in the "Phase configuration" table above and on Participate, reset at 00:00 UTC (08:00 Beijing time); evaluations that fail because of the platform are not counted. Model calls may only use the team's own model API key.
 3. Practice ranks each card separately and each team keeps its best score per card; exact ties favor the earlier submission. Practice scores do not decide awards.
 4. Any language or algorithm is allowed, and practice runs need no model call. Note that awards require agent (LLM-driven) techniques in at least two of these stages: natural-language understanding, data parsing, task planning, action decisions, tool calling and plan adaptation (section 3, item 6). It is worth preparing for this now.
-5. The v3 practice scenarios accept a `decisions.csv` upload as a warm-up. It uses the v3 scenarios and the v3 scoring rules (see the v3 starter kit on Resources), which differ from the v4 task cards of this competition.
+5. The v3 practice scenarios accept a `decisions.csv` upload as a warm-up. It uses the v3 scenarios and the v3 scoring rules, which differ from the v4 task cards of this competition.
 6. Kimi Coding Plan: each team that runs through Practice (at least one successful score: a scored CSV submission or a scored complete-project evaluation) receives one Kimi Coding Plan code. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
 
 ## 3. What you submit
@@ -60,7 +60,7 @@ For model calls, enter a supported HTTPS endpoint, model and key in Participate 
 
 ## 5. Scoring
 
-Each card is scored by the published v4 scorer (`challenge/v4_scorer.py` in the starter kit) with the parameters in that card's `config/v4_score_config.json`; the `initialize` message carries them in full. The values below are those of the current cards; the full protocol and formulas are in the v4 starter kit's `README.md` (download on [Resources](/resources)) and on the [task card](/cards) pages.
+Each card is scored by the published v4 scorer with the parameters in that card's `config/v4_score_config.json`; the `initialize` message carries them in full. The values below are those of the current cards; the full protocol and formulas are in the v4 starter kit's `README.md` (download on [Resources](/resources)) and on the [task card](/cards) pages.
 
 1. **Survey and actions.** Each card is one survey season; observing is possible while the sun is below −18°. At every decision the agent sends one action: `observe` (point the telescope, put targets on fibres, expose for 60–3600 s and declare a program: DARK, BRIGHT or BACKUP), `wait`, `report` (the instrument is faulty now) or `finish`. The number of fibres and their layout follow each card's configuration (`config/v4_fiber_config.json`, also sent in `initialize`); the practice cards have 16, 25, 9 and 100 fibres.
 2. **Target score.** A target scores only if it falls in its assigned fibre's cell and stays at or above 30° altitude for the whole exposure. Factor = min(brightness × exposure seconds × sky quality ÷ (f0 × T0), 1), where f0 × T0 comes from the card's score settings (`flux_zero_point` × `exposure_zero_point_seconds`; 0.5 × 900 = 450 on most cards); target score = science weight × factor × program bonus.

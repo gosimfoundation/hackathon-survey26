@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
-import { appUrl } from '../composables/api'
 import PageHead from '../components/layout/PageHead.vue'
 import { competition } from '../stores/competition'
 
-/** The newcomer walkthrough: download the kit, run it locally, submit. Kept to three
+/** The newcomer walkthrough: read the docs, build locally, submit. Kept to three
  *  steps so a first-time participant can start in minutes; the stage variant of the
  *  copy comes from the start3 i18n section. */
 const { t } = useI18n()
 const mode = computed(() => competition.mode === 'competition' ? 'competition' : 'practice')
 const copy = computed(() => t(`start3.${mode.value}`))
-const kitUrl = computed(() => mode.value === 'practice'
-  ? appUrl('/downloads/agent-observer-starter-kit.zip')
-  : 'https://github.com/BH3GEI/observer-project-example/archive/refs/heads/main.zip')
 </script>
 
 <template>
@@ -24,11 +20,11 @@ const kitUrl = computed(() => mode.value === 'practice'
         <li class="card" data-testid="start-step-1">
           <h2>{{ copy.s1_title }}</h2>
           <p>{{ copy.s1_desc }}</p>
-          <p class="mt-5"><a class="btn primary" :href="kitUrl" download data-testid="start-kit-download">{{ copy.s1_cta }} ↓</a></p>
+          <p class="mt-5"><router-link class="btn primary" to="/docs" data-testid="start-docs">{{ copy.s1_cta }} →</router-link></p>
         </li>
         <li class="card" data-testid="start-step-2">
           <h2>{{ copy.s2_title }}</h2>
-          <p>{{ copy.s2_lead }} <code class="start-cmd">{{ copy.s2_cmd }}</code></p>
+          <p>{{ copy.s2_lead }}</p>
           <p>{{ copy.s2_desc }}</p>
           <p class="mt-5"><router-link class="btn" to="/brief">{{ copy.s2_link }} →</router-link></p>
         </li>
