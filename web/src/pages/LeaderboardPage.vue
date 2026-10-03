@@ -6,7 +6,7 @@ import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
-import { scenarioLabel } from '../lib/scenarioLabels'
+import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -44,6 +44,7 @@ const statusLine = computed(() => {
 const visible = computed(() => phase.value != null && phase.value.leaderboard_mode !== 'hidden')
 // Practice boards rank one scenario at a time (?scenario=…); the final board averages every scenario.
 const scenarioTabs = computed(() => boardScenarios(phase.value))
+const sortedScenarios = computed(() => [...(phase.value?.scenarios ?? [])].sort((a, b) => scenarioOrder(a.slug) - scenarioOrder(b.slug)))
 const scenarioSlug = computed<string | null>(() => {
   const wanted = route.query.scenario
   return scenarioTabs.value.find(s => s.slug === wanted)?.slug ?? scenarioTabs.value[0]?.slug ?? null
@@ -111,7 +112,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
             <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
-            <dd v-else class="flex flex-wrap gap-2"><span v-for="s in phase.scenarios" :key="s.id" class="pill" :title="s.name">{{ s.slug }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
+            <dd v-else class="flex flex-wrap gap-2"><span v-for="s in sortedScenarios" :key="s.id" class="pill" :title="s.slug">{{ scenarioLabel(s.slug, s.name, locale) }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
             <dt>{{ t('common.updated') }}</dt><dd class="m text-sm">{{ updatedAt ? fmtUtc(updatedAt.toISOString(), { seconds: true }) : '—' }} UTC</dd>
           </dl>
           <p class="text3 mt-8 text-sm">{{ t('leaderboard.tie') }} <template v-if="cardMode">{{ cardTab === null ? t('leaderboard.overall_note') : t('leaderboard.card_note') }}</template><template v-else-if="scenarioTabs.length">{{ t('leaderboard.per_scenario_note') }}</template><template v-else-if="phase.scenarios.length > 1">{{ t('leaderboard.mean_note') }}</template></p>

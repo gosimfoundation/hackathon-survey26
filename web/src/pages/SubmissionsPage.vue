@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { supabase } from '../lib/supabase'
 import { SUBMISSION_SELECT, PENDING_STATUSES } from '../lib/data'
+import { scenarioLabel } from '../lib/scenarioLabels'
 import { fmtUtc, num } from '../lib/format'
 import { useAuth } from '../stores/auth'
 import { useSubmissionWatch } from '../composables/useSubmissionWatch'
@@ -12,7 +13,7 @@ import DashShell from '../components/layout/DashShell.vue'
 import StatusPill from '../components/layout/StatusPill.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 
-const { t, pick } = useI18n()
+const { t, pick, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
 const rows = ref<any[]>([])
 const loading = ref(true)
@@ -49,7 +50,7 @@ onMounted(async () => {
             <td class="m xs whitespace-nowrap">{{ fmtUtc(s.created_at) }}</td>
             <td>{{ s.phases ? pick(s.phases.name_en, s.phases.name_zh) : '—' }}</td>
             <td>{{ t(`kind.${s.kind}`) }}</td>
-            <td class="m xs">{{ s.scenarios?.slug ?? '—' }}</td>
+            <td class="m xs">{{ s.scenarios ? scenarioLabel(s.scenarios.slug, s.scenarios.name, locale) : '—' }}</td>
             <td><StatusPill :status="s.status" /></td>
             <td class="r m" :class="{ 'text-[#ff6b6b]': Number(s.score) < 0 }">{{ num(s.score) }}</td>
             <td class="r m">{{ num(s.base_science) }}</td>

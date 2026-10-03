@@ -8,6 +8,7 @@ import { SUBMISSION_SELECT, PENDING_STATUSES } from '../lib/data'
 import { downloadObject, readObjectText } from '../lib/storage'
 import { fmtUtc, num } from '../lib/format'
 import { PENALTY_KEYS, WAIT_KEYS, outcomeClass, penaltyTotal, terminationTone, type ScoreReport } from '../lib/report'
+import { cardFolderName } from '../lib/projectText'
 import { scenarioLabel } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { useFlash } from '../stores/flash'
@@ -89,6 +90,9 @@ async function download(path: string, name: string) {
   try { await downloadObject('results', path, `sub-${id.value}-${name}`) }
   catch { flash.error(t('subs.download_failed')) }
 }
+function evalFileStem(ev: { id: string; scenarios?: { slug: string } | null }): string {
+  return cardFolderName(ev.scenarios?.slug, ev.id)
+}
 
 onMounted(async () => {
   await refreshMeCached()
@@ -152,7 +156,7 @@ onMounted(async () => {
         <!-- one panel per scenario evaluation -->
         <div v-for="ev in evaluations" :key="ev.id" class="panel mt-8" :data-testid="`evaluation-${ev.scenarios?.slug}`">
           <div class="hd">
-            <h2 class="flex flex-wrap items-center gap-2"><StatusPill :status="ev.status" /> {{ t('subs.scenario') }}: <span class="m">{{ ev.scenarios?.slug }}</span><template v-if="ev.scenarios"> · {{ scenarioLabel(ev.scenarios.slug, ev.scenarios.name, locale) }}</template></h2>
+            <h2 class="flex flex-wrap items-center gap-2"><StatusPill :status="ev.status" /> {{ t('subs.scenario') }}: <span class="m" :title="ev.scenarios?.slug">{{ ev.scenarios ? scenarioLabel(ev.scenarios.slug, ev.scenarios.name, locale) : '—' }}</span></h2>
             <span class="flex flex-wrap items-center gap-2">
               <span v-if="ev.termination_reason" class="pill" :class="terminationTone(ev.termination_reason)" :title="t(`subs.termination_help.${ev.termination_reason}`)" data-testid="termination-pill">{{ t(`subs.termination_reason.${ev.termination_reason}`) }}</span>
               <span v-if="ev.runtime_seconds" class="m xs">{{ t('subs.runtime') }} {{ num(ev.runtime_seconds, 1) }}s</span>
@@ -274,11 +278,11 @@ onMounted(async () => {
           </template>
 
           <p class="actions-inline mt-5">
-            <button v-if="ev.report_path" type="button" class="btn sm" @click="download(ev.report_path, `${ev.scenarios?.slug}-score_report.json`)">{{ t('subs.report') }} ↓</button>
-            <button v-if="ev.decisions_path" type="button" class="btn sm" @click="download(ev.decisions_path, `${ev.scenarios?.slug}-decisions.csv`)">{{ t('subs.decisions') }} ↓</button>
-            <button v-if="ev.log_path" type="button" class="btn sm" @click="download(ev.log_path, `${ev.scenarios?.slug}-agent.log`)">{{ t('subs.log') }} ↓</button>
-            <button v-if="ev.workflow_path" type="button" class="btn sm" @click="download(ev.workflow_path, `${ev.scenarios?.slug}-workflow_result.json`)">{{ t('subs.workflow') }} ↓</button>
-            <button v-if="ev.replay_path" type="button" class="btn sm" @click="download(ev.replay_path, `${ev.scenarios?.slug}-decision_replay.html`)">{{ t('subs.replay.download') }} ↓</button>
+            <button v-if="ev.report_path" type="button" class="btn sm" @click="download(ev.report_path, `${evalFileStem(ev)}-score_report.json`)">{{ t('subs.report') }} ↓</button>
+            <button v-if="ev.decisions_path" type="button" class="btn sm" @click="download(ev.decisions_path, `${evalFileStem(ev)}-decisions.csv`)">{{ t('subs.decisions') }} ↓</button>
+            <button v-if="ev.log_path" type="button" class="btn sm" @click="download(ev.log_path, `${evalFileStem(ev)}-agent.log`)">{{ t('subs.log') }} ↓</button>
+            <button v-if="ev.workflow_path" type="button" class="btn sm" @click="download(ev.workflow_path, `${evalFileStem(ev)}-workflow_result.json`)">{{ t('subs.workflow') }} ↓</button>
+            <button v-if="ev.replay_path" type="button" class="btn sm" @click="download(ev.replay_path, `${evalFileStem(ev)}-decision_replay.html`)">{{ t('subs.replay.download') }} ↓</button>
           </p>
         </div>
       </div>
