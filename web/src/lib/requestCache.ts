@@ -20,6 +20,17 @@ function writeEntry<T>(key: string, entry: Entry<T>, store?: Storage) {
   try { store.setItem(key, JSON.stringify(entry)) } catch { /* quota or unavailable: skip persisting */ }
 }
 
+/** Drop every cached entry whose key starts with `prefix`, so the next read is a fresh fetch. */
+export function invalidatePrefix(prefix: string, store?: Storage) {
+  if (!store) {
+    for (const key of memory.keys()) if (key.startsWith(prefix)) memory.delete(key)
+    return
+  }
+  try {
+    for (const key of Object.keys(store)) if (key.startsWith(prefix)) store.removeItem(key)
+  } catch { /* unavailable: nothing to clear */ }
+}
+
 export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>, store?: Storage): Promise<T> {
   const hit = readEntry<T>(key, store)
   if (hit && hit.expires > Date.now()) return hit.value

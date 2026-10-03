@@ -13,6 +13,7 @@ import TeamDirectory from '../components/TeamDirectory.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import { useTeamCapacity } from '../composables/useTeamCapacity'
 import { showsTeamPlaces, teamCreationBlocked } from '../lib/teamCapacity'
+import { invalidateBoardCache } from '../lib/data'
 
 interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number; avatar_url: string | null }
 
@@ -34,7 +35,7 @@ watch(() => route.query.invite, value => {
 }, { immediate: true })
 const inviteLink = computed(() => team.value
   ? new URL(router.resolve({ path: '/team', query: { invite: team.value.invite_code } }).href, window.location.origin).href : '')
-const editForm = ref({ max_size: 3, github_repo: '', project_idea: '', is_locked: false })
+const editForm = ref({ name: '', max_size: 3, github_repo: '', project_idea: '', is_locked: false })
 const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
 
 const errorText = (e: unknown) => describeError(e, i18n, ['team.errors', 'team'])
@@ -49,7 +50,7 @@ async function load() {
       const { data, error } = await supabase.rpc('team_members', { p_team_id: team.value.id })
       if (error) throw error
       members.value = (data ?? []) as Member[]
-      editForm.value = { max_size: team.value.max_size, github_repo: team.value.github_repo ?? '', project_idea: team.value.project_idea ?? '', is_locked: team.value.is_locked }
+      editForm.value = { name: team.value.name, max_size: team.value.max_size, github_repo: team.value.github_repo ?? '', project_idea: team.value.project_idea ?? '', is_locked: team.value.is_locked }
     }
   } catch (e) { flash.error(errorText(e)) }
   finally {
@@ -85,7 +86,14 @@ const joinTeam = () => run(async () => {
   const fresh = await refreshMe()
   flash.success(tf('flash.team_joined', { name: fresh?.team?.name ?? '' }))
 })
-const saveTeam = () => run(() => rpc('update_team', { p_project_idea: editForm.value.project_idea.trim(), p_github_repo: editForm.value.github_repo.trim(), p_max_size: Number(editForm.value.max_size), p_is_locked: editForm.value.is_locked }), t('flash.team_saved'))
+const saveTeam = () => run(async () => {
+  await rpc('update_team', {
+    p_project_idea: editForm.value.project_idea.trim(), p_github_repo: editForm.value.github_repo.trim(),
+    p_max_size: Number(editForm.value.max_size), p_is_locked: editForm.value.is_locked,
+    p_name: team.value && editForm.value.name.trim() !== team.value.name ? editForm.value.name.trim() : null,
+  })
+  invalidateBoardCache()
+}, t('flash.team_saved'))
 const regenerate = () => run(() => rpc('regenerate_invite_code'), t('team.code_regenerated'))
 const transfer = (id: string) => { if (window.confirm(t('team.transfer_confirm'))) void run(() => rpc('transfer_leadership', { p_user_id: id }), t('flash.team_saved')) }
 const kick = (id: string) => { if (window.confirm(t('team.kick_confirm'))) void run(() => rpc('remove_member', { p_user_id: id }), t('flash.team_saved')) }
@@ -139,6 +147,7 @@ onMounted(load)
           <div class="hd mt-10"><h3>{{ t('common.save') }}</h3></div>
           <form @submit.prevent="saveTeam">
             <div class="grid-form">
+              <label class="field"><span>{{ t('team.name') }}</span><input data-testid="team-name-edit" v-model="editForm.name" type="text" required minlength="2" maxlength="60"></label>
               <label class="field"><span>{{ t('team.max_size') }}</span><input v-model.number="editForm.max_size" type="number" :min="members.length" max="3"></label>
               <label class="field"><span>{{ t('team.github_repo') }}</span><input v-model="editForm.github_repo" type="text"></label>
               <label class="field full"><span>{{ t('team.project_idea') }}</span><textarea v-model="editForm.project_idea"></textarea></label>

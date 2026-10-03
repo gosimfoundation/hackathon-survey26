@@ -52,7 +52,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
     <section class="team-detail-panel" role="dialog" aria-modal="true" :aria-label="entry.team_name">
       <header class="team-detail-head">
         <span class="team-detail-rank" :class="entry.rank <= 3 ? `rank-${entry.rank}` : ''">#{{ entry.rank }}</span>
-        <UserAvatar :name="entry.team_name" :github="entry.leader_github" />
+        <UserAvatar :name="entry.team_name" :github="entry.leader_github" :avatar-url="entry.leader_avatar_url" />
         <h2 class="team-detail-name">{{ entry.team_name }}</h2>
         <span v-if="mine" class="team-detail-tag">{{ t('leaderboard.chart.your_team') }}</span>
         <button ref="closeBtn" type="button" class="team-detail-close" :aria-label="t('leaderboard.detail.close')" data-testid="team-detail-close" @click="emit('close')">×</button>

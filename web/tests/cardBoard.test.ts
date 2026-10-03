@@ -59,6 +59,15 @@ test('v3 board rows map exactly as before (no card fields)', () => {
   assert.ok(!('card_scores' in row) && !('components' in row))
 })
 
+test('the uploaded avatar flows through alongside the github handle, both null when absent', () => {
+  const withAvatar = toLeaderboardEntry({ team_id: 't', total_score: 1, leader_github: 'octocat', leader_avatar_url: 'https://x/avatar.png' }, 0)
+  assert.equal(withAvatar.leader_github, 'octocat')
+  assert.equal(withAvatar.leader_avatar_url, 'https://x/avatar.png')
+  const bare = toLeaderboardEntry({ team_id: 't', total_score: 1 }, 0)
+  assert.equal(bare.leader_github, null)
+  assert.equal(bare.leader_avatar_url, null)
+})
+
 test('hidden final rows keep the cards the team itself failed (shown as 0)', () => {
   const board = parseCardBoard({
     layout: 'cards_overall', scenario: null, cards,

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
-import { cached } from './requestCache'
+import { cached, invalidatePrefix } from './requestCache'
 import { scenarioOrder } from './scenarioLabels'
 
 // Board reads are shared by the home page, the leaderboard page and their own 60s poll timers;
@@ -59,6 +59,7 @@ export interface LeaderboardEntry {
   completion_rate: number; uniformity_score: number
   base_science: number; program_bonus: number; request_reward: number; coverage_bonus: number | null; coverage_evenness: number | null; penalty_total: number; completed_tiles: number | null; required_missing: number | null
   submission_count: number; best_submission_id: number | null; kind: string | null; scored_at: string | null; leader_github: string | null
+  leader_avatar_url: string | null
   /** The scenario this board ranks; null on the final board, which averages every scenario of the phase. */
   scenario_slug: string | null
   observer_batch_id?: string | null; report_reward?: number
@@ -228,6 +229,13 @@ export async function loadLeaderboard(phaseSlug: string | null, limit = 500, sce
 }
 
 export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, type BoardLayout, type BoardCard, type CardBoard } from './cardBoard'
+
+/** Clear the leaderboard/card-board cache so a profile or team change the user just made shows up on their
+ * own next visit instead of waiting out the shared BOARD_CACHE_MS window. */
+export function invalidateBoardCache() {
+  invalidatePrefix('leaderboard:')
+  invalidatePrefix('card_board:')
+}
 
 async function fetchCardBoard(phaseId: string, scenarioSlug: string | null, limit: number): Promise<CardBoard> {
   const key = `card_board:${phaseId}:${scenarioSlug ?? ''}:${limit}`
