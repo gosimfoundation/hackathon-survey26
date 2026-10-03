@@ -340,7 +340,7 @@ def test_simple_header_and_three_step_start_page(portal_site, schedule):
         expect(page.get_by_test_id('start-kit-download')).to_have_attribute('href', re.compile(r'agent-observer-starter-kit\.zip$'))
         expect(page.get_by_test_id('start-step-2')).to_contain_text('python3 local_runner.py')
         expect(page.get_by_test_id('start-step-3')).to_contain_text('50 次')
-        expect(page.get_by_test_id('start-step-3')).to_contain_text('5 次')
+        expect(page.get_by_test_id('start-step-3')).to_contain_text('8 次')
         expect(page.get_by_test_id('start-go-compete')).to_have_attribute('href', '/compete')
         page.goto(portal_site + '/start?lang=en')
         expect(page.locator('h1').first).to_have_text('Get started in 3 steps')

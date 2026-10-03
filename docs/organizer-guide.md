@@ -15,7 +15,7 @@
 
 练习赛有两条赛道，榜单分开：
 - **CSV 上传**（阶段 `practice`）：每队每天 50 次。
-- **完整项目**（阶段 `practice-projects`）：和正式赛同一套流程，场景为公开的 dev-fortnight 和 dev-reference，每个场景运行时限 5 小时（18000 秒），每队每天 5 次，只能用队伍自己的模型密钥。用 `scripts/configure-observer-practice-projects.py` 创建（默认只预览，加 `--apply` 才写入）。
+- **完整项目**（阶段 `practice-projects`）：和正式赛同一套流程，场景为公开的 dev-fortnight 和 dev-reference，每个场景运行时限 5 小时（18000 秒），每队每天 8 次，只能用队伍自己的模型密钥。用 `scripts/configure-observer-practice-projects.py` 创建（默认只预览，加 `--apply` 才写入）。
 
 10 月 2–3 日培训前后，让学员用「完整项目」赛道演练正式赛流程；异常机制用入门包的 `finals-preview` 在本地练。
 

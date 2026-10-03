@@ -61,7 +61,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime', type=int, default=18000, help='Phase time limit in seconds (max 18000)')
     parser.add_argument('--apply', action='store_true')
-    parser.add_argument('--daily', type=int, default=5)
+    parser.add_argument('--daily', type=int, default=8)
     parser.add_argument('--scenario', action='append', help='Practice scenario slug (repeatable); default: all')
     args = parser.parse_args()
     result, scenarios = plan(args)
