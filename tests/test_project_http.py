@@ -73,13 +73,21 @@ class _TeamProvider(BaseHTTPRequestHandler):
         length=int(self.headers.get("Content-Length") or 0)
         body=json.loads(self.rfile.read(length) or b"{}")
         auth=self.headers.get("Authorization","")
-        self.server.requests.append({"path":self.path,"auth":auth,"body":body})
+        api_key=self.headers.get("X-Api-Key","")
+        anthropic_version=self.headers.get("Anthropic-Version","")
+        self.server.requests.append({"path":self.path,"auth":auth,"api_key":api_key,
+                                     "anthropic_version":anthropic_version,"body":body})
         mode=self.server.mode
+        messages_shape=self.path.endswith("/v1/messages")
         if mode=="redirect":
             self.send_response(307);self.send_header("Location","https://127.0.0.1:9/v1/chat/completions")
             self.send_header("Content-Length","0");self.end_headers();return
         if mode=="reject":
-            code,payload=401,{"error":{"message":"rejected "+auth}}
+            code,payload=401,{"error":{"message":"rejected "+(api_key or auth)}}
+        elif messages_shape:
+            code,payload=200,{"type":"message","role":"assistant",
+                "content":[{"type":"text","text":"echo "+api_key if mode=="echo" else "OK"}],
+                "usage":{"input_tokens":12,"output_tokens":5}}
         else:
             code,payload=200,{"choices":[{"message":{"role":"assistant","content":"echo "+auth if mode=="echo" else "OK"}}],
                               "usage":{"prompt_tokens":12,"completion_tokens":5,"total_tokens":17}}
@@ -266,8 +274,8 @@ def test_real_portal_auth_private_keys_project_submission_and_team_isolation(run
     assert post(url,{'action':'list'},'invalid-token')[0]==401
     status,listed=post(url,{'action':'list'},token)
     assert status==200,listed
-    # Not saving is the default; saving a key is the explicit opt-in.
-    assert listed['data']['team_model']=={'mode':'relay','saved':None}
+    # Saving on the server is the default for a team that has not chosen.
+    assert listed['data']['team_model']=={'mode':'stored','protocol':'openai','saved':None}
     https_base=next(b for b in listed['data']['model_bases'] if b.startswith('https://'))
     http_base=next(b for b in listed['data']['model_bases'] if b.startswith('http://'))
     key='only-the-trusted-proxy-can-read-this-key-7Qx2'
@@ -290,13 +298,13 @@ def test_real_portal_auth_private_keys_project_submission_and_team_isolation(run
     assert status==200 and key not in json.dumps(listed) and stored[0][0] not in json.dumps(listed)
     assert listed['data']['team_model']['saved']['model']=='team-model'
     status,foreign=post(url,{'action':'list'},other_token)
-    assert status==200 and foreign['data']['team_model']=={'mode':'relay','saved':None}
+    assert status==200 and foreign['data']['team_model']=={'mode':'stored','protocol':'openai','saved':None}
     assert post(url,{'action':'delete_team_model'},other_token)[1]['data']=={'deleted':False}
     assert post(url,{'action':'set_team_model_mode','mode':'relay'},other_token)[1]['data']=={'mode':'relay'}
     assert post(url,{'action':'list'},token)[1]['data']['team_model']['saved'] is not None
     # Choosing not to save a key deletes the saved key immediately.
     assert post(url,{'action':'set_team_model_mode','mode':'relay'},token)[1]['data']=={'mode':'relay'}
-    assert post(url,{'action':'list'},token)[1]['data']['team_model']=={'mode':'relay','saved':None}
+    assert post(url,{'action':'list'},token)[1]['data']['team_model']=={'mode':'relay','protocol':'openai','saved':None}
     assert query(uri,'select count(*) from private.observer_providers where team_id=%s',(s['team'],))==[(0,)]
     assert post(url,{'action':'model_routes'},token)[1]['data']==[]
     assert post(url,{'action':'set_team_model_mode','mode':'organizer'},token)[1]['error']=='invalid_team_model_mode'
@@ -304,7 +312,7 @@ def test_real_portal_auth_private_keys_project_submission_and_team_isolation(run
     assert post(url,{'action':'save_team_model','base_url':https_base,'model':'team-model','key':key},token)[0]==200
     assert post(url,{'action':'list'},token)[1]['data']['team_model']['mode']=='stored'
     assert post(url,{'action':'delete_team_model'},token)[1]['data']=={'deleted':True}
-    assert post(url,{'action':'list'},token)[1]['data']['team_model']=={'mode':'stored','saved':None}
+    assert post(url,{'action':'list'},token)[1]['data']['team_model']=={'mode':'stored','protocol':'openai','saved':None}
     assert query(uri,'select count(*) from private.observer_providers where team_id=%s',(s['team'],))==[(0,)]
     status,submitted=post(url,{'action':'submit_repository','title':'Complete project','url':'https://github.com/owner/repo.git'},token)
     assert status==200,submitted
@@ -381,6 +389,63 @@ def test_formal_run_calls_the_saved_https_provider_without_page_or_organizer_fal
         assert key not in rows,(schema,table)
     for log in stack['logs'].glob('*.log'):
         assert key not in log.read_text()
+
+
+def test_formal_run_calls_the_saved_anthropic_provider_with_x_api_key_and_no_translation(run_setup):
+    s=run_setup;stack=s['stack'];uri=s['uri'];provider=stack['team_provider']
+    if provider is None:
+        pytest.skip('openssl is required for the HTTPS provider stub')
+    portal=stack['urls']['observer-portal']
+    messages_url=stack['urls']['observer-model']+'/v1/messages'
+    chat_url=stack['urls']['observer-model']+'/v1/chat/completions'
+    token=user_token(str(s['user']),f"{s['user']}@example.test")
+    credential=f"obs_{s['run']}.{s['participant']}"
+    query(uri,'update public.phases set counts_for_final=true where id=%s',(s['phase'],))
+    query(uri,'update private.observer_sessions set call_limit=10 where run_id=%s',(s['run'],))
+    body={'model':'project-default','messages':[{'role':'user','content':'Reply OK'}],'max_tokens':32}
+    key='formal-anthropic-key-'+secrets.token_hex(16)
+    status,saved=post(portal,{'action':'save_team_model','base_url':stack['team_base'],'model':'claude-team-v1',
+        'key':key,'protocol':'anthropic'},token)
+    assert status==200 and saved['data']['team_model']['protocol']=='anthropic',saved
+    provider.mode='echo'
+    try:
+        # The official Anthropic SDK's own header: a bare key, no "Bearer " scheme.
+        req=urllib.request.Request(messages_url,data=json.dumps(body).encode(),
+            headers={'x-api-key':credential,'content-type':'application/json','anthropic-version':'2023-06-01'},
+            method='POST')
+        try:
+            with urllib.request.urlopen(req,timeout=30) as response:
+                status,result=response.status,json.load(response)
+        except urllib.error.HTTPError as exc:
+            status,result=exc.code,json.load(exc)
+        assert status==200,result
+        sent=provider.requests[-1]
+        assert sent['path']=='/v1/messages'
+        assert sent['api_key']==key and sent['anthropic_version']=='2023-06-01' and not sent['auth']
+        assert sent['body']['model']=='claude-team-v1' and sent['body']['max_tokens']==32
+        assert s['participant'] not in json.dumps(sent)
+        assert key not in json.dumps(result) and '[REDACTED]' in result['content'][0]['text']
+        assert query(uri,'select tokens_used,calls_used,calls_active from private.observer_sessions where run_id=%s',
+                     (s['run'],))==[(17,1,0)]
+        # No translation between formats: an OpenAI-shaped call to an anthropic-protocol
+        # provider is refused before any reservation, so the quota above is unchanged.
+        status,mismatch=post(chat_url,body,credential)
+        assert status==400 and mismatch['error']['code']=='protocol_mismatch',mismatch
+        assert query(uri,'select tokens_used,calls_used,calls_active from private.observer_sessions where run_id=%s',
+                     (s['run'],))==[(17,1,0)]
+    finally:
+        provider.mode='ok'
+    # Saving an openai-protocol key instead makes a Messages call the mismatch.
+    assert post(portal,{'action':'save_team_model','base_url':stack['team_base'],'model':'team-model-v1',
+        'key':key},token)[0]==200
+    req=urllib.request.Request(messages_url,data=json.dumps(body).encode(),
+        headers={'x-api-key':credential,'content-type':'application/json'},method='POST')
+    try:
+        urllib.request.urlopen(req,timeout=30)
+        assert False,'expected protocol_mismatch'
+    except urllib.error.HTTPError as exc:
+        assert exc.code==400 and json.load(exc)['error']['code']=='protocol_mismatch'
+    assert post(portal,{'action':'delete_team_model'},token)[1]['data']=={'deleted':True}
 
 
 def test_real_portal_signed_zip_upload_and_retry(run_setup):

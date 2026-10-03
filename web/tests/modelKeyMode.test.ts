@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode } from '../src/lib/modelKeyMode.ts'
+import { DEFAULT_MODEL_KEY_MODE, DEFAULT_MODEL_PROTOCOL, relayMissesHiddenFinal, teamModelMode,
+  teamModelProtocol } from '../src/lib/modelKeyMode.ts'
 
 test('saving the key encrypted on the server is the default; an explicit relay choice is never overridden', () => {
   assert.equal(DEFAULT_MODEL_KEY_MODE, 'stored')
@@ -11,6 +12,16 @@ test('saving the key encrypted on the server is the default; an explicit relay c
   assert.equal(teamModelMode({ mode: 'unknown' }), 'stored')
   assert.equal(teamModelMode({ mode: 'stored' }), 'stored')
   assert.equal(teamModelMode({ mode: 'relay' }), 'relay')
+})
+
+test('OpenAI-compatible is the default protocol; the platform never guesses Anthropic', () => {
+  assert.equal(DEFAULT_MODEL_PROTOCOL, 'openai')
+  assert.equal(teamModelProtocol(null), 'openai')
+  assert.equal(teamModelProtocol(undefined), 'openai')
+  assert.equal(teamModelProtocol({}), 'openai')
+  assert.equal(teamModelProtocol({ protocol: 'openai' }), 'openai')
+  assert.equal(teamModelProtocol({ protocol: 'unknown' }), 'openai')
+  assert.equal(teamModelProtocol({ protocol: 'anthropic' }), 'anthropic')
 })
 
 test('every locale explains the trade-off and marks saving as the default', () => {

@@ -63,7 +63,7 @@ def test_team_members_save_replace_and_delete_without_reading_the_key_back(setup
     teammate,_=identity(uri,team=s['team'])
     outsider,_=identity(uri)
     # Saving on the server is the default for a team that has not chosen.
-    assert team_model(uri,s['user'])=={'mode':'stored','saved':None}
+    assert team_model(uri,s['user'])=={'mode':'stored','protocol':'openai','saved':None}
     first=save(uri,s['user'])
     view=team_model(uri,teammate)
     assert view['mode']=='stored' and set(view['saved'])=={'base_url','model','key_hint','saved_at'}
@@ -91,7 +91,7 @@ def test_team_members_save_replace_and_delete_without_reading_the_key_back(setup
     assert saved(uri,s['user']) is not None
     assert rpc(uri,'observer_delete_team_model',role='authenticated',user=teammate) is True
     assert rpc(uri,'observer_delete_team_model',role='authenticated',user=s['user']) is False
-    assert team_model(uri,s['user'])=={'mode':'stored','saved':None}
+    assert team_model(uri,s['user'])=={'mode':'stored','protocol':'openai','saved':None}
     assert query(uri,'select count(*) from private.observer_providers where team_id=%s',(s['team'],))==[(0,)]
     audit=query(uri,"""select action,detail::text from public.audit_log
         where action like 'observer.team_model%%' and detail->>'team_id'=%s order by id""",(str(s['team']),))
@@ -111,9 +111,9 @@ def test_team_members_save_replace_and_delete_without_reading_the_key_back(setup
 def test_stored_mode_formal_runs_use_only_their_own_teams_saved_key(setup):
     s=setup;uri=s['uri'];run,participant=formal_run(s)
     # A team that has never chosen is already in stored mode by default.
-    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
+    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored','protocol':'openai'}
     assert choose(uri,s['user'],'stored')=='stored'
-    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
+    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored','protocol':'openai'}
     # No saved key: no organizer provider, legacy team row or other team is substituted.
     with pytest.raises(psycopg.Error,match='team_model_not_configured'):reserve(uri,run,participant)
     with pytest.raises(psycopg.Error,match='personal_api_required'):organizer_reservation(s,run,participant)
@@ -124,7 +124,7 @@ def test_stored_mode_formal_runs_use_only_their_own_teams_saved_key(setup):
     provider=save(uri,s['user'])
     call=uuid.uuid4()
     assert reserve(uri,run,participant,call)=={'reserved':True,'provider_id':str(provider),'base_url':BASE,
-                                              'model':'team-model','encrypted_key':CIPHER}
+                                              'model':'team-model','encrypted_key':CIPHER,'protocol':'openai'}
     # Retries never reach the provider twice; a changed request under the same ID is refused.
     assert reserve(uri,run,participant,call)=={'reserved':False,'status':'reserved'}
     with pytest.raises(psycopg.Error,match='request_id_conflict'):reserve(uri,run,participant,call,digest='e'*64)
@@ -182,7 +182,7 @@ def test_choosing_the_relay_deletes_the_saved_key_and_neither_mode_falls_back(se
     with pytest.raises(psycopg.Error,match='invalid_team_model_mode'):choose(uri,teammate,'organizer')
     assert choose(uri,teammate,'relay')=='relay'
     # Deleted at once: the used key keeps only a keyless receipt anchor.
-    assert team_model(uri,s['user'])=={'mode':'relay','saved':None}
+    assert team_model(uri,s['user'])=={'mode':'relay','protocol':'openai','saved':None}
     assert query(uri,'select count(*) from private.observer_team_models where team_id=%s',(s['team'],))==[(0,)]
     assert query(uri,'select encrypted_key,enabled from private.observer_providers where id=%s',(provider,))==[('',False)]
     assert saved(uri,other) is not None
@@ -199,11 +199,11 @@ def test_choosing_the_relay_deletes_the_saved_key_and_neither_mode_falls_back(se
     assert mode_audit==[('true',)]
     # Choosing stored mode again restores nothing; saving a key selects it as well.
     assert choose(uri,s['user'],'stored')=='stored'
-    assert team_model(uri,s['user'])=={'mode':'stored','saved':None}
+    assert team_model(uri,s['user'])=={'mode':'stored','protocol':'openai','saved':None}
     with pytest.raises(psycopg.Error,match='team_model_not_configured'):reserve(uri,run,participant)
     choose(uri,s['user'],'relay');renewed=save(uri,teammate)
     assert team_model(uri,s['user'])['mode']=='stored'
-    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
+    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored','protocol':'openai'}
     assert rpc(uri,'observer_personal_model_routes',role='authenticated',user=s['user'])==[]
     with pytest.raises(psycopg.Error,match='personal_model_not_enabled'):
         rpc(uri,'observer_request_personal_model',run,participant,uuid.uuid4(),'b'*64)
@@ -225,7 +225,7 @@ def test_saved_keys_never_fund_other_runs_and_practice_is_unchanged(setup):
     # In competition mode the shared preparation phase is formal too and uses the team key.
     query(uri,"update private.observer_site_mode set mode='competition' where id")
     try:
-        assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
+        assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored','protocol':'openai'}
         # The open organizer call counts toward the run's concurrency.
         query(uri,'update private.observer_sessions set concurrency_limit=1 where run_id=%s',(run,))
         with pytest.raises(psycopg.Error,match='run_model_quota'):reserve(uri,run,participant)
@@ -400,8 +400,8 @@ def test_opt_in_migration_keeps_teams_that_saved_and_is_idempotent(setup):
     query(uri,'delete from private.observer_team_model_modes where team_id=%s',(saver_team,))
     query(uri,OPT_IN.read_text());query(uri,OPT_IN.read_text())
     assert team_model(uri,saver)['mode']=='stored' and saved(uri,saver) is not None
-    assert team_model(uri,chooser)=={'mode':'stored','saved':None}
-    assert team_model(uri,newcomer)=={'mode':'relay','saved':None}
+    assert team_model(uri,chooser)=={'mode':'stored','protocol':'openai','saved':None}
+    assert team_model(uri,newcomer)=={'mode':'relay','protocol':'openai','saved':None}
     assert query(uri,'select count(*),bool_and(enabled),max(retention)::text from private.observer_key_retention')==[(1,True,'7 days')]
     with pytest.raises(psycopg.Error,match='permission denied'):
         query(uri,'select private.observer_auto_purge_provider_keys()',role='authenticated',user=newcomer)
@@ -415,10 +415,10 @@ def test_stored_default_migration_only_changes_teams_that_never_chose(setup):
     never_chosen,_=identity(uri)
     # Already reached by the migration chain applied in setup; re-running it is a no-op.
     query(uri,STORED_DEFAULT.read_text());query(uri,STORED_DEFAULT.read_text())
-    assert team_model(uri,chose_relay)=={'mode':'relay','saved':None}
-    assert team_model(uri,chose_stored)=={'mode':'stored','saved':None}
+    assert team_model(uri,chose_relay)=={'mode':'relay','protocol':'openai','saved':None}
+    assert team_model(uri,chose_stored)=={'mode':'stored','protocol':'openai','saved':None}
     assert team_model(uri,saver)['mode']=='stored'
-    assert team_model(uri,never_chosen)=={'mode':'stored','saved':None}
+    assert team_model(uri,never_chosen)=={'mode':'stored','protocol':'openai','saved':None}
     assert query(uri,'select count(*) from private.observer_team_model_modes where team_id=%s',(never_chosen,))==[(0,)]
 
 
@@ -461,7 +461,7 @@ def test_saved_keys_are_purged_automatically_only_after_every_phase_that_uses_th
         assert auto_purge(uri)==1
         assert keys_of(uri,idle_team)==0 and keys_of(uri,busy_team)==1
         assert query(uri,'select count(*) from private.observer_providers where id=%s',(idle_key,))==[(0,)]
-        assert team_model(uri,idle)=={'mode':'stored','saved':None}
+        assert team_model(uri,idle)=={'mode':'stored','protocol':'openai','saved':None}
         # An unsettled reservation also holds the key after the run has left the queue.
         query(uri,"update public.observer_runs set status='scored',finished_at=now(),score=1 where id=%s",(run,))
         query(uri,"update public.observer_batches set status='scored',finished_at=now(),score=1")

@@ -138,6 +138,12 @@ Without an API key (`OPENAI_API_KEY` or `KIMI_API_KEY`) configured, the process 
 at startup, before reading anything from stdin, and exits with a message on stderr and
 a non-zero exit code.
 
+This agent calls the OpenAI-compatible `/chat/completions` shape. A team that instead
+chose the Anthropic Messages protocol in the workspace's **Model API** section also gets
+`ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY` injected on the platform (the Anthropic SDK's
+own env vars) -- use those with the official `anthropic` SDK if your own agent speaks
+Claude's Messages API instead. See `docs/model-api-keys.md` for the full comparison.
+
 ## Running it locally
 
 This project is agent-side only -- it does not ship the simulator/scorer. Test it with

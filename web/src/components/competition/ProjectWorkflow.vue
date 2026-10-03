@@ -6,7 +6,8 @@ import { supabase } from '../../lib/supabase'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
-import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
+import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
+  DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
@@ -39,6 +40,8 @@ const zipProgress = ref<Record<string, { done: number; total: number }>>({})
 const modelMode = computed(() => teamModelMode(data.value?.team_model))
 const savedModel = computed(() => data.value?.team_model?.saved ?? null)
 const modeChoice = ref<ModelKeyMode>(DEFAULT_MODEL_KEY_MODE), replacingKey = ref(false)
+// Which shape the team's own provider speaks; the platform never translates between them.
+const protocolChoice = ref<ModelProtocol>(DEFAULT_MODEL_PROTOCOL)
 // Collapsed by default; teams that use a model (saved key or a key connected in this tab) always see it open.
 const modelOpen = ref(false)
 const modelForm = ref({ base_url: '', model: '', key: '' })
@@ -220,6 +223,7 @@ async function reload() {
   void loadScenarioNames().catch(() => {})
   locked.value = new Set()
   modeChoice.value = modelMode.value
+  protocolChoice.value = teamModelProtocol(data.value?.team_model)
   if (!modelOpen.value && (savedModel.value || personal.everConfigured.value)) modelOpen.value = true
   await personal.refresh()
   // Bind evaluations to the entry phase (beta entry first), never to whatever
@@ -304,13 +308,19 @@ function chooseMode() {
   if (mode === modelMode.value) return
   // Choosing the relay deletes a saved key on the server immediately.
   void action(async () => {
-    try { await portal('set_team_model_mode', { mode }) } catch (e) { modeChoice.value = modelMode.value; throw e }
+    try { await portal('set_team_model_mode', { mode, protocol: protocolChoice.value }) }
+    catch (e) { modeChoice.value = modelMode.value; throw e }
     replacingKey.value = false
   }, mode === 'relay' ? sentences(t('submit.model_api.relay_selected'), ...(hadKey ? [t('submit.model_api.deleted_notice')] : []))
     : t('submit.model_api.stored_selected'))
 }
+// Relay has no other save gesture, so a protocol change persists as soon as it is already the chosen mode.
+function chooseProtocol() {
+  if (modelMode.value !== 'relay') return
+  void action(async () => { await portal('set_team_model_mode', { mode: 'relay', protocol: protocolChoice.value }) })
+}
 function saveModel() { void action(async () => {
-  try { await portal('save_team_model', { ...modelForm.value }) } finally { modelForm.value.key = '' }
+  try { await portal('save_team_model', { ...modelForm.value, protocol: protocolChoice.value }) } finally { modelForm.value.key = '' }
   replacingKey.value = false
 }, t('submit.model_api.saved_notice')) }
 function deleteModel() { void action(async () => { await portal('delete_team_model') }, t('submit.model_api.deleted_notice')) }
@@ -413,6 +423,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </div>
           <form v-else class="mt-4" data-testid="team-model-form" autocomplete="off" @submit.prevent="saveModel">
             <p v-if="!savedModel" class="help">{{ t('submit.model_api.none') }}</p>
+            <label class="field"><span>{{ t('submit.model_api.protocol') }}</span>
+              <select v-model="protocolChoice" name="observer-model-protocol" data-testid="team-model-protocol">
+                <option value="openai">{{ t('submit.model_api.protocol_openai') }}</option>
+                <option value="anthropic">{{ t('submit.model_api.protocol_anthropic') }}</option>
+              </select>
+            </label>
+            <p class="help">{{ t('submit.model_api.protocol_hint') }}</p>
             <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="modelForm.base_url" type="url" name="observer-model-endpoint" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" aria-describedby="team-model-endpoint-help" data-testid="team-model-endpoint"></label>
             <p id="team-model-endpoint-help" class="help">{{ t('submit.model_api.endpoint_hint') }}</p>
             <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="modelForm.model" type="text" name="observer-model-name" maxlength="256" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" data-testid="team-model-name"></label>
@@ -426,6 +443,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <form v-else class="mt-4" data-testid="personal-model-settings" autocomplete="off" @submit.prevent="action(personal.connect)">
           <p v-if="relayRunning && !personal.connected.value && personal.everConfigured.value" class="errors" role="alert">{{ t('submit.model_api.relay_running') }}</p>
           <p class="help">{{ t('submit.model_api.keep_open') }}</p>
+          <label class="field"><span>{{ t('submit.model_api.protocol') }}</span>
+            <select v-model="protocolChoice" name="observer-relay-protocol" data-testid="personal-model-protocol" @change="chooseProtocol">
+              <option value="openai">{{ t('submit.model_api.protocol_openai') }}</option>
+              <option value="anthropic">{{ t('submit.model_api.protocol_anthropic') }}</option>
+            </select>
+          </label>
+          <p class="help">{{ t('submit.model_api.protocol_hint') }}</p>
           <label class="field"><span>{{ t('submit.model_api.endpoint') }}</span><input v-model="personal.endpoint.value" type="url" name="observer-relay-endpoint" :disabled="personal.connected.value" required pattern="https://.+" maxlength="1000" list="model-base-suggestions" placeholder="https://api.moonshot.cn/v1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" aria-describedby="personal-model-endpoint-help" data-testid="personal-model-endpoint"></label>
           <p id="personal-model-endpoint-help" class="help">{{ t('submit.model_api.endpoint_hint') }}</p>
           <label class="field"><span>{{ t('submit.model_api.model') }}</span><input v-model="personal.model.value" type="text" name="observer-relay-model" :disabled="personal.connected.value" maxlength="256" required autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" spellcheck="false" data-testid="personal-model-name"></label>

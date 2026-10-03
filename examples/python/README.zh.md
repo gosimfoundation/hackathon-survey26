@@ -121,6 +121,12 @@ OPENAI_API_KEY=sk-...
 没配 API key(`OPENAI_API_KEY` 或 `KIMI_API_KEY`)时,进程会在启动时、读任何 stdin
 之前就检查这一点,然后把错误信息打到 stderr,以非零退出码退出。
 
+本示例调用的是 OpenAI 兼容的 `/chat/completions` 接口。如果你的队伍在工作区的
+**模型 API** 设置里改选了 Anthropic Messages 协议,平台同样会注入
+`ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`(Anthropic SDK 自己的环境变量名);如果你
+自己的智能体改用 Claude 的 Messages API,配上官方 `anthropic` SDK 使用这两个变量即可。
+完整对比见 `docs/model-api-keys.md`。
+
 ## 本地运行
 
 本项目只是智能体一侧——不含模拟器/评分器。请用任何支持该协议(stdin/stdout)的

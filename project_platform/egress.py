@@ -55,6 +55,15 @@ def checked_upstream(value: str, *, local: bool = False) -> str:
     return base
 
 
+def anthropic_base(openai_base: str) -> str:
+    """The official Anthropic SDK appends "/v1/messages" to its own base_url, unlike
+    the OpenAI SDK's "/v1" + "/chat/completions" convention. Both point at the same
+    proxy; this only strips the "/v1" suffix so the SDK's own "/v1/messages" lands
+    on the right path."""
+    base = openai_base.rstrip("/")
+    return base[: -len("/v1")] if base.endswith("/v1") else base
+
+
 # The forwarder running inside the sidecar container (standard library only).
 # UPSTREAM and PREFIX are baked in by the trusted engine; unit tests run this
 # exact script in a local process.
@@ -64,7 +73,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 UPSTREAM = %(upstream)s
 PREFIX = %(prefix)s
 SUFFIX = re.compile(r"[A-Za-z0-9][A-Za-z0-9/_.-]*$")
-FORWARDED = ("Authorization", "Content-Type", "Accept", "Idempotency-Key")
+FORWARDED = ("Authorization", "Content-Type", "Accept", "Idempotency-Key", "X-Api-Key", "Anthropic-Version",
+             "Anthropic-Beta")
 MAX_REQ, MAX_RESP = 8 * 1024 * 1024, 8 * 1024 * 1024
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -197,6 +207,13 @@ class RestrictedEgress:
     def base_url(self) -> str:
         """Participant-side OPENAI_BASE_URL; resolvable only on this run's network."""
         return f"http://{self.proxy_name}:{PROXY_PORT}{self.prefix}"
+
+    @property
+    def anthropic_base_url(self) -> str:
+        """Participant-side ANTHROPIC_BASE_URL: the same sidecar and run prefix as
+        base_url, minus the "/v1" segment the Anthropic SDK appends itself. Both
+        land on the one fixed prefix the sidecar was started with."""
+        return f"http://{self.proxy_name}:{PROXY_PORT}" + anthropic_base(self.prefix)
 
     @property
     def log(self) -> str:

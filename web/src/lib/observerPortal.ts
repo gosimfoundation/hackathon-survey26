@@ -14,6 +14,7 @@ export type ProjectRevision = {
 /** The team's model key choice; a saved key is described, never returned. */
 export type TeamModel = {
   mode: 'stored' | 'relay'
+  protocol: 'openai' | 'anthropic'
   saved: { base_url: string; model: string; key_hint: string; saved_at: string } | null
 }
 export type PortalData = {

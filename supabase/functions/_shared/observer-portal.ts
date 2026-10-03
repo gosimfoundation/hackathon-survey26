@@ -250,6 +250,9 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         !model || model.length > 256 || /\p{Cc}/u.test(model) ||
         key.length < 8 || key.length > 8192 || /[\s\p{Cc}]/u.test(key)
       ) throw new ProxyError(400, "invalid_team_model");
+      if (body.protocol !== undefined && body.protocol !== "openai" && body.protocol !== "anthropic") {
+        throw new ProxyError(400, "invalid_team_model");
+      }
       const id = crypto.randomUUID();
       // Encrypted here, bound to its provider ID; the database only receives ciphertext.
       const encrypted = await encryptCredential(key, id, d.masterKey);
@@ -262,6 +265,7 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         p_model: model,
         p_encrypted_key: encrypted,
         p_key_hint: hint,
+        p_protocol: body.protocol ?? "openai",
       });
       return { team_model: await userRpc("observer_team_model") };
     }
@@ -269,8 +273,13 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       return { deleted: await userRpc("observer_delete_team_model") };
     case "set_team_model_mode":
       if (body.mode !== "stored" && body.mode !== "relay") throw new ProxyError(400, "invalid_team_model_mode");
+      if (body.protocol !== undefined && body.protocol !== "openai" && body.protocol !== "anthropic") {
+        throw new ProxyError(400, "invalid_team_model_mode");
+      }
       // Choosing "relay" deletes any saved key in the same database transaction.
-      return { mode: await userRpc("observer_set_team_model_mode", { p_mode: body.mode }) };
+      return {
+        mode: await userRpc("observer_set_team_model_mode", { p_mode: body.mode, p_protocol: body.protocol ?? null }),
+      };
     case "disable_provider":
       await userRpc("observer_disable_provider", { p_id: uuid(body.id) });
       return { accepted: true };

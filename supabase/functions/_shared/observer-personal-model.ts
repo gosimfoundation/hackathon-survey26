@@ -1,5 +1,6 @@
 /** Personal credentials are never sent to database RPCs or Broadcast. */
 import {
+  anthropicMessagesUrl,
   boundedJson,
   capability,
   providerError,
@@ -7,6 +8,7 @@ import {
   type Rpc,
   timedOut,
   validateChat,
+  validateMessages,
 } from "./observer-model.ts";
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 export const MAX_PERSONAL_RESPONSE = 192 * 1024;
@@ -15,13 +17,19 @@ export async function personalDigest(body: unknown) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(body)));
   return Array.from(new Uint8Array(bytes), (v) => v.toString(16).padStart(2, "0")).join("");
 }
-export async function personalChat(
+type PersonalExchangeDeps = {
+  rpc: Rpc;
+  exchange: (topic: string, call: string, payload: Record<string, unknown>) => Promise<unknown>;
+};
+async function personalCall(
   request: Request,
   topic: string,
-  deps: { rpc: Rpc; exchange: (topic: string, call: string, payload: Record<string, unknown>) => Promise<unknown> },
+  protocol: "openai" | "anthropic",
+  validate: (body: unknown) => { body: Record<string, unknown> },
+  deps: PersonalExchangeDeps,
 ) {
-  const { run, token } = capability(request.headers.get("authorization"));
-  const body = validateChat(await boundedJson(request, 65536)).body;
+  const { run, token } = capability(request.headers.get("authorization"), request.headers.get("x-api-key"));
+  const body = validate(await boundedJson(request, 65536)).body;
   const call = request.headers.get("idempotency-key") ?? crypto.randomUUID();
   if (!UUID.test(call)) throw new ProxyError(400, "invalid_idempotency_key");
   if (
@@ -33,8 +41,15 @@ export async function personalChat(
     })
   ) throw new ProxyError(409, "model_request_already_received");
   try {
-    const result = await deps.exchange(topic, call, { run_id: run, call_id: call, body });
-    if (!result || typeof result !== "object" || !Array.isArray((result as any).choices)) {
+    const payload: Record<string, unknown> = { run_id: run, call_id: call, body, protocol };
+    if (protocol === "anthropic") {
+      payload.anthropic_version = request.headers.get("anthropic-version") ?? "2023-06-01";
+      const beta = request.headers.get("anthropic-beta");
+      if (beta) payload.anthropic_beta = beta;
+    }
+    const result = await deps.exchange(topic, call, payload);
+    const list = protocol === "anthropic" ? (result as any)?.content : (result as any)?.choices;
+    if (!result || typeof result !== "object" || !Array.isArray(list)) {
       throw new ProxyError(502, "invalid_provider_response");
     }
     const text = JSON.stringify(result);
@@ -47,6 +62,13 @@ export async function personalChat(
   } finally {
     await deps.rpc("observer_finish_personal_model", { p_call: call, p_status: "timeout" });
   }
+}
+export function personalChat(request: Request, topic: string, deps: PersonalExchangeDeps) {
+  return personalCall(request, topic, "openai", validateChat, deps);
+}
+/** Relay mode, Anthropic Messages shape: the open page answers with its own key. */
+export function personalMessages(request: Request, topic: string, deps: PersonalExchangeDeps) {
+  return personalCall(request, topic, "anthropic", validateMessages, deps);
 }
 function redact(value: any, key: string): any {
   if (typeof value === "string") return value.replaceAll(key, "[REDACTED]");
@@ -73,7 +95,8 @@ export async function fulfillPersonalModel(
     input.api_key.length < 1 || input.api_key.length > 8192 || /[\r\n]/.test(input.api_key) ||
     typeof input.model !== "string" || input.model.length < 1 || input.model.length > 256
   ) throw new ProxyError(400, "invalid_personal_model");
-  const body = validateChat(input.body).body;
+  const protocol = input.protocol === "anthropic" ? "anthropic" : "openai";
+  const body = (protocol === "anthropic" ? validateMessages(input.body) : validateChat(input.body)).body;
   const normalized = await publicBase(input.base_url, deps.trustedBases, deps.resolve);
   if (!normalized) throw new ProxyError(400, "provider_not_authorized");
   // Claim before billing: team, run and exact prompt digest must match.
@@ -85,11 +108,20 @@ export async function fulfillPersonalModel(
   });
   let message: Record<string, unknown> = { call_id: input.call_id, error: "personal_model_failed" }, status = "failed";
   try {
-    const response = await deps.fetch(normalized + "/chat/completions", {
+    const url = protocol === "anthropic" ? anthropicMessagesUrl(normalized) : normalized + "/chat/completions";
+    const headers: Record<string, string> = protocol === "anthropic"
+      ? {
+        "content-type": "application/json",
+        "x-api-key": input.api_key,
+        "anthropic-version": typeof input.anthropic_version === "string" ? input.anthropic_version : "2023-06-01",
+        ...(typeof input.anthropic_beta === "string" ? { "anthropic-beta": input.anthropic_beta } : {}),
+      }
+      : { "content-type": "application/json", authorization: "Bearer " + input.api_key };
+    const response = await deps.fetch(url, {
       method: "POST",
       redirect: "error",
       signal: AbortSignal.timeout(110000),
-      headers: { "content-type": "application/json", authorization: "Bearer " + input.api_key },
+      headers,
       body: JSON.stringify({ ...body, model: input.model }),
     });
     if (!response.ok) {
@@ -97,7 +129,8 @@ export async function fulfillPersonalModel(
       throw providerError(response.status);
     }
     const result = await boundedJson(response, MAX_PERSONAL_RESPONSE);
-    if (!result || typeof result !== "object" || !Array.isArray(result.choices)) {
+    const list = protocol === "anthropic" ? (result as any)?.content : (result as any)?.choices;
+    if (!result || typeof result !== "object" || !Array.isArray(list)) {
       throw new ProxyError(502, "invalid_provider_response");
     }
     message = { call_id: input.call_id, result: redact(result, input.api_key) };

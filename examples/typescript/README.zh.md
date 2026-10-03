@@ -98,7 +98,10 @@ npm start             # node dist/index.js（从 stdin 读取 JSON Lines，写�
 - `OPENAI_API_KEY` —— 该服务的密钥（也接受 `KIMI_API_KEY`）。
 - `OPENAI_MODEL` —— 默认 `k3`。
 
-在平台上，这些变量会在每次运行时自动注入，指向平台自己的模型代理和一个临时凭据。本地试用方法：
+在平台上，这些变量会在每次运行时自动注入，指向平台自己的模型代理和一个临时凭据。如果你的队伍在工作区的
+**模型 API** 设置里改选了 Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` /
+`ANTHROPIC_API_KEY`（Anthropic SDK 自己的环境变量名）；如果你自己的智能体改用 Claude 的 Messages
+API，配上官方 `@anthropic-ai/sdk` 使用这两个变量即可，完整对比见 `docs/model-api-keys.md`。本地试用方法：
 
 ```bash
 cp .env.example .env     # 然后编辑 OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL
