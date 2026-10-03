@@ -83,3 +83,11 @@ export function canPrepareAgain(revision: { status: string; source_kind?: string
   return revision.status === 'failed' && !revision.archived_at && revision.source_kind === 'repository' &&
     /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+$/.test(revision.source_location ?? '')
 }
+
+/** Ascii-safe, cross-platform folder name for one card's files inside a "download all results" ZIP
+ * (e.g. the scenario slug v4-practice-alpha becomes practice-alpha). Falls back to the run id when no
+ * scenario slug is known yet, so the combined ZIP never collapses two cards into one folder by accident. */
+export function cardFolderName(slug: string | null | undefined, fallback: string): string {
+  const folder = String(slug ?? '').replace(/^v4-/, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
+  return folder || fallback
+}
