@@ -421,7 +421,7 @@
       "items": [
         {
           "title": "Projects",
-          "desc": "Practice accepts a complete project (5 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
+          "desc": "Practice accepts a complete project (8 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
         },
         {
           "title": "Limits",
@@ -2021,7 +2021,7 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 5 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
+        "a": "Practice: 8 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2509,7 +2509,7 @@
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate:",
       "s3_points": [
-        "Complete project: upload your code; the platform runs and scores it in the cloud. 5 per team per day."
+        "Complete project: upload your code; the platform runs and scores it in the cloud. 8 per team per day."
       ],
       "s3_cta": "Go to Participate",
       "help_prefix": "More questions? See the",

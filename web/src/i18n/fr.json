@@ -524,7 +524,7 @@
       "items": [
         {
           "title": "Projets",
-          "desc": "L'entraînement accepte un projet complet sur un classement séparé (5 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
+          "desc": "L'entraînement accepte un projet complet sur un classement séparé (8 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
         },
         {
           "title": "Limites",
@@ -942,7 +942,7 @@
       "s3_title": "Étape 3 · Soumettre un projet complet",
       "s3_intro": "Connectez-vous et ouvrez Participer :",
       "s3_points": [
-        "Projet complet : envoyez votre code, la plateforme l’exécute et le note dans le cloud. 5 par équipe et par jour."
+        "Projet complet : envoyez votre code, la plateforme l’exécute et le note dans le cloud. 8 par équipe et par jour."
       ],
       "s3_cta": "Aller à Participer",
       "help_prefix": "Des questions ? Voir la",
