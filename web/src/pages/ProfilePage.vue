@@ -6,6 +6,7 @@ import { describeError } from '../lib/errors'
 import { useAuth } from '../stores/auth'
 import { useFlash } from '../stores/flash'
 import { uploadMyAvatar, removeMyAvatar } from '../lib/avatar'
+import { invalidateBoardCache } from '../lib/data'
 import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -76,6 +77,7 @@ async function onAvatarChange(event: Event) {
   try {
     await uploadMyAvatar(me.value.id, file)
     await refreshMe()
+    invalidateBoardCache()
     flash.success(t('profile.avatar_updated'))
   } catch (e) { flash.error(describeError(e, i18n, ['profile.errors'])) }
   finally { avatarBusy.value = false }
@@ -87,6 +89,7 @@ async function removeAvatar() {
   try {
     await removeMyAvatar(me.value.id, me.value.avatar_url)
     await refreshMe()
+    invalidateBoardCache()
     flash.success(t('profile.avatar_removed'))
   } catch (e) { flash.error(describeError(e, i18n, ['profile.errors'])) }
   finally { avatarBusy.value = false }

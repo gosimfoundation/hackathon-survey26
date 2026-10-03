@@ -12,6 +12,7 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
   return {
     rank: Number(row.rank ?? index + 1),
     leader_github: row.leader_github ? String(row.leader_github) : null,
+    leader_avatar_url: row.leader_avatar_url ? String(row.leader_avatar_url) : null,
     team_id: String(row.team_id),
     team_name: String(row.team_name ?? '—'),
     team_slug: String(row.team_slug ?? ''),

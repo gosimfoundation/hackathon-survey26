@@ -33,7 +33,7 @@ const tooltip = (e: LeaderboardEntry) => tf('leaderboard.chart.tooltip', { score
     <ol class="score-bars-list">
       <li v-for="row in top" :key="row.team_id" class="score-bar-row" :class="{ me: isMe(row) }" data-testid="score-bar" role="button" tabindex="0" @click="emit('select', row)" @keydown.enter.prevent="emit('select', row)" @keydown.space.prevent="emit('select', row)">
         <span class="rank" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</span>
-        <span class="name"><UserAvatar :name="row.team_name" :github="row.leader_github" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="truncate">{{ row.team_name }}</span><span v-if="isMe(row)" class="tag">{{ t('leaderboard.chart.your_team') }}</span></span>
+        <span class="name"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="truncate">{{ row.team_name }}</span><span v-if="isMe(row)" class="tag">{{ t('leaderboard.chart.your_team') }}</span></span>
         <span class="track" :title="tooltip(row)">
           <i class="base" :style="{ width: widthPct(Math.max(0, row.calibrated ? row.total_score : row.base_science)) }"></i>
           <i v-if="!row.calibrated" class="bonus" :style="{ left: widthPct(Math.max(0, row.base_science)), width: widthPct(Math.max(0, row.program_bonus)) }"></i>
@@ -49,7 +49,7 @@ const tooltip = (e: LeaderboardEntry) => tf('leaderboard.chart.tooltip', { score
       <ol class="score-bars-list">
         <li class="score-bar-row me" data-testid="score-bar-me" role="button" tabindex="0" @click="emit('select', outside)" @keydown.enter.prevent="emit('select', outside)" @keydown.space.prevent="emit('select', outside)">
           <span class="rank" :class="outside.rank <= 3 ? `rank-${outside.rank}` : ''">{{ outside.rank }}</span>
-          <span class="name"><UserAvatar :name="outside.team_name" :github="outside.leader_github" /><span class="truncate">{{ outside.team_name }}</span><span class="tag">{{ t('leaderboard.chart.your_team') }}</span></span>
+          <span class="name"><UserAvatar :name="outside.team_name" :github="outside.leader_github" :avatar-url="outside.leader_avatar_url" /><span class="truncate">{{ outside.team_name }}</span><span class="tag">{{ t('leaderboard.chart.your_team') }}</span></span>
           <span class="track" :title="tooltip(outside)">
             <i class="base" :style="{ width: widthPct(Math.max(0, outside.calibrated ? outside.total_score : outside.base_science)) }"></i>
             <i v-if="!outside.calibrated" class="bonus" :style="{ left: widthPct(Math.max(0, outside.base_science)), width: widthPct(Math.max(0, outside.program_bonus)) }"></i>
