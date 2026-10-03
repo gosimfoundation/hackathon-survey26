@@ -9,14 +9,19 @@ were moved to the runtime exported from main `9791047` (timed observation
 requests, #111/#125), and later that day to the runtimes from main `9cf6f63`
 (preparation retries, #132) and main `e7b9207` (evaluation hardening:
 model-proxy-only egress and the `observer-score.yml` rescore job, #135), each
-verified blob-by-blob against the export.
+verified blob-by-blob against the export. On 2026-10-03 all thirteen were
+moved again to the runtime exported from main `b1466d6` (Anthropic Messages
+API support: `ANTHROPIC_BASE_URL`/`ANTHROPIC_API_KEY` injected next to the
+`OPENAI_*` pair, #214), verified blob-by-blob against the export; each org's
+own `observer-control` repo commit SHA differs (own repo history), recorded
+per org below.
 
-Each organization needs (reference: runner-1…13, runtime from main `e7b9207`):
+Each organization needs (reference: runner-1…13, runtime from main `b1466d6`):
 
 1. GitHub organization on the Free plan, owned by BH3GEI (web UI only).
 2. Private `observer-control` repository (not a fork, default branch `main`)
-   containing the 56-file trusted runtime exported by
-   `scripts/build-observer-control.py` from main `e7b9207`
+   containing the 57-file trusted runtime exported by
+   `scripts/build-observer-control.py` from main `b1466d6`
    (byte-identical to the approved runner-1…13 inventories).
 3. Installation of GitHub App `agentic-observer-2026-evaluator`
    (app_id 5057707) with `repository_selection=all`.
@@ -26,7 +31,7 @@ Each organization needs (reference: runner-1…13, runtime from main `e7b9207`):
 
 | Organization | Status | organization_id | installation_id | repository_id | approved_sha |
 |---|---|---|---|---|---|
-| AGENTIC-OBSERVER26-runner-13 | ✅ enabled in scheduling 2026-10-01 (all 6 steps done 2026-09-30; runtime republished from main `e7b9207` together with runner-1…12) | 336376701 | 166758323 | 1399205505 | fe20acc844a09f35ba08e4763aef3c759ec8d297 |
+| AGENTIC-OBSERVER26-runner-1…13 | ✅ enabled in scheduling 2026-10-03; runtime republished from main `b1466d6` together across all thirteen, each verified blob-by-blob via `scripts/configure-observer-runners.py --apply` | see `ops/github-installations.json` | see `ops/github-installations.json` | see `ops/github-installations.json` | see `ops/github-installations.json` (one commit sha per org's own `observer-control` repo) |
 | AGENTIC-OBSERVER26-runner-14 … runner-36 | ⛔ not created | — | — | — | — |
 
 Notes:
