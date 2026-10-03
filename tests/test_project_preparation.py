@@ -175,6 +175,33 @@ def test_contestant_build_failure_in_preparation_immediately_fails_with_the_log(
     assert rpc(uri,'observer_reconcile_preparations')==0
 
 
+@pytest.mark.parametrize('log',['Model service is unavailable.','Model call failed (HTTP 503).'])
+def test_model_proxy_outage_in_preparation_requeues_instead_of_failing(preparation,log):
+    # Our own observer-model proxy being unreachable or erroring is reported
+    # with the same diagnostics.code='project_error' as a genuine contestant
+    # mistake, but these two exact messages are ours, not theirs: requeue.
+    s=preparation;started=start(s);j=started['job'];uri=s['uri']
+    rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',j['id'],'404','1',
+        {'diagnostics':{'stage':'prepare','code':'project_error','log':log}},'prepare_job_failed')
+    assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==[('queued','')]
+    assert query(uri,'select status from public.observer_runs where id=%s',(started['model_run_id'],))==[('cancelled',)]
+    new_model_run_id=query(uri,'select model_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
+    assert new_model_run_id!=started['model_run_id']
+    assert rpc(uri,'observer_reconcile_preparations')==0
+
+
+def test_contestants_own_model_setup_failure_in_preparation_still_fails_immediately(preparation):
+    # "No model API is set up for your team..." is the contestant's own
+    # account/config, not a proxy outage: unchanged, immediate, no retry.
+    s=preparation;started=start(s);j=started['job'];uri=s['uri']
+    rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',j['id'],'404','1',
+        {'diagnostics':{'stage':'prepare','code':'project_error','log':'No model API is set up for your team.'}},'prepare_job_failed')
+    assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==\
+        [('failed','Project preparation failed: No model API is set up for your team.')]
+
+
 def test_failed_public_test_remains_unapproved_but_owner_can_inspect_materialized_adapter(preparation):
     s=preparation;uri=s['uri'];finish(s,start(s))
     preview=query(uri,'select preview_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
