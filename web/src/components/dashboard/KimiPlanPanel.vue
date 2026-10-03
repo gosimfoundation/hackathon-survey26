@@ -8,8 +8,6 @@ import { kimiPlanState, normalizeKimiPlanStatus, type KimiPlanStatus } from '../
 import { fmtUtc } from '../../lib/format'
 import { useAuth } from '../../stores/auth'
 import { useFlash } from '../../stores/flash'
-const redeemUrl = computed(() => status.value.code ? `https://www.kimi.com?invite=okc&code=${encodeURIComponent(status.value.code)}` : '')
-
 const i18n = useI18n()
 const { t, tf } = i18n
 const flash = useFlash()
@@ -23,6 +21,8 @@ const busy = ref(false)
 const revealed = ref(false)
 const copied = ref(false)
 const state = computed(() => kimiPlanState(status.value))
+const redeemUrl = computed(() => status.value.code ? `https://www.kimi.com?invite=okc&code=${encodeURIComponent(status.value.code)}` : '')
+const redeemUrlDisplay = computed(() => status.value.code ? `https://www.kimi.com?invite=okc&code=${revealed.value ? status.value.code : MASK}` : '')
 
 async function load() {
   if (!team.value) { loading.value = false; return }
@@ -72,7 +72,7 @@ onMounted(load)
           <button type="button" class="copy-btn" @click="copy">{{ copied ? t('common.copied') : t('common.copy') }}</button>
         </div>
         <a v-if="redeemUrl" class="btn sm primary mt-3" data-testid="kimi-plan-redeem" :href="redeemUrl" target="_blank" rel="noopener">{{ t('kimi_plan.redeem') }} →</a>
-        <p v-if="redeemUrl" class="text3 mt-2 text-xs break-all">{{ redeemUrl }}</p>
+        <p v-if="redeemUrl" class="text3 mt-2 text-xs break-all">{{ redeemUrlDisplay }}</p>
         <p v-else-if="status.note" class="text3 mt-2 text-xs">{{ status.note }}</p>
         <p class="text3 mt-2 text-xs">{{ tf('kimi_plan.claimed_by', { name: status.claimed_by ?? '—', at: fmtUtc(status.claimed_at, { short: true }) }) }}</p>
       </div>
