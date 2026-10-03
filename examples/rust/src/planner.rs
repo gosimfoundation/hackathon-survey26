@@ -17,6 +17,8 @@
 
 use std::collections::{BTreeMap, HashSet};
 
+use serde_json::Value;
+
 use crate::llm::{ask_hitrate_advice, ask_night_advice, merge_advice, LlmClient};
 use crate::memory::{log, Memory, PendingPrediction};
 use crate::protocol::{DecisionResponse, DecisionSnapshot, Pointing};
@@ -70,6 +72,8 @@ pub fn decide(
     };
     let hours = (now_unix - config.survey_start_unix) / 3600.0;
     memory.on_result(config, snapshot.last_result.as_ref(), hours);
+    memory.current_action_index = Some(snapshot.observe_action_index);
+    let request_thresholds = request_thresholds(config, memory, &snapshot.active_requests);
 
     if run.is_near_deadline() {
         return DecisionResponse::new(sequence, "finish").with_reason("wall-clock budget nearly exhausted");
@@ -117,7 +121,7 @@ pub fn decide(
     }
     memory.consecutive_reports = 0;
 
-    let response = match plan_observation(now_unix, night_end, night_index, hours, config, memory) {
+    let response = match plan_observation(now_unix, night_end, night_index, hours, config, memory, &request_thresholds) {
         Some(plan) => {
             run.observe_actions_sent += 1;
             let reason = format!("{} fibres, program {}", plan.assignments.len(), plan.program);
@@ -279,6 +283,63 @@ fn achievable(config: &Config, memory: &Memory, moon: &Moon, lst: f64, flux0t0: 
     gain * damp * memory.direction_factor(alt, az)
 }
 
+// Time-limited observation requests (participant guide section 8 / appendix B). There is
+// no penalty for letting one expire -- `observation_requests.miss_penalty` is fixed at 0
+// -- so the only thing worth doing here is not leaving a reachable `completion_reward` on
+// the table, and only when doing so is close to free. More aggressive designs (a priority
+// bonus in `value`/`achievable`, or a separate dedicated exposure aimed straight at an
+// urgent target) were tried in the companion Python example and rejected: they distorted
+// which pointing got chosen and for how long, for a score loss repeatedly far bigger than
+// any request reward -- a public weight scale of ~0.3-1.7 and a 50-60 point REQUIRED_BONUS
+// leave no room for also carrying a "maybe worth 100" incentive without it taking over.
+// What is left is a tie-break, applied only inside `finish_plan`'s own duration search over
+// a pointing/fibre assignment chosen with ZERO knowledge of requests: among durations
+// within REQUEST_RATE_TOLERANCE of the best expected-score-per-second rate, prefer one that
+// also clears a needed request target's completion_factor_threshold. It can only ever trade
+// a small, bounded amount of rate (never redirect the pointing itself, never reach for a
+// target that is not already going to be exposed anyway) for a chance at the reward.
+const REQUEST_RATE_TOLERANCE: f64 = 0.9;
+
+/// target_index -> smallest still-needed completion_factor_threshold, for every target
+/// that is part of some still-open request (`remaining_count>0`), not already counted
+/// (`completed_target_ids`), and not already past that threshold. Used only as a
+/// read-only tie-break in `finish_plan`'s duration search -- it never feeds back into
+/// `value`/`achievable`, so it cannot change which pointing gets chosen, only (within
+/// REQUEST_RATE_TOLERANCE) how long an already-chosen exposure runs once request targets
+/// happen to already be among its assigned fibres.
+fn request_thresholds(config: &Config, memory: &Memory, active_requests: &[Value]) -> std::collections::HashMap<usize, f64> {
+    let mut thresholds = std::collections::HashMap::new();
+    for request in active_requests {
+        let remaining = request.get("remaining_count").and_then(|v| v.as_i64()).unwrap_or(0);
+        if remaining <= 0 {
+            continue;
+        }
+        let Some(threshold) = request.get("completion_factor_threshold").and_then(|v| v.as_f64()) else { continue };
+        let completed: HashSet<&str> = request
+            .get("completed_target_ids")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|v| v.as_str())
+            .collect();
+        for target_id in request.get("target_ids").and_then(|v| v.as_array()).into_iter().flatten() {
+            let Some(target_id) = target_id.as_str() else { continue };
+            if completed.contains(target_id) {
+                continue;
+            }
+            let Some(i) = config.index_of(target_id) else { continue };
+            if memory.factor[i] >= threshold {
+                continue;
+            }
+            thresholds
+                .entry(i)
+                .and_modify(|existing: &mut f64| *existing = existing.min(threshold))
+                .or_insert(threshold);
+        }
+    }
+    thresholds
+}
+
 // ---------------------------------------------------------------------------
 // Anchor search: try several high-value targets as the pointing's anchor,
 // try every fibre as the slot that anchor lands in, keep the field that
@@ -300,7 +361,15 @@ struct BestField {
     chosen: BTreeMap<i64, (f64, usize, f64)>, // fiber -> (score, target index, margin)
 }
 
-fn plan_observation(now_unix: f64, night_end: f64, night_index: usize, hours: f64, config: &Config, memory: &mut Memory) -> Option<PlannedObserve> {
+fn plan_observation(
+    now_unix: f64,
+    night_end: f64,
+    night_index: usize,
+    hours: f64,
+    config: &Config,
+    memory: &mut Memory,
+    request_thresholds: &std::collections::HashMap<usize, f64>,
+) -> Option<PlannedObserve> {
     let lst = scoring::local_sidereal_deg(now_unix, config.longitude_deg);
     let horizon = night_end.min(config.survey_end_unix);
     let seconds_left = horizon - now_unix;
@@ -404,7 +473,7 @@ fn plan_observation(now_unix: f64, night_end: f64, night_index: usize, hours: f6
     }
 
     let best = best?;
-    finish_plan(lst, best.center_alt, best.center_az, best.chosen, seconds_left, &moon, config, memory, hours, night_index)
+    finish_plan(lst, best.center_alt, best.center_az, best.chosen, seconds_left, &moon, config, memory, hours, night_index, request_thresholds)
 }
 
 struct FiberInfo {
@@ -428,6 +497,7 @@ fn finish_plan(
     memory: &mut Memory,
     hours: f64,
     night_index: usize,
+    request_thresholds: &std::collections::HashMap<usize, f64>,
 ) -> Option<PlannedObserve> {
     let (center_ra, center_dec) = scoring::altaz_to_radec(center_alt, center_az, lst, config.latitude_deg);
     let center_hmax = scoring::max_hour_angle_deg(center_dec, config.latitude_deg, config.minimum_altitude_deg + 0.3);
@@ -451,6 +521,8 @@ fn finish_plan(
     let center_up = if center_hmax < 180.0 { (center_hmax - center_ha) / SIDEREAL_DEG_PER_SECOND } else { 1e9 };
 
     let mut best_duration: Option<(f64, i64)> = None;
+    // Best candidate that also clears a needed request target's completion_factor_threshold.
+    let mut request_best_duration: Option<(f64, i64)> = None;
     for &base in &DURATIONS {
         let duration = (((base * memory.duration_scale / 30.0).round()) * 30.0) as i64;
         let duration = duration.clamp(config.min_duration_seconds, config.max_duration_seconds);
@@ -458,6 +530,7 @@ fn finish_plan(
             continue;
         }
         let mut gain = 0.0;
+        let mut completes_request = false;
         for item in info.values() {
             if item.up < duration as f64 {
                 continue;
@@ -468,10 +541,28 @@ fn finish_plan(
             if config.targets[item.target_index].required && f < 0.5 && reached >= 0.5 {
                 gain += REQUIRED_BONUS;
             }
+            if let Some(&threshold) = request_thresholds.get(&item.target_index) {
+                if reached >= threshold {
+                    completes_request = true;
+                }
+            }
         }
         let rate = gain / duration as f64;
         if best_duration.map(|(r, _)| rate > r).unwrap_or(true) {
             best_duration = Some((rate, duration));
+        }
+        if completes_request && request_best_duration.map(|(r, _)| rate > r).unwrap_or(true) {
+            request_best_duration = Some((rate, duration));
+        }
+    }
+    // Tie-break, not a bonus: duration_seconds is one value shared by all fibres, so this
+    // only ever swaps to a request-completing duration that is already within
+    // REQUEST_RATE_TOLERANCE of the best achievable rate -- it can trade a small, bounded
+    // amount of score for a shot at a reward, never meaningfully distort the exposure
+    // length chosen for everything else in this pointing.
+    if let (Some((best_rate, _)), Some((request_rate, request_duration))) = (best_duration, request_best_duration) {
+        if request_rate >= best_rate * REQUEST_RATE_TOLERANCE {
+            best_duration = Some((request_rate, request_duration));
         }
     }
     let (rate, mut duration) = best_duration?;
@@ -513,6 +604,7 @@ fn finish_plan(
     }
 
     memory.pending.clear();
+    memory.pending_action_index = memory.current_action_index;
     for (&fiber, item) in &info {
         if assignments.contains_key(&fiber.to_string()) {
             memory

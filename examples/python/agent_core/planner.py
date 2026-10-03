@@ -61,6 +61,24 @@ REPORT_CONFIRMATIONS = 3
 REPORT_SPACING_HOURS = 6.0
 MAX_REPORTS = 2
 
+# Time-limited observation requests (participant guide section 8 / appendix B). There is
+# no penalty for letting one expire -- `observation_requests.miss_penalty` is fixed at 0 --
+# so the only thing worth doing here is not leaving a reachable `completion_reward` on the
+# table, and only when doing so is close to free. Several more aggressive designs were
+# tried and rejected: adding a priority bonus into the normal anchor-search's ranking
+# (_value/achievable), and a separate dedicated exposure pointed straight at an urgent
+# target, both distorted which pointing got chosen and for how long, for a score loss
+# repeatedly far bigger than any request reward across these practice cards -- a public
+# weight scale of ~0.3-1.7 and a 50-60 point REQUIRED_BONUS leave no room for also
+# carrying a "maybe worth 100" incentive without it taking over. What is left is a
+# tie-break, applied only inside _finish_plan's own duration search over a pointing/fibre
+# assignment chosen with ZERO knowledge of requests: among durations within
+# REQUEST_RATE_TOLERANCE of the best expected-score-per-second rate, prefer one that also
+# clears a needed request target's completion_factor_threshold. It can only ever trade a
+# small, bounded amount of rate (never redirect the pointing itself, never reach for a
+# target that is not already going to be exposed anyway) for a chance at the reward.
+REQUEST_RATE_TOLERANCE = 0.9
+
 
 def _az_distance(a: float, b: float) -> float:
     return abs(wrap180(a - b))
@@ -91,6 +109,8 @@ class Planner:
         self._last_forecast_notices: list = []
         self.total_assigned = 0
         self.total_hit = 0
+        self._current_action_index = None
+        self._request_thresholds_now: dict = {}
 
         log(f"planner: {len(state.ids)} targets ({sum(state.required)} required), "
             f"{len(state.nights)} nights, llm model={self.llm.model} base_url={self.llm.base_url}")
@@ -105,6 +125,12 @@ class Planner:
         for message in payload.get("new_messages", []):
             if message.get("record_type") == "forecast":
                 self._last_forecast_notices = message.get("notices", [])
+            elif message.get("record_type") == "observation_request":
+                self.log(f"planner: observation request {message.get('request_id')} issued, "
+                         f"{len(message.get('target_ids', []))} targets by {message.get('deadline_utc')}")
+            elif message.get("record_type") == "observation_request_result":
+                self.log(f"planner: observation request {message.get('request_id')} "
+                         f"{message.get('status')} (reward {message.get('score_delta', 0.0)})")
         state.on_messages(payload.get("new_messages", []), payload.get("latest_bulletin"))
         state.on_result(payload.get("last_result"), hours)
         last_result = payload.get("last_result")
@@ -112,6 +138,8 @@ class Planner:
             self.total_assigned += int(last_result.get("assigned_count", 0))
             self.total_hit += int(last_result.get("hit_count", 0))
         self._pace(payload, now)
+        self._current_action_index = payload.get("observe_action_index")
+        self._request_thresholds_now = self._request_thresholds(payload.get("active_requests") or [])
 
         night = state.current_night(now)
         if night is None:
@@ -297,6 +325,31 @@ class Planner:
                 factor = min(factor, 0.2)
         return factor
 
+    def _request_thresholds(self, active_requests: list) -> dict:
+        """target_index -> smallest still-needed completion_factor_threshold, for every
+        target that is part of some still-open request (`remaining_count>0`), not
+        already counted (`completed_target_ids`), and not already past that threshold.
+        Used only as a read-only tie-break in _finish_plan's duration search -- it never
+        feeds back into _value/achievable, so it cannot change which pointing gets
+        chosen, only (within REQUEST_RATE_TOLERANCE) how long an already-chosen exposure
+        runs once request targets happen to already be among its assigned fibres."""
+        state = self.state
+        thresholds: dict[int, float] = {}
+        for request in active_requests:
+            if int(request.get("remaining_count", 0)) <= 0:
+                continue
+            threshold = float(request.get("completion_factor_threshold", 1.0))
+            completed = set(request.get("completed_target_ids") or [])
+            for target_id in request.get("target_ids", []):
+                if target_id in completed:
+                    continue
+                i = state.index_of.get(target_id)
+                if i is None or state.factor[i] >= threshold:
+                    continue
+                if i not in thresholds or threshold < thresholds[i]:
+                    thresholds[i] = threshold
+        return thresholds
+
     def _value(self, i: int) -> float:
         """Planning value of fully completing target i from here (ignores how much
         exposure is achievable tonight)."""
@@ -449,12 +502,15 @@ class Planner:
         center_up = (c_hmax - c_ha) / SIDEREAL_DEG_PER_SECOND if c_hmax < 180 else 1e9
 
         best = None  # (rate, duration)
+        request_best = None  # (rate, duration): best candidate that also clears a needed
+                              # request target's completion_factor_threshold
         for base in DURATIONS:
             duration = round((base * state.duration_scale) / 30.0) * 30
             duration = int(max(state.min_exposure, min(state.max_exposure, duration)))
             if duration > seconds_left or duration > center_up:
                 continue
             gain = 0.0
+            completes_request = False
             for item in info.values():
                 if item["up"] < duration:
                     continue
@@ -463,11 +519,23 @@ class Planner:
                 gain += state.weight[item["i"]] * max(0.0, reached * reached - f * f)
                 if state.required[item["i"]] and f < 0.5 and reached >= 0.5:
                     gain += REQUIRED_BONUS
+                threshold = self._request_thresholds_now.get(item["i"])
+                if threshold is not None and reached >= threshold:
+                    completes_request = True
             rate = gain / duration
             if best is None or rate > best[0]:
                 best = (rate, duration)
+            if completes_request and (request_best is None or rate > request_best[0]):
+                request_best = (rate, duration)
         if best is None:
             return None
+        # Tie-break, not a bonus: duration_seconds is one value shared by all 16 fibres,
+        # so this only ever swaps to a request-completing duration that is already within
+        # REQUEST_RATE_TOLERANCE of the best achievable rate -- it can trade a small,
+        # bounded amount of score for a shot at a reward, never meaningfully distort the
+        # exposure length chosen for everything else in this pointing.
+        if request_best is not None and request_best[0] >= best[0] * REQUEST_RATE_TOLERANCE:
+            best = request_best
         duration = best[1]
         if best[0] <= 0.0:
             if state.has_recent_sample(hours):
@@ -504,6 +572,7 @@ class Planner:
 
         clean = not state.all_sky_notice()
         state.pending.clear()
+        state.pending_action_index = self._current_action_index
         for fiber, item in info.items():
             if str(fiber) in assignments:
                 state.pending[state.ids[item["i"]]] = PendingPrediction(

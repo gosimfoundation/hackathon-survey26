@@ -65,6 +65,17 @@ Needs a chat-completions API key to start: see "LLM usage".
 | `src/scoring.rs` | Public sky geometry + scoring formulas (no scenario data). |
 | `src/validate.rs` | Protocol-rule validation and the deterministic safe fallback. |
 
+`memory.rs`'s Hard-mode `state_resync` handling keeps a per-observe-action ledger of exact
+factors, so it only has to drop the invalidated action-index window and recompute each
+target's best factor from what is left -- instead of only from the resync message's
+`best_scores` (see the comment on `Memory::resync`). `planner.rs`'s duration search over a
+pointing/fibre assignment chosen with no knowledge of time-limited observation requests
+also gets a read-only tie-break: among durations within a small tolerance of the best rate,
+one that also clears a still-needed request target's `completion_factor_threshold` wins.
+Letting a request expire costs nothing (`observation_requests.miss_penalty` is fixed at 0),
+so this never redirects the pointing itself or chases a target that would not already be
+exposed anyway.
+
 ## Building and running
 
 ```sh

@@ -9,6 +9,7 @@ import type {
   LastResult,
   Notice,
   PlatformMessage,
+  StateResyncMessage,
 } from "./protocol";
 import { SIDEREAL_DEG_PER_SECOND, localSiderealDeg, maxHourAngleDeg, parseUtc, wrap180 } from "./skymath";
 
@@ -102,6 +103,16 @@ export class AgentState {
   extraAvoid: Set<string> = new Set();
   durationScale = 1.0;
   fastLevel = 0;
+
+  /** Per-observe-action ledger: [observeActionIndex, targetId, factor], mirroring the
+   * backend's own BestLedger so a Hard-mode state_resync can be answered exactly (see
+   * `resync`) instead of only from the resync message's `best_scores`. */
+  ledger: [number, string, number][] = [];
+  pendingActionIndex: number | null = null;
+  /** `decision_request.payload.observe_action_index` for the decision in progress; set by
+   * index.ts at the top of `respond()`, copied into `pendingActionIndex` by `finishPlan`
+   * if this decision ends up being an `observe`. */
+  currentActionIndex: number | null = null;
 
   constructor(payload: InitializePayload) {
     this.payload = payload;
@@ -233,7 +244,7 @@ export class AgentState {
           if (notice.event_kind === "terrain_obstruction") this.terrain.add(notice.direction);
         }
       } else if (message.record_type === "state_resync") {
-        this.resync(message.observed_target_ids, message.best_scores, this.payload.scoring.program.multipliers);
+        this.resync(message);
       }
     }
     const notices: Notice[] = latestBulletin?.notices ?? [];
@@ -242,11 +253,48 @@ export class AgentState {
     );
   }
 
-  private resync(observedIds: string[], bestScores: { target_id: string; best_score: number }[], multipliers: Record<string, number>): void {
-    const best = new Map(bestScores.map((row) => [row.target_id, row.best_score]));
-    const top = Math.max(...Object.values(multipliers));
+  /**
+   * Hard-mode state_resync (participant guide, Appendix A / section 8): a prior window
+   * of `observe` actions was invalidated. The message itself only gives `best_scores`
+   * (score, not factor) for targets with any surviving valid hit -- the guide is
+   * explicit that it does not return each target's completion factor, and that an
+   * agent that needs it exactly should combine `invalidated_window` with its own saved
+   * valid-exposure history.
+   *
+   * We can do exactly that: every entry in `this.ledger` already holds the EXACT factor
+   * for one past observe action (`onResult` backs it out of the real score the backend
+   * returned, the public weight, and whichever of the two public program multipliers it
+   * matches -- not an estimate). Dropping the ledger entries inside the invalidated
+   * action-index window and taking, per target, the max factor among what is left
+   * reproduces the backend's own ledger exactly -- this is a reconstruction, not an
+   * approximation from best_score.
+   *
+   * The only remaining uncertainty: a target with no ledger entry at all (e.g. this
+   * process restarted mid-run and lost its in-memory history) falls back to the old
+   * best_score/top_multiplier estimate below, same as before this change.
+   */
+  private resync(message: StateResyncMessage): void {
+    const { action_index_start: start, action_index_end_exclusive: end } = message.invalidated_window ?? {};
+    if (start !== undefined && end !== undefined) {
+      this.ledger = this.ledger.filter(([index]) => !(index >= start && index < end));
+    } else {
+      this.ledger = []; // no window given: nothing in the ledger can be trusted
+    }
+    const exact = new Map<string, number>();
+    for (const [, targetId, factor] of this.ledger) {
+      if (factor > (exact.get(targetId) ?? 0.0)) exact.set(targetId, factor);
+    }
+
+    const best = new Map((message.best_scores ?? []).map((row) => [row.target_id, row.best_score]));
+    const top = Math.max(...Object.values(this.payload.scoring.program.multipliers));
     for (let i = 0; i < this.ids.length; i++) {
-      const score = best.get(this.ids[i]!) ?? 0.0;
+      const targetId = this.ids[i]!;
+      const exactFactor = exact.get(targetId);
+      if (exactFactor !== undefined) {
+        this.factor[i] = exactFactor;
+        continue;
+      }
+      const score = best.get(targetId) ?? 0.0;
       this.factor[i] = score > 0 ? Math.min(1.0, score / (this.weight[i]! * top)) : 0.0;
     }
     this.active = [];
@@ -254,6 +302,7 @@ export class AgentState {
       if (this.hmax[i]! > 0.0) this.active.push(i);
     }
     this.pending.clear();
+    this.pendingActionIndex = null;
   }
 
   siteClosed(): boolean {
@@ -272,6 +321,8 @@ export class AgentState {
   }
 
   onResult(result: LastResult, hours: number): void {
+    const actionIndex = this.pendingActionIndex;
+    this.pendingActionIndex = null;
     if (!result || result.action !== "observe" || this.pending.size === 0) {
       this.pending.clear();
       return;
@@ -308,8 +359,9 @@ export class AgentState {
       const ratioMatch = (factorIfMatch * flux0t0) / (this.flux[i]! * this.pendingDuration * prediction.model);
       const band = this.band(ratioMatch * prediction.bandModel, scoring.program.bands);
       const matched = band === this.pendingProgram;
-      const factor = matched ? factorIfMatch : factorIfMiss;
-      this.factor[i] = Math.max(this.factor[i]!, Math.min(1.0, factor));
+      const factor = Math.min(1.0, matched ? factorIfMatch : factorIfMiss);
+      this.factor[i] = Math.max(this.factor[i]!, factor);
+      if (actionIndex !== null) this.ledger.push([actionIndex, targetId, factor]);
       if (this.required[i] && this.factor[i]! < 0.5) this.attempts[i]!++;
       if (factor < 0.97) {
         const ratio = (factor * flux0t0) / (this.flux[i]! * this.pendingDuration * prediction.model);

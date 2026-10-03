@@ -392,6 +392,12 @@ pub struct DecisionSnapshot {
     pub new_messages: Vec<Value>,
     #[serde(default)]
     pub last_result: Option<Value>,
+    /// Currently-open time-limited observation requests (participant guide
+    /// section 8 / appendix B), each with live `completed_target_ids` /
+    /// `completed_count` / `remaining_count`. Left as raw `Value` like the
+    /// other loosely-typed payload fields above.
+    #[serde(default)]
+    pub active_requests: Vec<Value>,
 }
 
 // ---------------------------------------------------------------------------
