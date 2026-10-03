@@ -10,7 +10,26 @@ const host = ref<HTMLDivElement | null>(null)
 let dispose: (() => void) | null = null
 let idleHandle: number | null = null
 let idleTimer: ReturnType<typeof setTimeout> | null = null
+let lcpObserver: PerformanceObserver | null = null
+let lcpFallbackTimer: ReturnType<typeof setTimeout> | null = null
 let cancelled = false
+const LCP_FALLBACK_MS = 2500
+
+/** Resolves once the page's largest-contentful-paint has landed (or a fallback fires), so the scene
+ *  never competes with the paint the user is actually waiting for during a cold load. */
+function afterLcp(): Promise<void> {
+  return new Promise(resolve => {
+    let done = false
+    const finish = () => { if (done) return; done = true; lcpObserver?.disconnect(); if (lcpFallbackTimer) clearTimeout(lcpFallbackTimer); resolve() }
+    try {
+      lcpObserver = new PerformanceObserver(() => finish())
+      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
+    } catch {
+      finish(); return
+    }
+    lcpFallbackTimer = setTimeout(finish, LCP_FALLBACK_MS)
+  })
+}
 
 onMounted(() => {
   const el = host.value
@@ -27,7 +46,10 @@ onMounted(() => {
     const milkyCount = coarse ? 260 : 620
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'low-power' })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    // Capped at 1x: a fractional DPR buys little visible sharpness on this field of soft, additive
+    // points but scales the raster cost (and GPU power draw) with the square of the ratio — the
+    // difference a fanless laptop actually feels.
+    renderer.setPixelRatio(1)
     renderer.setSize(el.clientWidth, el.clientHeight)
     renderer.domElement.className = 'hero-galaxy-canvas'
     el.appendChild(renderer.domElement)
@@ -129,7 +151,8 @@ onMounted(() => {
     const gridGeometry = new THREE.BufferGeometry()
     gridGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gridSegments), 3))
     const gridMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color('#5b7cff'), transparent: true, opacity: 0.08, depthWrite: false })
-    group.add(new THREE.LineSegments(gridGeometry, gridMaterial))
+    const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial)
+    group.add(gridLines)
 
     // Soft Milky Way haze: a scatter of points biased toward a tilted great-circle band.
     const milkyPositions = new Float32Array(milkyCount * 3)
@@ -162,7 +185,8 @@ onMounted(() => {
     milkyGeometry.setAttribute('position', new THREE.BufferAttribute(milkyPositions, 3))
     milkyGeometry.setAttribute('color', new THREE.BufferAttribute(milkyColors, 3))
     const milkyMaterial = new THREE.PointsMaterial({ size: 0.16, map: starSprite, vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })
-    group.add(new THREE.Points(milkyGeometry, milkyMaterial))
+    const milkyWay = new THREE.Points(milkyGeometry, milkyMaterial)
+    group.add(milkyWay)
 
     // Footprint rings: the survey's observing tracks around the sphere.
     const ringMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color('#5b7cff'), transparent: true, opacity: 0.34 })
@@ -179,9 +203,11 @@ onMounted(() => {
       group.add(ring)
       return ring
     }
-    makeRing(3.5, Math.PI / 2.6, 0.25, ringMaterial)
-    makeRing(3.72, Math.PI / 2.1, -0.42, ringMaterialWarm)
-    makeRing(3.3, Math.PI / 3.4, 0.9, ringMaterial)
+    const rings = [
+      makeRing(3.5, Math.PI / 2.6, 0.25, ringMaterial),
+      makeRing(3.72, Math.PI / 2.1, -0.42, ringMaterialWarm),
+      makeRing(3.3, Math.PI / 3.4, 0.9, ringMaterial),
+    ]
 
     group.rotation.z = 0.16
     group.position.x = 1.6
@@ -221,13 +247,40 @@ onMounted(() => {
     let running = !reduced
     let raf = 0
     const clock = new THREE.Clock()
+    // Adaptive quality: a weak/integrated GPU shows up as slow frames within the first couple of
+    // seconds. Rather than guess a device's class up front, measure it and drop the decorative
+    // (non-essential) layers — grid, Milky Way band, footprint rings, reticle — if it's struggling.
+    // The main star sphere, the scene's identity, always stays.
+    const QUALITY_SAMPLE_MS = 2000
+    const QUALITY_FRAME_BUDGET_MS = 20 // ~50fps; above this the canvas is costing more than its share
+    let qualityChecked = false
+    let qualitySampleStart = 0
+    let qualityFrameCount = 0
+    let qualityBusyMs = 0
+    const downgradeQuality = () => {
+      gridLines.visible = false
+      milkyWay.visible = false
+      for (const ring of rings) ring.visible = false
+      reticle.visible = false
+    }
     const renderFrame = () => {
       const elapsed = clock.getElapsedTime()
       group.rotation.y = elapsed * 0.05 + pointerX * 0.12
       group.rotation.x = Math.sin(elapsed * 0.11) * 0.05 + pointerY * 0.08
       reticle.position.set(Math.sin(elapsed * 0.13) * 1.8, Math.cos(elapsed * 0.09) * 1.05, 3.4)
       reticle.rotation.z = elapsed * 0.05
+      const t0 = !qualityChecked ? performance.now() : 0
       renderer.render(scene, camera)
+      if (!qualityChecked) {
+        const now = performance.now()
+        if (qualitySampleStart === 0) qualitySampleStart = now
+        qualityFrameCount += 1
+        qualityBusyMs += now - t0
+        if (now - qualitySampleStart >= QUALITY_SAMPLE_MS) {
+          qualityChecked = true
+          if (qualityBusyMs / Math.max(1, qualityFrameCount) > QUALITY_FRAME_BUDGET_MS) downgradeQuality()
+        }
+      }
     }
     const loop = () => {
       if (!running) return
@@ -282,11 +335,14 @@ onMounted(() => {
     requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
     cancelIdleCallback?: (handle: number) => void
   }
-  if (typeof w.requestIdleCallback === 'function') {
-    idleHandle = w.requestIdleCallback(() => { void setup() }, { timeout: 1500 })
-  } else {
-    idleTimer = setTimeout(() => { void setup() }, 200)
-  }
+  void afterLcp().then(() => {
+    if (cancelled) return
+    if (typeof w.requestIdleCallback === 'function') {
+      idleHandle = w.requestIdleCallback(() => { void setup() }, { timeout: 1500 })
+    } else {
+      idleTimer = setTimeout(() => { void setup() }, 200)
+    }
+  })
 })
 
 onBeforeUnmount(() => {
@@ -294,6 +350,8 @@ onBeforeUnmount(() => {
   const w = window as unknown as { cancelIdleCallback?: (handle: number) => void }
   if (idleHandle !== null && typeof w.cancelIdleCallback === 'function') w.cancelIdleCallback(idleHandle)
   if (idleTimer !== null) clearTimeout(idleTimer)
+  lcpObserver?.disconnect()
+  if (lcpFallbackTimer !== null) clearTimeout(lcpFallbackTimer)
   dispose?.()
 })
 </script>
