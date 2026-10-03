@@ -24,7 +24,13 @@ const hud = ref({ slot: '', night: '', date: '', utc: '', lst: '', seeing: 0, tr
 const beat = ref<{ key: string; region: string; nightNo: number; n: number }>({ key: 'idle', region: '', nightNo: 1, n: 0 })
 const paused = computed(() => clock.state.paused)
 const reduced = computed(() => clock.state.reduced)
-let raf = 0, observer: ResizeObserver | undefined, shownScore = 0, lastProgress = 0
+let raf = 0, observer: ResizeObserver | undefined, visibility: IntersectionObserver | undefined, shownScore = 0, lastProgress = 0
+// The map redraws thousands of point sources every tick; capping the redraw rate (and pausing it
+// entirely while the console is scrolled off-screen or the tab is hidden) keeps that cost off a
+// fanless laptop's main thread without changing how the replay looks at a glance.
+const RENDER_INTERVAL_MS = 1000 / 24
+let lastRenderAt = 0
+let isVisible = true
 const PULSE = SLOT_SECONDS * 2  // glow for two slots of replay time after a tile completes
 /** Stands in for the weather row when a run arrives without one, so the readout stays up instead of throwing. */
 const EMPTY_SLOT = { slot: '—', night: '', t: '', startSec: 0, open: true, seeing: 0, transp: 0, sky: 0, eff: 0 }
@@ -103,7 +109,16 @@ function render() {
   trackMeridian(skySec)
   if (canvas.value) drawTargetMap(canvas.value, replayTargets, replaySite, { nowSec: skySec, observed, timeFade: skyFade, pulseSeconds: reduced.value ? 0 : Math.max(PULSE, replayPulseSec), livePointing })
 }
-function loop() { render(); if (!reduced.value) raf = requestAnimationFrame(loop) }
+function loop(t: number) {
+  if (t - lastRenderAt >= RENDER_INTERVAL_MS) { lastRenderAt = t; render() }
+  if (!reduced.value && isVisible && !document.hidden) raf = requestAnimationFrame(loop)
+  else raf = 0
+}
+function startLoop() { if (!raf && !reduced.value && isVisible && !document.hidden) raf = requestAnimationFrame(loop) }
+function onVisibilityChange() {
+  if (document.hidden) { cancelAnimationFrame(raf); raf = 0 }
+  else startLoop()
+}
 
 // --- first-visit walkthrough -------------------------------------------------
 // Four beats explaining the axes, the marks, the meridian (and its jump) and the readout. Shown once per
@@ -132,7 +147,16 @@ function endTour() {
 
 onMounted(() => {
   if (canvas.value) { observer = new ResizeObserver(() => render()); observer.observe(canvas.value) }
-  loop()
+  const host = canvas.value?.closest('.sky-console') ?? canvas.value
+  if (host) {
+    visibility = new IntersectionObserver(entries => {
+      isVisible = entries.some(entry => entry.isIntersecting)
+      if (isVisible) startLoop()
+    }, { threshold: 0.05 })
+    visibility.observe(host)
+  }
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  startLoop()
   let seen = true
   try { seen = window.localStorage.getItem(TOUR_KEY) === '1' } catch { /* private mode: do not nag */ }
   // The first-visit walkthrough waits its turn behind another overlay (a pinned announcement popup).
@@ -148,7 +172,13 @@ function onHover(e: PointerEvent, inside: boolean) {
   clock.setPaused(inside)
 }
 
-onUnmounted(() => { cancelAnimationFrame(raf); observer?.disconnect(); releaseOverlay(TOUR_OVERLAY) })
+onUnmounted(() => {
+  cancelAnimationFrame(raf)
+  observer?.disconnect()
+  visibility?.disconnect()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  releaseOverlay(TOUR_OVERLAY)
+})
 </script>
 
 <template>

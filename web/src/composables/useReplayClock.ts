@@ -438,10 +438,22 @@ function release() {
 // safe empty run synchronously (buildSegments() already has a fallback segment for zero actions), then
 // fetch the real data as its own chunk; replayMeta.version bumps when it lands, which is what every
 // consumer already re-renders on.
+// The fetch-and-transform (parsing ~2,900 targets/actions/weather rows into typed arrays) is pushed
+// past requestIdleCallback so it runs after the browser is done with the cold-load critical path —
+// first paint, layout, hydration — rather than racing it on every single page load.
 buildSegments()
-void import('../content/demo/replay.json').then(({ default: demoReplay }) => {
-  setReplayData(demoReplay as unknown as RawReplay, 'demo')
-})
+function loadDemoReplay() {
+  void import('../content/demo/replay.json').then(({ default: demoReplay }) => {
+    setReplayData(demoReplay as unknown as RawReplay, 'demo')
+  })
+}
+if (typeof window !== 'undefined') {
+  const w = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }
+  if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(loadDemoReplay, { timeout: 2000 })
+  else setTimeout(loadDemoReplay, 300)
+} else {
+  loadDemoReplay()
+}
 
 export function useReplayClock() {
   onMounted(acquire)
