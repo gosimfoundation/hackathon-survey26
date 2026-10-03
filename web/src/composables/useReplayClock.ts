@@ -52,16 +52,22 @@ const GAP_SWEEP_UNIT = 0.9
 const SWEEP_MAX_DEG = 18
 /** Share a dissolving gap earns — enough for the cursor to fade out and back without feeling rushed. */
 const GAP_DISSOLVE_UNIT = 0.7
+/**
+ * A gap of this many hours or more is a daytime (or longer) being skipped. The 3D sky plays it as a
+ * time-lapse — the sun crossing, the sky brightening and darkening — which needs a few seconds to read.
+ */
+const DAY_GAP_HOURS = 4
+const DAY_LAPSE_UNIT = 3.2
 /** Fraction of a dissolving gap spent fading at each end; the middle is held empty. */
 const DISSOLVE_EDGE = 0.34
 /**
- * Above this many exposures, giving each one its own beat stops working: the loop is capped at under
- * two minutes, so a run of several thousand exposures would hand each beat a frame or two, and every
+ * Above this many exposures, giving each one its own beat stops working: the loop is capped at a few
+ * minutes, so a run of several thousand exposures would hand each beat a frame or two, and every
  * skip between them would land as a jump however it was dressed up. Past this the replay switches to
  * running the clock at a steady rate instead — the sky turns evenly and tiles light as their moment
  * arrives, which cannot jump because nothing is ever cut.
  */
-const DENSE_EXPOSURES = 150
+const DENSE_EXPOSURES = 400
 /** Real time one turn of the sky is given in that steady mode: slow enough to read as motion. */
 const MS_PER_TURN = 3_000
 /**
@@ -82,10 +88,14 @@ const END_HOLD_MS = 2_500
  * register at all.
  */
 const RECENT_MS = 600
-/** Real time each unit of weight is worth, and the bounds a full loop is kept inside. */
-const MS_PER_UNIT = 760
+/**
+ * Real time each unit of weight is worth, and the bounds a full loop is kept inside. One exposure gets a
+ * little over a second at 1x: long enough to see the telescope swing over, its fibres land and the score
+ * tick, and to read the caption. The speed buttons cover viewers who want the whole week faster.
+ */
+const MS_PER_UNIT = 1150
 const LOOP_MIN_MS = 45_000
-const LOOP_MAX_MS = 115_000
+const LOOP_MAX_MS = 330_000
 /** How much sim time a collapsed gap actually shows: the quiet stretch just before the next exposure. */
 const GAP_SHOWN_SLOTS = 3
 /** One turn of the sky, used to keep a collapsed gap from sweeping the map round more than once. */
@@ -124,6 +134,8 @@ type Segment = {
   weight: number
   /** Set on a gap too wide to travel: hold, fade out, cut, fade back in. */
   dissolve?: boolean
+  /** Set on a gap that skips a daytime; the 3D sky time-lapses across it. */
+  lapse?: boolean
 }
 let segments: Segment[] = []
 /** True while the replay is walking one steady beat rather than one beat per exposure. */
@@ -147,7 +159,11 @@ function priceGap(seg: Segment, jumpFromSec: number): Segment {
   const turn = Math.min(1, Math.max(0, (seg.toSec - from) / SIDEREAL_DAY))
   seg.sweepFromSec = from
   seg.dissolve = turn * 360 > SWEEP_MAX_DEG
-  seg.weight = seg.dissolve ? GAP_DISSOLVE_UNIT : GAP_UNIT + turn * GAP_SWEEP_UNIT
+  // A daytime, not a long cloudy spell: the gap is long and the run's weather puts its two ends in
+  // different nights (a run logged without weather falls back to the length alone).
+  const nightAt = (sec: number) => replaySlots[slotIndexAt(sec)]?.night
+  seg.lapse = seg.toSec - jumpFromSec >= DAY_GAP_HOURS * 3600 && (!replaySlots.length || nightAt(jumpFromSec) !== nightAt(seg.toSec))
+  seg.weight = seg.lapse ? DAY_LAPSE_UNIT : seg.dissolve ? GAP_DISSOLVE_UNIT : GAP_UNIT + turn * GAP_SWEEP_UNIT
   return seg
 }
 
@@ -302,11 +318,11 @@ export function setReplayData(raw: RawReplay, source: 'demo' | 'champion' = 'dem
   tick()
 }
 
-const state = reactive({ progress: 0, slotIndex: 0, actionIndex: 0, paused: false, reduced: false })
+const state = reactive({ progress: 0, slotIndex: 0, actionIndex: 0, paused: false, reduced: false, speed: 1 })
 let base = 0, runningSince: number | null = null, users = 0, timer: number | undefined
 
 function elapsedMs(): number {
-  return base + (runningSince == null ? 0 : performance.now() - runningSince)
+  return base + (runningSince == null ? 0 : (performance.now() - runningSince) * state.speed)
 }
 /** Continuous loop progress in [0, 1). Under reduced motion the clock sits at the final state. */
 export function replayProgress(): number {
@@ -337,6 +353,15 @@ export interface ReplayFrame {
   frac: number
   /** Set while a run of waiting is being shown, with how much of the run it stands for. */
   gap: { nights: number; slots: number } | null
+  /**
+   * Continuous sky time for the 3D view: equal to nowSec during an exposure, and eased straight across
+   * a gap — daytime included — so the sky, sun and moon move through it as a time-lapse with no cut.
+   */
+  lapseSec: number
+  /** True across a gap that skips a daytime. */
+  lapse: boolean
+  /** True while the finished run is held at the end of the loop. */
+  ended: boolean
 }
 /** Map loop progress onto the run: exposures get equal dwell, waiting runs collapse into short beats. */
 export function replayTimeAt(progress: number): ReplayFrame {
@@ -372,20 +397,25 @@ export function replayTimeAt(progress: number): ReplayFrame {
       frac,
       // Between exposures — daytime included — the run is waiting, whatever row was logged last.
       gap: live ? null : { nights: 1, slots: 1 },
+      lapseSec: nowSec,
+      lapse: false,
+      ended: atEnd,
     }
   }
   // The readout skips to the quiet stretch before the next exposure. A short gap lets the sky glide
   // the rest of the way; a wide one holds still, dissolves, and comes back where the night resumes.
   let skySec = nowSec
   let skyFade = 1
+  let lapseSec = nowSec
   if (seg.kind === 'gap') {
+    // Eased, so the sky pulls away and settles rather than snapping into and out of the drift.
+    const e = frac * frac * (3 - 2 * frac)
+    lapseSec = seg.sweepFromSec + e * (seg.toSec - seg.sweepFromSec)
     if (seg.dissolve) {
       skySec = frac < 0.5 ? seg.sweepFromSec : seg.toSec
       skyFade = Math.min(1, Math.abs(frac - 0.5) / DISSOLVE_EDGE)
     } else {
-      // Eased, so the sky pulls away and settles rather than snapping into and out of the drift.
-      const e = frac * frac * (3 - 2 * frac)
-      skySec = seg.sweepFromSec + e * (seg.toSec - seg.sweepFromSec)
+      skySec = lapseSec
     }
   }
   return {
@@ -396,7 +426,27 @@ export function replayTimeAt(progress: number): ReplayFrame {
     skyFade,
     frac,
     gap: seg.kind === 'gap' ? { nights: seg.nights, slots: seg.slots } : null,
+    lapseSec,
+    lapse: seg.kind === 'gap' && !!seg.lapse,
+    ended: atEnd,
   }
+}
+/** Loop progress at which each night's first exposure starts — tick marks for the timeline. */
+export function replayNightMarks(): { night: number; progress: number }[] {
+  const hold = Math.min(0.3, END_HOLD_MS / Math.max(1, LOOP_MS))
+  const marks: { night: number; progress: number }[] = []
+  const seen = new Set<string>()
+  segments.forEach((seg, k) => {
+    if (seg.kind !== 'observe') return
+    const night = nightOf(replayActions[seg.actionIndex]?.slot ?? '')
+    if (!night || seen.has(night)) return
+    seen.add(night)
+    // Start the mark at the gap before it, so jumping to a night shows its dusk rather than its first exposure mid-way.
+    const from = k > 0 && segments[k - 1]!.kind === 'gap' ? k - 1 : k
+    // Numbered like the readout, so a night clouded out entirely leaves a hole rather than shifting the rest.
+    marks.push({ night: replayNights.indexOf(night) + 1 || seen.size, progress: (segCum[from]! / totalWeight) * (1 - hold) })
+  })
+  return marks
 }
 function tick() {
   const p = replayProgress()
@@ -411,6 +461,13 @@ export function seekReplay(progress: number) {
   base = p * LOOP_MS
   if (runningSince != null) runningSince = performance.now()
   tick()
+}
+/** Playback rate for the shared clock; the loop position carries over so nothing jumps. */
+function setSpeed(speed: number) {
+  if (state.speed === speed) return
+  base = elapsedMs()
+  if (runningSince != null) runningSince = performance.now()
+  state.speed = speed
 }
 function setPaused(paused: boolean) {
   if (state.paused === paused) return
@@ -458,5 +515,5 @@ if (typeof window !== 'undefined') {
 export function useReplayClock() {
   onMounted(acquire)
   onUnmounted(release)
-  return { state: readonly(state), setPaused, seek: seekReplay, replayProgress, replayTimeAt }
+  return { state: readonly(state), setPaused, setSpeed, seek: seekReplay, replayProgress, replayTimeAt }
 }
