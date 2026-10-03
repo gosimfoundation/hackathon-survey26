@@ -32,7 +32,7 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 2. The daily number of evaluations is the quota shown on Participate, reset at 00:00 UTC (08:00 Beijing time); evaluations that fail because of the platform are not counted. Model calls may only use the team's own model API key.
 3. Practice ranks each card separately and each team keeps its best score per card; exact ties favor the earlier submission. Practice scores do not decide awards.
 4. Any language or algorithm is allowed, and practice runs need no model call. Note that awards require agent (LLM-driven) techniques in at least two of these stages: natural-language understanding, data parsing, task planning, action decisions, tool calling and plan adaptation (section 3, item 6). It is worth preparing for this now.
-5. Kimi Coding Plan: each team that runs through Practice (at least one successful score: a scored complete-project evaluation) receives one Kimi Coding Plan code. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
+5. Kimi Coding Plan: the first 100 teams that run through Practice (at least one successful score: a scored complete-project evaluation) each receive one Kimi Coding Plan code, first come, first served, while codes last. The captain claims it on the dashboard once organizers release the codes; every team member can see it there. Use endpoint `https://api.kimi.com/coding/v1` and model `kimi-for-coding` or `k3`. Hidden and test teams are not eligible.
 
 ## 3. What you submit
 
