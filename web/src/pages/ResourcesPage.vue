@@ -8,6 +8,7 @@ import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards
 import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
 import { useFlash } from '../stores/flash'
 import PageHead from '../components/layout/PageHead.vue'
+import { assetUrl } from '../composables/api'
 
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
@@ -25,6 +26,29 @@ const exampleProjects = [
   { lang: 'python', name: 'Python', descKey: 'resources.example_python_desc', available: true },
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
+] as const
+
+// Talk recordings are too large for the repo/site tarball (two exceed GitHub's 100 MB file cap),
+// so they live as assets on the talks-2026-10 release. That release is a prerelease on purpose:
+// the shared publisher deploys whatever release is "latest" and refuses anything not tagged site-*.
+const TALKS_BASE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/download/talks-2026-10/'
+const talks = [
+  {
+    id: 'yifei-luo', date: '2026-10-02', poster: '/media/talks/talk-yifei-luo-20261002.jpg',
+    titleKey: 'resources.talk1_title', speakersKey: 'resources.talk1_speakers',
+    parts: [
+      { labelKey: 'resources.talk_part_lecture', file: 'talk1-yifei-luo-20261002-part1-lecture.mp4' },
+      { labelKey: 'resources.talk_part_qa', file: 'talk1-yifei-luo-20261002-part2-qa.mp4' },
+    ],
+  },
+  {
+    id: 'wang-li', date: '2026-10-03', poster: '/media/talks/talk-wang-li-20261003.jpg',
+    titleKey: 'resources.talk2_title', speakersKey: 'resources.talk2_speakers',
+    parts: [
+      { labelKey: 'resources.talk_part_1', file: 'talk2-wang-li-20261003-part1.mp4' },
+      { labelKey: 'resources.talk_part_2', file: 'talk2-wang-li-20261003-part2.mp4' },
+    ],
+  },
 ] as const
 
 const hiddenCards = ['E', 'F', 'G', 'H']
@@ -101,6 +125,28 @@ onMounted(async () => {
         </div>
       </div>
 
+      <div id="talks" class="flow-band reveal mt-16">
+        <div class="flow-head"><div><h2>{{ t('resources.flow_talks') }}</h2><p>{{ t('resources.flow_talks_hint') }}</p></div></div>
+        <div class="talk-list">
+          <article v-for="talk in talks" :key="talk.id" class="talk-item" :data-testid="`talk-${talk.id}`">
+            <span class="label accent">{{ talk.date }}</span>
+            <h3 class="mt-2">{{ t(talk.titleKey) }}</h3>
+            <p class="talk-speakers">{{ t(talk.speakersKey) }}</p>
+            <div class="talk-parts">
+              <figure v-for="part in talk.parts" :key="part.file" class="talk-part">
+                <video controls preload="none" playsinline :poster="assetUrl(talk.poster)">
+                  <source :src="TALKS_BASE_URL + part.file" type="video/mp4">
+                </video>
+                <figcaption>
+                  <span>{{ t(part.labelKey) }}</span>
+                  <a :href="TALKS_BASE_URL + part.file" target="_blank" rel="noopener">{{ t('resources.talk_download') }} ↓</a>
+                </figcaption>
+              </figure>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <div class="flow-band reveal mt-16">
         <div class="flow-head"><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
         <div class="cards cards-1 reveal-stagger">
@@ -135,4 +181,13 @@ onMounted(async () => {
 .hidden-cards-note p { font-size: .875rem; line-height: 1.5; color: rgba(245,247,255,.78); margin-top: .4rem; }
 .example-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .examples-bundle-cta { margin-bottom: 1.25rem; }
+.talk-list { display: grid; gap: 1rem; }
+.talk-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
+.talk-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
+.talk-speakers { margin-top: .3rem; font-size: .85rem; color: #aeb6c8; }
+.talk-parts { display: grid; gap: 1rem; margin-top: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.talk-part { margin: 0; min-width: 0; }
+.talk-part video { display: block; width: 100%; aspect-ratio: 2 / 1; background: #05070f; object-fit: contain; }
+.talk-part figcaption { display: flex; justify-content: space-between; gap: .5rem; margin-top: .45rem; font-size: .8rem; color: #aeb6c8; }
+.talk-part figcaption a { color: #b9c5ff; }
 </style>
