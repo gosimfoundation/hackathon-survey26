@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n'
 import type { Scenario } from '../../lib/data'
+import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // Practice scores on different scenarios are not comparable (14 nights against 180), so the board ranks one at a time.
 defineProps<{ scenarios: Scenario[]; modelValue: string | null }>()
 const emit = defineEmits<{ 'update:modelValue': [slug: string] }>()
-const { t, tf } = useI18n()
+const { t, tf, locale } = useI18n()
 </script>
 
 <template>
   <div v-if="scenarios.length" class="board-scenarios" role="group" :aria-label="t('leaderboard.scenarios')" data-testid="board-scenarios">
     <button
       v-for="s in scenarios" :key="s.id" type="button"
-      :class="{ active: s.slug === modelValue }" :aria-pressed="s.slug === modelValue" :title="s.name"
+      :class="{ active: s.slug === modelValue }" :aria-pressed="s.slug === modelValue" :title="s.slug"
       :data-testid="`board-scenario-${s.slug}`"
       @click="emit('update:modelValue', s.slug)"
-    >{{ s.slug }}<small v-if="s.n_nights"> · {{ tf('leaderboard.nights', { n: s.n_nights }) }}</small></button>
+    >{{ scenarioLabel(s.slug, s.name, locale) }}<small v-if="s.n_nights"> · {{ tf('leaderboard.nights', { n: s.n_nights }) }}</small></button>
   </div>
 </template>
 

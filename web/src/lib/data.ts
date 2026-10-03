@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
 import { cached } from './requestCache'
+import { scenarioOrder } from './scenarioLabels'
 
 // Board reads are shared by the home page, the leaderboard page and their own 60s poll timers;
 // a short cache (and in-flight dedupe) keeps a burst of callers within this window to one request.
@@ -211,7 +212,7 @@ export async function loadRegistrationOpen(): Promise<boolean> {
  */
 export function boardScenarios(phase: Pick<Phase, 'counts_for_final' | 'scenarios' | 'observer_settings'> | null): Scenario[] {
   if (!phase || phase.observer_settings?.projects_enabled || phase.observer_settings?.local_sessions_enabled || phase.counts_for_final || phase.scenarios.length < 2) return []
-  return [...phase.scenarios].sort((a, b) => (b.n_nights ?? 0) - (a.n_nights ?? 0) || a.slug.localeCompare(b.slug))
+  return [...phase.scenarios].sort((a, b) => scenarioOrder(a.slug) - scenarioOrder(b.slug) || (b.n_nights ?? 0) - (a.n_nights ?? 0) || a.slug.localeCompare(b.slug))
 }
 
 export async function loadLeaderboard(phaseSlug: string | null, limit = 500, scenarioSlug: string | null = null, observerPhaseId?: string): Promise<LeaderboardEntry[]> {

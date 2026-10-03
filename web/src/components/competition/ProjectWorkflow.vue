@@ -11,6 +11,7 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
+import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
@@ -335,6 +336,9 @@ function downloadFile(command: string, fields: Record<string, unknown>, filename
 function cardFolder(run: { id: string; scenario_id: string }): string {
   return cardFolderName(scenarioNames.value[run.scenario_id]?.slug ?? run.scenario_id, run.id)
 }
+function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
+  return [...runs].sort((a, b) => scenarioOrder(scenarioNames.value[a.scenario_id]?.slug ?? '') - scenarioOrder(scenarioNames.value[b.scenario_id]?.slug ?? ''))
+}
 async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
   const runs = batch.observer_runs.filter(r => r.result_path)
   if (!runs.length || zipProgress.value[batch.id]) return
@@ -568,8 +572,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
           </p>
-          <div v-for="run in b.observer_runs" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
-            <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.name" data-testid="run-scenario">{{ scenarioNames[run.scenario_id]!.slug }}</span>
+          <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
+            <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
             <span class="pill">{{ statuses[run.status] ?? run.status }}</span>
             <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
