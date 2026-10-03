@@ -75,29 +75,31 @@ export async function uploadProjectFile(
   if (!file.name.toLowerCase().endsWith(ext)) throw new Error('wrong_file_type')
   if (!file.size || file.size > (purpose === 'source' ? 50 : 20) * 1024 * 1024) throw new Error('file_too_large')
   const slot = await portal<{ id: string; path: string; token: string }>('upload', { purpose }, onRetry)
+  const contentType = purpose === 'source' ? 'application/zip' : 'text/csv'
   // With a progress listener the upload goes through XHR: supabase-js fetch uploads
   // never report upload progress. Same endpoint and payload as uploadToSignedUrl.
   if (onProgress) {
-    await withNetworkRetry(() => uploadWithProgress(slot.path, slot.token, file, onProgress), e => e instanceof UploadNetworkError, onRetry)
+    await withNetworkRetry(() => uploadWithProgress(slot.path, slot.token, file, contentType, onProgress), e => e instanceof UploadNetworkError, onRetry)
     return slot.id
   }
   await withNetworkRetry(async () => {
-    const { error } = await supabase.storage.from('observer-staging').uploadToSignedUrl(slot.path, slot.token, file, {
-      contentType: purpose === 'source' ? 'application/zip' : 'text/csv',
-    })
+    const { error } = await supabase.storage.from('observer-staging').uploadToSignedUrl(slot.path, slot.token, file, { contentType })
     if (error && !isAlreadyUploaded(error)) throw error
   }, e => !(e instanceof StorageApiError), onRetry)
   return slot.id
 }
 
 /** PUT the file to the signed upload URL with progress events (mirrors StorageFileApi.uploadToSignedUrl). */
-function uploadWithProgress(path: string, token: string, file: File, onProgress: (percent: number) => void) {
+function uploadWithProgress(path: string, token: string, file: File, contentType: string, onProgress: (percent: number) => void) {
   const api = supabase.storage.from('observer-staging') as unknown as { url: string; headers: Record<string, string> }
   const url = `${api.url}/object/upload/sign/observer-staging/${path}?token=${encodeURIComponent(token)}`
   return new Promise<void>((resolve, reject) => {
     const body = new FormData()
     body.append('cacheControl', '3600')
-    body.append('', file)
+    // The browser reports .zip as whatever its OS association says (application/zip,
+    // application/x-zip-compressed, or empty), and the bucket only allows application/zip;
+    // the FormData part's type follows the blob it's given, so re-tag it explicitly.
+    body.append('', file.type === contentType ? file : new Blob([file], { type: contentType }), file.name)
     const xhr = new XMLHttpRequest()
     xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100)) }
     xhr.onload = () => {
