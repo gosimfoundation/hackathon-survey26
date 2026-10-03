@@ -4,11 +4,12 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { supabase } from '../../lib/supabase'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
+import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
-import { canPrepareAgain, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
+import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
@@ -30,6 +31,8 @@ const retryStatus = ref('')
 const reviewPanel = ref<HTMLElement | null>(null)
 const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref('')
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
+/** Per batch id, progress of a "download all results" bundle in flight; absent once it is not running. */
+const zipProgress = ref<Record<string, { done: number; total: number }>>({})
 // Formal model calls use the team's choice: a key saved encrypted on the server
 // (default, deleted automatically after the results are verified) or the relay
 // to this open page, where nothing is stored.
@@ -74,6 +77,9 @@ const words = computed(() => pick({
   testPassed: 'Public scenario test passed', testResult: 'Download public test result', projectDownload: 'Download this project version', phase: 'Evaluation phase', evaluate: 'Evaluate this version',
   batches: 'Evaluations', local: 'Start local CSV session', localHelp: 'Run locally with the same step-by-step information. Upload the resulting decisions.csv after the session.',
   download: 'Download private result', uploadCsv: 'Upload matching CSV', average: 'Combined score',
+  downloadAll: 'Download all results (ZIP)', downloadAllProgress: 'Downloading {done}/{total}…',
+  downloadAllDone: 'All results downloaded.', downloadAllPartial: 'Downloaded — some cards failed; see errors.txt in the ZIP.',
+  downloadAllFailed: 'Could not download any card’s result. Try again, or download them individually below.',
   api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Team keys stay on the server. Set the model parameter to the call name below; OPENAI_BASE_URL and OPENAI_API_KEY are provided for each run. Each run and provider has separate limits.', callName: 'Model call name',
   shared: 'Organizer API', own: 'Team API', modelNames: 'Model names, separated by commas', endpoint: 'API endpoint', key: 'API key',
   apiName: 'API name', edit: 'Edit', limit: 'Daily token limit', saveKey: 'Save encrypted key', disable: 'Disable', enabled: 'Enabled', disabled: 'Disabled',
@@ -118,7 +124,11 @@ const words = computed(() => pick({
   uploading: '正在上传 {n}%', retrying: '网络不稳定，正在重试…', testPassed: '公开场景测试通过', testResult: '下载公开测试结果', projectDownload: '下载此版本项目',
   phase: '评测赛程', evaluate: '评测此版本', batches: '评测记录', local: '启动本地 CSV 会话',
   localHelp: '在本机运行，按步骤获得相同信息；运行结束后上传生成的 decisions.csv。', download: '下载私有结果',
-  uploadCsv: '上传匹配的 CSV', average: '综合成绩', api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
+  uploadCsv: '上传匹配的 CSV', average: '综合成绩',
+  downloadAll: '下载全部结果（ZIP）', downloadAllProgress: '正在下载 {done}/{total}…',
+  downloadAllDone: '全部结果已下载。', downloadAllPartial: '已下载——部分卡片失败，详见 ZIP 中的 errors.txt。',
+  downloadAllFailed: '所有卡片的结果都下载失败，请重试，或在下方单独下载。',
+  api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
   shared: '主办方接口', own: '队伍接口', modelNames: '模型名称，用逗号分隔', endpoint: 'API 地址', key: 'API 密钥',
   apiName: '接口名称', edit: '修改', limit: '每天最多使用的 token 数', saveKey: '加密保存密钥', disable: '停用', enabled: '已启用', disabled: '已停用',
   evidence: '设计奖材料', evidenceHelp: '说明项目架构和复现步骤；这里不影响实际成绩。', codeUrl: '代码或文档链接（选填）',
@@ -312,6 +322,43 @@ function downloadFile(command: string, fields: Record<string, unknown>, filename
   if (url.protocol !== 'https:' && url.hostname !== '127.0.0.1') throw new Error('invalid_download')
   const anchor = document.createElement('a'); anchor.href = url.href; anchor.rel = 'noreferrer'; anchor.download = filename; anchor.click()
 }) }
+function cardFolder(run: { id: string; scenario_id: string }): string {
+  return cardFolderName(scenarioNames.value[run.scenario_id]?.slug ?? run.scenario_id, run.id)
+}
+async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
+  const runs = batch.observer_runs.filter(r => r.result_path)
+  if (!runs.length || zipProgress.value[batch.id]) return
+  error.value = ''; notice.value = ''
+  zipProgress.value = { ...zipProgress.value, [batch.id]: { done: 0, total: runs.length } }
+  try {
+    const { unzipSync, zipSync, strToU8 } = await import('fflate')
+    const files: Record<string, Uint8Array> = {}
+    const errors: string[] = []
+    for (const run of runs) {
+      const folder = cardFolder(run)
+      try {
+        const result = await portal<{ url: string }>('download_result', { run_id: run.id })
+        const res = await fetch(result.url)
+        if (!res.ok) throw new Error(`http_${res.status}`)
+        const inner = unzipSync(new Uint8Array(await res.arrayBuffer()))
+        for (const [name, bytes] of Object.entries(inner)) { if (!name.endsWith('/')) files[`${folder}/${name}`] = bytes }
+      } catch (e) {
+        errors.push(`${folder}: ${e instanceof Error ? e.message : 'download_failed'}`)
+      } finally {
+        const prev = zipProgress.value[batch.id]
+        zipProgress.value = { ...zipProgress.value, [batch.id]: { done: (prev?.done ?? 0) + 1, total: runs.length } }
+      }
+    }
+    if (!Object.keys(files).length) { error.value = words.value.downloadAllFailed; return }
+    if (errors.length) files['errors.txt'] = strToU8(errors.join('\n') + '\n')
+    const blob = new Blob([zipSync(files, { level: 6 })], { type: 'application/zip' })
+    const date = new Date().toISOString().slice(0, 10)
+    triggerDownload(blob, `gosim-observer-${batch.id.slice(0, 8)}-${date}.zip`)
+    notice.value = errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone
+  } finally {
+    const rest = { ...zipProgress.value }; delete rest[batch.id]; zipProgress.value = rest
+  }
+}
 onMounted(async () => {
   await refreshMeCached()
   try { if (team.value) await reload() } catch (e) { error.value = errorMessage(e) }
@@ -494,6 +541,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
+          <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
+            <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
+          </p>
           <div v-for="run in b.observer_runs" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
             <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.name" data-testid="run-scenario">{{ scenarioNames[run.scenario_id]!.slug }}</span>
             <span class="pill">{{ statuses[run.status] ?? run.status }}</span>

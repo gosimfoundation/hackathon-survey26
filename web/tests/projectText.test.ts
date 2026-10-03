@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canPrepareAgain, formatDailyReset, formatDateTime, revisionErrorText } from '../src/lib/projectText.ts'
+import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../src/lib/projectText.ts'
 
 test('dates follow the page language instead of the browser default', () => {
   const value = '2026-09-26T11:00:37Z'
@@ -53,4 +53,14 @@ test('only failed public repositories can be prepared again from the same source
   assert.ok(!canPrepareAgain({ ...repo, status: 'reviewable' }))
   assert.ok(!canPrepareAgain({ ...repo, archived_at: '2026-09-27T00:00:00Z' }))
   assert.ok(!canPrepareAgain({ status: 'failed', source_kind: 'zip', source_location: 'uploads/x/source.zip' }))
+})
+
+test('a combined-results ZIP folder name is ascii-safe and never collides with an unknown slug', () => {
+  assert.equal(cardFolderName('v4-practice-alpha', 'run-1'), 'practice-alpha')
+  assert.equal(cardFolderName('v4-a', 'run-1'), 'a')
+  assert.equal(cardFolderName(null, 'run-1'), 'run-1')
+  assert.equal(cardFolderName(undefined, 'run-1'), 'run-1')
+  assert.equal(cardFolderName('', 'run-1'), 'run-1')
+  assert.equal(cardFolderName('练习卡 α', 'run-1'), 'run-1')
+  assert.equal(cardFolderName('scenario/with slashes', 'run-1'), 'scenario-with-slashes')
 })
