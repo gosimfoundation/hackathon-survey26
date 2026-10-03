@@ -23,12 +23,18 @@ Every ~5 minutes (`cron: */5 * * * *`), one workflow run:
 A `concurrency` group (`db-watchdog`) guarantees runs never overlap: if a run
 is still going when the next cron fires, the new one waits.
 
+4. The last step re-dispatches the workflow (`gh workflow run db-watchdog.yml`)
+   regardless of how the check step went, so the next run starts right away
+   instead of waiting on GitHub's `schedule` trigger - see "Why the
+   self-redispatch step" below.
+
 ## Secrets
 
 Repo Actions secrets (set via `gh secret set`): `SUPABASE_ACCESS_TOKEN`,
 `SUPABASE_PROJECT_REF`, `SUPABASE_ANON_KEY`. The workflow also uses the
-automatic `GITHUB_TOKEN` (needs `permissions: contents: write`) to read/write
-`state.json` on the state branch via the Contents API.
+automatic `GITHUB_TOKEN` (needs `permissions: contents: write` and
+`permissions: actions: write`, the latter for the self-redispatch step) to
+read/write `state.json` on the state branch and to re-run the workflow.
 
 ## Manual testing
 
@@ -41,14 +47,37 @@ Run with both `true` to confirm the "would restart" log line without ever
 touching the project. Run with just `dry_run: true` to see real health
 checks end-to-end without risking an actual restart.
 
+## Why the self-redispatch step
+
+On 2026-10-02/03 the `schedule` trigger fired only twice in over 10 hours
+for this workflow, instead of every ~5 min - not the "occasionally delayed"
+behavior GitHub's docs describe, but a near-total failure to fire (YAML,
+workflow state, and repo/org Actions settings all checked out fine). To not
+depend on it, the job's last step always re-dispatches itself via
+`workflow_dispatch`, the same self-chaining pattern `worker.yml` already
+uses upstream. `schedule` is left in place as a free extra chance; the
+`concurrency` group prevents the two mechanisms from ever running two
+checks at once.
+
+This makes the chain self-sustaining but also self-contained: nothing
+supervises it from outside. If a run fails before reaching that last step
+(it's `if: always()`, so only a hard crash of the whole job - e.g. the
+runner image failing to provision - skips it), Actions gets disabled, or
+someone edits out the step, the chain stops and needs a manual
+`workflow_dispatch` to restart.
+
 ## Stopping it
 
 Disable the workflow (`gh workflow disable db-watchdog.yml -R
 gosimfoundation/hackathon-survey26`) or delete `.github/workflows/db-watchdog.yml`.
-There is nothing else to stop - it only runs as a GitHub-hosted Action.
+Either one also stops the self-redispatch chain, since a disabled/deleted
+workflow can't be re-dispatched. There is nothing else to stop - it only
+runs as a GitHub-hosted Action.
 
 ## Caveat
 
 GitHub's `schedule` trigger is best-effort: under platform load, scheduled
-runs can be delayed by several minutes or occasionally skipped entirely.
-This watchdog is a safety net, not a guaranteed-latency SLA.
+runs can be delayed by several minutes or occasionally skipped entirely -
+and, as above, has been observed to be far less reliable than that for this
+repo. Treat it as a bonus, not the mechanism keeping this running; see
+"Why the self-redispatch step".
