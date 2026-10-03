@@ -36,6 +36,7 @@ const router = createRouter({
     { path: '/admin/phases', component: () => import('./pages/admin/AdminPhasesPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
     { path: '/admin/scenarios', component: () => import('./pages/admin/AdminScenariosPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
     { path: '/admin/submissions', component: () => import('./pages/admin/AdminSubmissionsPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
+    { path: '/admin/incidents', component: () => import('./pages/admin/AdminIncidentsPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
     { path: '/admin/users', component: () => import('./pages/admin/AdminUsersPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
     { path: '/admin/teams', component: () => import('./pages/admin/AdminTeamsPage.vue'), meta: { page: 'admin', auth: true, admin: true } },
     { path: '/admin/announcements', component: () => import('./pages/admin/AdminAnnouncementsPage.vue'), meta: { page: 'admin', auth: true, admin: true } },

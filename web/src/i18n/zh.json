@@ -2131,7 +2131,8 @@
       "users": "用户",
       "announcements": "公告",
       "credits": "额度",
-      "settings": "设置"
+      "settings": "设置",
+      "incidents": "异常监控"
     },
     "stats": {
       "users": "用户",
@@ -2214,6 +2215,21 @@
       "excluded": "已排除",
       "user": "用户",
       "actions": "操作"
+    },
+    "incidents": {
+      "intro": "因平台原因导致的失败（数据库超时、runner 崩溃、GitHub Actions 异常、租约过期）会自动重试，绝不会向队伍显示“失败”；本页仅用于重试预算耗尽的极少数情况，或查看正在重试的项目。",
+      "open_incidents": "待处理异常",
+      "retrying": "正在重试",
+      "reason": "原因",
+      "team": "队伍",
+      "since": "重试开始于",
+      "attempts": "尝试次数",
+      "status": "状态",
+      "parked": "已暂停",
+      "requeue": "立即重新排队",
+      "no_incidents": "没有待处理的异常。",
+      "no_retrying": "当前没有正在重试的项目。",
+      "requeued": "已重新排队。"
     },
     "users": {
       "placeholder": "邮箱或姓名",

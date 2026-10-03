@@ -8,6 +8,7 @@ const items = [
   { to: '/admin/phases', key: 'admin.nav.phases' },
   { to: '/admin/scenarios', key: 'admin.nav.scenarios' },
   { to: '/admin/submissions', key: 'admin.nav.submissions' },
+  { to: '/admin/incidents', key: 'admin.nav.incidents' },
   { to: '/admin/teams', key: 'admin.nav.teams' },
   { to: '/admin/users', key: 'admin.nav.users' },
   { to: '/admin/announcements', key: 'admin.nav.announcements' },

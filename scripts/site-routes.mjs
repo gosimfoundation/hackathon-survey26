@@ -53,6 +53,7 @@ export const STATIC_ROUTES = {
   'admin/phases': 'admin',
   'admin/scenarios': 'admin',
   'admin/submissions': 'admin',
+  'admin/incidents': 'admin',
   'admin/users': 'admin',
   'admin/teams': 'admin',
   'admin/announcements': 'admin',

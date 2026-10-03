@@ -59,37 +59,82 @@ def quota(s, user=None):
     return next(q for q in rows if q['phase_id'] == str(s['phase']))
 
 
-def test_platform_failures_are_refunded_and_participant_failures_count(team):
+def test_contestant_failures_count_and_platform_failures_retry_without_ever_failing(team):
     s = team; rev = revision(s)
     assert (quota(s)['used'], quota(s)['remaining'], quota(s)['daily_batches']) == (0, 3, 3)
+
+    # Contestant-caused: immediate, specific, not refunded -- counts.
     crashed = evaluate(s, rev)
     fail(s, crashed, 'execute', 'project_operation_failed')
     assert batch_state(s, crashed) == ('failed', False)
-    engine = evaluate(s, rev, True)
-    fail(s, engine, 'engine', 'session_network_error')
-    assert batch_state(s, engine) == ('failed', True)
-    session = evaluate(s, rev, True)
-    fail(s, session, 'execute', 'session_service_unavailable')
-    assert batch_state(s, session) == ('failed', True)
+    assert (quota(s)['used'], quota(s)['remaining']) == (1, 2)
+    teammate, _ = identity(s['uri'], team=s['team'])
+    assert quota(s, teammate)['used'] == 1
+
+    # Platform-caused (session_network_error, not project_operation_failed):
+    # never shown as failed. The batch stays active and the run is requeued;
+    # it already counts toward today's quota, exactly like any other
+    # in-progress evaluation.
+    retried = evaluate(s, rev, True)
+    run = query(s['uri'], 'select id from public.observer_runs where batch_id=%s', (retried,))[0][0]
+    fail(s, retried, 'engine', 'session_network_error')
+    assert batch_state(s, retried) == ('queued', False)
+    assert query(s['uri'], 'select status,error from public.observer_runs where id=%s', (run,)) == [('queued', '')]
+    assert (quota(s)['used'], quota(s)['remaining']) == (2, 1)
+    with pytest.raises(psycopg.Error, match='batch_already_active'):
+        evaluate(s, rev, True)
+    # No organizer action needed: the retry just runs again like a fresh
+    # attempt, and a genuine success finishes the batch normally.
+    query(s['uri'], "update public.observer_runs set status='scored',score=10,finished_at=now() where id=%s", (run,))
+    query(s['uri'], 'select private.observer_finalize_batch(%s)', (retried,))
+    assert batch_state(s, retried) == ('scored', False)
+    assert (quota(s)['used'], quota(s)['remaining']) == (2, 1)
+
+    # If the retry budget is ever exhausted, the run is parked (still not
+    # "failed") and an incident pages the organizers instead of the
+    # contestant ever seeing a failure.
+    parked = evaluate(s, rev, True)
+    prun = query(s['uri'], 'select id from public.observer_runs where batch_id=%s', (parked,))[0][0]
+    fail(s, parked, 'engine', 'session_network_error')
+    # This helper dispatches a job directly, without going through the normal
+    # observer_pending_runs scheduling lease first; simulate one that has
+    # already been retrying for more than the ~2h budget.
+    query(s['uri'], """insert into private.observer_run_leases(run_id,lease,expires_at,attempts,first_leased_at)
+          values(%s,gen_random_uuid(),now()-interval '1 second',3,now()-interval '3 hours')
+          on conflict(run_id) do update set expires_at=excluded.expires_at,attempts=excluded.attempts,
+            first_leased_at=excluded.first_leased_at""", (prun,))
+    rpc(s['uri'], 'observer_pending_runs', 10)
+    assert batch_state(s, parked) == ('queued', False)
+    assert query(s['uri'], "select count(*) from private.observer_incidents where subject_type='run' and subject_id=%s and resolved_at is null",
+                 (prun,)) == [(1,)]
+    assert (quota(s)['used'], quota(s)['remaining']) == (3, 0)
+    with pytest.raises(psycopg.Error, match='daily_limit'):
+        evaluate(s, rev, True)
+
+    # The organizer clears the incident; the run resumes and can still finish normally.
+    admin, _ = identity(s['uri'])
+    query(s['uri'], 'update public.profiles set is_admin=true where id=%s', (admin,))
+    rpc(s['uri'], 'observer_admin_requeue', 'run', prun, role='authenticated', user=admin)
+    assert query(s['uri'], "select count(*) from private.observer_incidents where subject_type='run' and subject_id=%s and resolved_at is null",
+                 (prun,)) == [(0,)]
+    query(s['uri'], "update public.observer_runs set status='scored',score=9,finished_at=now() where id=%s", (prun,))
+    query(s['uri'], 'select private.observer_finalize_batch(%s)', (parked,))
+    assert batch_state(s, parked) == ('scored', False)
+
+    # A session that never opens before its window elapses is still a
+    # platform-side expiry outside 'local' mode, refunded like before --
+    # this path (observer_reconcile_sessions) is untouched by the retry
+    # mechanism above. (Raise today's cap: it is already spent by the three
+    # resolved batches above, none of which were refunded.)
+    query(s['uri'], 'update public.observer_phase_settings set daily_batches=10 where phase_id=%s', (s['phase'],))
     expired = evaluate(s, rev, True)
     query(s['uri'], "update public.observer_runs set created_at=now()-interval '1 hour' where batch_id=%s", (expired,))
     rpc(s['uri'], 'observer_reconcile_sessions')
     assert batch_state(s, expired) == ('failed', True)
-    assert (quota(s)['used'], quota(s)['remaining']) == (1, 2)
-    teammate, _ = identity(s['uri'], team=s['team'])
-    assert quota(s, teammate)['used'] == 1
-    last = evaluate(s, rev, True)
-    with pytest.raises(psycopg.Error, match='batch_already_active'):
-        evaluate(s, rev, True)
-    fail(s, last, 'execute', 'project_operation_failed')
-    assert quota(s)['remaining'] == 1
-    fail(s, evaluate(s, rev, True), 'execute', 'project_operation_failed')
-    assert quota(s)['remaining'] == 0
-    with pytest.raises(psycopg.Error, match='daily_limit'):
-        evaluate(s, rev, True)
+
     # Participants cannot mark their own batches refunded.
     with pytest.raises(psycopg.Error, match='permission denied'):
-        query(s['uri'], 'update public.observer_batches set quota_refunded=true where id=%s', (last,),
+        query(s['uri'], 'update public.observer_batches set quota_refunded=true where id=%s', (crashed,),
               role='authenticated', user=s['user'])
 
 
@@ -103,8 +148,12 @@ def test_repeat_evaluation_of_a_version_needs_explicit_confirmation(team):
         evaluate(s, rev)
     # The two-argument call used by existing clients still works for a new version.
     second = rpc(s['uri'], 'observer_create_batch', s['phase'], other, role='authenticated', user=s['user'])
+    # A platform-caused run failure (engine_job_failed, not project_operation_failed)
+    # requeues rather than failing the batch outright -- so it never blocks a repeat,
+    # whether it is still retrying or (as simulated here) already resolved and refunded.
     fail(s, second, 'engine', 'engine_job_failed')
-    # A refunded try does not make the next one a repeat.
+    assert batch_state(s, second) == ('queued', False)
+    query(s['uri'], "update public.observer_batches set status='failed',quota_refunded=true where id=%s", (second,))
     evaluate(s, other)
 
 

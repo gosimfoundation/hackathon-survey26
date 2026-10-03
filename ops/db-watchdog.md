@@ -28,6 +28,14 @@ is still going when the next cron fires, the new one waits.
    instead of waiting on GitHub's `schedule` trigger - see "Why the
    self-redispatch step" below.
 
+Unless the check was simulated, every run also logs the anon-key-safe
+`observer_incident_summary()` RPC result (open incidents, parked
+revisions/runs) - the retry/requeue mechanism in
+`supabase/migrations/20261003000100_platform_failure_resilience.sql` runs on
+its own minute-by-minute via `observer_tick`; this is only a log line here so
+a backlog is visible in the Actions run log between organizer checks of the
+admin incidents page (`/admin/incidents`). No restart decision depends on it.
+
 ## Secrets
 
 Repo Actions secrets (set via `gh secret set`): `SUPABASE_ACCESS_TOKEN`,

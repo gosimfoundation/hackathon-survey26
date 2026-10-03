@@ -7,7 +7,7 @@ import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
-from test_project_database import database, query, rpc, setup  # noqa: F401
+from test_project_database import database, identity, query, rpc, setup  # noqa: F401
 
 
 @pytest.fixture
@@ -103,17 +103,35 @@ def test_colocated_cloud_run_is_admitted_with_one_engine_job(queued):
     assert query(uri, 'select kind from private.observer_jobs where run_id=%s', (s['run'],)) == [('engine',)]
 
 
-def test_expired_lease_cannot_open_session_and_fifth_crash_releases_queue(queued):
+def test_expired_lease_cannot_open_session_and_budget_exhaustion_parks_not_fails(queued):
     s = queued; first = reserve(s)
     query(s['uri'], "update private.observer_run_leases set expires_at=now()-interval '1 second' where run_id=%s", (s['run'],))
     second = reserve(s)
     assert first['lease'] != second['lease']
     with pytest.raises(psycopg.Error, match='run_lease_invalid'):
         schedule(s, first['lease'])
-    query(s['uri'], "update private.observer_run_leases set attempts=5,expires_at=now()-interval '1 second' where run_id=%s", (s['run'],))
+    # A scheduling lease that has been retrying for more than the ~2h budget
+    # is parked, never failed: the contestant keeps seeing "queued" and an
+    # incident pages the organizers instead.
+    query(s['uri'], "update private.observer_run_leases set first_leased_at=now()-interval '3 hours',"
+                    "expires_at=now()-interval '1 second' where run_id=%s", (s['run'],))
     rpc(s['uri'], 'observer_pending_runs', 10)
-    assert query(s['uri'], 'select status,score from public.observer_runs where id=%s', (s['run'],)) == [('failed', None)]
-    assert query(s['uri'], 'select status from public.observer_batches where id=%s', (s['batch'],)) == [('failed',)]
+    assert query(s['uri'], 'select status,score from public.observer_runs where id=%s', (s['run'],)) == [('queued', None)]
+    assert query(s['uri'], 'select status from public.observer_batches where id=%s', (s['batch'],)) == [('queued',)]
+    assert query(s['uri'], 'select paused_at is not null from private.observer_run_leases where run_id=%s', (s['run'],)) == [(True,)]
+    assert query(s['uri'], "select count(*) from private.observer_incidents where subject_type='run' and subject_id=%s and resolved_at is null",
+                 (s['run'],)) == [(1,)]
+    # A parked run no longer gets a new lease on its own...
+    before = query(s['uri'], 'select expires_at from private.observer_run_leases where run_id=%s', (s['run'],))
+    rpc(s['uri'], 'observer_pending_runs', 10)
+    assert query(s['uri'], 'select expires_at from private.observer_run_leases where run_id=%s', (s['run'],)) == before
+    # ...until an organizer requeues it, which also resolves the incident.
+    admin, _ = identity(s['uri'])
+    query(s['uri'], 'update public.profiles set is_admin=true where id=%s', (admin,))
+    rpc(s['uri'], 'observer_admin_requeue', 'run', s['run'], role='authenticated', user=admin)
+    assert query(s['uri'], "select count(*) from private.observer_incidents where subject_type='run' and subject_id=%s and resolved_at is null",
+                 (s['run'],)) == [(0,)]
+    assert query(s['uri'], 'select paused_at is null,attempts from private.observer_run_leases where run_id=%s', (s['run'],)) == [(True, 1)]
 
 
 def test_disabled_phase_and_participants_cannot_open_background_jobs(queued):

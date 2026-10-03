@@ -59,6 +59,20 @@ def check_anon_rest(ref, anon_key):
     return status is not None and 200 <= status < 300, "http_%s" % status
 
 
+def log_incident_summary(ref, anon_key):
+    # Platform-caused preparation/run failures retry on their own (see
+    # supabase/migrations/20261003000100_platform_failure_resilience.sql);
+    # this only ever logs the backlog here, same as everything else in this
+    # script -- the admin incidents page is where an organizer acts on it.
+    url = "https://%s.supabase.co/rest/v1/rpc/observer_incident_summary" % ref
+    status, raw = http_json(url, headers={"apikey": anon_key, "Authorization": "Bearer %s" % anon_key,
+                                           "Content-Type": "application/json"}, method="POST", body={})
+    if status is not None and 200 <= status < 300:
+        log("incident_summary=%s" % raw.decode("utf-8", "replace"))
+    else:
+        log("incident_summary_unavailable status=%s" % status)
+
+
 def get_project_status(ref, token):
     url = "%s/v1/projects/%s" % (MANAGEMENT_API_BASE, ref)
     status, raw = http_json(url, headers={"Authorization": "Bearer %s" % token})
@@ -179,6 +193,9 @@ def main():
     if state_changed:
         new_state = {"last_restart_ts": last_restart_ts, "restart_timestamps": restart_timestamps}
         save_state(repo, gh_token, new_state, sha)
+
+    if not simulate_fail:
+        log_incident_summary(ref, anon_key)
 
 
 if __name__ == "__main__":

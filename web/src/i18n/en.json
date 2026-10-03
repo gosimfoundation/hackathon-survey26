@@ -2131,7 +2131,8 @@
       "users": "Users",
       "announcements": "Announcements",
       "credits": "Credits",
-      "settings": "Settings"
+      "settings": "Settings",
+      "incidents": "Incidents"
     },
     "stats": {
       "users": "users",
@@ -2214,6 +2215,21 @@
       "excluded": "excluded",
       "user": "user",
       "actions": "actions"
+    },
+    "incidents": {
+      "intro": "Platform-caused failures (DB timeouts, runner crashes, GitHub Actions hiccups, lease expiry) retry automatically and never show as \"failed\" to a team; this page is only for the rare cases where the retry budget ran out, or for watching one that is still retrying.",
+      "open_incidents": "Open incidents",
+      "retrying": "Currently retrying",
+      "reason": "Reason",
+      "team": "Team",
+      "since": "Retrying since",
+      "attempts": "Attempts",
+      "status": "Status",
+      "parked": "Parked",
+      "requeue": "Requeue now",
+      "no_incidents": "No open incidents.",
+      "no_retrying": "Nothing is currently retrying.",
+      "requeued": "Requeued."
     },
     "users": {
       "placeholder": "email or name",
