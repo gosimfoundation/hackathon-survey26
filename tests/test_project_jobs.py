@@ -145,30 +145,52 @@ def test_dispatch_queue_reserves_attempts_atomically_and_preserves_ambiguous_cla
     assert all(j["id"]!=str(s["job"]) for j in rpc(uri,"observer_pending_jobs",20))
 
 
-def test_expired_jobs_release_the_team_batch_without_inventing_a_score(job):
+def test_expired_jobs_requeue_the_run_without_inventing_a_score_or_failing_the_contestant(job):
+    # A dispatch/claim-lease timeout is always ours, never the contestant's --
+    # no participant code even ran -- so it requeues instead of failing.
     s=job; uri=s["uri"]
     query(uri,"update private.observer_jobs set expires_at=now()-interval '1 second' where id=%s",(s["job"],))
     assert rpc(uri,"observer_reconcile_jobs")>=1
-    assert query(uri,"select status,score from public.observer_runs where id=%s",(s["run"],))==[("failed",None)]
+    assert query(uri,"select status,score,error from public.observer_runs where id=%s",(s["run"],))==[("queued",None,"")]
     assert query(uri,"select b.status,b.score from public.observer_batches b join public.observer_runs r on r.batch_id=b.id where r.id=%s",
-                 (s["run"],))==[("failed",None)]
+                 (s["run"],))==[("running",None)]
 
 
-def test_failed_job_immediately_releases_run_and_never_overwrites_completed_score(job):
+def test_platform_job_failure_requeues_run_and_never_overwrites_completed_score(job):
+    # An empty/unrecognized diagnostics code on a failed job counts as a
+    # platform failure (never the contestant's), so it requeues the run
+    # instead of failing it.
     s=job;uri=s["uri"]
     query(uri,"update private.observer_jobs set kind='execute' where id=%s",(s["job"],))
     claim(s)
     rpc(uri,"observer_finish_job",s["job"],"404","1",{},"execute_job_failed")
     rpc(uri,"observer_finish_job",s["job"],"404","1",{},"execute_job_failed")
+    assert query(uri,"select status,score,error from public.observer_runs where id=%s",(s["run"],))==[("queued",None,"")]
+    assert query(uri,"select b.status from public.observer_batches b join public.observer_runs r on r.batch_id=b.id where r.id=%s",
+                 (s["run"],))==[("running",)]
+
+
+def test_contestant_project_failure_immediately_fails_run_and_never_overwrites_completed_score(job):
+    # project_operation_failed on an execute job is the contestant's own code
+    # crashing/timing out/violating the protocol: shown plainly, no retry.
+    s=job;uri=s["uri"]
+    query(uri,"update private.observer_jobs set kind='execute' where id=%s",(s["job"],))
+    claim(s)
+    rpc(uri,"observer_finish_job",s["job"],"404","1",{"diagnostics":{"stage":"execute","code":"project_operation_failed"}},"execute_job_failed")
     assert query(uri,"select status,score,error from public.observer_runs where id=%s",(s["run"],))==[("failed",None,"execute_job_failed")]
     assert query(uri,"select b.status from public.observer_batches b join public.observer_runs r on r.batch_id=b.id where r.id=%s",
                  (s["run"],))==[("failed",)]
 
+
+def test_late_receipt_error_after_trusted_score_publication_cannot_delete_the_score(job):
+    s=job;uri=s["uri"]
+    # Free the team's one-active-batch slot held by the `job` fixture's own batch.
+    query(uri,"update public.observer_batches set status='cancelled',finished_at=now() where id="
+               "(select batch_id from public.observer_runs where id=%s)",(s["run"],))
     run,_,_=session(s)
     second=uuid.uuid4();nonce=secrets.token_urlsafe(32)
     rpc(uri,"observer_enqueue_job",second,"execute",run,None,"AGENTIC-OBSERVER26-runner-1",nonce,"encrypted job payload","encrypted nonce")
     rpc(uri,"observer_claim_job",second,nonce,"405","1","303","101","a"*40)
-    # A late receipt error after trusted score publication cannot delete the score.
     query(uri,"update public.observer_runs set status='scored',score=123,finished_at=now() where id=%s",(run,))
     rpc(uri,"observer_finish_job",second,"405","1",{},"lost_receipt")
     assert query(uri,"select status,score from public.observer_runs where id=%s",(run,))==[("scored",123)]

@@ -104,10 +104,14 @@ def test_public_preview_is_required_and_excluded_from_formal_quotas_and_board(pr
 
 @pytest.mark.parametrize('change',[{'repository':'foreign/private'}, {'preview_path':'github:foreign/private@'+'a'*40},
     {'approval_digest':None},{'adapter_files':[]},{'status':'approved'}])
-def test_malformed_preparation_receipt_cannot_materialize_or_approve(preparation,change):
+def test_malformed_preparation_receipt_requeues_instead_of_materializing_or_approving(preparation,change):
+    # A successful job that returned a malformed result is a runtime bug, not
+    # the contestant's fault: requeue instead of failing the revision.
     s=preparation;finish(s,start(s),**change)
-    assert query(s['uri'],'select status from public.observer_revisions where id=%s',(s['revision'],))==[('failed',)]
+    assert query(s['uri'],'select status,error from public.observer_revisions where id=%s',(s['revision'],))==[('queued','')]
     assert query(s['uri'],'select revision_id from private.observer_materializations where revision_id=%s',(s['revision'],))==[]
+    assert query(s['uri'],'select paused_at,attempts from private.observer_preparations where revision_id=%s',(s['revision'],))==[(None,1)]
+    # Not 'preparing'/'failed' any more, so there is nothing left to reconcile.
     assert rpc(s['uri'],'observer_reconcile_preparations')==0
 
 
@@ -119,7 +123,9 @@ def test_hidden_scenario_is_never_used_for_public_test(preparation):
     started=start(s)
     query(uri,'update public.scenarios set weather_public=false where id=%s',(s['scenario'],))
     finish(s,started)
-    assert query(uri,'select status from public.observer_revisions where id=%s',(s['revision'],))==[('failed',)]
+    # The organizer disabled the public-test scenario mid-flight: requeue, do
+    # not show the contestant a failure for an organizer-side change.
+    assert query(uri,'select status from public.observer_revisions where id=%s',(s['revision'],))==[('queued',)]
 
 
 @pytest.mark.parametrize('summary',[{}, {'termination_reason':'agent_error','committed_action_count':1},
@@ -135,7 +141,11 @@ def test_preview_cannot_pass_an_agent_error_or_zero_committed_actions(preparatio
         rpc(uri,'observer_approve_revision',s['revision'],'f'*64,role='authenticated',user=s['user'])
 
 
-def test_failed_preparation_revokes_model_access_and_backend_controls_are_private(preparation):
+def test_platform_preparation_failure_revokes_model_access_and_requeues(preparation):
+    # An empty/unrecognized diagnostics code on a failed prepare job is a
+    # platform failure (runner crash, not the contestant's code): it still
+    # revokes the adaptation model access immediately, but requeues the
+    # revision instead of ever showing it "failed".
     s=preparation;started=start(s);j=started['job'];uri=s['uri']
     for stmt in ['select * from private.observer_preparation_config','select * from private.observer_preparations',
                  'select public.observer_pending_preparations(3)','select public.observer_reconcile_preparations()']:
@@ -143,6 +153,23 @@ def test_failed_preparation_revokes_model_access_and_backend_controls_are_privat
             query(uri,stmt,role='authenticated',user=s['user'])
     rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
     rpc(uri,'observer_finish_job',j['id'],'404','1',{},'prepare_job_failed')
+    assert query(uri,'select status from public.observer_runs where id=%s',(started['model_run_id'],))==[('cancelled',)]
+    assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==[('queued','')]
+    new_model_run_id=query(uri,'select model_run_id from private.observer_preparations where revision_id=%s',(s['revision'],))[0][0]
+    assert new_model_run_id!=started['model_run_id']
+    # Not 'preparing'/'failed' any more, so there is nothing left to reconcile.
+    assert rpc(uri,'observer_reconcile_preparations')==0
+
+
+def test_contestant_build_failure_in_preparation_immediately_fails_with_the_log(preparation):
+    # project_error with a log is the contestant's own adaptation/build/entry
+    # point failing inside the sandbox: shown plainly, no retry.
+    s=preparation;started=start(s);j=started['job'];uri=s['uri']
+    rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',j['id'],'404','1',
+        {'diagnostics':{'stage':'prepare','code':'project_error','log':'entry point not found'}},'prepare_job_failed')
+    assert query(uri,'select status,error from public.observer_revisions where id=%s',(s['revision'],))==\
+        [('failed','Project preparation failed: entry point not found')]
     rpc(uri,'observer_reconcile_preparations')
     assert query(uri,'select status from public.observer_runs where id=%s',(started['model_run_id'],))==[('cancelled',)]
     assert rpc(uri,'observer_reconcile_preparations')==0
