@@ -12,12 +12,23 @@ function normalizeBasePath(value: string): string {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  // Stamped once per build, so every HTML file this build emits (index.html, and 404.html copied
+  // from it below) carries the same value — the freshness check compares this, not just the
+  // hashed entry filename, so it can tell "actually newer" apart from "a CDN edge serving a
+  // different generation of the same build" (see web/src/lib/freshness.ts).
+  const buildTime = String(Date.now())
 
   return {
     base: normalizeBasePath(env.VITE_BASE_PATH || '/'),
     plugins: [
       vue(),
       tailwindcss(),
+      {
+        name: 'stamp-build-time',
+        transformIndexHtml(html) {
+          return html.replace('<head>', `<head>\n    <meta name="app-build-time" content="${buildTime}" />`)
+        },
+      },
       {
         name: 'copy-404',
         closeBundle() {

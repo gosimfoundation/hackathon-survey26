@@ -7,6 +7,13 @@
  * quite happily, with no error to notice. So: re-fetch index.html past the cache, compare the entry
  * chunk it names with the one actually running, and act when they differ.
  *
+ * A differing entry filename alone is not enough to call a tab stale: right after a deploy, the
+ * CDN's edges take a little while to converge, so this re-fetch can just as easily land on an
+ * edge still serving the *previous* build as on the new one — even when the tab already has the
+ * latest. Each build is stamped with its own build time (vite.config.ts), so the fetched page is
+ * only treated as an update when its stamp is strictly newer than the one already running; an
+ * edge serving an older or identical generation is silently ignored instead of flagged.
+ *
  * Only the very first check — on the initial page load, before the visitor has done anything —
  * is allowed to reload on its own, escalating because a plain reload is not always enough on
  * Safari: 1st time refreshes the cached index.html then reloads; 2nd time reloads through a
@@ -19,6 +26,7 @@ import { markUpdateAvailable } from './updateNotice'
 
 const TRY_KEY = 'sac-fresh-attempt'
 const ENTRY_RE = /assets\/index-[A-Za-z0-9_-]+\.js/
+const BUILD_TIME_RE = /<meta name="app-build-time" content="(\d+)"/
 
 export const isSafari = (): boolean => {
   if (typeof navigator === 'undefined') return false
@@ -32,6 +40,12 @@ function runningEntry(): string | null {
   return tag?.src.match(ENTRY_RE)?.[0] ?? null
 }
 
+/** 0 for a build from before this stamp existed — always treated as older than any real stamp. */
+function runningBuildTime(): number {
+  const tag = document.querySelector<HTMLMetaElement>('meta[name="app-build-time"]')
+  return Number(tag?.content) || 0
+}
+
 function attempts(): number {
   try { return Number(sessionStorage.getItem(TRY_KEY) || '0') } catch { return 99 }
 }
@@ -39,22 +53,29 @@ function noteAttempt(n: number) {
   try { sessionStorage.setItem(TRY_KEY, String(n)) } catch { /* private mode */ }
 }
 
-async function publishedEntry(): Promise<string | null> {
+interface Published { entry: string | null; buildTime: number }
+
+async function fetchPublished(): Promise<Published | null> {
   const base = import.meta.env.BASE_URL || '/'
   const res = await fetch(`${base}index.html?fresh=${Date.now()}`, { cache: 'reload', credentials: 'omit' })
   if (!res.ok) return null
-  return (await res.text()).match(ENTRY_RE)?.[0] ?? null
+  const html = await res.text()
+  return { entry: html.match(ENTRY_RE)?.[0] ?? null, buildTime: Number(html.match(BUILD_TIME_RE)?.[1]) || 0 }
 }
 
 async function checkOnce(initial: boolean) {
   const running = runningEntry()
   if (!running) return  // dev server, or a build without a hashed entry: nothing to compare
-  let published: string | null = null
-  try { published = await publishedEntry() } catch { return }  // offline: leave the tab alone
-  if (!published || published === running) {
+  let published: Published | null = null
+  try { published = await fetchPublished() } catch { return }  // offline: leave the tab alone
+  if (!published || !published.entry || published.entry === running) {
     noteAttempt(0)
     return
   }
+  // Different filename, but not demonstrably newer (a lagging CDN edge, or the same build
+  // restamped) — nothing to do. A genuinely newer build will keep re-triggering this on every
+  // later check until it does carry a newer stamp.
+  if (published.buildTime <= runningBuildTime()) return
   if (!initial) {
     markUpdateAvailable()
     return
