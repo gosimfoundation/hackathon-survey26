@@ -31,6 +31,7 @@ export function usePersonalModel(){
             const response=await portal<{completed:boolean}>('personal_model',{
               run_id:route.run_id,call_id:request.call_id,body:request.body,
               base_url:endpoint.value,model:model.value,api_key:key.value,
+              protocol:request.protocol,anthropic_version:request.anthropic_version,anthropic_beta:request.anthropic_beta,
             })
             if(!disposed)status.value=response.completed?'connected':'failed'
           }catch{if(!disposed)status.value='failed'}

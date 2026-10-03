@@ -487,6 +487,7 @@ def test_engine_job_applies_the_egress_switch_from_its_payload(monkeypatch, tmp_
     class Egress:
         network = "observer-egress-" + "0" * 32
         base_url = "http://observer-proxy-x:8321/token/v1"
+        anthropic_base_url = "http://observer-proxy-x:8321/token"
 
         def __init__(self, upstream, *, client_env, local):
             events.append(("egress", upstream, local))
@@ -600,6 +601,117 @@ def test_restricted_container_reaches_the_model_proxy_and_nothing_else(model_stu
                                                 capture_output=True, text=True, env=env).stdout
     assert egress.proxy_name not in subprocess.run(["docker", "ps", "-a", "--format", "{{.Names}}"],
                                                    capture_output=True, text=True, env=env).stdout
+
+
+# ---------------------------------------------------------------------------
+# Anthropic Messages: the same proxy host, env allow-list and egress prefix
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("base,expected", [
+    ("https://platform.test/observer-model/v1", "https://platform.test/observer-model"),
+    ("https://platform.test/observer-model/v1/", "https://platform.test/observer-model"),
+    ("https://api.anthropic.com", "https://api.anthropic.com"),  # already has no /v1 suffix
+])
+def test_anthropic_base_strips_only_the_v1_suffix_the_sdk_appends_itself(base, expected):
+    from project_platform.egress import anthropic_base
+    assert anthropic_base(base) == expected
+
+
+def test_docker_runtime_allows_anthropic_env_next_to_openai():
+    from project_platform.docker_runtime import _RUNTIME_ENV
+    assert {"OPENAI_BASE_URL", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_KEY"} <= _RUNTIME_ENV
+
+
+def test_restricted_egress_anthropic_base_url_shares_the_run_prefix_and_sidecar(model_stub):
+    from project_platform.egress import RestrictedEgress
+
+    base, _requests = model_stub
+    egress = RestrictedEgress(base, client_env={}, local=True)
+    # Same sidecar host; only the "/v1" segment the Anthropic SDK itself appends differs,
+    # so both SDKs' own conventions land the request on the one fixed run prefix.
+    assert egress.anthropic_base_url == egress.base_url[: -len("/v1")]
+    assert egress.anthropic_base_url + "/v1/messages" == egress.base_url + "/messages"
+
+
+def test_participant_runtime_injects_matching_anthropic_env_alongside_openai(monkeypatch, tmp_path):
+    from project_platform import job_runner
+    from project_platform.docker_runtime import DockerWorkspace
+    from project_platform.package import ProjectFile, project_digest
+
+    run = str(uuid.uuid4())
+    manifest = {"schema_version": "observer-project-v1", "image": "python@sha256:" + "e" * 64, "run": ["python3"]}
+    files = (ProjectFile("agent.py", b"print('ok')"),)
+    participant = {"run_credential": f"obs_{run}." + "p" * 43, "model_base_url": "https://platform.test/m/v1",
+                   "source_digest": project_digest(files), "manifest": manifest}
+    monkeypatch.setattr(job_runner, "download_project", lambda *a: files)
+    monkeypatch.setattr(job_runner, "extract_project", lambda files, root: root.mkdir(parents=True))
+    runtime, environment = job_runner._participant_runtime(
+        {"run_id": run, "session_url": "https://platform.test/s", "archive_url": "https://platform.test/a"},
+        participant, tmp_path, job_runner.Http(local=True))
+    assert isinstance(runtime, DockerWorkspace)
+    assert environment["OPENAI_BASE_URL"] == "https://platform.test/m/v1"
+    assert environment["OPENAI_API_KEY"] == participant["run_credential"]
+    assert environment["ANTHROPIC_BASE_URL"] == "https://platform.test/m"
+    assert environment["ANTHROPIC_API_KEY"] == participant["run_credential"]
+
+
+@pytest.mark.parametrize("restricted", [True, False])
+def test_engine_job_mirrors_the_egress_switch_onto_anthropic_base_url(monkeypatch, tmp_path, restricted):
+    """ANTHROPIC_BASE_URL follows OPENAI_BASE_URL through the same restricted-egress switch."""
+    from project_platform import job_runner
+    from project_platform.docker_runtime import DockerWorkspace
+    from project_platform.egress import anthropic_base
+    from project_platform.package import ProjectFile, project_digest
+
+    started = {}
+
+    class Egress:
+        network = "observer-egress-" + "1" * 32
+        base_url = "http://observer-proxy-y:8321/other-token/v1"
+        anthropic_base_url = "http://observer-proxy-y:8321/other-token"
+
+        def __init__(self, upstream, *, client_env, local):
+            pass
+
+        def pull(self):
+            pass
+
+        def start(self):
+            return self
+
+        def close(self):
+            pass
+
+    class Stop(Exception):
+        pass
+
+    def start(self, environment):
+        started.update(env=dict(environment))
+        raise Stop()
+
+    run = str(uuid.uuid4())
+    manifest = {"schema_version": "observer-project-v1", "image": "python@sha256:" + "e" * 64, "run": ["python3"]}
+    files = (ProjectFile("agent.py", b"print('ok')"),)
+    participant = {"run_credential": f"obs_{run}." + "p" * 43, "model_base_url": "https://platform.test/m/v1",
+                   "source_digest": project_digest(files), "manifest": manifest}
+    monkeypatch.setattr(job_runner, "RestrictedEgress", Egress)
+    monkeypatch.setattr(job_runner, "download_project", lambda *a: files)
+    monkeypatch.setattr(job_runner, "extract_project", lambda files, root: root.mkdir(parents=True))
+    monkeypatch.setattr(job_runner, "is_v4_bundle", lambda root: True)
+    monkeypatch.setattr(DockerWorkspace, "pull", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "build", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "start", start)
+    payload = {"run_id": run, "run_credential": f"obs_{run}." + "e" * 43, "session_url": "https://platform.test/s",
+               "scenario_url": "https://platform.test/c", "scenario_digest": "c" * 64, "runtime_seconds": 900,
+               "archive_url": "https://platform.test/a", "colocated": participant,
+               **({"restricted_egress": True} if restricted else {})}
+    with pytest.raises(job_runner.ProjectJobFailure):
+        job_runner.engine_job(payload, tmp_path, job_runner.Http(local=False))
+    if restricted:
+        assert started["env"]["ANTHROPIC_BASE_URL"] == Egress.anthropic_base_url
+    else:
+        assert started["env"]["ANTHROPIC_BASE_URL"] == anthropic_base(participant["model_base_url"])
+    assert started["env"]["ANTHROPIC_API_KEY"] == participant["run_credential"]
 
 
 # ---------------------------------------------------------------------------

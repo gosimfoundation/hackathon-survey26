@@ -5,14 +5,16 @@ import {
   decryptCredential,
   ProxyError,
   teamChatCompletion,
+  teamMessages,
 } from "../_shared/observer-model.ts";
-import { personalChat } from "../_shared/observer-personal-model.ts";
+import { personalChat, personalMessages } from "../_shared/observer-personal-model.ts";
 import { exchangeModelBroadcast } from "../_shared/observer-model-broadcast.ts";
 
 const cors = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "POST, OPTIONS",
-  "access-control-allow-headers": "authorization, content-type, apikey, idempotency-key",
+  "access-control-allow-headers":
+    "authorization, content-type, apikey, idempotency-key, x-api-key, anthropic-version, anthropic-beta",
   "access-control-expose-headers": "x-observer-request-id",
 };
 const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
@@ -34,7 +36,10 @@ const knownErrors: Record<string, [number, string]> = {
 Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async (request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   try {
-    if (request.method !== "POST" || !new URL(request.url).pathname.endsWith("/v1/chat/completions")) {
+    const pathname = new URL(request.url).pathname;
+    const isMessages = pathname.endsWith("/v1/messages");
+    const isChat = pathname.endsWith("/v1/chat/completions");
+    if (request.method !== "POST" || !(isMessages || isChat)) {
       throw new ProxyError(404, "endpoint_not_found");
     }
     const rpc = async (name: string, args: Record<string, unknown>) => {
@@ -47,8 +52,17 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
     };
     const decrypt = (value: string, provider: string) =>
       decryptCredential(value, provider, Deno.env.get("OBSERVER_KEY_ENCRYPTION_KEY") ?? "");
-    const scope = capability(request.headers.get("authorization"));
+    // The Anthropic SDK authenticates with a bare x-api-key header; the OpenAI
+    // SDK with Authorization: Bearer. Either is accepted for the scoped run token.
+    const scope = capability(request.headers.get("authorization"), request.headers.get("x-api-key"));
     const route = await rpc("observer_model_route", { p_run: scope.run, p_token: scope.token });
+    // The saved team provider speaks exactly one protocol; the platform never
+    // translates between the OpenAI and Anthropic request shapes.
+    if (route.personal && route.protocol && route.protocol !== (isMessages ? "anthropic" : "openai")) {
+      throw new ProxyError(400, "protocol_mismatch");
+    }
+    // Organizer-credit runs (practice on house credits) stay OpenAI-compatible only.
+    if (!route.personal && isMessages) throw new ProxyError(400, "protocol_not_supported");
     // Formal runs use the team's choice: its saved key server-side (default), or
     // the relay to its open page. Neither ever falls back to organizer credits.
     const response = !route.personal
@@ -61,11 +75,16 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
         defaultProvider: Deno.env.get("OBSERVER_DEFAULT_MODEL_PROVIDER") ?? "",
       })
       : route.mode === "relay"
-      ? await personalChat(request, route.topic, {
+      ? await (isMessages ? personalMessages : personalChat)(request, route.topic, {
         rpc,
         exchange: (topic, call, payload) => exchangeModelBroadcast(service, topic, call, payload),
       })
-      : await teamChatCompletion(request, { rpc, fetch, decrypt, trustedBases: bases("OBSERVER_MODEL_BASES") });
+      : await (isMessages ? teamMessages : teamChatCompletion)(request, {
+        rpc,
+        fetch,
+        decrypt,
+        trustedBases: bases("OBSERVER_MODEL_BASES"),
+      });
     for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
     return response;
   } catch (error) {

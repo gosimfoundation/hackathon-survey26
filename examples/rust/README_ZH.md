@@ -102,6 +102,11 @@ key），就能在没有真实服务商参与的情况下对着公开练习任�
   `OPENAI_BASE_URL` / `OPENAI_MODEL` 可以改用该服务的海外地址
   （`https://api.kimi.ai/coding/v1`），或者任何其它 OpenAI 兼容服务商。
 
+本示例调用的是 OpenAI 兼容接口。如果你的队伍在工作区的 **模型 API** 设置里改选了
+Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`；
+如果你自己的智能体改用 Claude 的 Messages API，用这两个变量即可，完整对比见
+`docs/model-api-keys.md`。
+
 每个观测夜都会发出两次调用，结果会合并（规避方位取并集，曝光时长缩放取
 平均）：
 

@@ -94,7 +94,7 @@ Deno.test("deleting and choosing the mode use the caller's own team RPCs", async
   });
   assertEquals(c.calls, [
     { client: "user", name: "observer_delete_team_model", args: {} },
-    { client: "user", name: "observer_set_team_model_mode", args: { p_mode: "relay" } },
+    { client: "user", name: "observer_set_team_model_mode", args: { p_mode: "relay", p_protocol: null } },
   ]);
   for (const mode of ["", "organizer", null]) {
     const rejected = clients();

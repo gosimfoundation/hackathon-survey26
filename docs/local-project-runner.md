@@ -18,7 +18,8 @@ python3 -m project_platform.local --project /path/to/project --session-url https
 ```
 
 如果不用 Docker，在命令后加 `--native`。这种模式会直接执行项目的构建与启动命令，只用于自己的项目。
-模型可不使用；使用时读取 `OPENAI_BASE_URL` 和 `OPENAI_API_KEY`。后者只对本次运行有效，不是上游模型密钥。
+模型可不使用；使用时读取 `OPENAI_BASE_URL` 和 `OPENAI_API_KEY`（协议选了 Anthropic Messages 的
+队伍改读 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`）。密钥只对本次运行有效，不是上游模型密钥。
 运行器只接收服务器当前公开的信息，无法下载未来天气或异常答案。
 
 结束后只需重新导出时，在同一条命令后加 `--export-only`，不重新运行智能体。

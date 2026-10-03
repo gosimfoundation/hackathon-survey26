@@ -11,7 +11,7 @@ from pathlib import Path
 from .artifacts import download_project, pack_results, store_private_artifact, upload_artifact
 from .docker_runtime import DockerWorkspace
 from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
-from .egress import RestrictedEgress
+from .egress import RestrictedEgress, anthropic_base
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
 from .manifest import ProjectError, ProjectManifest
@@ -54,6 +54,7 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         "OBSERVER_API_URL": payload["session_url"], "OBSERVER_RUN_TOKEN": payload["run_credential"],
         "OBSERVER_RUN_ID": payload["run_id"],
         "OPENAI_BASE_URL": payload["model_base_url"], "OPENAI_API_KEY": payload["run_credential"],
+        "ANTHROPIC_BASE_URL": anthropic_base(payload["model_base_url"]), "ANTHROPIC_API_KEY": payload["run_credential"],
     }
     runtime= DockerWorkspace(workspace, manifest, manifest.image)
     secrets = (payload['run_credential'],)
@@ -127,6 +128,8 @@ def _participant_runtime(payload: dict, participant: dict, root: Path, http: Htt
         "OBSERVER_API_URL": payload["session_url"], "OBSERVER_RUN_TOKEN": participant["run_credential"],
         "OBSERVER_RUN_ID": payload["run_id"],
         "OPENAI_BASE_URL": participant["model_base_url"], "OPENAI_API_KEY": participant["run_credential"],
+        "ANTHROPIC_BASE_URL": anthropic_base(participant["model_base_url"]),
+        "ANTHROPIC_API_KEY": participant["run_credential"],
     }
     return DockerWorkspace(workspace, manifest, manifest.image), environment
 
@@ -167,7 +170,8 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
             if egress:
                 egress.start()
                 runtime.network = egress.network
-                environment = {**environment, "OPENAI_BASE_URL": egress.base_url}
+                environment = {**environment, "OPENAI_BASE_URL": egress.base_url,
+                               "ANTHROPIC_BASE_URL": egress.anthropic_base_url}
             transport = runtime.start(environment)
             provider = ColocatedProvider(transport, client, SessionClient(payload["session_url"], participant["run_credential"]))
             result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],

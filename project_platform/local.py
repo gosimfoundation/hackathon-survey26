@@ -13,6 +13,7 @@ import subprocess
 
 from challenge.contracts import DECISION_COLUMNS
 from .docker_runtime import DockerWorkspace
+from .egress import anthropic_base
 from .executor import execute
 from .manifest import MANIFEST_NAME, ProjectError, ProjectManifest
 from .preparation import resolve_image
@@ -93,7 +94,8 @@ def run_local(project: Path, session_url: str, credential: str, model_base: str,
         runtime = DockerWorkspace(project, manifest, manifest.image)
     try:
         execute(runtime, client, {'OBSERVER_API_URL': session_url, 'OBSERVER_RUN_ID': match[1],
-            'OBSERVER_RUN_TOKEN': credential, 'OPENAI_BASE_URL': model_base, 'OPENAI_API_KEY': credential})
+            'OBSERVER_RUN_TOKEN': credential, 'OPENAI_BASE_URL': model_base, 'OPENAI_API_KEY': credential,
+            'ANTHROPIC_BASE_URL': anthropic_base(model_base), 'ANTHROPIC_API_KEY': credential})
     except (Exception, KeyboardInterrupt):
         try: client.call('abort')
         except Exception: pass

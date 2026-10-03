@@ -16,7 +16,7 @@ from .transport import AGENT_LOG_BYTES, ExecutionError, JsonlTransport
 
 _RESOLVED_IMAGE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:-]*@sha256:[0-9a-f]{64}$")
 _RUNTIME_ENV = {"OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID",
-                "OPENAI_BASE_URL", "OPENAI_API_KEY"}
+                "OPENAI_BASE_URL", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_KEY"}
 
 
 @dataclass(frozen=True)

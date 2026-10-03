@@ -114,6 +114,11 @@ Configuration (see `.env.example`):
   alternative (`https://api.kimi.ai/coding/v1`) or any other OpenAI-compatible
   provider instead.
 
+This agent calls the OpenAI-compatible shape. A team that instead chose the Anthropic
+Messages protocol in the workspace's **Model API** section also gets `ANTHROPIC_BASE_URL`
+/ `ANTHROPIC_API_KEY` injected on the platform; use those instead if your own agent speaks
+Claude's Messages API. See `docs/model-api-keys.md` for the full comparison.
+
 Every observing night, two calls run and their advice is merged (union of
 avoided compass directions, average of the duration scale):
 

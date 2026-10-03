@@ -113,7 +113,10 @@ Coding Plan (see https://www.kimi.com/code/docs/en/):
 - `OPENAI_MODEL` -- defaults to `k3`.
 
 On the platform these are injected for every run, pointing at the platform's own model proxy and a
-temporary credential. To try it locally:
+temporary credential. A team that instead chose the Anthropic Messages protocol in the workspace's
+**Model API** section also gets `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY` injected (the Anthropic
+SDK's own env vars) -- use those with the official `@anthropic-ai/sdk` if your own agent speaks
+Claude's Messages API instead. See `docs/model-api-keys.md` for the full comparison. To try it locally:
 
 ```bash
 cp .env.example .env     # then edit OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL

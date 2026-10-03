@@ -289,3 +289,29 @@ def test_model_retry_conflict_reports_the_earlier_server_failure(monkeypatch):
     with pytest.raises(ProjectError, match=r"^Model call failed \(HTTP 503\)\.$"):
         client({"messages": [{"role": "user", "content": "hi"}]})
     assert len(calls) == 2
+
+
+def test_run_local_injects_anthropic_env_alongside_openai_in_native_mode(monkeypatch, tmp_path):
+    """Native mode needs no Docker, so it is the cheapest path to the env dict run_local builds."""
+    import project_platform.local as local
+
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "observer.project.json").write_text(
+        json.dumps({"schema_version": "observer-project-v1", "image": "debian:bookworm-slim", "run": ["./agent"]}))
+    captured = {}
+
+    def fake_execute(runtime, client, environment):
+        captured.update(environment)
+        raise RuntimeError("stop before any real session call")
+
+    monkeypatch.setattr(local, "execute", fake_execute)
+    run = str(uuid.uuid4())
+    credential = f"obs_{run}." + "c" * 43
+    with pytest.raises(RuntimeError, match="stop before any real session call"):
+        local.run_local(project, "http://127.0.0.1:1/bogus-session", credential,
+                         "https://platform.test/observer-model/v1", tmp_path / "out.csv", native=True)
+    assert captured["OPENAI_BASE_URL"] == "https://platform.test/observer-model/v1"
+    assert captured["OPENAI_API_KEY"] == credential
+    assert captured["ANTHROPIC_BASE_URL"] == "https://platform.test/observer-model"
+    assert captured["ANTHROPIC_API_KEY"] == credential

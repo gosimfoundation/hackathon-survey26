@@ -252,6 +252,17 @@ retries. A duplicate returns 409 and is never forwarded again; absent an explici
 key, a new call ID is generated, so callers must not retry ambiguous failures
 without retaining their own key.
 
+The proxy also accepts the Anthropic Messages API: POST .../v1/messages, auth via a
+bare `x-api-key` header (the official Anthropic SDK's own convention; a scoped
+`Authorization: Bearer` also works) carrying the same obs_<run-id>.<capability>
+value. ANTHROPIC_BASE_URL is injected next to OPENAI_BASE_URL -- the proxy root
+*without* the /v1 segment, since the Anthropic SDK appends /v1/messages to its own
+base_url itself; ANTHROPIC_API_KEY equals OPENAI_API_KEY. Only a team's own
+provider (stored or relay) may use it, and only when that provider's saved
+protocol is "anthropic": a mismatched route (either direction) is refused with
+protocol_mismatch before any reservation, same as the OpenAI shape's own checks.
+Usage settles from usage.input_tokens + usage.output_tokens.
+
 Only exact organizer-authorized upstream bases are allowed. HTTPS is the default;
 the organizer's explicitly approved HTTP test endpoint requires a separate
 backend-only exception. A participant cannot authorize a new destination by

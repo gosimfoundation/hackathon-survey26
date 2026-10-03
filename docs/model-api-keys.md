@@ -47,8 +47,10 @@ Choosing "Do not save" deletes a saved key immediately
    again replaces it and wipes the previous ciphertext.
 2. Clients only ever receive `{mode, saved: {base_url, model, key_hint, saved_at}}`.
    No API returns the key or ciphertext.
-3. The project keeps using the scoped `OPENAI_BASE_URL`/`OPENAI_API_KEY` of its
-   run. `observer_model_route` answers `{personal: true, mode: "stored"}` and the
+3. The project keeps using the scoped `OPENAI_BASE_URL`/`OPENAI_API_KEY` (or, for
+   an anthropic-protocol provider, `ANTHROPIC_BASE_URL`/`ANTHROPIC_API_KEY`) of
+   its run. `observer_model_route` answers `{personal: true, mode: "stored",
+   protocol: "openai"|"anthropic"}` and the
    proxy reserves the call with `observer_reserve_team_model`. It checks the run
    capability and deadline, the per-run call/token limits and at most
    `model_concurrency` outstanding calls, and returns only the run team's own
@@ -96,6 +98,55 @@ counts as outstanding for at most 150 seconds); tokens are not metered.
 If a relay-mode team is verified as a top team after the competition, its page
 must be open at the time agreed with the organizers so the re-run can call its
 model.
+
+## Protocol: OpenAI-compatible or Anthropic Messages
+
+Each team also chooses which shape its provider speaks, default
+**OpenAI-compatible** (`POST .../v1/chat/completions`). Opting into **Anthropic
+Messages** (`POST .../v1/messages`) lets a project call Claude (or any
+Anthropic-Messages-compatible provider) directly with the official Anthropic
+SDK. The choice is a `protocol` column on the team's model settings
+(`private.observer_team_model_modes`, default `'openai'`), set together with
+the saved key (`save_team_model`) or independently for relay mode
+(`set_team_model_mode`), and shown by `observer_team_model()`. The platform
+never translates between the two shapes: a `/v1/messages` call against an
+openai-protocol provider (or a `/v1/chat/completions` call against an
+anthropic-protocol provider) is refused with `protocol_mismatch` before any
+reservation. Only a team's own provider (stored or relay) may use Anthropic
+Messages; organizer-credit practice runs stay OpenAI-compatible only
+(`protocol_not_supported`).
+
+Otherwise identical to the OpenAI path (capability check, deadline,
+call/concurrency reservation, size caps, key redaction, error sanitizing):
+
+- **Auth header**: `x-api-key: <key>` — the official Anthropic SDK's own
+  convention, a bare key with no `Bearer` scheme. A client that instead sends
+  `Authorization: Bearer <key>` with the same scoped credential is also
+  accepted. A client-supplied `anthropic-version` (default `2023-06-01`) and
+  `anthropic-beta` are forwarded unchanged.
+- **Upstream URL**: `<base>/v1/messages`, or `<base>/messages` when the saved
+  base already ends in `/v1` — the same "/v1-or-not" normalization the OpenAI
+  path uses, matching how the official Anthropic SDK itself appends
+  `/v1/messages` to its own `base_url` (which, unlike `OPENAI_BASE_URL`, does
+  not include `/v1`).
+- **Request body**: the Messages shape — no `system` role in `messages` (a
+  top-level `system` string or text blocks instead); `max_tokens` is required;
+  `tool_use`/`tool_result` content blocks are allowed; image/document blocks
+  are refused, for the same bounded-accounting reason the OpenAI path refuses
+  image URLs. Streaming is refused the same way.
+- **Usage settlement**: `usage.input_tokens + usage.output_tokens` (instead of
+  `usage.total_tokens`).
+- **Container env**: `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` (the same
+  scoped run credential as `OPENAI_API_KEY`) are injected next to the
+  `OPENAI_*` pair, in every runner (cloud jobs, the local runner, native mode).
+  `ANTHROPIC_BASE_URL` is the proxy root *without* the `/v1` segment, because
+  the official Anthropic SDK appends `/v1/messages` to its own `base_url`
+  itself. With restricted egress, both base URLs point at the one run-scoped
+  sidecar prefix; the sidecar forwards `x-api-key`/`anthropic-version`/
+  `anthropic-beta` next to the existing `Authorization`/`Idempotency-Key`.
+
+The workspace's **Model API** section has a protocol select next to the
+endpoint/model/key fields, in both modes.
 
 ## Organizer steps
 
@@ -244,6 +295,17 @@ for evaluations in progress (calls already in flight may finish).
   kept in browser storage, opt in again, headings in all four languages.
 - Opt-in: `integration/deployed-personal-model.ts` (selects relay mode first,
   which deletes that team's saved key) and `integration/personal-broadcast_test.ts`.
+- Anthropic Messages: `observer-model_test.ts` (`x-api-key`/`Authorization`
+  fallback, the Messages body bounds, the saved-mode call and its usage
+  settlement, size caps, redaction, timeouts), `observer-personal-model_test.ts`
+  (relay fulfilment with `x-api-key` and the Messages shape),
+  `tests/test_project_http.py` (real Deno Edge functions and PostgREST: a
+  formal run calls the saved anthropic-protocol provider with `x-api-key` and
+  no `Bearer`, and an OpenAI-shaped call against it is refused with
+  `protocol_mismatch` before any reservation, and vice versa), and
+  `tests/test_evaluation_hardening.py` (`ANTHROPIC_BASE_URL` derivation, the
+  Docker runtime's env allow-list, and the restricted-egress switch mirrored
+  onto `ANTHROPIC_BASE_URL`).
 
 A live check with a real provider through the deployed proxy is still required
 before relying on either mode; these tests use stubs and synthetic keys.

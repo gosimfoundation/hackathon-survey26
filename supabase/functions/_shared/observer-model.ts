@@ -34,8 +34,18 @@ export type ProxyDependencies = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export function capability(authorization: string | null) {
-  const match = /^Bearer obs_([0-9a-f-]{36})\.([A-Za-z0-9_-]{40,200})$/i.exec(authorization ?? "");
+const SCOPED_TOKEN = /^obs_([0-9a-f-]{36})\.([A-Za-z0-9_-]{40,200})$/i;
+/**
+ * The Anthropic SDK sends its key as a bare `x-api-key` header (no "Bearer "
+ * scheme); the OpenAI SDK sends `Authorization: Bearer <key>`. Accept either,
+ * matched strictly against its own expected shape.
+ */
+export function capability(authorization: string | null, apiKey: string | null = null) {
+  if (apiKey) {
+    const match = SCOPED_TOKEN.exec(apiKey);
+    if (match && UUID.test(match[1])) return { run: match[1], token: match[2] };
+  }
+  const match = /^Bearer /i.test(authorization ?? "") ? SCOPED_TOKEN.exec((authorization ?? "").slice(7)) : null;
   if (!match || !UUID.test(match[1])) throw new ProxyError(401, "invalid_run_credential");
   return { run: match[1], token: match[2] };
 }
@@ -138,6 +148,94 @@ export function validateChat(body: unknown) {
   return { body: cleaned, reservedTokens: bytes + body.messages.length * 128 + 1024 + maxTokens };
 }
 
+function anthropicBlock(block: unknown): boolean {
+  if (!object(block) || typeof block.type !== "string") return false;
+  const keys = Object.keys(block);
+  if (block.type === "text") return typeof block.text === "string" && keys.every((k) => k === "type" || k === "text");
+  if (block.type === "tool_use") {
+    return typeof block.id === "string" && typeof block.name === "string" && object(block.input) &&
+      keys.every((k) => ["type", "id", "name", "input"].includes(k));
+  }
+  if (block.type === "tool_result") {
+    const content = block.content;
+    const okContent = typeof content === "string" ||
+      (Array.isArray(content) &&
+        content.every((c) => object(c) && c.type === "text" && typeof c.text === "string"));
+    return typeof block.tool_use_id === "string" && okContent &&
+      (block.is_error === undefined || typeof block.is_error === "boolean") &&
+      keys.every((k) => ["type", "tool_use_id", "content", "is_error"].includes(k));
+  }
+  // Remote image/document blocks would invalidate bounded token accounting.
+  return false;
+}
+
+/** Anthropic Messages API: same bounds and philosophy as validateChat, different shape. */
+export function validateMessages(body: unknown) {
+  if (!object(body)) throw new ProxyError(400, "invalid_chat");
+  const allowed = new Set([
+    "model",
+    "messages",
+    "max_tokens",
+    "system",
+    "temperature",
+    "top_p",
+    "top_k",
+    "stop_sequences",
+    "tools",
+    "tool_choice",
+    "metadata",
+    "stream",
+  ]);
+  if (Object.keys(body).some((k) => !allowed.has(k))) throw new ProxyError(400, "unsupported_chat_option");
+  if (
+    typeof body.model !== "string" || body.model.length > 256 ||
+    !Array.isArray(body.messages) || !body.messages.length || body.messages.length > 128
+  ) {
+    throw new ProxyError(400, "invalid_chat");
+  }
+  if (body.stream === true) throw new ProxyError(400, "streaming_not_supported");
+  if (body.stream !== undefined && body.stream !== false) throw new ProxyError(400, "invalid_stream");
+  const maxTokens = body.max_tokens;
+  if (!Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > 4096) {
+    throw new ProxyError(400, "invalid_token_limit");
+  }
+  for (const message of body.messages) {
+    if (
+      !object(message) || !["user", "assistant"].includes(message.role) ||
+      Object.keys(message).some((k) => k !== "role" && k !== "content")
+    ) {
+      throw new ProxyError(400, "text_messages_required");
+    }
+    if (
+      typeof message.content !== "string" &&
+      !(Array.isArray(message.content) && message.content.length && message.content.every(anthropicBlock))
+    ) {
+      throw new ProxyError(400, "text_messages_required");
+    }
+  }
+  if (
+    body.system !== undefined && typeof body.system !== "string" &&
+    !(Array.isArray(body.system) &&
+      body.system.every((b) =>
+        object(b) && b.type === "text" && typeof b.text === "string" &&
+        Object.keys(b).every((k) => k === "type" || k === "text")
+      ))
+  ) {
+    throw new ProxyError(400, "unsupported_chat_option");
+  }
+  const cleaned: Record<string, any> & { model: string } = { ...body, model: body.model, stream: false };
+  const bytes = new TextEncoder().encode(JSON.stringify(cleaned)).length;
+  if (bytes > 65536) throw new ProxyError(413, "chat_too_large");
+  return { body: cleaned, reservedTokens: bytes + body.messages.length * 128 + 1024 + maxTokens };
+}
+
+/** The official Anthropic SDK appends "/v1/messages" to its base_url; the team's
+ * saved base follows the same /v1-or-not convention as the OpenAI path.
+ */
+export function anthropicMessagesUrl(base: string): string {
+  return base.endsWith("/v1") ? base + "/messages" : base + "/v1/messages";
+}
+
 function upstreamUrl(base: string, allowHttp: boolean, deps: ProxyDependencies): URL {
   let url: URL;
   try {
@@ -238,6 +336,88 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
     if (!object(result) || !Array.isArray(result.choices)) throw new ProxyError(502, "invalid_provider_response");
     const usage = result.usage?.total_tokens;
     if (Number.isSafeInteger(usage) && usage >= 0 && usage <= checked.reservedTokens) actualTokens = usage;
+    return new Response(JSON.stringify(redact(result, key)), {
+      status: 200,
+      headers: { "content-type": "application/json", "cache-control": "no-store", "x-observer-request-id": call },
+    });
+  } catch (error) {
+    if (!upstreamAttempted) actualTokens = 0;
+    // Provider bodies, headers, redirects and exception text never leave here.
+    if (error instanceof ProxyError) throw error;
+    if (timedOut(error)) throw new ProxyError(504, "model_provider_timeout");
+    throw new ProxyError(502, "model_provider_unavailable");
+  } finally {
+    key = "";
+    // A failed settlement leaves the reservation for the conservative reconciler.
+    await deps.rpc("observer_settle_model", { p_call: call, p_actual_tokens: actualTokens });
+  }
+}
+
+/** Formal runs, Anthropic Messages shape: same accounting and safety as
+ * teamChatCompletion, routed to <base>/v1/messages with x-api-key auth.
+ */
+export async function teamMessages(request: Request, deps: TeamProxyDependencies): Promise<Response> {
+  const { run, token } = capability(request.headers.get("authorization"), request.headers.get("x-api-key"));
+  const checked = validateMessages(await boundedJson(request, 65536));
+  const requestedId = request.headers.get("idempotency-key");
+  if (requestedId && !UUID.test(requestedId)) throw new ProxyError(400, "invalid_idempotency_key");
+  const call = requestedId ?? crypto.randomUUID();
+  const reservation = await deps.rpc("observer_reserve_team_model", {
+    p_run: run,
+    p_token: token,
+    p_call: call,
+    p_digest: await digest("messages\n" + JSON.stringify(checked.body)),
+    p_tokens: checked.reservedTokens,
+  });
+  if (!reservation?.reserved) throw new ProxyError(409, "model_request_already_received");
+  let actualTokens: number | null = null;
+  let upstreamAttempted = false;
+  let key = "";
+  try {
+    const base = await publicBase(reservation.base_url, deps.trustedBases, deps.resolve);
+    if (
+      !base || typeof reservation.model !== "string" || !reservation.model || reservation.model.length > 256 ||
+      typeof reservation.provider_id !== "string" || !UUID.test(reservation.provider_id)
+    ) throw new ProxyError(503, "provider_not_authorized");
+    key = await deps.decrypt(String(reservation.encrypted_key ?? ""), reservation.provider_id);
+    if (!key) throw new ProxyError(503, "provider_configuration_error");
+    upstreamAttempted = true;
+    const response = await deps.fetch(anthropicMessagesUrl(base), {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": request.headers.get("anthropic-version") ?? "2023-06-01",
+        ...(request.headers.get("anthropic-beta") ? { "anthropic-beta": request.headers.get("anthropic-beta")! } : {}),
+      },
+      // The saved model replaces the project's model name.
+      body: JSON.stringify({ ...checked.body, model: reservation.model }),
+      signal: AbortSignal.timeout(deps.timeoutMs ?? 120000),
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      // No completion was returned: nothing is charged against the team quota.
+      actualTokens = 0;
+      throw providerError(response.status);
+    }
+    let result: unknown;
+    try {
+      result = await boundedJson(response, MAX_TEAM_RESPONSE);
+    } catch (error) {
+      if (timedOut(error)) throw error;
+      if (error instanceof ProxyError && error.code === "body_too_large") {
+        throw new ProxyError(502, "model_response_too_large");
+      }
+      throw new ProxyError(502, "invalid_provider_response");
+    }
+    if (!object(result) || !Array.isArray(result.content)) throw new ProxyError(502, "invalid_provider_response");
+    const usage = result.usage;
+    const input = usage?.input_tokens, output = usage?.output_tokens;
+    if (Number.isSafeInteger(input) && input >= 0 && Number.isSafeInteger(output) && output >= 0) {
+      const total = input + output;
+      if (total <= checked.reservedTokens) actualTokens = total;
+    }
     return new Response(JSON.stringify(redact(result, key)), {
       status: 200,
       headers: { "content-type": "application/json", "cache-control": "no-store", "x-observer-request-id": call },
