@@ -155,19 +155,15 @@ def test_single_entry_repository_zip_review_and_preserved_csv_journey(portal_sit
         models=page.get_by_test_id('model-api-settings')
         ensure_model_panel(page)
         expect(models.get_by_role('heading',name='Model API (optional)',exact=True)).to_be_visible()
-        # Default: the key is not saved; the page relay is shown and saving is an opt-in.
-        expect(models.get_by_test_id('model-mode-relay')).to_be_checked()
-        expect(models.get_by_test_id('model-mode-stored')).not_to_be_checked()
+        # Default: saving encrypted on the server is pre-selected; no page relay shown.
+        expect(models.get_by_test_id('model-mode-stored')).to_be_checked()
+        expect(models.get_by_test_id('model-mode-relay')).not_to_be_checked()
         expect(models.get_by_test_id('model-mode-tradeoff')).to_have_text(
-            'Not saved: keep this page open during evaluations. Saved: stored encrypted and deleted automatically after the results are verified.')
-        expect(models.get_by_test_id('personal-model-settings')).to_contain_text('Keep this page open until each evaluation finishes')
-        expect(models.get_by_test_id('team-model-form')).to_have_count(0)
-        assert query(uri,'select count(*) from private.observer_team_model_modes where team_id=%s',(s['team'],))==[(0,)]
-        models.get_by_test_id('model-mode-stored').check()
+            'Saved (default): stored encrypted and deleted automatically after the results are verified. Not saved: keep this page open during evaluations.')
         expect(models.get_by_test_id('team-model-form')).to_be_visible(timeout=15000)
-        expect(models).to_contain_text('you can close this page during evaluation')
         expect(models.get_by_test_id('personal-model-settings')).to_have_count(0)
-        expect(page.get_by_text('Keep this page open until each evaluation finishes, including')).to_have_count(0)
+        assert query(uri,'select count(*) from private.observer_team_model_modes where team_id=%s',(s['team'],))==[(0,)]
+        expect(models).to_contain_text('you can close this page during evaluation')
         key='browser-saved-key-fixture-4Kd9'
         # Any public https:// address is accepted; the organizer's list only feeds suggestions.
         suggested=page.locator('#model-base-suggestions option').first.get_attribute('value')

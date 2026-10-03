@@ -1,8 +1,8 @@
 """Team model keys for formal runs in real PostgreSQL.
 
-Relay mode (default): the page relay stores no key. Stored mode (explicit opt-in):
-ciphertext only, team-scoped, formal-only, bounded per run and purged manually or
-automatically once no phase can use it. Neither mode ever falls back to organizer
+Stored mode (default): ciphertext only, team-scoped, formal-only, bounded per run
+and purged manually or automatically once no phase can use it. Relay mode (explicit
+choice): the page relay stores no key. Neither mode ever falls back to organizer
 credits, and choosing the relay deletes a saved key at once.
 """
 import concurrent.futures
@@ -62,8 +62,8 @@ def test_team_members_save_replace_and_delete_without_reading_the_key_back(setup
     s=setup;uri=s['uri']
     teammate,_=identity(uri,team=s['team'])
     outsider,_=identity(uri)
-    # Not saving is the default; saving a key is the opt-in that selects stored mode.
-    assert team_model(uri,s['user'])=={'mode':'relay','saved':None}
+    # Saving on the server is the default for a team that has not chosen.
+    assert team_model(uri,s['user'])=={'mode':'stored','saved':None}
     first=save(uri,s['user'])
     view=team_model(uri,teammate)
     assert view['mode']=='stored' and set(view['saved'])=={'base_url','model','key_hint','saved_at'}
@@ -110,7 +110,8 @@ def test_team_members_save_replace_and_delete_without_reading_the_key_back(setup
 
 def test_stored_mode_formal_runs_use_only_their_own_teams_saved_key(setup):
     s=setup;uri=s['uri'];run,participant=formal_run(s)
-    assert rpc(uri,'observer_model_route',run,participant)['mode']=='relay'
+    # A team that has never chosen is already in stored mode by default.
+    assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
     assert choose(uri,s['user'],'stored')=='stored'
     assert rpc(uri,'observer_model_route',run,participant)=={'personal':True,'mode':'stored'}
     # No saved key: no organizer provider, legacy team row or other team is substituted.
@@ -379,6 +380,7 @@ def test_participant_key_phases_get_loose_limits_and_organizer_phases_are_unchan
 
 
 OPT_IN=ROOT/'supabase/migrations/20260926000600_model_key_opt_in_auto_purge.sql'
+STORED_DEFAULT=ROOT/'supabase/migrations/20261002170000_stored_model_mode_default.sql'
 
 
 def auto_purge(uri):
@@ -403,6 +405,21 @@ def test_opt_in_migration_keeps_teams_that_saved_and_is_idempotent(setup):
     assert query(uri,'select count(*),bool_and(enabled),max(retention)::text from private.observer_key_retention')==[(1,True,'7 days')]
     with pytest.raises(psycopg.Error,match='permission denied'):
         query(uri,'select private.observer_auto_purge_provider_keys()',role='authenticated',user=newcomer)
+
+
+def test_stored_default_migration_only_changes_teams_that_never_chose(setup):
+    s=setup;uri=s['uri']
+    chose_relay,_=identity(uri);choose(uri,chose_relay,'relay')
+    chose_stored,_=identity(uri);choose(uri,chose_stored,'stored')
+    saver,_=identity(uri);save(uri,saver)
+    never_chosen,_=identity(uri)
+    # Already reached by the migration chain applied in setup; re-running it is a no-op.
+    query(uri,STORED_DEFAULT.read_text());query(uri,STORED_DEFAULT.read_text())
+    assert team_model(uri,chose_relay)=={'mode':'relay','saved':None}
+    assert team_model(uri,chose_stored)=={'mode':'stored','saved':None}
+    assert team_model(uri,saver)['mode']=='stored'
+    assert team_model(uri,never_chosen)=={'mode':'stored','saved':None}
+    assert query(uri,'select count(*) from private.observer_team_model_modes where team_id=%s',(never_chosen,))==[(0,)]
 
 
 def test_saved_keys_are_purged_automatically_only_after_every_phase_that_uses_them_ended():

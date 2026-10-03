@@ -2,14 +2,15 @@
 export type ModelKeyMode = 'stored' | 'relay'
 
 /**
- * Not saving the key (the page relay) is the default. Saving it encrypted on the
- * server is an explicit opt-in: only a team that chose it, or saved a key, is in
- * stored mode.
+ * Saving the key encrypted on the server is the default: with the page relay the
+ * page must stay open for every evaluation, which contestants keep forgetting. A
+ * team that explicitly chose relay (or the server has not resolved a mode yet)
+ * stays in relay mode.
  */
-export const DEFAULT_MODEL_KEY_MODE: ModelKeyMode = 'relay'
+export const DEFAULT_MODEL_KEY_MODE: ModelKeyMode = 'stored'
 
 export function teamModelMode(teamModel: { mode?: string | null } | null | undefined): ModelKeyMode {
-  return teamModel?.mode === 'stored' ? 'stored' : DEFAULT_MODEL_KEY_MODE
+  return teamModel?.mode === 'relay' ? 'relay' : teamModel?.mode === 'stored' ? 'stored' : DEFAULT_MODEL_KEY_MODE
 }
 
 /**

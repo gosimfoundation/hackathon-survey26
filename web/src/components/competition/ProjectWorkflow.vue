@@ -30,9 +30,9 @@ const retryStatus = ref('')
 const reviewPanel = ref<HTMLElement | null>(null)
 const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref('')
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
-// Formal model calls use the team's choice: the relay to this open page (default;
-// nothing is stored) or, as an explicit opt-in, a key saved encrypted on the
-// server that is deleted automatically after the results are verified.
+// Formal model calls use the team's choice: a key saved encrypted on the server
+// (default, deleted automatically after the results are verified) or the relay
+// to this open page, where nothing is stored.
 const modelMode = computed(() => teamModelMode(data.value?.team_model))
 const savedModel = computed(() => data.value?.team_model?.saved ?? null)
 const modeChoice = ref<ModelKeyMode>(DEFAULT_MODEL_KEY_MODE), replacingKey = ref(false)
@@ -346,10 +346,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <p v-if="relayFinalRisk" class="errors" role="note" data-testid="model-mode-final-note">{{ words.apiFinalNote }}</p>
         <fieldset class="mt-4" :disabled="busy">
           <legend class="sr-only">{{ t('submit.model_api.choice') }}</legend>
-          <label class="check"><input v-model="modeChoice" type="radio" name="model-key-mode" value="relay" aria-describedby="model-mode-relay-help" data-testid="model-mode-relay" @change="chooseMode">{{ t('submit.model_api.relay') }}</label>
-          <p id="model-mode-relay-help" class="help mb-3">{{ savedModel ? sentences(t('submit.model_api.relay_help'), t('submit.model_api.relay_deletes')) : t('submit.model_api.relay_help') }}</p>
           <label class="check"><input v-model="modeChoice" type="radio" name="model-key-mode" value="stored" aria-describedby="model-mode-stored-help" data-testid="model-mode-stored" @change="chooseMode">{{ t('submit.model_api.stored') }}</label>
-          <p id="model-mode-stored-help" class="help">{{ t('submit.model_api.stored_help') }}</p>
+          <p id="model-mode-stored-help" class="help mb-3">{{ t('submit.model_api.stored_help') }}</p>
+          <label class="check"><input v-model="modeChoice" type="radio" name="model-key-mode" value="relay" aria-describedby="model-mode-relay-help" data-testid="model-mode-relay" @change="chooseMode">{{ t('submit.model_api.relay') }}</label>
+          <p id="model-mode-relay-help" class="help">{{ savedModel ? sentences(t('submit.model_api.relay_help'), t('submit.model_api.relay_deletes')) : t('submit.model_api.relay_help') }}</p>
         </fieldset>
         <p class="help mt-4">{{ t('submit.model_api.usage') }}</p>
         <!-- The form follows the choice at once; a refused change resets the choice (chooseMode). -->

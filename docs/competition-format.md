@@ -15,7 +15,7 @@ versions and evaluation batches. A prominent Submit button links to that workspa
 | Scenario | existing public scenarios; the complete-project board runs `dev-fortnight` and `dev-reference` | three fixed formal scenarios (`formal-a`, `formal-b`, `formal-c`), one template for every team, no calibration, files and weather never published; plus one hidden final scenario (`eval-final`) in the sealed phase `final-hidden` |
 | Ranking | best score per scenario, unchanged | online board: best complete batch, mean over the three scenarios (live feedback only). Final ranking: the hidden-scenario score of each team's final version only |
 | Model | optional; complete-project board: team's own key only | participant supplies API and quota, no organizer credits; award eligibility needs LLM-driven agent techniques in at least two of six stages (judged mainly by Claude reading the final version's code, `scripts/review-agent-usage.py`) |
-| Personal credentials | never include in results | HTTPS only; team's choice: kept only in the open page (relay, default) or saved encrypted on the server (opt-in, deleted after the hidden final results are published); teams that call a model must switch to saved before `online` ends |
+| Personal credentials | never include in results | HTTPS only; team's choice: saved encrypted on the server (default, deleted after the hidden final results are published) or kept only in the open page (relay); teams that call a model must switch to saved before `online` ends |
 
 Formal evaluation accepts a decision only for its current sequence, records it,
 then publishes the next observation. Immutable decisions support independent

@@ -9,29 +9,34 @@ behaviour. Deterministic projects need no API.
 
 Each team chooses in the workspace section **Model API (optional)**:
 
-| | Do not save (default, page relay) | Save encrypted (opt-in) |
+| | Save encrypted (default) | Do not save (page relay) |
 |---|---|---|
-| Key location | only the open page's memory | AES-GCM ciphertext in `private.observer_providers` |
-| Page must stay open | yes, until each evaluation finishes; also at the time agreed for top-team verification | no |
-| Deleted | when the page closes | automatically after the results are verified (see "Automatic deletion"), or by the team at any time |
-| Call path | model proxy → Broadcast → open page → portal → provider | model proxy calls the provider directly |
-| Per-run bounds | phase settings: 100,000 calls, up to 4 at a time; tokens not metered | phase settings: 100,000 calls, up to 4 at a time; tokens 1,000,000,000 (effectively uncapped) |
+| Key location | AES-GCM ciphertext in `private.observer_providers` | only the open page's memory |
+| Page must stay open | no | yes, until each evaluation finishes; also at the time agreed for top-team verification |
+| Deleted | automatically after the results are verified (see "Automatic deletion"), or by the team at any time | when the page closes |
+| Call path | model proxy calls the provider directly | model proxy → Broadcast → open page → portal → provider |
+| Per-run bounds | phase settings: 100,000 calls, up to 4 at a time; tokens 1,000,000,000 (effectively uncapped) | phase settings: 100,000 calls, up to 4 at a time; tokens not metered |
 | Size caps | 64 KiB request, 192 KiB response | 64 KiB request, 192 KiB response |
 
-Not saving is the default: a team that has not chosen is in relay mode
-(`20260926000600_model_key_opt_in_auto_purge`; teams that already chose stored
-mode or saved a key keep it). The workspace lists "Do not save (default)" first
-and selected, with one sentence on the trade-off (e.g. "Not saved: keep this page
-open during evaluations. Saved: stored encrypted and deleted automatically after
-the results are verified."). Saving on the server is an explicit opt-in: choosing
-"Save encrypted on the server" (`observer_set_team_model_mode('stored')`) or
-saving a key selects stored mode. Choosing "Do not save" deletes a saved key
-immediately (`observer_set_team_model_mode('relay')`, same transaction). Only team
-members (not banned) can change the choice or manage the key; it is team-wide.
+Saving on the server is the default: a team that has not explicitly chosen is in
+stored mode (`20261002170000_stored_model_mode_default`, on top of the opt-in
+table and function from `20260926000600_model_key_opt_in_auto_purge`; a team that
+already explicitly chose relay, or chose stored or saved a key, keeps that
+choice — "not chosen" means no row at all in `private.observer_team_model_modes`).
+The reason: with the page relay, the page must stay open during evaluations and
+contestants kept forgetting. The workspace lists "Save encrypted on the server
+(default)" first and preselected, with "Do not save (page relay)" second and one
+sentence on the trade-off (e.g. "Saved (default): stored encrypted and deleted
+automatically after the results are verified. Not saved: keep this page open
+during evaluations."). Choosing "Save encrypted on the server"
+(`observer_set_team_model_mode('stored')`) or saving a key selects stored mode.
+Choosing "Do not save" deletes a saved key immediately
+(`observer_set_team_model_mode('relay')`, same transaction). Only team members
+(not banned) can change the choice or manage the key; it is team-wide.
 
-## Stored mode (opt-in)
+## Stored mode (default)
 
-1. After opting in, a member enters any public HTTPS endpoint (see "Which endpoints are accepted"
+1. A member enters any public HTTPS endpoint (see "Which endpoints are accepted"
    below), the model and the key, and saves (`save_team_model` portal action,
    over HTTPS). The portal checks the endpoint, creates a new provider ID and
    encrypts the key with the Edge
@@ -70,7 +75,7 @@ model name) with an empty `encrypted_key`; unreferenced rows are deleted. Calls
 already in flight may finish. A team that saved a key but never made a call must
 delete the key before it can be disbanded (the row references the team).
 
-## Relay mode ("Do not save", default)
+## Relay mode ("Do not save")
 
 Unchanged ephemeral flow. The participant selects a supported HTTPS base, model
 and key in the workspace; they stay in Vue memory without browser storage. Each
@@ -213,7 +218,8 @@ for evaluations in progress (calls already in flight may finish).
 
 ## Validation
 
-- `tests/test_personal_models.py` (real PostgreSQL): relay is the default and the
+- `tests/test_personal_models.py` (real PostgreSQL): stored is the default for a
+  team that never chose, an explicit relay choice is never overridden, and the
   opt-in migration keeps teams that saved (and is idempotent), save, replace,
   delete, team isolation, no key or ciphertext in any participant-visible result,
   stored-mode reservations use only the team's own key, no organizer fallback in
@@ -222,8 +228,9 @@ for evaluations in progress (calls already in flight may finish).
   purge, automatic deletion (open, upcoming and recently ended phases, retention
   after saving, other-team and competition-mode phases, queued runs and unsettled
   calls keep the key; pause switch; audit), and the migrations' limit updates.
-- `web/tests/modelKeyMode.test.ts`: the workspace defaults to "Do not save" and
-  every locale explains the trade-off.
+- `web/tests/modelKeyMode.test.ts`: the workspace defaults to "Save encrypted on
+  the server", an explicit relay choice still reads as relay, and every locale
+  explains the trade-off.
 - `observer-model_test.ts`, `observer-portal_test.ts`: HTTPS/approved-host and
   redirect rules, decryption per request, redaction, response cap, no fallback,
   encryption before storage. `observer-personal-model_test.ts`: relay behaviour.
@@ -232,10 +239,9 @@ for evaluations in progress (calls already in flight may finish).
   provider with the saved key and model, redirects and provider errors are not
   forwarded, deleting the key stops use, relay mode fails closed without any
   server-side call, and the plaintext key appears in no table or Edge log.
-- `tests/test_project_portal_browser.py`: default relay mode with the trade-off
-  sentence, opt in and save with masked hint, switch to relay (key deleted),
-  relay key not kept in browser storage, opt in again, headings in all four
-  languages.
+- `tests/test_project_portal_browser.py`: default stored mode with the trade-off
+  sentence, save with masked hint, switch to relay (key deleted), relay key not
+  kept in browser storage, opt in again, headings in all four languages.
 - Opt-in: `integration/deployed-personal-model.ts` (selects relay mode first,
   which deletes that team's saved key) and `integration/personal-broadcast_test.ts`.
 
