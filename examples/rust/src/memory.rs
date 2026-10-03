@@ -87,6 +87,18 @@ pub struct Memory {
     /// hit-rate-aware LLM step (`planner::night_llm_steps`).
     pub total_assigned: i64,
     pub total_hits: i64,
+
+    /// Per-observe-action ledger: `(observe_action_index, target_id, factor)`,
+    /// mirroring the backend's own BestLedger so a Hard-mode `state_resync`
+    /// can be answered exactly (see `resync`) instead of only from the
+    /// resync message's `best_scores`.
+    pub ledger: Vec<(i64, String, f64)>,
+    pub pending_action_index: Option<i64>,
+    /// `decision_request.payload.observe_action_index` for the decision in
+    /// progress; set by `planner::decide` before planning, copied into
+    /// `pending_action_index` by `finish_plan` if this decision ends up
+    /// being an `observe`.
+    pub current_action_index: Option<i64>,
 }
 
 impl Memory {
@@ -118,6 +130,9 @@ impl Memory {
             reports_issued: 0,
             total_assigned: 0,
             total_hits: 0,
+            ledger: Vec::new(),
+            pending_action_index: None,
+            current_action_index: None,
         }
     }
 
@@ -137,20 +152,17 @@ impl Memory {
             } else if record_type == "forecast" {
                 self.last_forecast_notices = message.get("notices").cloned().unwrap_or(Value::Array(vec![]));
             } else if record_type == "state_resync" {
-                let best_scores: Vec<(String, f64)> = message
-                    .get("best_scores")
-                    .and_then(|v| v.as_array())
-                    .map(|rows| {
-                        rows.iter()
-                            .filter_map(|row| {
-                                let id = row.get("target_id")?.as_str()?.to_string();
-                                let score = row.get("best_score")?.as_f64()?;
-                                Some((id, score))
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                self.resync(config, &best_scores);
+                self.resync(config, message);
+            } else if record_type == "observation_request" {
+                let request_id = message.get("request_id").and_then(|v| v.as_str()).unwrap_or("?");
+                let n_targets = message.get("target_ids").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
+                let deadline = message.get("deadline_utc").and_then(|v| v.as_str()).unwrap_or("?");
+                log(&format!("planner: observation request {request_id} issued, {n_targets} targets by {deadline}"));
+            } else if record_type == "observation_request_result" {
+                let request_id = message.get("request_id").and_then(|v| v.as_str()).unwrap_or("?");
+                let status = message.get("status").and_then(|v| v.as_str()).unwrap_or("?");
+                let reward = message.get("score_delta").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                log(&format!("planner: observation request {request_id} {status} (reward {reward})"));
             }
         }
         self.notices.clear();
@@ -166,21 +178,78 @@ impl Memory {
         }
     }
 
-    /// Hard-mode `state_resync` (participant guide, Appendix A): the
-    /// backend's recomputed best scores replace our own factor estimates.
-    fn resync(&mut self, config: &Config, best_scores: &[(String, f64)]) {
+    /// Hard-mode `state_resync` (participant guide, Appendix A / section 8): a
+    /// prior window of `observe` actions was invalidated. The message itself
+    /// only gives `best_scores` (score, not factor) for targets with any
+    /// surviving valid hit -- the guide is explicit that it does not return
+    /// each target's completion factor, and that an agent that needs it
+    /// exactly should combine `invalidated_window` with its own saved
+    /// valid-exposure history.
+    ///
+    /// We can do exactly that: every entry in `self.ledger` already holds the
+    /// EXACT factor for one past observe action (`on_result` backs it out of
+    /// the real score the backend returned, the public weight, and whichever
+    /// of the two public program multipliers it matches -- not an estimate).
+    /// Dropping the ledger entries inside the invalidated action-index window
+    /// and taking, per target, the max factor among what is left reproduces
+    /// the backend's own ledger exactly -- a reconstruction, not an
+    /// approximation from best_score.
+    ///
+    /// The only remaining uncertainty: a target with no ledger entry at all
+    /// (e.g. this process restarted mid-run and lost its in-memory history)
+    /// falls back to the old best_score/top_multiplier estimate below, same
+    /// as before this change.
+    fn resync(&mut self, config: &Config, message: &Value) {
+        let window = message.get("invalidated_window");
+        let start = window.and_then(|w| w.get("action_index_start")).and_then(|v| v.as_i64());
+        let end = window.and_then(|w| w.get("action_index_end_exclusive")).and_then(|v| v.as_i64());
+        match (start, end) {
+            (Some(start), Some(end)) => self.ledger.retain(|(index, _, _)| !(*index >= start && *index < end)),
+            _ => self.ledger.clear(), // no window given: nothing in the ledger can be trusted
+        }
+        let mut exact: std::collections::HashMap<&str, f64> = std::collections::HashMap::new();
+        for (_, target_id, factor) in &self.ledger {
+            let entry = exact.entry(target_id.as_str()).or_insert(0.0);
+            if *factor > *entry {
+                *entry = *factor;
+            }
+        }
+
+        let best_scores: Vec<(String, f64)> = message
+            .get("best_scores")
+            .and_then(|v| v.as_array())
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|row| {
+                        let id = row.get("target_id")?.as_str()?.to_string();
+                        let score = row.get("best_score")?.as_f64()?;
+                        Some((id, score))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         let top = config.program.richest_multiplier();
         let mut best: std::collections::HashMap<&str, f64> = std::collections::HashMap::new();
-        for (id, score) in best_scores {
+        for (id, score) in &best_scores {
             best.insert(id.as_str(), *score);
         }
         for (i, target) in config.targets.iter().enumerate() {
+            if let Some(&factor) = exact.get(target.target_id.as_str()) {
+                self.factor[i] = factor;
+                continue;
+            }
             let score = best.get(target.target_id.as_str()).copied().unwrap_or(0.0);
             self.factor[i] = if score > 0.0 { (score / (target.science_weight.max(1e-9) * top)).min(1.0) } else { 0.0 };
         }
         self.active = config.targets.iter().enumerate().filter(|(_, t)| t.hmax_deg > 0.0).map(|(i, _)| i).collect();
         self.pending.clear();
-        log(&format!("memory: applied state_resync for {} target(s)", best_scores.len()));
+        self.pending_action_index = None;
+        log(&format!(
+            "memory: applied state_resync, {} ledger entr{} survived, {} best_score fallback(s)",
+            exact.len(),
+            if exact.len() == 1 { "y" } else { "ies" },
+            best_scores.len()
+        ));
     }
 
     pub fn site_closed(&self) -> bool {
@@ -232,6 +301,7 @@ impl Memory {
     /// completion factor from the declared-vs-mismatch multiplier, updates
     /// per-target misses/attempts, and feeds the learned sky-quality scale.
     pub fn on_result(&mut self, config: &Config, last_result: Option<&Value>, hours: f64) {
+        let action_index = self.pending_action_index.take();
         let Some(result) = last_result else {
             self.pending.clear();
             return;
@@ -276,8 +346,11 @@ impl Memory {
                     let ratio_match = (factor_if_match * flux0t0) / (config.targets[i].feature_flux.max(1e-9) * pending_duration * prediction.model.max(1e-9));
                     let band = scoring::program_band(ratio_match * prediction.band_model, &config.program);
                     let matched = band == pending_program.as_str();
-                    let factor = if matched { factor_if_match } else { factor_if_miss };
-                    self.factor[i] = self.factor[i].max(factor.min(1.0));
+                    let factor = (if matched { factor_if_match } else { factor_if_miss }).min(1.0);
+                    self.factor[i] = self.factor[i].max(factor);
+                    if let Some(action_index) = action_index {
+                        self.ledger.push((action_index, target_id.clone(), factor));
+                    }
                     if config.targets[i].required && self.factor[i] < 0.5 {
                         self.attempts[i] += 1;
                     }

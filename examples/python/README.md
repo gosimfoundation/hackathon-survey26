@@ -43,7 +43,11 @@ pack_agent.py              zip this folder into a project ZIP for submission
   `factor`/`misses`/`attempts`, a learned sky `scale` (the median of recent quality
   samples backed out of the agent's own hits -- the hidden instrument/transparency/sky/
   seeing terms are never read from a file), weather notices, and fault-diagnosis
-  history. Built once, updated on every `decision_request`.
+  history. Built once, updated on every `decision_request`. Also keeps a per-observe-
+  action ledger of exact factors, so a Hard-mode `state_resync` can be answered exactly
+  -- by dropping the invalidated action-index window from the ledger and recomputing
+  each target's best factor from what is left -- instead of only from the resync
+  message's `best_scores` (see the comment on `_resync`).
 - **geometry.py** -- the public sidereal-time / alt-az / fibre-grid / lunar-factor
   formulas from the participant guide's Geometry and Scoring sections. Any agent
   needs these; they involve no scenario data.
@@ -59,7 +63,12 @@ pack_agent.py              zip this folder into a project ZIP for submission
   expected score per second and the program most assignments will match. Sleeps through
   the day, closes the shutter on an all-sky rain/storm bulletin, and reports a suspected
   instrument fault only after a sustained, unexplained quality drop confirmed over
-  several nights.
+  several nights. Time-limited observation requests (`active_requests`) get a read-only
+  tie-break in the exposure-length search: among durations within a small tolerance of
+  the best score-per-second rate, one that also clears a still-needed target's
+  `completion_factor_threshold` wins -- it never redirects the pointing itself or chases
+  a target that is not already going to be exposed anyway (there is no penalty for
+  letting a request expire, so this is opportunistic, not a hunt).
 - **llm_client.py** -- an OpenAI-compatible client (plain `urllib`, no SDK) defaulting
   to the Kimi Coding Plan endpoint, configurable to any other OpenAI-compatible
   `/chat/completions` endpoint by environment variable.

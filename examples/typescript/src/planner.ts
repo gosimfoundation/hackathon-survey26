@@ -11,7 +11,7 @@
  * Everything here uses only the public catalogue, the public score config and our own past hits
  * (AgentState) -- never hidden weather truth.
  */
-import type { ObserveAction } from "./protocol";
+import type { ActiveObservationRequest, ObserveAction } from "./protocol";
 import { AgentState, PendingPrediction } from "./state";
 import {
   MoonState,
@@ -42,15 +42,59 @@ const CLOSED_KINDS = new Set(["rain", "storm"]);
 const BLOCKING_KINDS = new Set(["terrain_obstruction", "rocket_launch"]);
 const DIRECTION_AZ: Record<string, number> = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
 
+// Time-limited observation requests (participant guide section 8 / appendix B). There is
+// no penalty for letting one expire -- `observation_requests.miss_penalty` is fixed at 0
+// -- so the only thing worth doing here is not leaving a reachable `completion_reward`
+// on the table, and only when doing so is close to free. More aggressive designs (a
+// priority bonus in `value`/`achievable`, or a separate dedicated exposure aimed straight
+// at an urgent target) were tried in the companion Python example and rejected: they
+// distorted which pointing got chosen and for how long, for a score loss repeatedly far
+// bigger than any request reward -- a public weight scale of ~0.3-1.7 and a 50-60 point
+// REQUIRED_BONUS leave no room for also carrying a "maybe worth 100" incentive without it
+// taking over. What is left is a tie-break, applied only inside `finishPlan`'s own
+// duration search over a pointing/fibre assignment chosen with ZERO knowledge of
+// requests: among durations within REQUEST_RATE_TOLERANCE of the best expected-score-
+// per-second rate, prefer one that also clears a needed request target's
+// completion_factor_threshold. It can only ever trade a small, bounded amount of rate
+// (never redirect the pointing itself, never reach for a target that is not already
+// going to be exposed anyway) for a chance at the reward.
+const REQUEST_RATE_TOLERANCE = 0.9;
+
 function azDistance(a: number, b: number): number {
   return Math.abs(wrap180(a - b));
 }
 
 export class Planner {
   readonly grid: FiberGrid;
+  private requestThresholdsNow = new Map<number, number>();
 
   constructor(private readonly state: AgentState) {
     this.grid = new FiberGrid(state.payload.instrument);
+  }
+
+  /** target_index -> smallest still-needed completion_factor_threshold, for every target
+   * that is part of some still-open request (`remaining_count>0`), not already counted
+   * (`completed_target_ids`), and not already past that threshold. Used only as a
+   * read-only tie-break in `finishPlan`'s duration search -- it never feeds back into
+   * `value`/`achievable`, so it cannot change which pointing gets chosen, only (within
+   * REQUEST_RATE_TOLERANCE) how long an already-chosen exposure runs once request
+   * targets happen to already be among its assigned fibres. Call once per decision,
+   * before `plan()`. */
+  requestThresholds(activeRequests: ActiveObservationRequest[]): void {
+    const thresholds = new Map<number, number>();
+    for (const request of activeRequests) {
+      if (request.remaining_count <= 0) continue;
+      const threshold = request.completion_factor_threshold;
+      const completed = new Set(request.completed_target_ids);
+      for (const targetId of request.target_ids) {
+        if (completed.has(targetId)) continue;
+        const i = this.state.indexOf.get(targetId);
+        if (i === undefined || this.state.factor[i]! >= threshold) continue;
+        const existing = thresholds.get(i);
+        if (existing === undefined || threshold < existing) thresholds.set(i, threshold);
+      }
+    }
+    this.requestThresholdsNow = thresholds;
   }
 
   private directionFactor(alt: number, az: number): number {
@@ -245,22 +289,34 @@ export class Planner {
     const centerUp = cHmax < 180 ? (cHmax - cHa) / SIDEREAL_DEG_PER_SECOND : 1e9;
 
     let best: [number, number] | null = null; // [rate, duration]
+    let requestBest: [number, number] | null = null; // best candidate that also clears a
+                                                       // needed request target's threshold
     for (const base of DURATIONS) {
       let duration = Math.round((base * st.durationScale) / 30.0) * 30;
       duration = Math.max(st.minExposure, Math.min(st.maxExposure, duration));
       if (duration > secondsLeft || duration > centerUp) continue;
       let gain = 0.0;
+      let completesRequest = false;
       for (const item of info.values()) {
         if (item.up < duration) continue;
         const reached = Math.min(1.0, item.k * duration);
         const f = st.factor[item.i]!;
         gain += st.weight[item.i]! * Math.max(0.0, reached * reached - f * f);
         if (st.required[item.i] && f < 0.5 && reached >= 0.5) gain += REQUIRED_BONUS;
+        const threshold = this.requestThresholdsNow.get(item.i);
+        if (threshold !== undefined && reached >= threshold) completesRequest = true;
       }
       const rate = gain / duration;
       if (best === null || rate > best[0]) best = [rate, duration];
+      if (completesRequest && (requestBest === null || rate > requestBest[0])) requestBest = [rate, duration];
     }
     if (best === null) return null;
+    // Tie-break, not a bonus: duration_seconds is one value shared by all 16 fibres, so
+    // this only ever swaps to a request-completing duration that is already within
+    // REQUEST_RATE_TOLERANCE of the best achievable rate -- it can trade a small, bounded
+    // amount of score for a shot at a reward, never meaningfully distort the exposure
+    // length chosen for everything else in this pointing.
+    if (requestBest !== null && requestBest[0] >= best[0] * REQUEST_RATE_TOLERANCE) best = requestBest;
     let duration = best[1];
     if (best[0] <= 0.0) {
       if (st.hasRecentSample(hours)) return null; // the estimate is fresh and says nothing improves here
@@ -297,6 +353,7 @@ export class Planner {
 
     const clean = !st.allSkyNotice();
     st.pending.clear();
+    st.pendingActionIndex = st.currentActionIndex;
     for (const [fiber, item] of info) {
       if (String(fiber) in assignments) {
         const prediction: PendingPrediction = {

@@ -85,6 +85,11 @@ class Agent {
 
     for (const message of payload.new_messages) {
       if (message.record_type === "forecast") this.memory.recordForecast(message.notices);
+      else if (message.record_type === "observation_request") {
+        log(`agent: observation request ${message.request_id} issued, ${message.target_ids.length} targets by ${message.deadline_utc}`);
+      } else if (message.record_type === "observation_request_result") {
+        log(`agent: observation request ${message.request_id} ${message.status} (reward ${message.score_delta})`);
+      }
     }
     st.onMessages(payload.new_messages, payload.latest_bulletin);
     st.onResult(payload.last_result, hours);
@@ -92,6 +97,8 @@ class Agent {
       this.memory.recordObserveResult(payload.last_result.assigned_count, payload.last_result.hit_count);
     }
     this.pace(payload, now);
+    st.currentActionIndex = payload.observe_action_index;
+    this.planner.requestThresholds(payload.active_requests ?? []);
 
     const night = st.currentNight(now);
     if (night === null) {

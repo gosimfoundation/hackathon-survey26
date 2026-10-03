@@ -60,11 +60,19 @@ errors, a positive total score, and about 96% of required targets completed.
   band thresholds) rebuilt from `initialize.payload.scoring` alone -- never from hidden truth.
 - **state.ts**: owns the target catalogue and everything the agent learns at runtime: an estimated
   sky-quality scale (from its own exposure results), per-target best factor, bulletins/forecasts,
-  terrain/event notices, and the once-per-run `state_resync` recovery path (Hard mode).
+  terrain/event notices, and the `state_resync` recovery path (Hard mode). Resync keeps a
+  per-observe-action ledger of exact factors, so it can drop just the invalidated action-index
+  window and recompute each target's best factor from what is left -- instead of only from the
+  resync message's `best_scores` (see the comment on `resync`).
 - **planner.ts**: for each decision, ranks visible unfinished targets (required targets that are not
   yet safe get a bonus), tries a handful of candidate pointings centred on the best targets, fills
   all 16 fibres with the best-value neighbour that lands on each one, and picks the exposure length
-  and program with the best expected score per second.
+  and program with the best expected score per second. Time-limited observation requests
+  (`active_requests`) get a read-only tie-break in that exposure-length search: among durations
+  within a small tolerance of the best rate, one that also clears a still-needed target's
+  `completion_factor_threshold` wins -- it never redirects the pointing itself or chases a target
+  that would not already be exposed anyway (letting a request expire costs nothing, so this is
+  opportunistic, not a hunt).
 - **memory.ts**: short rolling counters (hit rate, forecast notices seen) used both for stderr
   progress lines and to build small, public-data-only prompts for the LLM client.
 - **llmClient.ts**: a thin OpenAI-compatible chat client using Node's built-in `fetch` (Node >= 18),

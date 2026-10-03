@@ -148,9 +148,50 @@ export interface StateResyncMessage {
   };
   observed_target_ids: string[];
   best_scores: { target_id: string; best_score: number }[];
+  observation_requests: ActiveObservationRequest[];
 }
 
-export type PlatformMessage = BulletinMessage | ForecastMessage | ReportResultMessage | StateResyncMessage;
+/** A time-limited observation request (participant guide section 8 / appendix B), as it
+ * appears in `decision_request.active_requests` and inside a `state_resync`. */
+export interface ActiveObservationRequest {
+  request_id: string;
+  issued_at_utc: string;
+  deadline_utc: string;
+  target_ids: string[];
+  minimum_completed: number;
+  completion_factor_threshold: number;
+  completion_reward: number;
+  reason?: string;
+  completed_target_ids: string[];
+  completed_count: number;
+  remaining_count: number;
+}
+
+export interface ObservationRequestMessage extends Omit<ActiveObservationRequest, "completed_target_ids" | "completed_count" | "remaining_count"> {
+  record_type: "observation_request";
+  schema_version: string;
+}
+
+export interface ObservationRequestResultMessage {
+  record_type: "observation_request_result";
+  schema_version: string;
+  issued_at_utc: string;
+  request_id: string;
+  status: "completed" | "expired";
+  completed_target_ids: string[];
+  completed_count: number;
+  minimum_completed: number;
+  score_delta: number;
+  revised: boolean;
+}
+
+export type PlatformMessage =
+  | BulletinMessage
+  | ForecastMessage
+  | ReportResultMessage
+  | StateResyncMessage
+  | ObservationRequestMessage
+  | ObservationRequestResultMessage;
 
 export interface ObserveHit {
   target_id: string;
@@ -172,6 +213,7 @@ export interface DecisionRequestPayload {
   wallclock: { elapsed_seconds: number; remaining_seconds: number };
   latest_bulletin: BulletinMessage | null;
   latest_forecast: ForecastMessage | null;
+  active_requests: ActiveObservationRequest[];
   new_messages: PlatformMessage[];
   last_result: LastResult;
 }

@@ -128,6 +128,12 @@ class SurveyState:
         self.duration_scale = 1.0
         self.fast_level = 0
 
+        # Per-observe-action ledger: (observe_action_index, target_id, factor), mirroring
+        # the backend's own BestLedger so a Hard-mode state_resync can be answered exactly
+        # (see _resync) instead of only from the resync message's best_scores.
+        self.ledger: list[tuple[int, str, float]] = []
+        self.pending_action_index: Optional[int] = None
+
     # -- spatial index -------------------------------------------------------
 
     def _build_index(self) -> None:
@@ -198,25 +204,62 @@ class SurveyState:
                     if notice.get("event_kind") == "terrain_obstruction":
                         self.terrain.add(notice.get("direction"))
             elif message.get("record_type") == "state_resync":
-                self._resync(message.get("observed_target_ids", []), message.get("best_scores", []))
+                self._resync(message)
         notices = (latest_bulletin or {}).get("notices", [])
         self.notices = {f"{n.get('event_kind')}|{n.get('direction')}" for n in notices
                         if n.get("event_kind") != "terrain_obstruction"}
 
-    def _resync(self, observed_ids: list, best_scores) -> None:
+    def _resync(self, message: dict) -> None:
+        """Hard-mode state_resync (participant guide, Appendix A / section 8): a prior
+        window of `observe` actions was invalidated. The message itself only gives
+        `best_scores` (score, not factor) for targets with any surviving valid hit --
+        the guide is explicit that it does not return each target's completion factor,
+        and that an agent that needs it exactly should combine `invalidated_window`
+        with its own saved valid-exposure history.
+
+        We can do exactly that: every entry in `self.ledger` already holds the EXACT
+        factor for one past observe action (on_result backs it out of the real score
+        the backend returned, the public weight, and whichever of the two public
+        program multipliers it matches -- not an estimate). Dropping the ledger
+        entries inside the invalidated action-index window and taking, per target, the
+        max factor among what is left reproduces the backend's own ledger exactly --
+        this is a reconstruction, not an approximation from best_score.
+
+        The only remaining uncertainty: a target with no ledger entry at all (e.g. this
+        process restarted mid-run and lost its in-memory history) falls back to the old
+        best_score/top_multiplier estimate below, same as before this change.
+        """
+        window = message.get("invalidated_window") or {}
+        start, end = window.get("action_index_start"), window.get("action_index_end_exclusive")
+        if start is not None and end is not None:
+            self.ledger = [entry for entry in self.ledger if not (start <= entry[0] < end)]
+        else:
+            self.ledger = []  # no window given: nothing in the ledger can be trusted
+        exact: dict[str, float] = {}
+        for _, target_id, factor in self.ledger:
+            if factor > exact.get(target_id, 0.0):
+                exact[target_id] = factor
+
+        best_scores = message.get("best_scores") or []
         best: dict[str, float] = {}
         if best_scores and isinstance(best_scores[0], dict):
             for row in best_scores:
                 best[row.get("target_id")] = float(row.get("best_score", 0.0))
         else:
-            for target_id, score in zip(observed_ids, best_scores):
+            for target_id, score in zip(message.get("observed_target_ids", []), best_scores):
                 best[target_id] = float(score)
         top_multiplier = max(self.scoring.program_multipliers.values()) if self.scoring.program_multipliers else 1.2
+
         for i in range(len(self.ids)):
-            score = best.get(self.ids[i], 0.0)
+            target_id = self.ids[i]
+            if target_id in exact:
+                self.factor[i] = exact[target_id]
+                continue
+            score = best.get(target_id, 0.0)
             self.factor[i] = min(1.0, score / (self.weight[i] * top_multiplier)) if score > 0 and self.weight[i] > 0 else 0.0
         self.active = [i for i in range(len(self.ids)) if self.hmax[i] > 0.0]
         self.pending.clear()
+        self.pending_action_index = None
 
     def site_closed(self) -> bool:
         for key in self.notices:
@@ -229,6 +272,8 @@ class SurveyState:
         return any(key.partition("|")[2] == "ALL" for key in self.notices)
 
     def on_result(self, last_result: Optional[dict], hours: float) -> None:
+        action_index = self.pending_action_index
+        self.pending_action_index = None
         if not last_result or last_result.get("action") != "observe" or not self.pending:
             self.pending.clear()
             return
@@ -266,7 +311,10 @@ class SurveyState:
             band = scoring.program_band(ratio_match * prediction.band_model)
             matched = band == self.pending_program
             factor = factor_if_match if matched else factor_if_miss
-            self.factor[i] = max(self.factor[i], min(1.0, factor))
+            factor = min(1.0, factor)
+            self.factor[i] = max(self.factor[i], factor)
+            if action_index is not None:
+                self.ledger.append((action_index, target_id, factor))
             if self.required[i] and self.factor[i] < scoring.required_threshold:
                 self.attempts[i] += 1
             if factor < 0.97 and self.flux[i] > 0 and self.pending_duration > 0 and prediction.model > 0:

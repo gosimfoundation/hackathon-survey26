@@ -56,6 +56,14 @@ English README: [README.md](README.md)。
 | `src/scoring.rs` | 公开的天球几何与计分公式（不含任何场景数据）。 |
 | `src/validate.rs` | 协议规则校验，以及确定性的安全兜底动作。 |
 
+`memory.rs` 对 Hard mode 的 `state_resync` 处理保留一份按曝光动作编号记录的精确 factor
+账本，这样只需丢弃失效动作编号区间内的条目，再用剩下的重新算出每个目标的最佳
+factor——而不只是依赖 resync 消息里的 `best_scores`（细节见 `Memory::resync` 的注释）。
+`planner.rs` 在对限时观测请求毫无所知的指向/光纤方案之上，为曝光时长搜索加了一次只读的
+"选边"：在与最佳速率相差不大的几个候选时长里，优先选能让某个仍需完成的目标越过其
+`completion_factor_threshold` 的那个。请求过期不扣分（`observation_requests.miss_penalty`
+固定为 0），所以这里绝不会为此改变指向本身，也不会去追一个本来就不会被曝光覆盖的目标。
+
 ## 构建与运行
 
 ```sh
