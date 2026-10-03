@@ -2,6 +2,15 @@ name: DB watchdog
 
 # Checks the Supabase project every ~5 min and restarts it on a sustained
 # outage. No notifications are sent anywhere; see ops/db-watchdog.md.
+#
+# `schedule` is kept as a free extra chance, but GitHub's cron trigger has
+# been observed to fire only sporadically for this repo (hours between
+# fires instead of ~5 min) rather than just occasionally-delayed, so the
+# last step below makes each run re-dispatch the next one via
+# workflow_dispatch - a self-sustaining chain, same pattern already used by
+# .github/workflows/worker.yml upstream. If the chain ever breaks (a commit
+# makes the job fail before that step, Actions gets disabled, etc.) nothing
+# else restarts it - kick it off again with a manual workflow_dispatch.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -22,6 +31,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   check:
@@ -46,3 +56,8 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           SIMULATE_FAIL: ${{ github.event.inputs.simulate_fail || 'false' }}
         run: python3 scripts/db_watchdog.py
+      - name: Self-redispatch (fallback for an unreliable schedule trigger)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run db-watchdog.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
