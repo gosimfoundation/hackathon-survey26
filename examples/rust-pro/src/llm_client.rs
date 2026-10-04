@@ -23,6 +23,12 @@ fn env_trim(name: &str) -> String {
     std::env::var(name).map(|v| v.trim().to_string()).unwrap_or_default()
 }
 
+/// OBSERVER_MODEL_DISABLED=1: the platform runs this evaluation without a model (本次不提供模型 /
+/// survey26 eval start --no-model). No key is needed and no call is made: every rule default stands.
+pub fn model_disabled() -> bool {
+    std::env::var("OBSERVER_MODEL_DISABLED").map(|v| v == "1").unwrap_or(false)
+}
+
 pub fn api_key() -> String {
     let key = env_trim("OPENAI_API_KEY");
     if key.is_empty() {
@@ -167,7 +173,7 @@ impl LlmClient {
             endpoint: Endpoint { base_url, key: api_key(), model: model.clone() },
             model,
             call_timeout: 90.0,
-            max_calls: 1500,
+            max_calls: if model_disabled() { 0 } else { 1500 },
             max_retries: 3,
             max_in_flight: 4,
             calls: Vec::new(),

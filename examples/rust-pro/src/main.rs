@@ -28,7 +28,7 @@ use std::io::{BufRead, Write};
 use std::time::Instant;
 
 use advisor::{Advisor, FaultReview, NightPlan};
-use llm_client::{api_key, load_dotenv, LlmClient};
+use llm_client::{api_key, load_dotenv, model_disabled, LlmClient};
 use planner::{env_f, env_i, Planner};
 use skymath::{format_date, format_hour_stamp, format_utc, parse_utc, psum, round_to};
 
@@ -720,7 +720,10 @@ impl ObserverAgent {
 
 fn main() {
     load_dotenv(std::path::Path::new(".env"));
-    if api_key().is_empty() {
+    let rules_only = model_disabled();
+    if rules_only {
+        log("pro: OBSERVER_MODEL_DISABLED=1, running rules only (no model calls)");
+    } else if api_key().is_empty() {
         log("missing API key: set OPENAI_API_KEY");
         std::process::exit(2);
     }
@@ -758,7 +761,7 @@ fn main() {
                     log("pro: error in a decision; waiting one slot");
                     action_wait_for(900, "internal error")
                 });
-                action.entry("decision_source").or_insert(json!("llm-advised"));
+                action.entry("decision_source").or_insert(json!(if rules_only { "rules" } else { "llm-advised" }));
                 let mut out = Map::new();
                 out.insert("protocol_version".into(), json!(PROTOCOL));
                 out.insert("message_type".into(), json!("decision_response"));

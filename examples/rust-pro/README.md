@@ -60,7 +60,7 @@ OPENAI_BASE_URL=https://api.kimi.com/coding/v1   # default; outside mainland Chi
 OPENAI_MODEL=k3                                  # default
 ```
 
-Without a key the agent exits at start-up with `missing API key: set OPENAI_API_KEY`. On the platform the
+Without a key the agent exits at start-up with `missing API key: set OPENAI_API_KEY`, except under `OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): then it needs no key and runs on its rules only, so you can compare with and without an LLM. On the platform the
 team's variables are the program's environment. No temperature is sent (`k3` accepts only its default).
 HTTP 429/5xx answers and network errors are retried with backoff.
 
