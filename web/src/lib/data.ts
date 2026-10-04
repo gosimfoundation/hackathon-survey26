@@ -55,6 +55,8 @@ export interface Phase {
 export interface Announcement {
   id: string; title_en: string; title_zh: string; body_en: string | null; body_zh: string | null
   level: 'info' | 'warning' | 'success'; is_pinned: boolean; is_published: boolean; created_at: string
+  /** Bumped by an organizer to pop the announcement up again for everyone (missing before the migration = 1). */
+  notify_version?: number
 }
 export interface LeaderboardEntry {
   rank: number; team_id: string; team_name: string; team_slug: string; total_score: number; science_score: number

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The newest pinned announcement the visitor has not seen opens as a dialog on any page (the slim banner alone
-// went unnoticed). Seen = shown (lib/popupRules): keyed by id + a hash of its text, so it comes back only when the
-// announcement changes; remembered on this device and, when signed in, on the server. One popup per page load (stores/overlay).
+// went unnoticed). Seen = shown (lib/popupRules): keyed by id + notify_version, so it comes back only when an organizer
+// presses "remind everyone" (edits to the text never re-show it); remembered on this device and, when signed in, on the server. One popup per page load (stores/overlay).
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
@@ -9,7 +9,7 @@ import { isSupabaseConfigured } from '../../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../../lib/data'
 import { fmtUtc } from '../../lib/format'
 import { PINNED_SEEN_KEY, pinnedRows, parseSeen } from '../../lib/pinnedPopup'
-import { announcementKey } from '../../lib/popupRules'
+import { announcementKey, announcementSeen } from '../../lib/popupRules'
 import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
 import AnnouncementBody from '../content/AnnouncementBody.vue'
@@ -30,11 +30,11 @@ onMounted(async () => {
   try { rows = await loadAnnouncements(20) } catch { return }
   const pinned = pinnedRows(rows)
   if (!pinned.length) return
-  // Ids dismissed before content keys existed count as seen for their current text.
+  // Ids dismissed before seen keys existed count as seen (version 1).
   const legacy = readLegacySeen()
-  markSeen(pinned.filter(row => legacy.has(String(row.id))).map(announcementKey))
+  markSeen(pinned.filter(row => legacy.has(String(row.id)) && (row.notify_version ?? 1) === 1).map(announcementKey))
   const seen = await seenKeys()
-  const next = pinned.find(row => !seen.has(announcementKey(row)))
+  const next = pinned.find(row => !announcementSeen(row, seen))
   if (!next) return
   // Seeing the newest one also settles the older pinned ones, so they do not pop up one after another.
   pinnedKeys.value = pinned.map(announcementKey)

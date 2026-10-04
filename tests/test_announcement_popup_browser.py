@@ -1,6 +1,6 @@
 """Pinned announcements pop up: the newest unseen pinned one opens on any page, with clickable links and
 its poster shown whole (also on a phone); once seen it stays closed (also after a reload, and when it was only
-left on screen), a newer pinned one or an edited text pops up again (web/src/lib/popupRules.ts)."""
+left on screen), a newer pinned one or an organizer's "remind everyone" (notify_version) pops up again; edits never do (web/src/lib/popupRules.ts)."""
 import os
 import secrets
 
@@ -68,10 +68,15 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         expect(popup_box(page)).to_contain_text('2 more pinned')
         page.keyboard.press('Escape')
         expect(popup_box(page)).to_have_count(0)
+        # Editing the text of a seen announcement never re-shows it.
+        query(uri, "update public.announcements set body_zh=body_zh||' (更新)' where id=%s", (talk,))
+        page.goto(portal_site + '/leaderboard?lang=zh', wait_until='domcontentloaded')
+        page.wait_for_timeout(3000)
+        expect(popup_box(page)).to_have_count(0)
         context.close()
 
-        # Merely shown for a few seconds counts as seen: a reload does not bring it back; an edited text does.
-        query(uri, "update public.announcements set body_zh=body_zh||' (更新)' where id=%s", (talk,))
+        # An edit alone does not re-show it; "remind everyone" does. Merely shown for a few seconds counts as seen.
+        query(uri, "update public.announcements set notify_version=notify_version+1 where id=%s", (talk,))
         query(uri, "update public.announcements set is_pinned=false where title_en like %s", ('Newer ' + tag + '%',))
         home = browser.new_context(viewport={'width': 1365, 'height': 900}).new_page()
         home.on('pageerror', lambda e: errors.append(str(e)))
