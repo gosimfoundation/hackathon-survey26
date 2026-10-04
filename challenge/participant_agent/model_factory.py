@@ -2,8 +2,9 @@
 
 On the platform (cloud runs and the official local project runner) every run gets
 OPENAI_BASE_URL and OPENAI_API_KEY: an OpenAI-compatible chat-completions proxy and a
-temporary run credential. The proxy calls the model your team set on the Participate
-page, so the model name sent from here is replaced. These two variables therefore take
+temporary run credential. The proxy calls your team's provider from the Participate page
+with the model name sent from here; "team-model" (or no model) means the team's default
+model set on that page. These two variables therefore take
 precedence for every OpenAI-compatible provider; the provider-specific variables
 (MODEL_BASE_URL, ZAI_API_KEY, ...) remain the fallback for your own local runs.
 """
@@ -36,8 +37,8 @@ PROVIDER_KEY_ENV = {
 }
 
 
-# Sent when the platform proxy is used without a model name; the proxy replaces it with
-# the model configured for the team on the Participate page.
+# Sent when the platform proxy is used without a model name; the proxy treats it as the
+# team's default model set on the Participate page.
 PLATFORM_MODEL_PLACEHOLDER = "team-model"
 
 

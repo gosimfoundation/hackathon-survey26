@@ -54,7 +54,7 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 4. Every decision must be made automatically by your program. Human participation in, or substitution for, decisions is prohibited.
 5. Attempts to read other teams' data, tamper with scoring or deliberately exhaust platform resources can lead to disqualification.
 
-For model calls, enter a supported HTTPS endpoint, model and key in Participate and choose "save encrypted" or "do not save" (item 2). You can replace or delete a saved key at any time.
+For model calls, enter a supported HTTPS endpoint, default model and key in Participate and choose "save encrypted" or "do not save" (item 2). You can replace or delete a saved key at any time. Your agent may set the `model` parameter of each request to any model your provider offers (for example a fast, inexpensive model for simple steps and a stronger one for key decisions); the platform forwards it unchanged, and uses the default model when a request names none (or names `team-model`). With an endpoint preset by the organizers in the suggestions list, only the default model or a model the organizers allow is forwarded. Model calls are paid for by your team's key.
 
 ## 5. Scoring
 

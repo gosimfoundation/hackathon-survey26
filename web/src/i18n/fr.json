@@ -823,7 +823,7 @@
       "endpoint": "Point d'accès de l'API",
       "endpoint_hint": "Toute adresse https:// publique convient (API compatible OpenAI, port par défaut). Les adresses IP et les adresses internes sont refusées. Les suggestions sont des fournisseurs courants.",
       "endpoint_refused": "Cette adresse d'API est refusée. Utilisez une adresse https:// publique sur le port par défaut, dont le nom se résout, et non une adresse IP ou interne.",
-      "model": "Modèle",
+      "model": "Modèle par défaut",
       "key": "Clé d'API",
       "save": "Enregistrer la clé chiffrée",
       "replace": "Remplacer la clé",

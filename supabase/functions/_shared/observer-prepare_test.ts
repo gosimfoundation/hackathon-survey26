@@ -80,7 +80,8 @@ for (const source_kind of ["repository", "zip"]) {
       assertEquals(await decryptCredential(j.encrypted_nonce, j.id + ":nonce", key), j.nonce);
       assertEquals(input.repository, { full_name: privateRepo.full_name });
       assertEquals(input.run_credential, "obs_" + modelRun + "." + scheduled.p_participant_token);
-      assertEquals(input.model, "qwen-test");
+      // The team's own provider answers with the team's default model.
+      assertEquals(input.model, "team-model");
       assertEquals(input.gameplay, source_kind === "zip" ? "v4" : undefined);
       assertEquals(input.scenario_ref, undefined);
       assertEquals(input.artifact_upload, { kind: "github" });

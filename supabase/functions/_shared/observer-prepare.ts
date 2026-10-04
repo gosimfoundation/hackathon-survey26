@@ -1,4 +1,4 @@
-import { encryptCredential } from "./observer-model.ts";
+import { DEFAULT_MODEL_ALIAS, encryptCredential } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
 import { databaseLocator, GitHubError, placement } from "./observer-github.ts";
 import type { GitHubApp } from "./observer-github.ts";
@@ -41,7 +41,9 @@ export async function schedulePreparations(deps: {
         ...source,
         repository: { full_name: repository.full_name },
         artifact_upload: { kind: "github" },
-        model: revision.model,
+        // Preparation always runs on the team's own model API (the online phase): ask for
+        // the team's default model rather than a name the team's provider may not offer.
+        model: DEFAULT_MODEL_ALIAS,
         model_base_url: base.href.replace(/\/$/, "") + "/functions/v1/observer-model/v1",
         run_credential: "obs_" + revision.model_run_id + "." + participant,
         // Only v4 public-test scenarios add this key; v3 preparation input is unchanged.

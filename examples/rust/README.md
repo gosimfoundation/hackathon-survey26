@@ -130,6 +130,12 @@ Messages protocol in the workspace's **Model API** section also gets `ANTHROPIC_
 / `ANTHROPIC_API_KEY` injected on the platform; use those instead if your own agent speaks
 Claude's Messages API. See `docs/model-api-keys.md` for the full comparison.
 
+On the platform, the `model` of each request is forwarded to your team's provider unchanged; the
+default model from the **Model API** section is used only when a request names none. This agent
+sends `OPENAI_MODEL` (default `k3`), so if your provider is not Kimi, set `OPENAI_MODEL` to one of
+your provider's models under `environment` in `observer.project.json`. Different steps may also use
+different models; model calls are paid for by your team's key.
+
 Every observing night, two calls run and their advice is merged (union of
 avoided compass directions, average of the duration scale):
 

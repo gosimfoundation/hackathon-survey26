@@ -60,8 +60,8 @@ Choosing "Do not save" deletes a saved key immediately
    enforces this again for every call receipt.
 4. The Edge function re-checks the base with the endpoint rule below (including
    a fresh DNS lookup), decrypts the key in request memory only,
-   sends one non-streaming request with `redirect: "error"` using the saved model
-   name (the project's `model` value is replaced), redacts the key from the
+   sends one non-streaming request with `redirect: "error"` using the model the
+   project named in this request (see "Per-call model choice" below), redacts the key from the
    response and drops its reference. Usage reported by the provider is settled;
    unknown usage is charged at the reserved upper bound.
 5. Provider bodies, headers, redirects and exception text are never forwarded;
@@ -98,6 +98,26 @@ counts as outstanding for at most 150 seconds); tokens are not metered.
 If a relay-mode team is verified as a top team after the competition, its page
 must be open at the time agreed with the organizers so the re-run can call its
 model.
+
+## Per-call model choice
+
+The model saved in the workspace is the team's **default model**. For the team's
+own endpoint and key (stored or relayed) the proxy forwards the `model` of each
+request unchanged, so an agent can use a fast model for some steps and a stronger
+one for others; the team's key pays. The default model is used when a request
+has no `model`, an empty one, or the alias `team-model` (platform preparation
+sends this alias). A `model` that is not a string of 1-256 characters without
+control characters is refused with `invalid_model` (HTTP 400) before anything is
+reserved. The relay page forwards the agent's body unchanged and sends its own
+model field only as the default, so the call digest recorded by the proxy and the
+digest the page claims are computed over the same body.
+
+On an endpoint listed in `OBSERVER_MODEL_BASES` (organizer-configured, shown as
+suggestions) only the default model or a model in `OBSERVER_TRUSTED_BASE_MODELS`
+(comma-separated, empty by default) is forwarded; any other model name is
+replaced by the default model. Organizer-credit calls (non-formal runs, the
+organizer provider) are unchanged: the model must be on that provider's own
+`models` list in the database.
 
 ## Protocol: OpenAI-compatible or Anthropic Messages
 
