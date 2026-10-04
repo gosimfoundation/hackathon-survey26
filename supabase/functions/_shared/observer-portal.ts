@@ -4,7 +4,7 @@ import { boundedJson, decryptCredential, encryptCredential, ProxyError } from ".
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sourceRepository } from "./observer-github.ts";
-import { fetchArchive, resultWithAgentLog } from "./observer-agent-log.ts";
+import { fetchArchive, resultDownloadPath, resultWithAgentLog } from "./observer-agent-log.ts";
 
 type Dependencies = {
   user: SupabaseClient;
@@ -339,6 +339,22 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       } catch {
         // The log is a convenience; the trusted result stays downloadable.
         console.warn("observer-portal: agent.log could not be added to the result download");
+      }
+      if (path.startsWith("github:")) {
+        // codeload.github.com only allows cross-origin reads from GitHub's own
+        // origins, so the site's "download all results (ZIP)" cannot fetch() it.
+        // Serve the same bytes from our storage, whose signed URLs allow CORS.
+        try {
+          const copy = resultDownloadPath(run);
+          const archive = await fetchArchive(url, d.fetchArchive);
+          const { error } = await staging.upload(copy, archive, { contentType: "application/zip", upsert: true });
+          if (error) throw error;
+          const signed = await staging.createSignedUrl(copy, 120, { download: "observer-result.zip" });
+          if (signed.error || !signed.data) throw signed.error;
+          return { url: signed.data.signedUrl };
+        } catch {
+          console.warn("observer-portal: result could not be copied to storage; serving the GitHub URL");
+        }
       }
       return { url };
     }
