@@ -84,9 +84,6 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
         fetch,
         decrypt,
         trustedBases: bases("OBSERVER_MODEL_BASES"),
-        trustedModels: new Set(
-          (Deno.env.get("OBSERVER_TRUSTED_BASE_MODELS") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-        ),
       });
     for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
     return response;

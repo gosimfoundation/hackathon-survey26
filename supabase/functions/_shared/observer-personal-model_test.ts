@@ -25,7 +25,7 @@ Deno.test("personal API key only reaches the selected HTTPS provider and is reda
       assertEquals(String(url), "https://personal.example/v1/chat/completions");
       assertEquals((opts!.headers as any).authorization, "Bearer " + key);
       assertEquals(opts!.redirect, "error");
-      assertEquals(JSON.parse(String(opts!.body)).model, "own-model");
+      assertEquals(JSON.parse(String(opts!.body)).model, "project-model");
       return Promise.resolve(Response.json({ choices: [{ message: { content: key } }] }));
     }) as typeof fetch,
     send: async (topic, event, payload) => {
@@ -153,7 +153,7 @@ Deno.test("relayed Anthropic calls use x-api-key and the Messages shape, redacte
       assertEquals(headers.authorization, undefined);
       assertEquals(headers["anthropic-version"], "2023-06-01");
       assertEquals(opts!.redirect, "error");
-      assertEquals(JSON.parse(String(opts!.body)).model, "own-claude-model");
+      assertEquals(JSON.parse(String(opts!.body)).model, "project-model");
       return Promise.resolve(Response.json({ type: "message", content: [{ type: "text", text: key }] }));
     }) as typeof fetch,
     send: async (topic, event, payload) => {
@@ -267,11 +267,27 @@ Deno.test("relay refuses an invalid model before claiming or calling", async () 
   }
   await assertRejects(() => relayed(relayBody("m"), { model: "bad\nmodel" }));
 });
-Deno.test("relay to an organizer-configured base keeps only the default or an allowlisted model", async () => {
+Deno.test("relay to a suggested base also forwards the agent's model", async () => {
   const trusted = { base_url: "https://personal.example/v1" };
-  assertEquals((await relayed(relayBody("expensive-model"), trusted)).sent, ["own-model"]);
-  assertEquals(
-    (await relayed(relayBody("cheap-model"), trusted, { trustedModels: new Set(["cheap-model"]) })).sent,
-    ["cheap-model"],
-  );
+  assertEquals((await relayed(relayBody("deepseek-reasoner"), trusted)).sent, ["deepseek-reasoner"]);
+});
+Deno.test("relay retries once with the page's default model when the provider does not know the model", async () => {
+  let n = 0;
+  const fallback = (first: Response) => ({
+    fetch: ((_url: string, opts: RequestInit) => {
+      sentModels.push(JSON.parse(String(opts.body)).model);
+      return Promise.resolve(n++ === 0 ? first : Response.json({ choices: [{ message: { content: "OK" } }] }));
+    }) as unknown as typeof fetch,
+  });
+  let sentModels: string[] = [];
+  const unknown = new Response(JSON.stringify({ error: { message: "模型不存在" } }), { status: 400 });
+  const { result, digests } = await relayed(relayBody("k3"), {}, fallback(unknown));
+  assertEquals(result, { completed: true });
+  assertEquals(sentModels, ["k3", "own-model"]);
+  assertEquals(digests.length, 1);
+  n = 0;
+  sentModels = [];
+  const other = new Response(JSON.stringify({ error: { message: "max_tokens too large" } }), { status: 400 });
+  assertEquals((await relayed(relayBody("k3"), {}, fallback(other))).result, { completed: false });
+  assertEquals(sentModels, ["k3"]);
 });

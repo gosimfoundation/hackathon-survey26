@@ -98,22 +98,81 @@ function checkModel(model: unknown) {
 export const DEFAULT_MODEL_ALIAS = "team-model";
 
 /**
- * Which model the team's own provider receives. The agent's model is passed through,
- * so a project may use a fast model for some steps and a stronger one for others (the
- * team's key pays). Without a model, with "" or with DEFAULT_MODEL_ALIAS the team's
- * saved default is used. On an organizer-configured base (OBSERVER_MODEL_BASES) only
- * the saved model or one on the explicit organizer allowlist is passed; anything else
- * becomes the saved model.
+ * Which model the team's own provider receives. Every team route uses the team's own
+ * key, so the agent's model is passed through: a project may use a fast model for some
+ * steps and a stronger one for others (the team's key pays). Without a model, with ""
+ * or with DEFAULT_MODEL_ALIAS the team's saved default is used. Organizer-credit calls
+ * (chatCompletion) keep their own database model list.
  */
-export function chooseModel(
+export function chooseModel(requested: unknown, configured: string): string {
+  if (typeof requested !== "string" || !requested || requested === DEFAULT_MODEL_ALIAS) return configured;
+  return requested;
+}
+
+const MODEL_ERROR_STATUS = new Set([400, 404, 422]);
+const MENTIONS_MODEL = /model|模型/i;
+const UNKNOWN =
+  /not[\s_-]?found|not[\s_-]?exists?|does ?n[o']t exist|invalid|unknown|unsupported|not supported|not a valid|no such|不存在|无效|不支持|未找到|找不到/i;
+
+/** Reads at most `limit` bytes of a response body as text (truncated, never thrown on size). */
+async function boundedText(response: Response, limit: number): Promise<string> {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const parts: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (length < limit) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      length += value.byteLength;
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+  const data = new Uint8Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    data.set(part, offset);
+    offset += part.byteLength;
+  }
+  return new TextDecoder().decode(data.subarray(0, limit));
+}
+
+/** Conservative: a 400/404/422 whose (bounded) body says the model is unknown or unsupported.
+ * The body is only inspected here and never forwarded. Always consumes the body. */
+export async function unknownModelRejection(response: Response): Promise<boolean> {
+  if (!MODEL_ERROR_STATUS.has(response.status)) {
+    await response.body?.cancel().catch(() => {});
+    return false;
+  }
+  let text: string;
+  try {
+    text = await boundedText(response, 16384);
+  } catch {
+    return false;
+  }
+  return MENTIONS_MODEL.test(text) && UNKNOWN.test(text);
+}
+
+/**
+ * Sends the agent's model; when the provider rejects that model name as unknown,
+ * retries once with the team's default model (so code that still sends an example
+ * model name keeps working). No retry for any other failure, or when the agent's
+ * model already was the default. Both attempts belong to one call: one reservation,
+ * one digest/claim, one settlement, one shared deadline.
+ */
+export async function sendWithModelFallback(
+  send: (model: string) => Promise<Response>,
   requested: unknown,
   configured: string,
-  trusted: boolean,
-  allowlist: Set<string> = new Set(),
-): string {
-  if (typeof requested !== "string" || !requested || requested === DEFAULT_MODEL_ALIAS) return configured;
-  if (trusted && requested !== configured && !allowlist.has(requested)) return configured;
-  return requested;
+): Promise<Response> {
+  const model = chooseModel(requested, configured);
+  const first = await send(model);
+  if (first.ok || model === configured) return first;
+  if (!(await unknownModelRejection(first))) return new Response(null, { status: first.status });
+  return await send(configured);
 }
 
 export function validateChat(body: unknown) {
@@ -303,8 +362,6 @@ export type TeamProxyDependencies = {
   decrypt: (ciphertext: string, providerId: string) => Promise<string>;
   // Exact organizer-configured bases, trusted as they are; any other base must be public HTTPS.
   trustedBases: Set<string>;
-  // Extra models allowed on a trusted base besides the team's saved one.
-  trustedModels?: Set<string>;
   resolve?: Resolver | null;
   timeoutMs?: number;
 };
@@ -339,16 +396,19 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
     key = await deps.decrypt(String(reservation.encrypted_key ?? ""), reservation.provider_id);
     if (!key) throw new ProxyError(503, "provider_configuration_error");
     upstreamAttempted = true;
-    const response = await deps.fetch(base + "/chat/completions", {
-      method: "POST",
-      redirect: "error",
-      headers: { "content-type": "application/json", "authorization": "Bearer " + key },
-      body: JSON.stringify({
-        ...checked.body,
-        model: chooseModel(checked.body.model, reservation.model, deps.trustedBases.has(base), deps.trustedModels),
-      }),
-      signal: AbortSignal.timeout(deps.timeoutMs ?? 120000),
-    });
+    const signal = AbortSignal.timeout(deps.timeoutMs ?? 120000);
+    const response = await sendWithModelFallback(
+      (model) =>
+        deps.fetch(base + "/chat/completions", {
+          method: "POST",
+          redirect: "error",
+          headers: { "content-type": "application/json", "authorization": "Bearer " + key },
+          body: JSON.stringify({ ...checked.body, model }),
+          signal,
+        }),
+      checked.body.model,
+      reservation.model,
+    );
     if (!response.ok) {
       await response.body?.cancel();
       // No completion was returned: nothing is charged against the team quota.
@@ -414,21 +474,26 @@ export async function teamMessages(request: Request, deps: TeamProxyDependencies
     key = await deps.decrypt(String(reservation.encrypted_key ?? ""), reservation.provider_id);
     if (!key) throw new ProxyError(503, "provider_configuration_error");
     upstreamAttempted = true;
-    const response = await deps.fetch(anthropicMessagesUrl(base), {
-      method: "POST",
-      redirect: "error",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": request.headers.get("anthropic-version") ?? "2023-06-01",
-        ...(request.headers.get("anthropic-beta") ? { "anthropic-beta": request.headers.get("anthropic-beta")! } : {}),
-      },
-      body: JSON.stringify({
-        ...checked.body,
-        model: chooseModel(checked.body.model, reservation.model, deps.trustedBases.has(base), deps.trustedModels),
-      }),
-      signal: AbortSignal.timeout(deps.timeoutMs ?? 120000),
-    });
+    const signal = AbortSignal.timeout(deps.timeoutMs ?? 120000);
+    const response = await sendWithModelFallback(
+      (model) =>
+        deps.fetch(anthropicMessagesUrl(base), {
+          method: "POST",
+          redirect: "error",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": request.headers.get("anthropic-version") ?? "2023-06-01",
+            ...(request.headers.get("anthropic-beta")
+              ? { "anthropic-beta": request.headers.get("anthropic-beta")! }
+              : {}),
+          },
+          body: JSON.stringify({ ...checked.body, model }),
+          signal,
+        }),
+      checked.body.model,
+      reservation.model,
+    );
     if (!response.ok) {
       await response.body?.cancel();
       // No completion was returned: nothing is charged against the team quota.

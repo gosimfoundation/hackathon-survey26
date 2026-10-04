@@ -322,7 +322,8 @@ Deno.test("formal run sends the saved key only to the saved HTTPS provider with 
   assertEquals(f.upstream[0].init?.redirect, "error");
   assertEquals(new Headers(f.upstream[0].init?.headers).get("authorization"), "Bearer " + teamKey);
   const sent = JSON.parse(String(f.upstream[0].init?.body));
-  assertEquals(sent.model, "saved-model");
+  // The project's model is forwarded to the team's own provider.
+  assertEquals(sent.model, "project-chosen-model");
   assert(!String(f.upstream[0].init?.body).includes(token));
   // The database only ever receives digests and receipts, never the key.
   assert(!JSON.stringify(f.calls).includes(teamKey));
@@ -505,8 +506,8 @@ Deno.test("formal Anthropic calls use x-api-key, the saved model, and settle inp
   assertEquals(headers.get("anthropic-version"), "2023-06-01");
   assert(!String(f.upstream[0].init?.body).includes(token));
   const sent = JSON.parse(String(f.upstream[0].init?.body));
-  // The saved model replaces the project's requested model.
-  assertEquals(sent.model, "saved-model");
+  // The project's model is forwarded to the team's own provider.
+  assertEquals(sent.model, "project-chosen-model");
 });
 
 Deno.test("a client-supplied anthropic-version and anthropic-beta are forwarded as given", async () => {
@@ -625,17 +626,84 @@ Deno.test("an invalid model is refused before any reservation or provider call",
   );
 });
 
-Deno.test("an organizer-configured base only accepts the saved model or one on the organizer allowlist", async () => {
-  // The fixture's saved base is listed in trustedBases.
+Deno.test("a suggested (organizer-listed) base used with the team's key also forwards the agent's model", async () => {
+  // The fixture's saved base is listed in trustedBases; the key is still the team's.
   const f = teamFixture();
-  await teamChatCompletion(chat("expensive-model"), f.deps);
-  assertEquals(sentModel(f), "saved-model");
-  const g = teamFixture({ trustedModels: new Set(["cheap-model"]) });
-  await teamChatCompletion(chat("cheap-model"), g.deps);
-  assertEquals(sentModel(g), "cheap-model");
-  const m = messagesFixture({ trustedModels: new Set(["cheap-model"]) });
-  await teamMessages(messagesRequest(), m.deps);
-  assertEquals(sentModel(m), "saved-model");
+  await teamChatCompletion(chat("deepseek-reasoner"), f.deps);
+  assertEquals(sentModel(f), "deepseek-reasoner");
+});
+
+// Compatibility: an unknown model name falls back once to the team's default model.
+function rejectingFetch(first: Response, upstream: { url: string; init: RequestInit | undefined }[], ok: Response) {
+  return ((url: string | URL | Request, init?: RequestInit) => {
+    upstream.push({ url: String(url), init });
+    return Promise.resolve(upstream.length === 1 ? first : ok);
+  }) as typeof fetch;
+}
+const chatOk = () =>
+  Response.json({ choices: [{ message: { role: "assistant", content: "OK" } }], usage: { total_tokens: 21 } });
+const models = (upstream: { init: RequestInit | undefined }[]) =>
+  upstream.map((u) => JSON.parse(String(u.init?.body)).model);
+
+Deno.test("a provider that does not know the agent's model is retried once with the default model", async () => {
+  for (
+    const first of [
+      new Response(JSON.stringify({ error: { code: "model_not_found", message: "The model `k3` does not exist" } }), {
+        status: 404,
+      }),
+      new Response(JSON.stringify({ error: { code: "1211", message: "模型不存在，请检查模型代码。" } }), {
+        status: 400,
+      }),
+      new Response("k3 is not a valid model ID", { status: 400 }),
+    ]
+  ) {
+    const upstream: { url: string; init: RequestInit | undefined }[] = [];
+    const f = teamFixture({ resolve: publicDns, fetch: rejectingFetch(first, upstream, chatOk()) }, ownBase);
+    const result = await teamChatCompletion(chat("k3"), f.deps);
+    assertEquals(result.status, 200);
+    assertEquals(models(upstream), ["k3", "saved-model"]);
+    // One call: one reservation, one digest, one settlement with the successful usage.
+    assertEquals(f.calls.map((c) => c.name), ["observer_reserve_team_model", "observer_settle_model"]);
+    assertEquals(f.calls[1].args.p_actual_tokens, 21);
+    const body = await result.text();
+    assert(!body.includes("does not exist") && !body.includes("1211"));
+  }
+});
+
+Deno.test("Anthropic-shaped unknown-model rejections also fall back once", async () => {
+  const upstream: { url: string; init: RequestInit | undefined }[] = [];
+  const first = new Response(
+    JSON.stringify({ type: "error", error: { type: "not_found_error", message: "model: k3" } }),
+    { status: 404 },
+  );
+  const ok = Response.json({ content: [{ type: "text", text: "OK" }], usage: { input_tokens: 15, output_tokens: 6 } });
+  const m = messagesFixture({ resolve: publicDns, fetch: rejectingFetch(first, upstream, ok) }, ownBase);
+  assertEquals((await teamMessages(messagesRequest(), m.deps)).status, 200);
+  assertEquals(models(upstream), ["project-chosen-model", "saved-model"]);
+});
+
+Deno.test("other provider errors are not retried", async () => {
+  for (
+    const first of [
+      new Response(JSON.stringify({ error: { message: "max_tokens is too large" } }), { status: 400 }),
+      new Response(JSON.stringify({ error: { message: "Invalid API key for model access" } }), { status: 401 }),
+      new Response(JSON.stringify({ error: { message: "model overloaded" } }), { status: 429 }),
+      new Response("model not found", { status: 500 }),
+    ]
+  ) {
+    const upstream: { url: string; init: RequestInit | undefined }[] = [];
+    const f = teamFixture({ resolve: publicDns, fetch: rejectingFetch(first, upstream, chatOk()) }, ownBase);
+    const error = await assertRejects(() => teamChatCompletion(chat("k3"), f.deps), ProxyError);
+    assertEquals([error.code, error.detail?.provider_status], ["model_provider_error", first.status]);
+    assertEquals(upstream.length, 1);
+    assertEquals(f.calls.at(-1)?.args.p_actual_tokens, 0);
+  }
+  // The default model itself is never retried.
+  const upstream: { url: string; init: RequestInit | undefined }[] = [];
+  const first = new Response("model not found", { status: 404 });
+  const f = teamFixture({ resolve: publicDns, fetch: rejectingFetch(first, upstream, chatOk()) }, ownBase);
+  await assertRejects(() => teamChatCompletion(chat(undefined), f.deps), ProxyError);
+  assertEquals(models(upstream), ["saved-model"]);
 });
 
 Deno.test("organizer-credit calls still require a model from the provider's list", async () => {

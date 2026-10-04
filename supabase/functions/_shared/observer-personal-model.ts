@@ -3,10 +3,10 @@ import {
   anthropicMessagesUrl,
   boundedJson,
   capability,
-  chooseModel,
   providerError,
   ProxyError,
   type Rpc,
+  sendWithModelFallback,
   timedOut,
   validateChat,
   validateMessages,
@@ -87,8 +87,6 @@ export async function fulfillPersonalModel(
     fetch: typeof fetch;
     // Exact organizer-configured bases, trusted as they are; any other base must be public HTTPS.
     trustedBases: Set<string>;
-    // Extra models allowed on a trusted base besides the team's default one.
-    trustedModels?: Set<string>;
     resolve?: Resolver | null;
     send: (topic: string, event: string, payload: unknown) => Promise<void>;
   },
@@ -122,18 +120,21 @@ export async function fulfillPersonalModel(
         ...(typeof input.anthropic_beta === "string" ? { "anthropic-beta": input.anthropic_beta } : {}),
       }
       : { "content-type": "application/json", authorization: "Bearer " + input.api_key };
-    const response = await deps.fetch(url, {
-      method: "POST",
-      redirect: "error",
-      signal: AbortSignal.timeout(110000),
-      headers,
-      // The agent's model (already in the digest-checked body) wins; the page's
-      // default model is used only when the agent sent none.
-      body: JSON.stringify({
-        ...body,
-        model: chooseModel(body.model, input.model, deps.trustedBases.has(normalized), deps.trustedModels),
-      }),
-    });
+    const signal = AbortSignal.timeout(110000);
+    // The agent's model (already in the digest-checked body) wins; the page's model is
+    // the default, used when the agent sent none or the provider does not know its model.
+    const response = await sendWithModelFallback(
+      (model) =>
+        deps.fetch(url, {
+          method: "POST",
+          redirect: "error",
+          signal,
+          headers,
+          body: JSON.stringify({ ...body, model }),
+        }),
+      body.model,
+      input.model,
+    );
     if (!response.ok) {
       await response.body?.cancel();
       throw providerError(response.status);

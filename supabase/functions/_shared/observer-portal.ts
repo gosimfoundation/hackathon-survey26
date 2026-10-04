@@ -12,8 +12,6 @@ type Dependencies = {
   userId: string;
   masterKey: string;
   modelBases: string[];
-  // Extra models allowed on an organizer-configured base besides the team's default.
-  trustedModels?: string[];
   httpBases: string[];
   /** DNS lookups for participant bases; tests replace it. */
   resolve?: Resolver | null;
@@ -101,7 +99,6 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         rpc: serviceRpc,
         fetch,
         trustedBases: new Set(d.modelBases),
-        trustedModels: new Set(d.trustedModels ?? []),
         resolve: d.resolve,
         send: (topic, event, payload) => sendModelBroadcast(d.service, topic, event, payload),
       });
