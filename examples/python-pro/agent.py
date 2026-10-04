@@ -51,6 +51,12 @@ MAX_PAID_FALSE = _env("MAX_PAID", 6)
 PERSIST_NIGHTS = _env("PERSIST_NIGHTS", 3)
 E_PAID_STEP = _env("E_PAID_STEP", 0.05)   # ... minus this per paid false probe so far
 MAX_FALSE_REPORTS = 8
+# The participant guide: an earthquake (announced in the bulletin) lowers instrument efficiency, the loss fades
+# night by night, and a report does not repair it. So E drops right after an earthquake are not reportable, and
+# while its effect may last only a new step down in E (a fresh drop from the preceding hours) is fault evidence.
+QUAKE_HOLD_HOURS = _env("QUAKE_HOLD_HOURS", 12.0)   # no probes this long after an earthquake notice appears
+QUAKE_STEP = _env("QUAKE_STEP", 0.8)                # step: median E of the last 3 rows < this x the 9 rows before
+QUAKE_TAIL_HOURS = _env("QUAKE_TAIL_HOURS", 24.0)   # the earthquake period lasts this long after its last notice
 PAID_SPACING_HOURS = 20.0
 MIN_REPORT_SPACING_HOURS = 2.0
 # --- pace ---
@@ -93,11 +99,14 @@ class ObserverAgent:
         self.ref_from_hours = -1e9
         self.episode_blocked = False
         self.blocked_at_hour = -1
+        self.quake_on = False
+        self.quake_onset_hours = -1e9
+        self.quake_last_hours = -1e9
         # pace state
-        self.cost_ema = [0.0, 0.0, 0.0, 0.0]
+        self.cost_ema = [0.0, 0.0, 0.0, 0.0]     # CPU seconds per observe decision at each search level
+        self.wall_ema = [0.0, 0.0, 0.0, 0.0]     # real seconds per observe decision (own turn, model waits excluded)
+        self.turn_end = None
         self.decisions = 0
-        self.prev_remaining = None
-        self.prev_cost = 0.0
         self.engine_ema = None
         self.sim_step_ema = None
         self.last_now = None
@@ -108,18 +117,26 @@ class ObserverAgent:
 
     def respond(self, payload: dict) -> dict:
         started = time.monotonic()
+        cpu_started = time.process_time()
+        if self.turn_end is not None:   # engine time between our turns (charged only by the old real-time clock)
+            gap = started - self.turn_end
+            if 0.0 <= gap < 5.0:
+                self.engine_ema = gap if self.engine_ema is None else 0.95 * self.engine_ema + 0.05 * gap
         model_before = self.model_wait
         level = self.planner.fast_level
         action = self._respond(payload)
-        # waiting for the model is not planning cost: keep it out of the pace estimate
-        cost = time.monotonic() - started - (self.model_wait - model_before)
-        self.prev_cost = cost
+        # the platform charges CPU time inside our turns; waiting for the model is free of CPU, so keep it
+        # out of the real-time estimate as well
+        cpu = time.process_time() - cpu_started
+        wall = time.monotonic() - started - (self.model_wait - model_before)
         if action.get("action") == "observe" and level < 4:
-            c = self.cost_ema[level]
-            self.cost_ema[level] = cost if c == 0.0 else 0.9 * c + 0.1 * cost
-            for k in range(level + 1, 4):   # cheaper levels not measured yet: a third of the level above
-                if self.cost_ema[k] == 0.0 or self.cost_ema[k] > self.cost_ema[k - 1]:
-                    self.cost_ema[k] = self.cost_ema[k - 1] / 3.0
+            for ema, cost in ((self.cost_ema, cpu), (self.wall_ema, wall)):
+                c = ema[level]
+                ema[level] = cost if c == 0.0 else 0.9 * c + 0.1 * cost
+                for k in range(level + 1, 4):   # cheaper levels not measured yet: a third of the level above
+                    if ema[k] == 0.0 or ema[k] > ema[k - 1]:
+                        ema[k] = ema[k - 1] / 3.0
+        self.turn_end = time.monotonic()
         return action
 
     def _respond(self, payload: dict) -> dict:
@@ -138,6 +155,13 @@ class ObserverAgent:
         if last.get("action") == "report":
             self._on_report_result(last, hours)
         planner.on_messages(payload.get("new_messages", []), payload.get("latest_bulletin"))
+        quake = any(kind == "earthquake" for kind, _ in planner.notices)
+        if quake and not self.quake_on:
+            self.quake_onset_hours = hours
+            log(f"pro: earthquake notice at {payload['now_utc']}")
+        self.quake_on = quake
+        if quake:
+            self.quake_last_hours = hours
         planner.on_requests(payload.get("active_requests", []))
         planner.on_result(payload.get("last_result"), now, hours)
         self._pace(payload, now)
@@ -180,36 +204,47 @@ class ObserverAgent:
 
     # --- pace ---------------------------------------------------------------------------------------
 
+    def _clock(self, payload: dict):
+        """(CPU seconds left, real seconds left, fair clock?) from the request's wallclock block.
+
+        Fair clock (current platform): the budget is normalized CPU time inside our turns, and
+        remaining_real_cpu_seconds converts it to this machine's CPU seconds; a separate real-time cap
+        (wall_remaining_seconds) only guards against runaway runs. Older runners count real time only."""
+        wall = payload.get("wallclock") or {}
+        if "remaining_real_cpu_seconds" in wall:
+            return (float(wall["remaining_real_cpu_seconds"]), float(wall.get("wall_remaining_seconds", 1e9)), True)
+        remaining = float(wall.get("remaining_seconds", 1e9))
+        return remaining, remaining, False
+
+    def _decisions_left(self, now) -> float:
+        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
+        return max(1.0, night_seconds / (self.sim_step_ema or 900.0))   # daytime waits cost nothing
+
     def _pace(self, payload: dict, now) -> None:
         """Pick the search level from the measured cost per decision and the decisions still to come."""
-        wall = payload.get("wallclock") or {}
-        remaining_wall = float(wall.get("remaining_seconds", 1e9))
-        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
-        decisions_left = max(1.0, night_seconds / (self.sim_step_ema or 900.0))   # daytime waits cost nothing
-        # the wall clock also runs while the engine simulates: measure that share and leave it out
-        if self.prev_remaining is not None:
-            engine = (self.prev_remaining - remaining_wall) - self.prev_cost
-            if 0.0 <= engine < 5.0:
-                self.engine_ema = engine if self.engine_ema is None else 0.95 * self.engine_ema + 0.05 * engine
-        self.prev_remaining = remaining_wall
-        budget = PACE_SAFETY * remaining_wall / decisions_left - (self.engine_ema or 0.0)
+        cpu_left, wall_left, fair = self._clock(payload)
+        decisions_left = self._decisions_left(now)
+        engine = self.engine_ema or 0.0
+        cpu_budget = PACE_SAFETY * cpu_left / decisions_left if fair else 1e9
+        wall_budget = PACE_SAFETY * wall_left / decisions_left - engine
         # estimates of levels not used for a while decay, so the agent climbs back up and re-measures them
         self.decisions += 1
         if self.decisions % 50 == 0:
             for k in range(4):
                 if k != self.planner.fast_level:
                     self.cost_ema[k] *= 0.85
-        level = 0
+                    self.wall_ema[k] *= 0.85
         if FIXED_LEVEL >= 0:
             self.planner.fast_level = FIXED_LEVEL
             return
-        while level < 3 and self.cost_ema[level] > budget:
+        level = 0
+        while level < 3 and (self.cost_ema[level] > cpu_budget or self.wall_ema[level] > wall_budget):
             level += 1
-        if remaining_wall < 15.0:
+        if min(cpu_left, wall_left) < 15.0:
             level = 4
         if level != self.planner.fast_level:
-            log(f"pro: pace level {level} (budget {budget * 1000:.0f} ms, costs {[round(c * 1000) for c in self.cost_ema]} ms, "
-                f"{decisions_left:.0f} decisions left)")
+            log(f"pro: pace level {level} (cpu budget {min(cpu_budget, 99) * 1000:.0f} ms, wall budget {wall_budget * 1000:.0f} ms, "
+                f"cpu costs {[round(c * 1000) for c in self.cost_ema]} ms, {decisions_left:.0f} decisions left)")
             self.planner.fast_level = level
 
     # --- model stages (advisor.py): night plan and fault review at every night start --------------------
@@ -223,7 +258,7 @@ class ObserverAgent:
         self.planner.bad_forecast = any(n.get("direction") == "ALL" and n.get("event_kind") in BAD_KINDS for n in tonight)
         self.planner.extra_avoid = set()
         self.fault_likely = None
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        left = self._clock(payload)[1]
         started = time.monotonic()
         answers = self.advisor.start_night(night_date, tonight, bulletin, self._fault_table(hours), left,
                                            self._model_wait_budget(payload))
@@ -231,15 +266,13 @@ class ObserverAgent:
         self._apply_advice(*answers)
 
     def _model_wait_budget(self, payload: dict) -> float:
-        """How long the agent can afford to wait for the model at a night start: half of the wall clock the
-        planner will not need, spread over the nights left (0 on a tight clock: answers then arrive later)."""
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        """How long a night start may wait for the model. Waiting costs no CPU budget, only real time: use half
+        of the real time the planner and the engine will not need, spread over the nights left."""
+        _, wall_left, _ = self._clock(payload)
         now = self.last_now
         nights_left = max(1, sum(1 for _, end in self.planner.nights if end > now))
-        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
-        decisions_left = night_seconds / (self.sim_step_ema or 900.0)
-        per_decision = max(self.cost_ema[self.planner.fast_level], 0.05) + (self.engine_ema or 0.01)
-        spare = left - 1.3 * decisions_left * per_decision - 30.0
+        per_decision = max(self.wall_ema[self.planner.fast_level], 0.05) + (self.engine_ema or 0.02)
+        spare = wall_left - 1.5 * self._decisions_left(now) * per_decision - 60.0
         return max(0.0, min(MODEL_WAIT_MAX, 0.5 * spare / nights_left))
 
     def _apply_advice(self, plan, fault) -> None:
@@ -266,7 +299,10 @@ class ObserverAgent:
             v = sorted(self.scale_hours[hour])
             stamp = (self.start + timedelta(hours=hour)).strftime("%m-%dT%H")
             rows.append([stamp, round(e_by_hour[hour], 2) if hour in e_by_hour else None, round(v[len(v) // 2], 2)])
+        notices = sorted({f"{kind} {direction}" for kind, direction in self.planner.notices})
         return {"columns": ["utc_hour", "E", "scale"], "rows": rows, "ref": round(self._scale_ref(), 2),
+                "notices_now": notices,
+                "hours_since_earthquake_notice_began": None if self.quake_onset_hours < -1e8 else round(hours - self.quake_onset_hours, 1),
                 "free_false_reports_left": max(0, self.free_left()), "paid_false_reports_so_far": self.paid_false,
                 "correct_reports_so_far": self.correct_reports,
                 "hours_since_last_report": None if self.reports == 0 else round(hours - self.last_report_hours, 1)}
@@ -280,6 +316,8 @@ class ObserverAgent:
         one are free: spend free probes readily, paid ones only on strong, lasting evidence."""
         if self.false_reports >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
             return None
+        if hours - self.quake_onset_hours < QUAKE_HOLD_HOURS:
+            return None   # the earthquake explains the drop; a report would not repair it
         if self._fault_verdict(hours, payload) and self._model_agrees(hours, payload):
             self.last_report_hours = hours
             self.reports += 1
@@ -295,6 +333,16 @@ class ObserverAgent:
             log(f"pro: E {payload['now_utc']} {rows[-1][2]:.2f} scale {self.planner.scale:.3f} band {self.planner.band_level or 0:.3f}")
         if len(rows) < E_FREE_HOURS or rows[-1][0] < int(hours) - 1:
             return False
+        if QUAKE_STEP > 0 and hours - self.quake_last_hours < QUAKE_TAIL_HOURS:
+            if len(rows) < 8:
+                return False
+            last = sorted(e for _, _, e in rows[-3:])[1]
+            prev = sorted(e for _, _, e in rows[-12:-3])
+            if not (last < QUAKE_STEP * prev[len(prev) // 2] and rows[-3][0] >= int(hours) - 4):
+                return False
+            if self.episode_blocked and rows[-3][0] <= self.blocked_at_hour:
+                return False   # the step that was already probed, not a new one
+            self.episode_blocked = False   # a new step is a new episode
         if self.episode_blocked:
             # this low episode was probed already and was not a fault: wait for a recovery first
             last4 = rows[-4:]
@@ -348,7 +396,7 @@ class ObserverAgent:
         evidence = {"hourly_E_last_24h": [round(e, 2) for _, e in rows], "fault_table": self._fault_table(hours),
                     "paid_false_reports_so_far": self.paid_false, "correct_reports_so_far": self.correct_reports}
         started = time.monotonic()
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        left = self._clock(payload)[1]
         verdict = self.advisor.confirm_report(evidence, left, min(30.0, 2.0 * self._model_wait_budget(payload)))
         self.model_wait += time.monotonic() - started
         if verdict is False:

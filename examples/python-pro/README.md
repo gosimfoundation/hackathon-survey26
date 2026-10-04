@@ -75,14 +75,23 @@ rule-based value in place for that night.
    whether the declared program matched. The band level is fitted to those hits, and does not follow the
    quality level, which an instrument fault lowers but the band does not.
 5. **Instrument faults.** Weather lowers both the quality level and the band; a fault lowers only the
-   quality. The agent reports when `E = quality / band` stays low, never while an announced all-sky
-   and uses the free false-report allowance before paid probes.
-6. **Hidden pointing offset (stress cards).** The engine adds a constant offset to every pointing; the
-   agent infers it from which assigned targets hit or missed and commands `desired - offset`.
+   quality. The agent reports when `E = quality / band` stays low, and uses the free false-report allowance before
+   paid probes. Earthquakes need care: per the participant guide they lower instrument efficiency too, the loss
+   fades night by night, and a report does not repair it. So the agent does not probe in the first 12 hours
+   after an earthquake notice appears, and while the earthquake's effect may last it probes only on a new step
+   down in E from the preceding hours. On 12 local cards this alone saved most of the free probes that used to
+   go to earthquake drops (+0.9% in total).
+6. **Hidden pointing offset (Hard-mode cards).** The participant guide says such cards add a fixed,
+   unannounced offset to every pointing. The agent scores candidate offsets on a grid scaled to the fibre
+   pitch (widening it if the best candidate sits on its edge), infers the offset from which assigned
+   targets hit or missed, and commands `desired - offset`.
 7. **Observation requests** get all-or-nothing value per remaining target (including targets already
    observed earlier: only exposures inside the request window count).
-8. **Pace.** The search level adapts to the measured cost per decision, so a 365-night card finishes in
-   the 900 s wall clock.
+8. **Pace on the fair clock.** The platform charges normalized CPU time inside the agent's turns (waits
+   are free) and caps real time per card. The agent measures its own CPU time per decision
+   (`time.process_time`), compares it with `wallclock.remaining_real_cpu_seconds` spread over the decisions
+   still to come, and also keeps the real-time cap (`wall_remaining_seconds`) in view; older runners that
+   only send `remaining_seconds` are paced on real time.
 
 ## Configuration (.env)
 
@@ -109,8 +118,8 @@ local comparisons reproducible on a busy machine (the platform run uses the adap
 
 ## Where you can still beat it
 
-- **Faster fault detection.** A fault halves the quality on some cards; each night it goes unreported costs
-  far more than a paid probe. Deliberate diagnostic exposures could separate faults from unannounced weather.
+- **Faster fault detection.** A fault can lower quality a lot, and each night it goes unreported can cost
+  more than a paid probe. Deliberate diagnostic exposures could separate faults from unannounced weather.
 - **Program choice under announced weather.** Mismatches cluster in hours with all-sky weather notices.
 - **Season-level scheduling** of faint required targets on the best nights.
 - **Partial exposures that get redone.** About a tenth of fibre-time goes to exposures that a later, longer
