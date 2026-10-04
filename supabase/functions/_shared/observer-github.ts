@@ -1,6 +1,6 @@
 /** GitHub control-plane operations. Installation tokens never go to projects. */
 import { createPrivateKey } from "node:crypto";
-import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "npm:jose@6.1.0";
+import { createRemoteJWKSet, errors, importPKCS8, jwtVerify, SignJWT } from "npm:jose@6.1.0";
 import type { JWTVerifyGetKey } from "npm:jose@6.1.0";
 import { toBase64 } from "./observer-seal.ts";
 
@@ -634,7 +634,17 @@ export type WorkflowIdentity = {
   runId?: string;
   runAttempt?: string;
 };
-const actionsKeys = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
+// Each cold isolate fetches GitHub's key set again; jose's default 5 s timeout
+// was occasionally too short from the edge (2026-10-04 job_http_401 incidents).
+const actionsKeys = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"), {
+  timeoutDuration: 15000,
+});
+
+/** GitHub's key set could not be fetched: not the token's fault, so retryable (503), never 401. */
+function keySetUnavailable(error: unknown) {
+  return !(error instanceof errors.JOSEError) || error.code === "ERR_JWKS_TIMEOUT" ||
+    error.code === "ERR_JOSE_GENERIC";
+}
 
 export async function verifyWorkflowIdentity(
   token: string,
@@ -659,7 +669,11 @@ export async function verifyWorkflowIdentity(
       clockTolerance: 5,
       requiredClaims: ["exp", "iat", "jti", "sub"],
     }));
-  } catch {
+  } catch (error) {
+    if (keySetUnavailable(error)) {
+      console.error("observer-github: OIDC key set unavailable", (error as { code?: string }).code ?? "network");
+      throw new GitHubError("workflow_identity_unavailable", 503);
+    }
     throw new GitHubError("invalid_workflow_identity", 401);
   }
   const repo = expected.organization + "/" + name;
