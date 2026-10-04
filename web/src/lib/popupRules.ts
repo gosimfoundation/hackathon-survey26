@@ -1,6 +1,7 @@
 // Popup rules (pure, unit-tested). Every site popup follows the same three rules:
 //  1. Each person sees each popup at most once. A popup is identified by a content key, so it shows again only
-//     when its content changes (announcement id + hash of its text, Kimi plan team + role, quota reset id, inbox row id).
+//     when it is meant to (announcement id + notify_version, bumped only by an organizer's "remind everyone";
+//     Kimi plan team + role, quota reset id, inbox row id). Editing an announcement's text never re-shows it.
 //  2. Showing it counts as seen: closing it in any way (button, Esc, outside click, navigating away) or keeping it
 //     on screen for SEEN_AFTER_MS marks it seen, so a reload never brings it back.
 //  3. At most one popup per page load: the candidates that ask within SETTLE_MS are compared and the most important
@@ -42,9 +43,18 @@ export function contentHash(...parts: Array<string | null | undefined>): string 
   return h.toString(16).padStart(8, '0')
 }
 
-type AnnouncementText = { id: string | number; title_en?: string | null; title_zh?: string | null; body_en?: string | null; body_zh?: string | null }
-export const announcementKey = (a: AnnouncementText) =>
-  `ann:${a.id}:${contentHash(a.title_en, a.title_zh, a.body_en, a.body_zh)}`
+type AnnouncementRef = { id: string | number; notify_version?: number | null }
+const annVersion = (a: AnnouncementRef) => Math.max(1, Math.floor(Number(a.notify_version) || 1))
+export const announcementKey = (a: AnnouncementRef) => `ann:${a.id}:v${annVersion(a)}`
+
+/** Seen at its current notify_version. For version 1, an older text-hash key ("ann:<id>:<8 hex>") also counts. */
+export function announcementSeen(a: AnnouncementRef, seen: Set<string>): boolean {
+  if (seen.has(announcementKey(a))) return true
+  if (annVersion(a) !== 1) return false
+  const legacy = new RegExp(`^ann:${String(a.id).replace(/[^0-9A-Za-z-]/g, '')}:[0-9a-f]{8}$`)
+  for (const k of seen) if (legacy.test(k)) return true
+  return false
+}
 export const kimiPlanKey = (teamId: string, role: string) => `kimi:${teamId}:${role}`
 export const quotaResetKey = (id: string) => `quota:${id}`
 export const inboxKey = (rowId: string) => `inbox:${rowId}`

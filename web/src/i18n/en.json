@@ -2462,7 +2462,12 @@
       "published": "published",
       "saved": "Announcement saved.",
       "deleted": "Announcement deleted.",
-      "delete_confirm": "Delete this announcement?"
+      "delete_confirm": "Delete this announcement?",
+      "renotify": "Remind everyone again",
+      "renotify_help": "Editing never re-shows the popup; this shows it once more to everyone (pinned announcements only).",
+      "renotify_confirm": "Show this announcement's popup to everyone once more? (Not needed for ordinary edits.)",
+      "renotified": "Everyone will be reminded again.",
+      "notify_version": "Reminder version"
     },
     "credits": {
       "stats": "Stock per provider",

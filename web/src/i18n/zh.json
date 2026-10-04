@@ -2462,7 +2462,12 @@
       "published": "已发布",
       "saved": "公告已保存。",
       "deleted": "公告已删除。",
-      "delete_confirm": "删除该公告？"
+      "delete_confirm": "删除该公告？",
+      "renotify": "重新提醒所有人",
+      "renotify_help": "修改公告内容不会再次弹窗；点这里让所有人再看到一次弹窗（仅限置顶公告）。",
+      "renotify_confirm": "让所有人再看到一次这条公告的弹窗？（普通修改不需要这样做）",
+      "renotified": "已设置为重新提醒所有人。",
+      "notify_version": "提醒版本"
     },
     "credits": {
       "stats": "各服务商库存",
