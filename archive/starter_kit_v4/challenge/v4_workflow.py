@@ -25,12 +25,13 @@ from __future__ import annotations
 
 import csv
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Mapping
 
 from .contracts import write_text_lf
-from .fair_clock import CLOCK_SCHEMA, FairClock, SpeedGauge
+from .fair_clock import CLOCK_SCHEMA, POLL_SECONDS, FairClock, SpeedGauge, configured
 from .v4_config_check import DEFAULT_MAX_CONSECUTIVE_REPORTS
 from .v4_fiber_map import FiberGrid
 from .v4_runner import (
@@ -227,6 +228,8 @@ class V4Workflow:
         deadline_cap: Callable[[], float | None] | None = None,
         agent_hooks=None,
         speed_gauge: SpeedGauge | None = None,
+        clock_mode: str | None = None,
+        wall_cap: float | None = None,
     ) -> dict:
         """Run the card; returns the workflow result (also written to workflow_result.json).
 
@@ -236,13 +239,25 @@ class V4Workflow:
         ``deadline_cap`` optionally returns an external (session) deadline in the same clock.
         ``agent_hooks`` (optional) offers ``pause()``, ``resume()`` and ``cpu()`` for the agent's
         processes (challenge.fair_clock.DockerAgent / ProcessAgent): the budget is charged with
-        the fair clock (module docstring of challenge.fair_clock).
+        the fair clock (module docstring of challenge.fair_clock). ``clock_mode`` and ``wall_cap``
+        default to the organizer configuration (challenge.fair_clock.configured).
         """
         budget = self.wallclock_budget(wallclock_seconds)
         hook = (lambda name: getattr(agent_hooks, name, None)) if agent_hooks is not None else (lambda name: None)
+        mode, cap = configured()
         fair = FairClock(budget, gauge=speed_gauge, clock=self.clock, cpu=hook("cpu"), pause=hook("pause"),
-                         resume=hook("resume"))
-        state: dict = {"sequence": 0, "ignored_in_flight": False, "initialization_error": None}
+                         resume=hook("resume"), mode=clock_mode or mode, wall_cap=wall_cap or cap)
+        stop = hook("stop")
+        state: dict = {"sequence": 0, "ignored_in_flight": False, "initialization_error": None, "stopped": False}
+
+        def watch(done: threading.Event) -> None:
+            # The budget runs out during a turn: stop the agent; its reply would be ignored anyway.
+            while not done.wait(POLL_SECONDS):
+                if fair.over_budget():
+                    state["stopped"] = True
+                    if stop is not None:
+                        stop()
+                    return
         actions: list[str] = []  # every action the runner received, for organizer replay
 
         def deadline() -> float:
@@ -268,16 +283,24 @@ class V4Workflow:
                 state["sequence"] += 1
                 sequence = state["sequence"]
                 message = self.request_message(sequence, snapshot, fair.snapshot())
+                done = threading.Event()
+                watcher = threading.Thread(target=watch, args=(done,), daemon=True)
+                watcher.start()
                 try:
                     response = decide(message, limit)
                 except TimeoutError:
                     state["ignored_in_flight"] = True
                     raise AgentTermination(TERMINATION_WALLCLOCK) from None
                 except Exception as error:  # noqa: BLE001 - a broken agent, never the engine
+                    if state["stopped"]:
+                        state["ignored_in_flight"] = True
+                        raise AgentTermination(TERMINATION_WALLCLOCK) from None
                     raise AgentTermination(TERMINATION_AGENT_ERROR, _safe_detail(error)) from None
                 finally:
+                    done.set()
+                    watcher.join()
                     fair.end_turn()
-                if fair.expired or self.clock() >= limit:
+                if fair.expired or state["stopped"] or self.clock() >= limit:
                     state["ignored_in_flight"] = True
                     raise AgentTermination(TERMINATION_WALLCLOCK)
                 try:

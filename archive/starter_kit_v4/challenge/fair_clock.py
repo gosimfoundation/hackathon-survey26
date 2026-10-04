@@ -1,26 +1,34 @@
-"""Fair clock: a card's time budget counts only the agent's own turns, in charged seconds.
+"""Fair clock: a card's time budget counts the agent's own computation, adjusted for machine speed.
 
 Evaluation machines differ in speed, so a fixed budget of real seconds buys different amounts
-of computation. The budget (900 s) is charged as follows:
+of computation. The budget (900 per card) is charged in one of two modes (``CLOCK_MODES``),
+chosen by the organizer (``OBSERVER_CLOCK_MODE``; default ``cpu``):
+
+* ``cpu`` (default): only the agent's CPU time inside its turns is charged, divided by the
+  machine's speed factor: ``charged = cpu / speed_factor``. Waiting (a model API, the network,
+  idle time, CPU taken by other tenants of the machine) is not charged.
+* ``charged_wait`` (fallback): ``charged = cpu / speed_factor + (window - cpu)``: the waiting
+  part of a turn is charged at real time.
+
+Common to both:
 
 * Window. A turn runs from sending a ``decision_request`` until the agent's response arrives.
   Only turns are charged; engine and platform time outside them never is.
-* Inside a turn: ``charged = cpu / speed_factor + (window - cpu)``. ``cpu`` is the CPU time of
-  all the agent's processes and threads during the window, read by the platform from the
-  agent container's cgroup (never self-reported), at most the window's length. The rest of the
-  window (waiting on a model API, the network, disk) is charged at real time: it does not
-  depend on the machine, and leaving it free would let a team move computation to its own
-  servers. Without a CPU meter (for example a local run on Windows) the whole window counts as
-  CPU.
+* ``cpu`` is the CPU time of all the agent's processes and threads during the window, read by the
+  platform from the agent container's cgroup (never self-reported), at most the window's length.
+  Without a CPU meter (for example a local run on Windows) the whole window counts as CPU.
 * ``speed_factor = measured time / REFERENCE_UNIT_SECONDS`` of a fixed, short, single-thread
   Python calibration workload (``workload``) run by the engine on the same machine: 1.0 on the
   reference machine (the median GitHub-hosted evaluation runner), above 1 on a slower machine,
   below 1 on a faster one. It is measured before the agent starts (5 repetitions) and again
   about every ``SAMPLE_INTERVAL_SECONDS`` between turns with the agent frozen (3 repetitions);
   the factor in use is the median of the last ``WINDOW`` samples.
-* The agent sees the budget in these charged seconds (``remaining_seconds``), with the speed
-  factor and its own cumulative CPU and wait seconds, so it can convert its own measurements.
-* A hard real-time cap of ``HARD_CAP_MULTIPLIER`` x budget from the first request ends hung runs.
+* The budget is enforced during a turn as well: the engine polls the meter and stops an agent
+  that has spent its budget.
+* A hard real-time cap from the first request ends every run (``OBSERVER_WALL_CAP_SECONDS``;
+  default 2 x budget in ``cpu`` mode, 3 x budget in ``charged_wait`` mode).
+* The agent sees the remaining budget (``remaining_seconds``, in charged seconds), the speed
+  factor, its own cumulative CPU and wait seconds and the real time left before the hard cap.
 
 The engine itself stays deterministic: timing only decides when the run ends, never how an
 action is simulated or scored. Pure standard library.
@@ -47,8 +55,25 @@ SAMPLE_REPEATS = 3
 SAMPLE_INTERVAL_SECONDS = 60.0
 WINDOW = 5
 FACTOR_BOUNDS = (0.1, 10.0)
-HARD_CAP_MULTIPLIER = 3.0
+CLOCK_MODES = ("cpu", "charged_wait")
+DEFAULT_CLOCK_MODE = "cpu"
+HARD_CAP_MULTIPLIER = {"cpu": 2.0, "charged_wait": 3.0}
+POLL_SECONDS = 0.2
 CLOCK_SCHEMA = "fair-clock-v1"
+
+
+def configured() -> tuple[str, float | None]:
+    """Organizer configuration from the environment (repository variables of the runner
+    workflows): ``OBSERVER_CLOCK_MODE`` and ``OBSERVER_WALL_CAP_SECONDS``. Invalid values fall
+    back to the defaults."""
+    mode = os.environ.get("OBSERVER_CLOCK_MODE", "").strip() or DEFAULT_CLOCK_MODE
+    if mode not in CLOCK_MODES:
+        mode = DEFAULT_CLOCK_MODE
+    try:
+        cap = float(os.environ.get("OBSERVER_WALL_CAP_SECONDS", "") or "nan")
+    except ValueError:
+        cap = float("nan")
+    return mode, (cap if 60 <= cap <= 6 * 3600 else None)
 
 
 def workload() -> float:
@@ -113,14 +138,17 @@ class FairClock:
     def __init__(self, budget: float, *, gauge: SpeedGauge | None = None, clock: Callable[[], float] = time.monotonic,
                  cpu: Callable[[], float | None] | None = None, pause: Callable[[], None] | None = None,
                  resume: Callable[[], None] | None = None, interval: float = SAMPLE_INTERVAL_SECONDS,
-                 hard_cap_multiplier: float = HARD_CAP_MULTIPLIER) -> None:
+                 mode: str = DEFAULT_CLOCK_MODE, wall_cap: float | None = None) -> None:
+        if mode not in CLOCK_MODES:
+            raise ValueError(f"unknown clock mode {mode!r}")
         self.budget = float(budget)
+        self.mode = mode
         self.gauge = gauge or SpeedGauge()
         self.clock = clock
         self.cpu, self.pause, self.resume = cpu, pause, resume
         self.interval = interval
-        self.hard_cap = hard_cap_multiplier * self.budget
-        self.charged = 0.0        # charged seconds
+        self.hard_cap = float(wall_cap) if wall_cap else HARD_CAP_MULTIPLIER[mode] * self.budget
+        self.charged = 0.0        # charged seconds of finished turns
         self.window_seconds = 0.0  # real seconds inside turns
         self.cpu_seconds = 0.0     # agent CPU seconds inside turns (at most the window)
         self.started: float | None = None
@@ -168,6 +196,20 @@ class FairClock:
             self.meter = "cpu"
         return value
 
+    def _measure(self, now: float) -> tuple[float, float, float]:
+        """(window, cpu, charge) of the open turn up to ``now``."""
+        start = self._turn or (now, None)
+        window = max(0.0, now - start[0])
+        cpu_now = self._cpu()
+        if cpu_now is None or start[1] is None:
+            cpu = window
+        else:
+            cpu = min(window, max(0.0, cpu_now - start[1]))
+        charge = cpu / self.factor
+        if self.mode == "charged_wait":
+            charge += window - cpu
+        return window, cpu, charge
+
     def begin_turn(self) -> None:
         """Just before a decision_request is sent (between turns: resample the speed if due)."""
         now = self.clock()
@@ -178,17 +220,15 @@ class FairClock:
             self._resample()
         self._turn = (self.clock(), self._cpu())
 
+    def over_budget(self) -> bool:
+        """During a turn (polled by the engine): has the open turn used up the budget?"""
+        if self._turn is None:
+            return self.expired
+        return self.charged + self._measure(self.clock())[2] >= self.budget or self.wall_left() <= 0.0
+
     def end_turn(self) -> float:
         """Right after the response (or the end of the turn); returns the charge in seconds."""
-        now = self.clock()
-        start = self._turn or (now, None)
-        window = max(0.0, now - start[0])
-        cpu_now = self._cpu()
-        if cpu_now is None or start[1] is None:
-            cpu = window
-        else:
-            cpu = min(window, max(0.0, cpu_now - start[1]))
-        charge = cpu / self.factor + (window - cpu)
+        window, cpu, charge = self._measure(self.clock())
         self.window_seconds += window
         self.cpu_seconds += cpu
         self.charged += charge
@@ -212,11 +252,9 @@ class FairClock:
         return self.hard_cap - (self.clock() - self.started)
 
     def turn_deadline(self) -> float:
-        """Latest moment (same clock) a response to the current request can still be accepted:
-        all remaining budget spent waiting (factor >= 1) or computing (factor < 1). A response
-        that arrives after the budget is spent is ignored."""
-        now = self.clock()
-        return now + min(self.remaining * max(1.0, self.factor), max(0.0, self.wall_left()))
+        """Latest moment (same clock) of the current turn: the hard cap. The budget itself is
+        enforced by polling ``over_budget`` during the turn."""
+        return self.clock() + max(0.0, self.wall_left())
 
     def snapshot(self) -> dict:
         return {
@@ -225,12 +263,15 @@ class FairClock:
             "speed_factor": round(self.factor, 4),
             "cpu_seconds": round(self.cpu_seconds, 3),
             "wait_seconds": round(self.window_seconds - self.cpu_seconds, 3),
+            "wall_remaining_seconds": round(max(0.0, self.wall_left()), 3),
+            "clock_mode": self.mode,
         }
 
     def summary(self) -> dict:
         wall = 0.0 if self.started is None else self.clock() - self.started
         return {
             "schema_version": CLOCK_SCHEMA,
+            "mode": self.mode,
             "budget_seconds": self.budget,
             "charged_seconds": round(min(self.charged, self.budget), 3),
             "speed_factor": round(self.factor, 4),
@@ -308,6 +349,9 @@ class DockerAgent:
     def resume(self) -> None:
         self._docker("unpause", self.name)
 
+    def stop(self) -> None:
+        self._docker("kill", self.name)
+
     def cpu(self) -> float | None:
         if self._reader is None and not self._tried:
             deadline = time.monotonic() + 10
@@ -353,6 +397,13 @@ class ProcessAgent:
     def resume(self) -> None:
         if hasattr(signal, "SIGCONT"):
             self._signal(signal.SIGCONT)
+
+    def stop(self) -> None:
+        process = self.process
+        if hasattr(signal, "SIGKILL"):
+            self._signal(signal.SIGKILL)
+        elif process is not None and process.poll() is None:
+            process.kill()
 
     def cpu(self) -> float | None:
         if self.process is None:
