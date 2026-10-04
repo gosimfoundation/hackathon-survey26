@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import base64
 import getpass
+import http.client
 import io
 import json
 import os
@@ -262,8 +263,8 @@ class Api:
                 never_sent = isinstance(error.reason, (ConnectionRefusedError, socket.gaierror))
                 if attempt >= self.retries or (write and not never_sent):
                     raise CliError("network_error", str(error.reason))
-            except (OSError, TimeoutError) as error:
-                # Timed out or reset after sending: a write may have been applied, so it is not repeated.
+            except (OSError, TimeoutError, http.client.HTTPException) as error:
+                # Timed out, reset or cut short after sending: a write may have been applied, so it is not repeated.
                 if attempt >= self.retries or write:
                     raise CliError("network_error", str(error))
             time.sleep(min(2 ** attempt, 8))
@@ -281,7 +282,7 @@ def http_get(url: str, timeout: float = 120.0, retries: int = 3) -> bytes:
             with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "survey26-cli/" + __version__}),
                                         timeout=timeout) as response:
                 return response.read()
-        except (urllib.error.URLError, OSError, TimeoutError) as error:
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as error:
             if attempt == retries:
                 raise CliError("download_failed", str(getattr(error, "reason", error)))
             time.sleep(attempt * 2)
@@ -299,7 +300,7 @@ def http_put(url: str, data: bytes, headers: dict, timeout: float = 600.0) -> No
         if error.code in (400, 409) and ("Duplicate" in text or "already exists" in text):
             return
         raise CliError("upload_failed", text[:200])
-    except (urllib.error.URLError, OSError, TimeoutError) as error:
+    except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as error:
         raise CliError("upload_failed", str(getattr(error, "reason", error)))
 
 
