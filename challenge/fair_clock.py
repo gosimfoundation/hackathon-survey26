@@ -37,9 +37,10 @@ import sys
 import time
 from typing import Callable
 
-# Median time of one ``workload()`` on the GitHub-hosted evaluation runners (ubuntu-24.04,
-# Python 3.12), measured on 2026-10-04: see docs/fair-clock.md.
-REFERENCE_UNIT_SECONDS = 0.2
+# Median time of one ``workload()`` on GitHub-hosted evaluation runners (ubuntu-24.04, Python
+# 3.12), measured 2026-10-04 on 32 runners (2- and 4-vCPU): 0.253 s, range 0.12-0.30 s. The
+# reference machine is that median runner. See docs/fair-clock.md.
+REFERENCE_UNIT_SECONDS = 0.25
 START_REPEATS = 5
 SAMPLE_REPEATS = 3
 SAMPLE_INTERVAL_SECONDS = 60.0
@@ -163,8 +164,9 @@ class FairClock:
         except Exception:  # noqa: BLE001 - a meter that fails is treated as unavailable
             value = None
         if value is None:
-            self.cpu = None
-            self.meter = "none"
+            self.cpu = None  # gone (for example the agent exited): later turns count as computing
+        else:
+            self.meter = "cpu"
         return value
 
     def _busy(self, start: tuple[float, float | None], wall: float, cpu_now: float | None, *, default: float) -> float:
@@ -175,8 +177,6 @@ class FairClock:
     def agent_started(self) -> None:
         """When the agent's processes start (initialize is sent): their CPU counters start at
         zero, so computation before the first request (reading initialize) is charged too."""
-        if self.cpu is not None:
-            self.meter = "cpu"
         self._mark = (self.clock(), 0.0 if self.cpu is not None else None)
 
     def begin_turn(self) -> None:
@@ -185,8 +185,6 @@ class FairClock:
         if self.started is None:
             self.started = now
             self.next_sample = now + self.interval
-            if self.cpu is not None:
-                self.meter = "cpu"
         cpu_now = self._cpu()
         if self._mark is not None:
             wall = now - self._mark[0]
@@ -259,6 +257,7 @@ class FairClock:
             "background_seconds": round(self.background_seconds, 3),
             "run_wall_seconds": round(wall, 3),
             "hard_cap_seconds": self.hard_cap,
+            "hard_cap_reached": self.started is not None and wall >= self.hard_cap,
             "cpu_meter": self.meter,
         }
 
