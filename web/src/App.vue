@@ -11,6 +11,7 @@ import ScrollProgress from './components/layout/ScrollProgress.vue'
 import BrowserNotice from './components/layout/BrowserNotice.vue'
 import MidAutumnEgg from './components/layout/MidAutumnEgg.vue'
 import UidTag from './components/layout/UidTag.vue'
+import FriendsFab from './components/layout/FriendsFab.vue'
 import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
 import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
 import QuotaResetDialog from './components/layout/QuotaResetDialog.vue'
@@ -44,6 +45,7 @@ useDeepLink()
   <FlashContainer />
   <MidAutumnEgg />
   <UidTag />
+  <FriendsFab />
   <PinnedAnnouncementDialog />
   <KimiPlanDialog />
   <QuotaResetDialog />
