@@ -13,6 +13,8 @@ export interface Me {
   astro_level: number; ai_level: number; city: string | null; contact: string | null
   heard_from: string | null; blurb: string | null; show_on_wall: boolean; seeking: string; seeking_count: number
   avatar_url: string
+  /** Permanent 9-digit UID (100000001 = first registered); only ever the caller's own. */
+  uid?: number | null
 }
 
 const state = reactive({
