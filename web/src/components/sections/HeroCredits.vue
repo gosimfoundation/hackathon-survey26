@@ -28,23 +28,29 @@ const { items, logo, wordmark, site } = useOrganizers()
 
 <style scoped>
 .hero-credits {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 2rem;
-  font-size: 1.05rem; line-height: 1.4; color: rgba(226,234,255,.9);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2.75rem;
+  font-size: 1.35rem; line-height: 1.3; color: rgba(226,234,255,.92);
 }
 .hero-credit {
-  display: inline-flex; align-items: center; gap: .6rem; min-width: 0;
+  display: inline-flex; align-items: center; gap: .8rem; min-width: 0;
   color: inherit; text-decoration: none; transition: opacity .2s ease;
 }
 a.hero-credit:hover { opacity: .8; }
-.hero-credit:focus-visible { outline: 1px solid #78a6ff; outline-offset: 4px; }
+.hero-credit:focus-visible { outline: 1px solid #78a6ff; outline-offset: 6px; }
 .hero-credit-role {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .74rem;
-  letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.6);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .95rem;
+  letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.66);
 }
-.hero-credit b { font-weight: 650; font-size: 1.15rem; color: #f5f7ff; letter-spacing: .01em; }
-.hero-credit-logo { height: 28px; width: 28px; }
-.hero-credit-logo.wordmark { height: 24px; width: auto; }
-.hero-credit-committee b { color: #f5f7ff; }
-.hero-credit-committee span { color: #78a6ff; font-size: 1.1rem; }
+.hero-credit b { font-weight: 700; font-size: 1.75rem; color: #f5f7ff; letter-spacing: .01em; }
+.hero-credit-logo { height: 44px; width: 44px; border-radius: 6px; }
+.hero-credit-logo.wordmark { height: 38px; width: auto; border-radius: 0; }
+.hero-credit-committee span { color: #78a6ff; font-size: 1.6rem; }
 .hero-credit-committee:hover span { color: #f7f9ff; }
+@media (max-width: 640px) {
+  .hero-credits { gap: .75rem 1.5rem; font-size: 1.1rem; }
+  .hero-credit-role { font-size: .78rem; }
+  .hero-credit b { font-size: 1.35rem; }
+  .hero-credit-logo { height: 34px; width: 34px; }
+  .hero-credit-logo.wordmark { height: 28px; }
+}
 </style>
