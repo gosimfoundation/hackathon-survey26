@@ -7,6 +7,8 @@ export interface RunScheduler {
   masterKey: string;
   apiBase: string;
   ensureRepository: (user: string) => Promise<unknown>;
+  /** Runs per pass (observer_dispatch_limits.runs; the database caps it at 10). */
+  limit?: number;
 }
 
 export function randomCapability() {
@@ -49,7 +51,7 @@ export async function scheduleRuns(deps: RunScheduler) {
   const installations = await deps.rpc("observer_runner_configuration", {});
   if (!installations.length) return [];
   const enabled = new Set(installations.map((i: { organization: string }) => i.organization));
-  const runs = await deps.rpc("observer_pending_runs", { p_limit: 5 });
+  const runs = await deps.rpc("observer_pending_runs", { p_limit: deps.limit ?? 5 });
   // Organizer switch, read once per pass and only when a colocated run needs it:
   // model-proxy-only egress for colocated containers. Team egress is decided per
   // run by observer_run_team_egress (global switch or pilot team).
@@ -152,10 +154,10 @@ export async function scheduleRuns(deps: RunScheduler) {
  * summary, a score job on a fresh runner (no participant code) recomputes the
  * score from the committed trace. The database adopts the recomputed score.
  */
-export async function scheduleScores(deps: Pick<RunScheduler, "rpc" | "masterKey">) {
+export async function scheduleScores(deps: Pick<RunScheduler, "rpc" | "masterKey" | "limit">) {
   const installations = await deps.rpc("observer_runner_configuration", {});
   if (!installations.length) return [];
-  const runs = await deps.rpc("observer_pending_score_runs", { p_limit: 5 });
+  const runs = await deps.rpc("observer_pending_score_runs", { p_limit: deps.limit ?? 5 });
   const outcomes = [];
   for (const run of runs) {
     try {

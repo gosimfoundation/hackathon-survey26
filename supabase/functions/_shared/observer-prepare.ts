@@ -9,6 +9,7 @@ export async function schedulePreparations(deps: {
   app: Pick<GitHubApp, "privateParticipantRepository" | "forkPublicSource">;
   masterKey: string;
   apiBase: string;
+  limit?: number;
 }) {
   const base = new URL(deps.apiBase);
   if (base.protocol !== "https:" || base.username || base.password || base.port || base.hash || base.search) {
@@ -17,7 +18,7 @@ export async function schedulePreparations(deps: {
   const configs = await deps.rpc("observer_runner_configuration", {});
   if (!configs.length) return [];
   const enabled = new Set(configs.map((c: { organization: string }) => c.organization));
-  const revisions = await deps.rpc("observer_pending_preparations", { p_limit: 3 });
+  const revisions = await deps.rpc("observer_pending_preparations", { p_limit: deps.limit ?? 3 });
   const outcomes = [];
   for (const revision of revisions) {
     try {
