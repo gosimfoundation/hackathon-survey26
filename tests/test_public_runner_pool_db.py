@@ -27,6 +27,10 @@ def pool(setup):
     query(uri, "delete from private.observer_public_pool")
     query(uri, """insert into private.observer_public_pool(organization,repository_id,organization_id,approved_sha)
         values(%s,'4242',%s,%s)""", (POOL, "112", POOL_SHA))
+    query(uri, "delete from private.observer_public_targets")
+    query(uri, "delete from private.observer_public_events")
+    query(uri, """insert into private.observer_public_targets(organization,repository_id,organization_id,approved_sha,enabled)
+        values(%s,'4242',%s,%s,true)""", (POOL, "112", POOL_SHA))
     query(uri, "update public.observer_phase_settings set colocated=true where phase_id=%s", (s["phase"],))
     query(uri, "update public.phases set slug=%s where id=%s", ("phase-" + s["phase"].hex, s["phase"]))
     s["slug"] = "phase-" + s["phase"].hex
@@ -278,3 +282,69 @@ def test_finished_public_jobs_are_listed_once_for_sealed_object_cleanup(pool):
     assert str(job) in rpc(uri, "observer_public_sealed_pending", 100)
     rpc(uri, "observer_public_sealed_cleaned", job)
     assert str(job) not in rpc(uri, "observer_public_sealed_pending", 100)
+
+
+def add_target(s, org, n, **values):
+    query(s["uri"], """insert into private.observer_installations
+        (organization,organization_id,installation_id,repository_id,approved_sha,enabled)
+        values(%s,%s,%s,%s,%s,true) on conflict(organization) do update set enabled=true""",
+          (org, str(100 + n), 200 + n, str(300 + n), "a" * 40))
+    return rpc(s["uri"], "observer_set_public_target", org, values.get("enabled", True), values.get("max_active", 15),
+               POOL_SHA, str(5000 + n), str(600 + n))
+
+
+def test_jobs_spread_over_healthy_public_repositories_with_cooldown_and_kill_switch(pool):
+    s = pool
+    uri = s["uri"]
+    other = "AGENTIC-OBSERVER26-runner-7"
+    query(uri, "update public.observer_phase_settings set daily_batches=100 where phase_id=%s", (s["phase"],))
+    query(uri, "update public.phases set daily_limit=100 where id=%s", (s["phase"],))
+    add_target(s, other, 7)
+    query(uri, "update private.observer_public_targets set max_active=1")
+    set_pool(s, mode="drill", max_active=20, drill_users=[str(s["user"])])
+    rpc(uri, "observer_set_public_pool_phase", s["slug"], True)
+    first, _, _ = project_job(s)
+    second, _, _ = project_job(s)
+    third, _, _ = project_job(s)
+    orgs = {rpc(uri, "observer_public_job", job)["organization"] for job in (first, second)}
+    assert orgs == {POOL, other}  # one slot each: both repositories are used
+    with pytest.raises(psycopg.Error, match="public_pool_unavailable"):
+        rpc(uri, "observer_public_job", third)  # every slot taken
+    # A claim must come from the repository the job was sent to.
+    status = {t["organization"]: t for t in rpc(uri, "observer_public_targets_status")}
+    assert status[POOL]["active"] == 1 and status[other]["active"] == 1
+    # Three failed starts within 15 minutes cool a repository down; its load goes elsewhere.
+    query(uri, "update private.observer_public_targets set max_active=5")
+    for _ in range(3):
+        query(uri, "select private.observer_public_note(%s,null,'returned','public_run_not_started')", (other,))
+    status = {t["organization"]: t for t in rpc(uri, "observer_public_targets_status")}
+    assert status[other]["healthy"] is False and status[POOL]["healthy"] is True
+    for _ in range(3):
+        assert rpc(uri, "observer_public_job", project_job(s)[0])["organization"] == POOL
+    # Kill switch per repository; queued jobs there go home on the next reconcile.
+    rpc(uri, "observer_set_public_target", other, True, None, None, None, None, True)  # clear cooldown
+    rpc(uri, "observer_set_public_target", POOL, False)
+    job = project_job(s)[0]
+    assert rpc(uri, "observer_public_job", job)["organization"] == other
+    queued = query(uri, "select id from private.observer_jobs where runner='public-hosted' and organization=%s and status='queued'", (POOL,))
+    assert queued and rpc(uri, "observer_public_pool_reconcile") >= len(queued)
+    assert query(uri, "select count(*) from private.observer_jobs where runner='public-hosted' and organization=%s and status='queued'", (POOL,)) == [(0,)]
+
+
+def test_primary_mode_prefers_public_repositories_for_the_rollout_share(pool):
+    s = pool
+    uri = s["uri"]
+    set_pool(s, mode="primary", max_active=20, rollout_percent=0)
+    rpc(uri, "observer_set_public_pool_phase", s["slug"], True)
+    job, _, _ = project_job(s)
+    assert pending(s, job)[0]["public"] is False  # 0 %: overflow rules (the home organization has minutes)
+    set_pool(s, rollout_percent=100)
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is True
+    team = query(uri, "select team_id from public.profiles where id=%s", (s["user"],))[0][0]
+    share = query(uri, "select abs(hashtextextended(%s::text,0)) %% 100", (str(team),))[0][0]
+    set_pool(s, rollout_percent=share)  # this team is just outside the share
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is False
+    set_pool(s, mode="off")
+    assert rpc(uri, "observer_public_pool")["mode"] == "off"

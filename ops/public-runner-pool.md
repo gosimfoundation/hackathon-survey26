@@ -148,6 +148,67 @@ required actions". No artifacts, annotations or caches. Afterwards
 runner-12's own jobs) before the final for a larger share;
 `scripts/run-hidden-final.py` shows the share in its preview.
 
+## One public repository per runner organization (2026-10-04)
+
+Since migration `20261004061000` every runner organization has its own public
+repository `AGENTIC-OBSERVER26-runner-N/observer-public` (13 in total, identical
+runner-only content: the engine workflow and the trusted runtime, the same
+approved runtime tag, the same repository settings and variable). Each one is a
+row of `private.observer_public_targets` with its own switch, `max_active`
+(default 15; GitHub Free runs at most 20 jobs at once per organization, shared
+with that organization's private repository) and health.
+
+How a job is placed:
+
+1. `observer_pending_jobs` asks `observer_public_candidate` whether the job may
+   use a public repository (phase switched on, sealed rules, global cap
+   `max_active` and `monthly_minute_cap`, mode rules below).
+2. `observer_public_job` picks the least busy healthy public repository with a
+   free slot (busy = active jobs / max_active, ties at random) and the
+   dispatcher sends the job there with only its id.
+3. A public repository that does not start or dispatch a job (not claimed within
+   ten minutes, queued five minutes, GitHub error) gives the job back to its own
+   organization for good, and three such returns within 15 minutes put the
+   repository in a 15-minute cooldown: no new jobs, the load goes to the others.
+   Private organizations keep their placement and dispatch fallback as before.
+
+Modes: `off`, `drill`, `overflow` as before, plus `primary`: public repositories
+are the first choice for the teams within `rollout_percent` (a stable hash of the
+team id; 100 = every team); other teams keep the overflow rules.
+
+```sql
+select public.observer_public_targets_status();                      -- load and health per repository
+select public.observer_set_public_target('AGENTIC-OBSERVER26-runner-7', p_enabled=>false);  -- one repository off
+select public.observer_set_public_target('AGENTIC-OBSERVER26-runner-7', p_clear_cooldown=>true);
+select public.observer_set_public_pool(p_mode=>'primary', p_rollout_percent=>10);   -- staged rollout
+select public.observer_set_public_pool(p_mode=>'overflow', p_rollout_percent=>0);   -- rollback to overflow only
+select public.observer_set_public_pool(p_mode=>'off');                              -- everything back to private
+select organization, month_minutes, monthly_minute_limit, active_jobs, over_limit
+  from public.observer_organizations_by_load();                       -- private organizations
+```
+
+Runtime updates now go to all 13 repositories: push the same commit and tag to
+each (`git push <repo> main refs/tags/observer-runtime-<sha>`; identical history
+gives identical commit ids) and then
+`update private.observer_public_targets set approved_sha='<sha>';`.
+
+**Widened drill 2026-10-04 (team variables, every repository): passed.** A hidden
+test team saved a secret and a plain team variable (random canaries) and an
+adversarial test project that printed both, workflow commands (`::warning::`,
+`::error::`, ...) and the first card message to its own output, tried to write the
+runner's step summary / env / output files and runner directories, listed
+processes and probed the cloud metadata service, the Docker host, the internet,
+GitHub and Supabase. 8 runs on runner-12 (4 practice, 4 sealed rehearsal), then
+one sealed rehearsal run on each of the 12 new repositories: all 20 scored and
+committed to the team's private repository. 180 public log files checked against
+about 12,700 strings (both canaries, all card-bundle strings, run ids, scores,
+digests, result commits, team / user / revision ids, `sig=`, `token=`, `eyJ`,
+`sk-`, `API_KEY`, `RUN_TOKEN`, ...): no match except GitHub's own wording. No
+artifacts, annotations or caches in any repository. The team's private log shows
+the plain canary and the secret one redacted; inside the container there were no
+`GITHUB_*` variables, no runner files, only the project's own process, and none of
+the probed addresses was reachable. Public runs started 13–25 s after dispatch.
+
 ## Updating the runtime
 
 1. `python scripts/build-observer-control.py --public <new dir>` from the
