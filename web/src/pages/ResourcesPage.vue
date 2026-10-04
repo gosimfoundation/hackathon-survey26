@@ -107,7 +107,7 @@ onMounted(async () => {
         <p class="examples-bundle-cta">
           <a class="btn primary" :href="EXAMPLES_BUNDLE_URL" data-testid="examples-bundle-download">{{ t('resources.examples_bundle_download') }} ↓</a>
         </p>
-        <div class="cards cards-3 reveal-stagger">
+        <div class="cards cards-2 examples-grid reveal-stagger">
           <article v-for="ex in exampleProjects" :key="ex.lang" v-tilt class="card card-lift" :data-testid="`example-card-${ex.lang}`">
             <span class="label accent">{{ ex.name }}</span>
             <h3 class="mt-3">{{ ex.name }}</h3>
@@ -166,6 +166,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* An odd last example card spans the full row, so no empty grey cell shows. */
+@media (min-width: 768px) { .examples-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
 .flow-head { display: flex; align-items: flex-start; gap: 1.1rem; margin-bottom: 1.4rem; }
 .flow-head h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; color: #f5f7ff; }
 .flow-head p { margin-top: .25rem; font-size: .85rem; color: #aeb6c8; }
