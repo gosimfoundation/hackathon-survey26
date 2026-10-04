@@ -272,3 +272,62 @@ def test_a_team_runs_up_to_four_evaluations_side_by_side(online):
     create(a)
     # The organizers' sealed final evaluations never count toward the limit.
     assert query(uri, 'select private.observer_active_evaluations(%s)', (s['team'],)) == [(5,)]
+
+
+def test_a_waiting_self_check_evaluation_never_expires_and_a_platform_failure_is_replaced(online):
+    """Queue expiry counts from when a run can start (20261005010000); an expired or platform-failed
+    evaluation of a self-check set is replaced automatically, so the set completes."""
+    s = online; uri = s['uri']
+    query(uri, 'update public.observer_phase_settings set daily_batches=10 where phase_id=%s', (s['phase'],))
+    query(uri, "insert into private.observer_scenario_bundles values(%s,'public/test.zip',%s)", (s['scenario'], 'f'*64))
+    rev = revision(s); materialize(s, rev)
+    group = self_check(s, rev)
+    first, second, third = [uuid.UUID(b) for b in group['batch_ids']]
+    used = lambda: next(q for q in rpc(uri, 'observer_evaluation_quota', role='authenticated', user=s['user'])
+                        if q['phase_id'] == str(s['phase']))['used']
+    reconcile = lambda: rpc(uri, 'observer_reconcile_sessions')
+    status = lambda b: query(uri, 'select status from public.observer_batches where id=%s', (b,))[0][0]
+    # Created 50 minutes ago; the first finished long ago, the second is still running.
+    query(uri, "update public.observer_runs set created_at=now()-interval '50 minutes' where batch_id=any(%s)", ([first, second, third],))
+    query(uri, "update public.observer_runs set status='scored',score=10,finished_at=now()-interval '45 minutes' where batch_id=%s", (first,))
+    query(uri, 'select private.observer_finalize_batch(%s)', (first,))
+    query(uri, "update public.observer_batches set finished_at=now()-interval '45 minutes' where id=%s", (first,))
+    query(uri, "update public.observer_runs set status='running' where batch_id=%s", (second,))
+    query(uri, "update public.observer_batches set status='running' where id=%s", (second,))
+    reconcile()
+    assert status(third) == 'queued'
+    # The second finished 10 minutes ago: the third could start only since then.
+    query(uri, "update public.observer_runs set status='scored',score=20,finished_at=now()-interval '10 minutes' where batch_id=%s", (second,))
+    query(uri, 'select private.observer_finalize_batch(%s)', (second,))
+    query(uri, "update public.observer_batches set finished_at=now()-interval '10 minutes' where id=%s", (second,))
+    reconcile()
+    assert status(third) == 'queued'
+    # A run the dispatcher is retrying (it has a lease) follows the lease budget, not this timer.
+    query(uri, "update public.observer_batches set finished_at=now()-interval '40 minutes' where id=%s", (second,))
+    run = query(uri, 'select id from public.observer_runs where batch_id=%s', (third,))[0][0]
+    query(uri, "insert into private.observer_run_leases(run_id,lease,expires_at) values(%s,gen_random_uuid(),now()-interval '1 minute')", (run,))
+    reconcile()
+    assert status(third) == 'queued'
+    # Never taken by the dispatcher 30 minutes after it could start: expired (platform), refunded and replaced.
+    query(uri, 'delete from private.observer_run_leases where run_id=%s', (run,))
+    reconcile()
+    assert status(third) == 'failed'
+    rows = query(uri, 'select id,status,revision_id,repeat_runs from public.observer_batches where repeat_group=%s order by created_at,id',
+                 (group['repeat_group'],))
+    assert len(rows) == 4 and rows[3][1:] == ('queued', rev, 3)
+    assert used() == 3                         # the expired one is refunded, its replacement counts
+    replacement = rows[3][0]
+    assert pending_batches(s, (s['team'],)) == {replacement}
+    # At most two replacements per set.
+    for _ in range(3):
+        last = query(uri, 'select id from public.observer_batches where repeat_group=%s order by created_at desc,id desc limit 1',
+                     (group['repeat_group'],))[0][0]
+        query(uri, 'delete from private.observer_run_leases where run_id in (select id from public.observer_runs where batch_id=%s)', (last,))
+        query(uri, "update public.observer_runs set status='failed',error='evaluation_expired',finished_at=now() where batch_id=%s", (last,))
+        query(uri, 'select private.observer_finalize_batch(%s)', (last,))
+    assert query(uri, 'select count(*) from public.observer_batches where repeat_group=%s', (group['repeat_group'],)) == [(5,)]
+    # An ordinary queued run that could start 31 minutes ago and was never taken still expires.
+    other = query(uri, 'select public.observer_create_batch(%s,%s,true)', (s['phase'], rev), role='authenticated', user=s['user'])[0][0]
+    query(uri, "update public.observer_runs set created_at=now()-interval '31 minutes' where batch_id=%s", (other,))
+    reconcile()
+    assert status(other) == 'failed'

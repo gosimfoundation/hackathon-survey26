@@ -413,8 +413,9 @@ function openFailure() {
   void nextTick(() => document.getElementById('batch-' + f.batch.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 }
 // The position of an evaluation in its self-check (1 = the first one started).
+// A platform-failed evaluation (refunded) is replaced automatically at the end of its set and gets no number.
 function repeatIndex(b: { id: string; repeat_group?: string | null }) {
-  const own = (data.value?.batches ?? []).filter(x => x.repeat_group === b.repeat_group).sort((x, y) => x.created_at.localeCompare(y.created_at) || x.id.localeCompare(y.id))
+  const own = (data.value?.batches ?? []).filter(x => x.repeat_group === b.repeat_group && !(x.status === 'failed' && x.quota_refunded)).sort((x, y) => x.created_at.localeCompare(y.created_at) || x.id.localeCompare(y.id))
   return own.findIndex(x => x.id === b.id) + 1
 }
 // The summary goes above the newest evaluation of its self-check (the list is newest first).
@@ -858,7 +859,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               <span class="cw-batch-pills"><span class="pill" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
                 <span v-if="failure?.batch.id === b.id" class="pill failed" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
                 <span v-if="b.quota_refunded" class="pill info" data-testid="batch-refunded">{{ words.refunded }}</span>
-                <span v-if="b.repeat_group" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
+                <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
               <span class="cw-score" :class="{ best: best && b.score === best.score }">{{ b.score != null ? b.score.toFixed(2) : '—' }}</span>
             </button>
             <div v-if="openBatches.has(b.id)" class="cw-batch-body">
@@ -1132,7 +1133,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
             <span v-if="failure?.batch.id === b.id" class="pill failed ml-2" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
-            <span v-if="b.repeat_group" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
+            <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
