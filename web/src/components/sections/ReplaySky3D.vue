@@ -14,7 +14,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { replayActions, replaySite, replayTargets } from '../../composables/useReplayClock'
-import { lightsTargets } from '../../lib/replayStory'
+import { LAND_PHASE, SWING_END, lightsTargets } from '../../lib/replayStory'
 import { applyMatrix, daylight, equatorialVec, fieldOffset, horizonMatrix, moonIllumination, moonRaDec, separationDeg, sunRaDec, type Vec3 } from '../../lib/sky3d'
 
 export interface Sky3DFrame {
@@ -68,6 +68,9 @@ defineExpose({ draw })
 
 const R = 10
 const FIELD_DEG = 1.9
+const smooth = (x: number) => { const u = Math.max(0, Math.min(1, x)); return u * u * (3 - 2 * u) }
+/** How far the fibres have reached out at a point in the beat, 0…1 (they land at LAND_PHASE). */
+const reachAt = (phase: number) => Math.max(0, Math.min(1, (phase - SWING_END) / (LAND_PHASE - SWING_END)))
 
 function afterLcp(): Promise<void> {
   return new Promise(resolve => {
@@ -225,7 +228,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
         c += vec3(1.0, 0.48, 0.18) * twilight * pow(toSun, 3.0) * (1.0 - h) * 0.9;
         c += vec3(1.0, 0.95, 0.8) * uDay * pow(toSun, 24.0) * 0.6;
         float rim = 1.0 - abs(dot(vView, vN));
-        float a = mix(0.07, 0.5, uDay) + rim * rim * mix(0.32, 0.2, uDay);
+        float a = mix(0.07, 0.34, uDay) + rim * rim * mix(0.32, 0.2, uDay);
         vec3 cloud = mix(vec3(0.20, 0.22, 0.28), vec3(0.62, 0.66, 0.72), uDay);
         c = mix(c, cloud, uCloud * 0.75);
         a = mix(a, 0.7, uCloud * 0.75);
@@ -311,7 +314,8 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     uniforms: targetUniforms,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    // Normal blending, not additive: a dense field of a few hundred targets used to sum to a white,
+    // noisy smear that read as a rendering fault rather than as stars.
     vertexShader: `
       attribute float aReq; attribute float aDone; attribute float aLive; attribute float aFlash;
       uniform float uDay; uniform float uTime; uniform float uScale; uniform float uMinAlt;
@@ -321,17 +325,21 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
         float s = world.y / ${R.toFixed(1)};
         float above = smoothstep(-0.015, 0.02, s);
         float high = smoothstep(uMinAlt - 0.02, uMinAlt + 0.02, s);
-        vec3 waiting = mix(vec3(0.36, 0.5, 0.86), vec3(1.0, 0.6, 0.2), aReq);
-        vec3 done = mix(vec3(0.72, 0.9, 1.0), vec3(1.0, 0.86, 0.5), aReq);
+        // Seen from outside, the glass dome has a near wall and a far wall; targets on the far wall are seen
+        // through the glass and drawn a little fainter, which is enough to tell the two apart.
+        float far = 1.0 - smoothstep(-0.3, 0.05, dot(normalize(world.xyz), normalize(cameraPosition - world.xyz)));
+        vec3 waiting = mix(vec3(0.42, 0.56, 0.92), vec3(1.0, 0.62, 0.24), aReq);
+        vec3 done = mix(vec3(0.80, 0.92, 1.0), vec3(1.0, 0.88, 0.56), aReq);
         float age = uTime - aFlash;
-        float flash = age >= 0.0 ? exp(-age * 2.2) : 0.0;
+        float flash = age >= 0.0 ? exp(-age * 2.0) : 0.0;
         vec3 c = mix(waiting, done, aDone);
-        c = mix(c, vec3(1.0), clamp(flash + aLive * 0.6, 0.0, 1.0));
-        float a = mix(0.58 + aReq * 0.22, 1.0, aDone);
-        a *= mix(0.32, 1.0, high);
-        a *= mix(1.0, 0.18, uDay);
-        a = max(a, aLive * 0.95) * above;
-        float size = mix(2.1, 2.9, aDone) + aReq * 0.7 + aLive * (2.2 + sin(uTime * 9.0)) + flash * 6.0;
+        c = mix(c, vec3(1.0), clamp(flash * 0.8 + aLive * 0.45, 0.0, 1.0));
+        float a = mix(0.45 + aReq * 0.2, 0.9, aDone);
+        a *= mix(0.35, 1.0, high);
+        a *= mix(1.0, 0.6, far);
+        a *= mix(1.0, 0.2, uDay);
+        a = max(a, max(aLive * 0.95, flash)) * above;
+        float size = mix(1.7, 2.2, aDone) + aReq * 0.5 + aLive * 1.4 + flash * 3.0;
         vec4 mv = viewMatrix * world;
         gl_PointSize = size * uScale * (28.0 / -mv.z);
         gl_Position = projectionMatrix * mv;
@@ -342,8 +350,9 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
       varying vec3 vColor; varying float vAlpha;
       void main() {
         float m = texture2D(uMap, gl_PointCoord).a;
-        if (m < 0.01 || vAlpha < 0.005) discard;
-        gl_FragColor = vec4(vColor * m * vAlpha, 1.0);
+        float a = m * vAlpha;
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(vColor, a);
       }`,
   }))
   const targetsObj = new THREE.Points(new THREE.BufferGeometry(), targetMat)
@@ -487,13 +496,12 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
   clouds.renderOrder = 5
   scene.add(clouds)
 
-  // --- camera: a slow sway around the dome; drag to turn, wheel to zoom once engaged ----------
+  // --- camera: holds still so the only motion on screen is the sky and the telescope; drag to turn,
+  // wheel to zoom once engaged. (An automatic sway used to turn the whole scene as well, which a
+  // first-time visitor could not tell apart from the sky's own rotation.) -----------------------
   const LOOK = new THREE.Vector3(0, R * 0.3, 0)
   const HOME = { theta: -0.55, phi: 1.12 }
   const view = { theta: HOME.theta, phi: HOME.phi, dist: 0, zoom: 1 }
-  let swayBase = HOME.theta
-  let swayClock = 0
-  let interactedAt = -1e9
   let resetAnim: { from: typeof view; at: number } | null = null
   const baseDist = () => (camera.aspect < 0.95 ? 42 : camera.aspect < 1.3 ? 35 : 31)
   const placeCamera = () => {
@@ -515,7 +523,6 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     try { canvas.setPointerCapture(e.pointerId) } catch { /* pointer already gone */ }
     engaged = true
     resetAnim = null
-    interactedAt = performance.now()
   }
   const onMove = (e: PointerEvent) => {
     if (!drag || e.pointerId !== drag.id) return
@@ -523,9 +530,6 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     drag.x = e.clientX; drag.y = e.clientY
     view.theta -= dx * 0.008
     view.phi = Math.max(0.35, Math.min(1.42, view.phi - dy * 0.006))
-    swayBase = view.theta
-    swayClock = 0
-    interactedAt = performance.now()
   }
   const onUp = () => { drag = null }
   const onLeave = () => { drag = null; engaged = false }
@@ -533,7 +537,6 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     if (!engaged) return
     e.preventDefault()
     view.zoom = Math.max(0.5, Math.min(1.6, view.zoom * Math.exp(e.deltaY * 0.0012)))
-    interactedAt = performance.now()
   }
   const onDbl = () => { resetAnim = { from: { ...view }, at: performance.now() } }
   canvas.addEventListener('pointerdown', onDown)
@@ -640,15 +643,19 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
       }
       return
     }
-    const fade = Math.min(1, phase / 0.22)
-    const reach = Math.max(0, Math.min(1, (phase - 0.28) / 0.24))
+    // Fade the field in as the beam sets off and out as the beat closes, so one pointing's field never
+    // cuts straight to the next one's (or to the idle ring) in a single frame.
+    const fade = Math.min(smooth(phase / 0.18), 1 - smooth((phase - 0.9) / 0.1))
+    // The field's stars only dip, never vanish: a blank inset every two seconds read as a flicker.
+    const dim = 0.35 + 0.65 * fade
+    const reach = reachAt(phase)
     const ease = reach * reach * (3 - 2 * reach)
     const scale = r * 0.86
     for (const p of field) {
       const isDone = done[p.i] === 1
       const req = replayTargets[p.i]?.required
       const color = isDone ? (req ? '255,214,128' : '196,226,255') : (req ? '255,150,52' : '110,140,220')
-      g.fillStyle = `rgba(${color},${(isDone ? 0.95 : 0.6) * fade})`
+      g.fillStyle = `rgba(${color},${(isDone ? 0.95 : 0.6) * dim})`
       g.beginPath(); g.arc(c + p.x * scale, c + p.y * scale, (isDone ? 2.6 : 2) * k, 0, Math.PI * 2); g.fill()
     }
     const used = new Set(fibreAssign.map(f => f.base))
@@ -656,7 +663,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     for (let f = 0; f < 16; f += 1) {
       if (used.has(f)) continue
       const b = (f / 16) * Math.PI * 2 - Math.PI
-      g.strokeStyle = `rgba(255,255,255,${0.22 * fade})`
+      g.strokeStyle = `rgba(255,255,255,${0.22 * dim})`
       g.lineWidth = 1.2 * k
       g.beginPath()
       g.moveTo(c + Math.cos(b) * r * 0.95, c + Math.sin(b) * r * 0.95)
@@ -674,8 +681,8 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
       g.fillStyle = `rgba(230,240,255,${fade})`
       g.beginPath(); g.arc(ex, ey, 1.8 * k, 0, Math.PI * 2); g.fill()
       if (reach >= 1 && open) {
-        const pulse = 0.5 + 0.5 * Math.sin(now * 8 + f.base)
-        g.strokeStyle = `rgba(255,255,255,${0.35 + 0.4 * pulse})`
+        const pulse = 0.5 + 0.5 * Math.sin(now * 3 + f.base * 0.4)
+        g.strokeStyle = `rgba(255,255,255,${(0.35 + 0.3 * pulse) * fade})`
         g.lineWidth = 1 * k
         g.beginPath(); g.arc(tx, ty, (4.2 + pulse * 1.4) * k, 0, Math.PI * 2); g.stroke()
       }
@@ -749,7 +756,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     const cloudTarget = f.open ? Math.max(0, Math.min(0.35, (0.84 - f.transp) * 3)) : 1
     cloud += (cloudTarget - cloud) * Math.min(1, dt * 3)
     skyUniforms.uCloud.value = cloud
-    for (const m of cloudMats) m.opacity = cloud * 0.85
+    for (const m of cloudMats) m.opacity = cloud * 0.5
     clouds.rotation.y += dt * 0.05
 
     syncDone(f.settled, now)
@@ -763,8 +770,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
         dirTo.copy(toVec(applyMatrix(M, equatorialVec(a.center.ra, a.center.dec))))
         if (f.from) dirFrom.copy(toVec(applyMatrix(M, equatorialVec(f.from.ra, f.from.dec))))
         else dirFrom.copy(up)
-        const s = Math.max(0, Math.min(1, f.live.phase / 0.3))
-        const e = s * s * (3 - 2 * s)
+        const e = smooth(f.live.phase / SWING_END)
         const angle = dirFrom.angleTo(dirTo)
         if (angle < 1e-4) dir.copy(dirTo)
         else {
@@ -775,7 +781,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
         dir.normalize()
         lastDir.copy(dir)
         beamTarget = f.open ? 1 : 0.35
-        const reach = Math.max(0, Math.min(1, (f.live.phase - 0.28) / 0.24))
+        const reach = reachAt(f.live.phase)
         const liveNow = reach >= 1 ? f.live.index : -1
         if (liveNow !== liveFor && aLive) {
           ;(aLive.array as Float32Array).fill(0)
@@ -789,15 +795,13 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
           const i = indexOf.get(id)
           if (i == null) continue
           const tv = applyMatrix(M, eqVecs[i]!)
-          const ex = MOUNT.x + (tv.x * R * 0.99 - MOUNT.x) * reach
-          const ey = MOUNT.y + (tv.y * R * 0.99 - MOUNT.y) * reach
-          const ez = MOUNT.z + (tv.z * R * 0.99 - MOUNT.z) * reach
-          fibrePos.set([MOUNT.x, MOUNT.y, MOUNT.z, ex, ey, ez], n * 6)
+          // Full length, faded in: a line growing out of the mount read as a half-drawn glitch.
+          fibrePos.set([MOUNT.x, MOUNT.y, MOUNT.z, tv.x * R * 0.99, tv.y * R * 0.99, tv.z * R * 0.99], n * 6)
           n += 1
         }
         for (; n < 16; n += 1) fibrePos.set([0, 0, 0, 0, 0, 0], n * 6)
         fibreGeo.attributes.position!.needsUpdate = true
-        fibreMat.opacity = 0.55 * Math.min(1, reach * 2) * (f.open ? 1 : 0.4)
+        fibreMat.opacity = 0.5 * smooth(reach) * (1 - smooth((f.live.phase - 0.9) / 0.1)) * (f.open ? 1 : 0.4)
         insetMode = 'live'
         insetHits = a.targets.length
       }
@@ -820,24 +824,21 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     coreMat.opacity = 0.75 * beamLevel
     fieldRing.position.copy(tip)
     fieldRing.lookAt(0, 0, 0)
-    const pulse = f.live && f.live.phase > 0.5 ? 0.15 * Math.sin(now * 6) : 0
+    const pulse = f.live && f.live.phase > LAND_PHASE ? 0.15 * Math.sin(now * 6) : 0
     ringMat.opacity = (0.75 + pulse) * beamLevel
     fieldGlow.position.copy(tip)
     fieldGlowMat.opacity = 0.55 * beamLevel
     slitPivot.rotation.y = Math.atan2(lastDir.x, lastDir.z)
     slitMat.color.set(beamLevel > 0.3 ? '#0a1022' : '#c9cfdc')
 
-    // Camera: a gentle sway unless the visitor has taken hold of it in the last few seconds.
+    // Camera: still, except for the eased return after a double-click.
     if (resetAnim) {
       const u = Math.min(1, (performance.now() - resetAnim.at) / 700)
       const e = u * u * (3 - 2 * u)
       view.theta = resetAnim.from.theta + (HOME.theta - resetAnim.from.theta) * e
       view.phi = resetAnim.from.phi + (HOME.phi - resetAnim.from.phi) * e
       view.zoom = resetAnim.from.zoom + (1 - resetAnim.from.zoom) * e
-      if (u >= 1) { resetAnim = null; swayBase = HOME.theta; swayClock = 0 }
-    } else if (!drag && performance.now() - interactedAt > 6000) {
-      swayClock += dt
-      view.theta = swayBase + Math.sin(swayClock * 0.12) * 0.5
+      if (u >= 1) resetAnim = null
     }
     placeCamera()
     targetUniforms.uScale.value = (H / 420) * dpr
@@ -856,13 +857,14 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     place(L.alt, project({ x: Math.sin(az) * Math.cos(minAlt) * R, y: Math.sin(minAlt) * R, z: Math.cos(az) * Math.cos(minAlt) * R }), 0.9)
     place(L.obs, project({ x: 0, y: -0.2, z: 0 }), 0.75)
     const tipPx = project(tip)
+    const age = now - popTime
     place(L.field, beamLevel > 0.5 ? tipPx : null, Math.min(1, beamLevel))
     const popPx = project(popAt)
-    const age = now - popTime
     if (popEl.value) {
       if (age < 1.4 && popPx.ok) {
         popEl.value.style.opacity = String(Math.max(0, 1 - age / 1.4))
-        popEl.value.style.transform = `translate(${popPx.x.toFixed(1)}px, ${(popPx.y - 14 - age * 26).toFixed(1)}px)`
+        // Beside the field, not above it, where the pointing label already sits.
+        popEl.value.style.transform = `translate(${popPx.x.toFixed(1)}px, ${(popPx.y - age * 18).toFixed(1)}px)`
       } else popEl.value.style.opacity = '0'
     }
     // The leader line from the field on the dome to the zoomed inset.
@@ -953,7 +955,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
 .sky3d-labels .is-obs { translate: -50% 40%; color: rgba(214,226,255,.6); font-size: .58rem; }
 .sky3d-labels .is-field { translate: -50% -190%; color: #cfe0ff; font-size: .6rem; }
 .sky3d-pop {
-  position: absolute; left: 0; top: 0; opacity: 0; translate: -50% -100%; pointer-events: none;
+  position: absolute; left: 0; top: 0; opacity: 0; translate: 14px -50%; pointer-events: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 700; font-size: .95rem; color: #ffe08a;
   text-shadow: 0 0 10px rgba(255,200,90,.6), 0 0 2px #000;
 }
@@ -963,7 +965,7 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
   transition: opacity .4s;
 }
 .sky3d-inset canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 50%; box-shadow: 0 0 0 1px rgba(127,168,255,.25), 0 0 24px rgba(49,94,251,.25); }
-.sky3d-inset.is-idle, .sky3d-inset.is-day, .sky3d-inset.is-closed { opacity: .5; }
+.sky3d-inset.is-idle, .sky3d-inset.is-day, .sky3d-inset.is-closed { opacity: .8; }
 .sky3d-inset-title, .sky3d-inset-foot {
   margin: 0; text-align: center; line-height: 1.3;
   font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .58rem; letter-spacing: .05em; color: rgba(214,226,255,.7);

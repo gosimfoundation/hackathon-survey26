@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
-import { replayActions, replayMeta, replayNetPrefix, replayNightMarks, replayNights, replayObserves, replaySite, replaySlots, replayTargets, replayTimeAt, replayTotals, replayHasCursor, replayPulseSec, settledCountAt, slotIndexAt, useReplayClock, SLOT_SECONDS } from '../../composables/useReplayClock'
+import { replayActions, replayMeta, replayNetPrefix, replayNightMarks, replayNights, replayObserves, replaySite, replaySlots, replayTargets, replayTimeAt, replayTotals, replayHasCursor, replayPulseSec, settledCountAt, LOOP_MS, slotIndexAt, useReplayClock, SLOT_SECONDS } from '../../composables/useReplayClock'
 import { drawTargetMap, lstDeg, targetRaBounds, raBoundsFrac, PAD, type LivePointing, type ObservedMark } from '../../lib/skymap'
 import { applyMatrix, equatorialVec, horizonMatrix, sunRaDec, supportsWebGL } from '../../lib/sky3d'
-import { lightsTargets, storyFor } from '../../lib/replayStory'
+import { lightsTargets, shownSettled, storyFor } from '../../lib/replayStory'
 import { OUTCOME_COLORS } from '../../lib/report'
 import { fmtUtc, num } from '../../lib/format'
 import ReplaySky3D from './ReplaySky3D.vue'
@@ -13,6 +13,7 @@ const { t, tf } = useI18n()
 const clock = useReplayClock()
 const root = ref<HTMLDivElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+const stage = ref<HTMLDivElement | null>(null)
 const sky3d = shallowRef<InstanceType<typeof ReplaySky3D> | null>(null)
 /** The 3D sky needs WebGL and motion; without either the flat map carries the replay. */
 const webglOk = ref(true)
@@ -154,16 +155,18 @@ function updateReadout(progress: number, fr: ReturnType<typeof replayTimeAt>, se
 function render(ts = performance.now()) {
   const progress = clock.replayProgress()
   const fr = replayTimeAt(progress)
-  const settled = settledCountAt(fr.nowSec)
+  const action = replayActions[fr.actionIndex]
+  // Read the beat off the exposure's own times: equal to fr.frac when each exposure has its own beat,
+  // and still right when a dense run plays as one long beat.
+  const phase = action ? Math.max(0, Math.min(1, (fr.nowSec - action.startSec) / Math.max(1, action.doneSec - action.startSec))) : 0
+  const live = !fr.gap && action?.a === 'observe' && action.center ? { index: fr.actionIndex, phase } : null
+  // The exposure on screen counts from the moment its fibres land, not from the end of its beat.
+  const settled = shownSettled(settledCountAt(fr.nowSec), live)
+  fadeLoopEdges(progress)
   if (use3D.value) {
     const sec = fr.lapseSec
     const lst = lstDeg(replaySite.lon, sec)
     const slot = slotAt(sec)
-    const action = replayActions[fr.actionIndex]
-    // Read the beat off the exposure's own times: equal to fr.frac when each exposure has its own beat,
-    // and still right when a dense run plays as one long beat.
-    const phase = action ? Math.max(0, Math.min(1, (fr.nowSec - action.startSec) / Math.max(1, action.doneSec - action.startSec))) : 0
-    const live = !fr.gap && action?.a === 'observe' && action.center ? { index: fr.actionIndex, phase } : null
     sky3d.value?.draw({
       t: sec, lst, settled, live,
       from: live ? previousCenter(fr.actionIndex) : null,
@@ -184,9 +187,22 @@ function render(ts = performance.now()) {
   const sunUp = applyMatrix(horizonMatrix(replaySite.lat, lstDeg(replaySite.lon, fr.lapseSec)), equatorialVec(sun.ra, sun.dec)).y > 0
   updateReadout(progress, fr, settled, sunUp)
   trackMeridian(fr.skySec)
-  const current = replayActions[fr.actionIndex]
-  const livePointing: LivePointing | null = current && current.a === 'observe' && current.center ? { ra: current.center.ra, dec: current.center.dec, targets: current.targets } : null
+  const livePointing: LivePointing | null = action && action.a === 'observe' && action.center ? { ra: action.center.ra, dec: action.center.dec, targets: action.targets } : null
   if (canvas.value) drawTargetMap(canvas.value, replayTargets, replaySite, { nowSec: fr.skySec, observed: observedAt(settled), timeFade: fr.skyFade, pulseSeconds: reduced.value ? 0 : Math.max(PULSE, replayPulseSec), livePointing })
+}
+/**
+ * The loop dips to black for a moment where it wraps, so the finished week does not cut straight to an
+ * empty first night (every lit target going dark and the beam jumping in a single frame).
+ */
+const LOOP_FADE_MS = 700
+function fadeLoopEdges(progress: number) {
+  // The picture only: the walkthrough card shares the stage and must never be dimmed.
+  const el = stage.value?.querySelector<HTMLElement>('.sky3d, .sky-canvas')
+  if (!el) return
+  const ms = progress * LOOP_MS
+  const edge = reduced.value ? 1 : Math.min(1, ms / LOOP_FADE_MS, (LOOP_MS - ms) / LOOP_FADE_MS)
+  const value = (0.15 + 0.85 * Math.max(0, edge)).toFixed(2)
+  if (el.style.opacity !== value) el.style.opacity = value
 }
 function loop(ts: number) {
   render(ts)
@@ -264,7 +280,7 @@ onUnmounted(() => {
       {{ t(use3D ? 'hero.console.explainer_3d' : 'hero.console.explainer') }}
       <button type="button" class="sky-tour-link" data-testid="sky-tour-open" @click="startTour">{{ t('hero.console.tour_replay') }}</button>
     </p>
-    <div class="sky-stage">
+    <div ref="stage" class="sky-stage">
       <ReplaySky3D v-if="use3D" ref="sky3d" :highlight="currentStep === 'beam' ? 'fibres' : null" role="img" :aria-label="t('hero.console.aria_3d')" @unavailable="webglOk = false" />
       <canvas v-else ref="canvas" class="sky-canvas" role="img" :aria-label="t('hero.console.aria')"></canvas>
       <!-- Hover label for the flat map's cursor: only for a mouse — a tap sends no "leave" and pinned it open. -->

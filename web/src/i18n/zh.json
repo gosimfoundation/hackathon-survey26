@@ -232,7 +232,7 @@
       "night_tick": "夜{n}",
       "hud_time": "第 {n}/{nights} 夜 · 时间",
       "daytime": "白天 · 不观测",
-      "off_hours": "天黑 · 还没开工",
+      "off_hours": "不在观测时段",
       "legend_waiting": "暗：还没拍",
       "legend_done": "亮：已拍到",
       "legend_beam": "望远镜指向",

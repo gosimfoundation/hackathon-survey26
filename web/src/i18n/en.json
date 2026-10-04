@@ -232,7 +232,7 @@
       "night_tick": "N{n}",
       "hud_time": "Night {n}/{nights} · time",
       "daytime": "Daytime · no observing",
-      "off_hours": "Dark · not observing yet",
+      "off_hours": "Outside observing hours",
       "legend_waiting": "Dim: not yet observed",
       "legend_done": "Bright: observed",
       "legend_beam": "Telescope pointing",
