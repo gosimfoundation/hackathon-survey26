@@ -249,3 +249,31 @@ select runner, status, count(*) from private.observer_jobs
 select id, home_organization, public_run_id, status, error from private.observer_jobs
   where runner = 'public-hosted' order by created_at desc limit 20;
 ```
+
+## Rescore jobs in the public repositories (2026-10-04)
+
+Migration `20261004110000`. Score jobs (the independent rescore; no participant
+code) may run in the public repositories through the second public workflow
+`observer-score.yml`, so rescoring costs no private Actions minutes. Same
+guarantees as engine jobs: dispatch input is the job id only, the claim is bound
+to the dispatched run and sealed, the scenario and the run's result are sealed to
+the job's in-memory key and staged as ciphertext (`sealed/<job>/scenario.zip`,
+`sealed/<job>/trace.zip`, deleted when the job ends), the log is one status line
+and the recomputed score goes back to the job API only. Placement as for engine
+jobs (least busy healthy repository with a free slot, global caps); with no
+healthy public repository, or a public dispatch that fails or does not start,
+the job runs in its private organization as before. Hidden phases need
+`sealed_transfer_verified`.
+
+```sql
+select public.observer_set_public_pool(p_drill_users=>array['<test user>']::uuid[]); -- stage: test teams' rescores
+select public.observer_set_public_score_jobs(true);    -- everyone's rescores
+select public.observer_set_public_score_jobs(false);   -- rollback
+```
+
+Safety net while private minutes run low: rescore sampling
+(`observer_set_rescore_sampling(p_mode=>'auto'|'on'|'off')`). In `auto` it turns on
+when the private organizations' remaining included minutes fall below 3000
+(checked every minute, audited as `observer.rescore_sampling`); then only each
+team's best run per phase and card plus a stable 20% are rescored, the rest keep
+`score_check='pending'` and are rescored once sampling ends.

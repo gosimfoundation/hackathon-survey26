@@ -87,7 +87,13 @@ async function tryPublic(rpc: Rpc, app: Dispatcher, job: PendingJob, moved = fal
   }
   try {
     if (!app.dispatchPublic) throw new GitHubError("public_pool_unavailable");
-    const run = await app.dispatchPublic(target.organization, target.repository_id, job.id, target.approved_sha);
+    const run = await app.dispatchPublic(
+      target.organization,
+      target.repository_id,
+      job.id,
+      target.approved_sha,
+      job.kind === "score" ? "score" : "engine",
+    );
     await rpc("observer_mark_public_dispatched", { p_job: job.id, p_github_run: run });
     return { id: job.id, dispatched: true, public: target.organization };
   } catch (error) {

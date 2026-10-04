@@ -346,7 +346,7 @@ Deno.test("a public-pool job is dispatched with its job id only and bound to the
     },
   }, btoa("k".repeat(32)));
   assertEquals(result, [{ id: PUBLIC_JOB, dispatched: true, public: POOL.organization }]);
-  assertEquals(dispatched, [[POOL.organization, "42", PUBLIC_JOB, POOL.approved_sha]]);
+  assertEquals(dispatched, [[POOL.organization, "42", PUBLIC_JOB, POOL.approved_sha, "engine"]]);
   assertEquals(calls.at(-1), {
     name: "observer_mark_public_dispatched",
     args: { p_job: PUBLIC_JOB, p_github_run: "987654" },

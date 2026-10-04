@@ -44,7 +44,7 @@ export type PublicPoolDependencies = {
   readScenario: (path: string) => Promise<Uint8Array>;
   readArchive: (reference: string) => Promise<Uint8Array>;
   /** Stores ciphertext at sealed/<job>/<name>.zip and returns a short-lived download URL. */
-  stage: (job: string, name: "scenario" | "project", sealed: Uint8Array) => Promise<string>;
+  stage: (job: string, name: "scenario" | "project" | "trace", sealed: Uint8Array) => Promise<string>;
   /** A fresh short-lived signed upload URL for sealed/<job>/result.zip, issued just before upload. */
   resultUpload: (job: string) => Promise<{ url: string; path: string }>;
   readResult: (job: string) => Promise<Uint8Array>;
@@ -167,12 +167,15 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     !fields[kind] || value.kind !== kind || value.job_id !== job ||
     Object.keys(value).some((key) => !fields[kind].includes(key))
   ) throw new ProxyError(503, "invalid_job_payload");
-  // The public pool takes colocated public-scenario engine jobs only, always
-  // with a sealed result; a private-pool job never carries sealing fields.
+  // The public pool takes colocated public-scenario engine jobs, always with a
+  // sealed result, and score jobs (sealed inputs, no result upload); a
+  // private-pool job never carries sealing fields.
   const sealed = expected.visibility === "public";
   if (
-    sealed && (kind !== "engine" || value.colocated === undefined || value.instance !== undefined ||
-        typeof value.result_key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value.result_key)) ||
+    sealed && (kind === "engine"
+        ? value.colocated === undefined || value.instance !== undefined ||
+          typeof value.result_key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value.result_key)
+        : kind !== "score" || value.result_key !== undefined) ||
     !sealed && value.result_key !== undefined
   ) throw new ProxyError(503, "invalid_job_payload");
   const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
@@ -302,8 +305,10 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     validateArtifactUpload(value.artifact_upload, revision, "preview");
     if (value.gameplay !== undefined && value.gameplay !== "v4") throw new ProxyError(503, "invalid_job_payload");
     // Direct model access (team variables) or the model proxy, never both.
-    if (value.team_egress !== undefined && (value.model !== undefined || value.model_base_url !== undefined ||
-      value.run_credential !== undefined)) throw new ProxyError(503, "invalid_job_payload");
+    if (
+      value.team_egress !== undefined && (value.model !== undefined || value.model_base_url !== undefined ||
+        value.run_credential !== undefined)
+    ) throw new ProxyError(503, "invalid_job_payload");
     if (value.model !== undefined || value.model_base_url !== undefined || value.run_credential !== undefined) {
       string("model");
       url("model_base_url");
@@ -537,7 +542,13 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         ) {
           throw new ProxyError(503, "invalid_job_payload");
         }
-        parsed.result_url = await deps.archiveDownload(parsed.result_ref, true);
+        parsed.result_url = runnerKey
+          ? await deps.publicPool!.stage(
+            body.job_id,
+            "trace",
+            await sealedInput(runnerKey, await deps.publicPool!.readArchive(parsed.result_ref), "trace:" + body.job_id),
+          )
+          : await deps.archiveDownload(parsed.result_ref, true);
         delete parsed.result_ref;
       }
       if (parsed.archive_ref !== undefined) {
@@ -565,7 +576,7 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         parsed.repository = { full_name: fresh.full_name, token: fresh.token };
       }
     }
-    if (runnerKey && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    if (runnerKey && parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.kind === "engine") {
       parsed.artifact_upload = { kind: "sealed", path: "sealed/" + body.job_id + "/result.zip" };
       parsed.result_key = encodeKey(publicKeyFor(deps.publicPool!.resultKey));
     }

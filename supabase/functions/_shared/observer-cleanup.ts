@@ -19,7 +19,7 @@ export async function cleanupUploads(rpc: Rpc, remove: (path: string) => Promise
 
 /**
  * Sealed public-pool transfer objects (ciphertext only) of finished jobs:
- * sealed/<job>/{scenario,project,result}.zip in the staging bucket.
+ * sealed/<job>/{scenario,project,result,trace}.zip in the staging bucket.
  */
 export async function cleanupSealed(rpc: Rpc, remove: (paths: string[]) => Promise<void>) {
   const jobs: string[] = await rpc("observer_public_sealed_pending", { p_limit: 20 });
@@ -27,7 +27,7 @@ export async function cleanupSealed(rpc: Rpc, remove: (paths: string[]) => Promi
   for (const job of jobs) {
     if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(job)) continue;
     try {
-      await remove(["scenario", "project", "result"].map((name) => "sealed/" + job + "/" + name + ".zip"));
+      await remove(["scenario", "project", "result", "trace"].map((name) => "sealed/" + job + "/" + name + ".zip"));
       await rpc("observer_public_sealed_cleaned", { p_job: job });
       cleaned++;
     } catch {
