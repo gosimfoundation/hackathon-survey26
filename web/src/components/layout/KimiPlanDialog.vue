@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // Tells members of a team that can claim its Kimi Coding Plan code (eligible, codes left, not claimed yet).
+// Never shown once the pool is empty (sold out).
 // The captain is sent to the dashboard panel; other members are asked to ping the captain. Dismissing is
 // remembered per team in localStorage. Shares the pinned-announcement dialog look and takes turns with it.
 import { computed, nextTick, ref, watch } from 'vue'
@@ -7,7 +8,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { loadKimiPlanStatus } from '../../lib/data'
-import { kimiPlanState } from '../../lib/kimiPlan'
+import { kimiPlanPopupRole } from '../../lib/kimiPlan'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
 
 const OVERLAY = 'kimi-plan'
@@ -26,9 +27,9 @@ watch(() => team.value?.id, async id => {
   if (!id || id === teamId.value || dismissed(id)) return
   try {
     const status = await loadKimiPlanStatus()
-    const state = kimiPlanState(status)
-    if (state !== 'claimable' && state !== 'wait_captain') return
-    captain.value = state === 'claimable'
+    const role = kimiPlanPopupRole(status) // null once the pool is empty: no popup for teams without a code
+    if (!role) return
+    captain.value = role === 'captain'
     teamId.value = id
     requestOverlay(OVERLAY, { modal: true })
   } catch { /* not shown */ }

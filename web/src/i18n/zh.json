@@ -1623,6 +1623,7 @@
     "redeem": "去 Kimi 领取会员",
     "lede": "跑通练习赛（至少获得一次成功评分）的前一百支队伍，每队可获得一个 Kimi Coding Plan 兑换码，先到先得。由队长领取，全队成员都能在这里查看。",
     "coming_soon": "Kimi Coding Plan 兑换码即将发放，跑通练习赛的队伍队长届时可在这里领取。",
+    "sold_out": "Kimi Coding Plan 兑换码已全部发放完毕（前一百支队伍，先到先得）。",
     "eligible": "你的队伍已满足条件。",
     "not_eligible": "还需在练习赛获得一次成功评分。",
     "hidden": "隐藏/测试队伍不参与发放。",
@@ -1634,7 +1635,7 @@
     "errors": {
       "captain_only": "只有队长可以领取 Kimi Coding Plan 兑换码。",
       "not_eligible": "你的队伍还需在练习赛获得一次成功评分。",
-      "no_codes_left": "暂时没有可领取的 Kimi Coding Plan 兑换码。",
+      "no_codes_left": "Kimi Coding Plan 兑换码已全部发放完毕（前一百支队伍，先到先得）。",
       "need_team": "请先创建或加入队伍。"
     },
     "popup_title": "你的队伍可以领取 Kimi Coding Plan 兑换码",
