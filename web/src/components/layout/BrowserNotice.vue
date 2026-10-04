@@ -1,26 +1,34 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSafari } from '../../lib/freshness'
+import { BROWSER_NOTICE_KEY } from '../../lib/popupRules'
+import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
+import { seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 
-// Safari keeps serving stale builds and renders parts of this site differently. The warning covers the
-// whole screen and comes back on every visit; "stay" only clears it for the page currently open.
+// Safari keeps serving stale builds and renders parts of this site differently. The warning covers the whole
+// screen, once per person like every popup (lib/popupRules); it is the most important popup of a page load.
+const OVERLAY = 'browser-notice'
 const { t } = useI18n()
-const open = ref(false)
+const wanted = ref(false)
+const open = computed(() => wanted.value && overlayActive(OVERLAY))
 const copied = ref(false)
 
 function lock(on: boolean) { document.documentElement.style.overflow = on ? 'hidden' : '' }
 
-onMounted(() => {
-  if (!isSafari()) return
-  open.value = true
-  lock(true)
+onMounted(async () => {
+  if (!isSafari() || (await seenKeys()).has(BROWSER_NOTICE_KEY)) return
+  wanted.value = true
+  requestOverlay(OVERLAY, { modal: true })
 })
+watch(open, isOpen => lock(isOpen))
+const finish = useSeenWhileOpen(open, () => [BROWSER_NOTICE_KEY])
 onUnmounted(() => lock(false))
 
 function dismiss() {
-  open.value = false
-  lock(false)
+  finish()
+  wanted.value = false
+  releaseOverlay(OVERLAY)
 }
 async function copyLink() {
   try {
