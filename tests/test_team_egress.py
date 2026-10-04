@@ -524,7 +524,7 @@ def test_engine_job_open_mode_uses_sidecar_dns_and_records_destinations(monkeypa
     assert command[command.index("--dns") + 1] == "172.30.0.2" and "--add-host" not in command
     assert receipt["egress"][0]["host"] == "api.kimi.com"
     assert json.loads(published["egress.json"])[0]["bytes_down"] == 20
-    assert "api.kimi.com:443 | 2 | 0 | 10 | 20" in published["agent.log"]
+    assert "api.kimi.com:443 | direct | 2 | 0 | 10 | 20" in published["agent.log"]
 
 
 @pytest.mark.skipif(not _docker_available(), reason="Docker is required")

@@ -545,3 +545,58 @@ Deno.test("a score job claims fresh downloads of the scenario and the run's priv
       repositoryCredentials: () => Promise.resolve({ full_name: "x/y", token: "t" }),
     }), ProxyError);
 });
+
+Deno.test("an egress route gets its nodes at claim time only, for execution jobs only", async () => {
+  const { parseEgressRoutes } = await import("./observer-job.ts");
+  const vless = {
+    type: "vless",
+    server: "cn.node-canary.example",
+    server_port: 34567,
+    uuid: "11111111-2222-3333-4444-555555555555",
+    flow: "xtls-rprx-vision",
+    tls: { enabled: true, server_name: "www.example.com", reality: { enabled: true, public_key: "k", short_id: "s" } },
+  };
+  const routes = parseEgressRoutes(JSON.stringify({ cn: [vless], overseas: [] }));
+  const team = {
+    environment: {},
+    secrets: [],
+    domains: [],
+    open: true,
+    route: { name: "cn", fallback: false, cap_bytes: 5 },
+  };
+  const claim = async (input: Record<string, unknown>, egressRoutes: typeof routes | null = routes) =>
+    await jobRequest(request(), {
+      masterKey: key,
+      egressRoutes: egressRoutes ?? undefined,
+      verify: () => Promise.resolve({ runId: "404", runAttempt: "1", subject: "expected" }),
+      rpc: async (name) =>
+        name === "observer_job_identity" ? identity : await encryptCredential(JSON.stringify(input), job, key),
+    }) as Record<string, Record<string, unknown>>;
+  const claimed = await claim({ ...payload, team_egress: team });
+  assertEquals(claimed.team_egress.route, { ...team.route, nodes: [vless] });
+  // Not configured: no node; the runner falls back or refuses as the team chose.
+  assertEquals((await claim({ ...payload, team_egress: team }, null)).team_egress.route, {
+    ...team.route,
+    nodes: [],
+  });
+  // A stored input never carries nodes, and only execution jobs take a route.
+  await assertRejects(
+    () => claim({ ...payload, team_egress: { ...team, route: { ...team.route, nodes: [vless] } } }),
+    ProxyError,
+  );
+  await assertRejects(
+    () => claim({ ...payload, team_egress: { ...team, route: { ...team.route, name: "direct" } } }),
+    ProxyError,
+  );
+  await assertRejects(() => claim({ ...payload, team_egress: { ...team, open: undefined } }), ProxyError);
+  for (
+    const bad of [
+      { cn: [vless, vless] },
+      { overseas: [{ ...vless, type: "socks" }] },
+      { overseas: [{ ...vless, extra: 1 }] },
+      { cn: [{ ...vless, server_port: 0 }] },
+      { cn: [{ ...vless, tls: { enabled: false } }] },
+      [],
+    ]
+  ) assertThrows(() => parseEgressRoutes(JSON.stringify(bad)));
+});

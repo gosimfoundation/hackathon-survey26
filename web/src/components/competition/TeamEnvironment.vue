@@ -17,6 +17,14 @@ const open = computed(() => props.environment?.open === true)
 const limits = computed(() => props.environment?.limits ?? { variables: 20, domains: 10, value_bytes: 8192 })
 const form = ref({ name: '', value: '', secret: true })
 const domain = ref('')
+// 出网线路 (egress route): labels only; the platform keeps the route details.
+const route = computed(() => props.environment?.egress_route ?? null)
+const ROUTES = ['direct', 'cn', 'overseas'] as const
+function setRoute(name: string, autoFallback?: boolean) {
+  const body: Record<string, unknown> = { route: name }
+  if (autoFallback !== undefined) body.auto_fallback = autoFallback
+  emit('act', async () => { await portal('set_team_egress_route', body) }, t('submit.team_env.route.saved'))
+}
 
 // "Add a model service": provider preset -> key (secret) + base URL + model (plain values).
 const services = computed(() => configuredServices(variables.value))
@@ -196,6 +204,23 @@ function addDomain() {
     <h3 class="mt-4">{{ t('submit.team_env.network_title') }}</h3>
     <p class="help" data-testid="team-env-network-open">{{ t('submit.team_env.network_open') }}</p>
     <p class="help">{{ t('submit.team_env.network_log') }}</p>
+    <section v-if="route?.available" class="mt-4" data-testid="team-env-route">
+      <h3>{{ t('submit.team_env.route.title') }}</h3>
+      <p class="help">{{ t('submit.team_env.route.intro') }}</p>
+      <div class="route-options" role="radiogroup" :aria-label="t('submit.team_env.route.title')">
+        <label v-for="name in ROUTES" :key="name" class="check">
+          <input type="radio" name="observer-egress-route" :value="name" :checked="route.route === name" :disabled="busy"
+                 :data-testid="'team-env-route-' + name" @change="setRoute(name)">
+          {{ t('submit.team_env.route.' + name) }}
+        </label>
+      </div>
+      <label v-if="route.route !== 'direct'" class="check">
+        <input type="checkbox" name="observer-egress-route-fallback" :checked="route.auto_fallback" :disabled="busy"
+               data-testid="team-env-route-fallback" @change="setRoute(route.route, ($event.target as HTMLInputElement).checked)">
+        {{ t('submit.team_env.route.fallback') }}
+      </label>
+      <p class="help">{{ t('submit.team_env.route.note') }}</p>
+    </section>
     </template>
   </div>
 </template>
@@ -213,4 +238,5 @@ function addDomain() {
 .svc-note { color: #f3d58a; margin: -.6rem 0 1rem; }
 .svc-clash { border: 1px solid #b88a2a; padding: .6rem .75rem; margin-bottom: 1rem; }
 .svc-advanced > summary { cursor: pointer; }
+.route-options { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin: .5rem 0; }
 </style>

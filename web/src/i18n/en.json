@@ -1837,6 +1837,16 @@
       "network_title": "Network access",
       "network_open": "During evaluation your program can reach any public address over HTTPS (port 443) and HTTP (port 80); no domain needs to be listed. Other ports, private and internal addresses, the local host and cloud metadata addresses are unreachable. The platform sets HTTPS_PROXY, so common SDKs need no extra configuration; programs that ignore proxy settings can connect by host name directly as well.",
       "network_log": "The platform records every address your program connects to during an evaluation (host and port, number of connections, bytes sent and received, first and last time), never any content. The record is attached to your team's run log and result files, and the organizers can see it as well. Every decision must be made by your program; no human may take part.",
+      "route": {
+        "title": "Egress route",
+        "intro": "Some model services refuse requests from the evaluation machines' addresses. If yours does, choose a route: your program's outbound connections then go through that route instead of directly. Direct is the default.",
+        "direct": "Direct (default)",
+        "cn": "China route",
+        "overseas": "Overseas route",
+        "fallback": "If the route is unavailable, connect directly (recommended; otherwise such connections fail)",
+        "note": "Applies to evaluations started after the change. The run's network record shows the route each address used. Route traffic per run is limited; please use it only for your program's own needs.",
+        "saved": "Egress route saved."
+      },
       "collapsed_hint_open": "Model keys, endpoints and other environment variables",
       "title": "Keys and network (optional)",
       "collapsed_hint": "Model keys, endpoints and the domains your program may reach",

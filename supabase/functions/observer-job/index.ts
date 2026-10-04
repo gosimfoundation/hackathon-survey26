@@ -1,12 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { jobRequest } from "../_shared/observer-job.ts";
+import { jobRequest, parseEgressRoutes } from "../_shared/observer-job.ts";
 import { ProxyError } from "../_shared/observer-model.ts";
 import { GitHubError } from "../_shared/observer-github.ts";
 import { artifactDownload, configuredApp } from "../_shared/observer-app.ts";
 import { agentLogPath } from "../_shared/observer-agent-log.ts";
 import { singleFileZip } from "../_shared/observer-zip.ts";
 import { decodeKey } from "../_shared/observer-seal.ts";
-import type { PublicPoolDependencies } from "../_shared/observer-job.ts";
+import type { EgressRoutes, PublicPoolDependencies } from "../_shared/observer-job.ts";
 
 const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
   auth: { persistSession: false },
@@ -92,6 +92,20 @@ function publicPool(): PublicPoolDependencies | undefined {
   };
 }
 
+// Egress route nodes (ops/egress-routes.md). Missing or malformed: no node, so runs on a
+// route fall back to direct (or refuse) as each team chose; nothing about them is logged.
+function egressRoutes(): EgressRoutes | undefined {
+  const secret = Deno.env.get("OBSERVER_EGRESS_ROUTES");
+  if (!secret) return undefined;
+  try {
+    return parseEgressRoutes(secret);
+  } catch {
+    console.error("observer-job: OBSERVER_EGRESS_ROUTES is malformed; egress routes have no nodes");
+    return undefined;
+  }
+}
+const routes = egressRoutes();
+
 const known = new Set([
   "job_unavailable",
   "job_identity_mismatch",
@@ -125,6 +139,7 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
         return data.signedUrl;
       },
       publicPool: publicPool(),
+      egressRoutes: routes,
       storeAgentLog: async (run, log) => {
         // The staging bucket only accepts ZIP and CSV objects.
         const { error } = await service.storage.from("observer-staging").upload(

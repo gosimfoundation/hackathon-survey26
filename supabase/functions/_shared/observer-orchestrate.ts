@@ -27,7 +27,13 @@ export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, 
 
 /** The job-input form of observer_run_team_egress / observer_preparation_team_egress (null while off). */
 export async function decodeTeamEgress(
-  value: { enabled?: boolean; open?: boolean; variables?: Record<string, unknown>[]; domains?: string[] } | null,
+  value: {
+    enabled?: boolean;
+    open?: boolean;
+    variables?: Record<string, unknown>[];
+    domains?: string[];
+    route?: { name?: unknown; fallback?: unknown; cap_bytes?: unknown } | null;
+  } | null,
   masterKey: string,
 ) {
   if (value?.enabled !== true) return null;
@@ -39,7 +45,20 @@ export async function decodeTeamEgress(
     if (variable.secret) secrets.push(String(variable.name));
   }
   // Open egress: any public destination (the domain list is not used then).
-  if (value?.open === true) return { environment, secrets, domains: [] as string[], open: true as const };
+  // The egress route (labels only; the job API adds the node settings at claim time).
+  if (value?.open === true) {
+    const route = value.route;
+    return {
+      environment,
+      secrets,
+      domains: [] as string[],
+      open: true as const,
+      ...(route && (route.name === "cn" || route.name === "overseas") && typeof route.fallback === "boolean" &&
+          Number.isSafeInteger(route.cap_bytes) && Number(route.cap_bytes) > 0
+        ? { route: { name: route.name, fallback: route.fallback, cap_bytes: Number(route.cap_bytes) } }
+        : {}),
+    };
+  }
   return { environment, secrets, domains: [...(value?.domains ?? [])] as string[] };
 }
 
