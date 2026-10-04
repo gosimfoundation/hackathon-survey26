@@ -109,8 +109,14 @@ Deno.test("preparation receives only its organization repository and a bounded p
     "test-model",
   );
   assertEquals(validateJobPayload({ ...input, gameplay: "v4" }, expected, job).gameplay, "v4");
+  // Direct model access: the team's variables instead of the model proxy, never both.
+  const team = { environment: { OPENAI_API_KEY: "sk-team", OPENAI_MODEL: "m" }, secrets: ["OPENAI_API_KEY"], domains: ["api.example.com"] };
+  assertEquals(validateJobPayload({ ...input, team_egress: team }, expected, job).team_egress, team);
   for (
     const change of [
+      { team_egress: { ...team, model: "test-model" } },
+      { team_egress: team, model: "test-model", model_base_url: payload.model_base_url, run_credential: payload.run_credential },
+      { team_egress: { ...team, secrets: ["MISSING"] } },
       { gameplay: "v3" },
       { gameplay: 4 },
       { repository: { ...input.repository, full_name: "AGENTIC-OBSERVER26-runner-2/participant-" + "a".repeat(32) } },

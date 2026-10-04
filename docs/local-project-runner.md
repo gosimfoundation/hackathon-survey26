@@ -14,12 +14,18 @@
 5. 完成后，将生成的 `decisions.csv` 上传到同一条评测记录。不要修改 CSV。
 
 ```sh
-python3 -m project_platform.local --project /path/to/project --session-url https://PROJECT.supabase.co/functions/v1/observer-session --model-base-url https://PROJECT.supabase.co/functions/v1/observer-model/v1 --output decisions.csv
+python3 -m project_platform.local --project /path/to/project --session-url https://PROJECT.supabase.co/functions/v1/observer-session --env-file my-model.env --output decisions.csv
 ```
 
+模型直接使用你自己的密钥（与云端评测的「密钥与网络」变量相同）：运行器把当前 shell 中的
+`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`（或 `ANTHROPIC_*`）以及 `--env-file`
+文件里的 `NAME=value` 行交给项目作为环境变量，不经过平台。旧参数 `--model-base-url`
+（平台模型代理）仅作兼容保留，启用团队变量的队伍会被代理拒绝。
+Your project calls your own provider with your own variables (from the shell and
+`--env-file`), exactly like a cloud evaluation; `--model-base-url` is legacy.
+
 如果不用 Docker，在命令后加 `--native`。这种模式会直接执行项目的构建与启动命令，只用于自己的项目。
-模型可不使用；使用时读取 `OPENAI_BASE_URL` 和 `OPENAI_API_KEY`（协议选了 Anthropic Messages 的
-队伍改读 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`）。密钥只对本次运行有效，不是上游模型密钥。
+模型可不使用；使用时读取你自己设置的 `OPENAI_*` 或 `ANTHROPIC_*` 变量。
 运行器只接收服务器当前公开的信息，无法下载未来天气或异常答案。
 
 结束后只需重新导出时，在同一条命令后加 `--export-only`，不重新运行智能体。

@@ -20,14 +20,21 @@ export function randomCapability() {
  * and the runner receives it only through its authenticated claim.
  */
 export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, run: string) {
-  const value = await deps.rpc("observer_run_team_egress", { p_run: run });
+  return decodeTeamEgress(await deps.rpc("observer_run_team_egress", { p_run: run }), deps.masterKey);
+}
+
+/** The job-input form of observer_run_team_egress / observer_preparation_team_egress (null while off). */
+export async function decodeTeamEgress(
+  value: { enabled?: boolean; variables?: Record<string, unknown>[]; domains?: string[] } | null,
+  masterKey: string,
+) {
   if (value?.enabled !== true) return null;
   const environment: Record<string, string> = {}, secrets: string[] = [];
   for (const variable of value?.variables ?? []) {
-    environment[variable.name] = variable.secret
-      ? await decryptCredential(String(variable.encrypted_value ?? ""), variable.id, deps.masterKey)
+    environment[String(variable.name)] = variable.secret
+      ? await decryptCredential(String(variable.encrypted_value ?? ""), String(variable.id), masterKey)
       : String(variable.plain_value ?? "");
-    if (variable.secret) secrets.push(variable.name);
+    if (variable.secret) secrets.push(String(variable.name));
   }
   return { environment, secrets, domains: [...(value?.domains ?? [])] as string[] };
 }

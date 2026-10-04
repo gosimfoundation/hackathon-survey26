@@ -160,6 +160,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "run_credential",
       "model",
       "gameplay",
+      "team_egress",
     ],
   };
   if (
@@ -300,6 +301,9 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     }
     validateArtifactUpload(value.artifact_upload, revision, "preview");
     if (value.gameplay !== undefined && value.gameplay !== "v4") throw new ProxyError(503, "invalid_job_payload");
+    // Direct model access (team variables) or the model proxy, never both.
+    if (value.team_egress !== undefined && (value.model !== undefined || value.model_base_url !== undefined ||
+      value.run_credential !== undefined)) throw new ProxyError(503, "invalid_job_payload");
     if (value.model !== undefined || value.model_base_url !== undefined || value.run_credential !== undefined) {
       string("model");
       url("model_base_url");

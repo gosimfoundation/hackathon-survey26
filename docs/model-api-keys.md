@@ -87,13 +87,33 @@ repository (and the public pool) and approve it, then
 restores the previous behaviour for newly scheduled runs (model proxy, Model API
 section); a runtime without team egress support simply ignores the field.
 
-**What still uses the model proxy below.** Model-assisted project preparation
-(projects without `observer.project.json`), local sessions, and every run while
-the switch is off. The organizer-credit route was last used on 2026-09-24.
+**Retiring the model proxy (migration `20261004080000`).** Since team egress is on
+(2026-10-04 05:11 UTC) no evaluation calls the proxy. The two remaining users moved:
+
+- Model-assisted preparation (projects without `observer.project.json`): with
+  `prepare_direct_model` on, the prepare job gets the team's variables
+  (`team_egress`) instead of a proxy credential, and the runner calls
+  `OPENAI_*` (chat completions) or `ANTHROPIC_*` (Messages) directly. The base
+  must be https on one of the team's allowed domains, and `*_MODEL` must be set.
+- Local runner: without `--model-base-url` it gives the project the participant's
+  own `OPENAI_*` / `ANTHROPIC_*` variables (and `--env-file NAME=value` lines).
+
+`model_proxy_retired` then makes the proxy refuse (`model_proxy_retired`, HTTP 410)
+every run of a team that has team egress on. The code stays deployed, and turning
+team egress off (its rollback) reopens the proxy for those teams immediately, so
+the proxy is still the egress rollback path. The organizer-credit route ("Organizer
+test API", qwen; last call 2026-09-24 09:51 UTC, 8 calls) is disabled.
+
+```sql
+select public.observer_set_model_proxy(p_prepare_direct=>true);   -- stage 1
+select public.observer_set_model_proxy(p_retired=>true);          -- stage 2
+select public.observer_set_model_proxy(p_prepare_direct=>false, p_retired=>false);  -- rollback
+update private.observer_providers set enabled=true where team_id is null;          -- organizer route back
+```
 
 ---
 
-# Model proxy (previous path; preparation, local sessions, switch off)
+# Model proxy (previous path; retired for team-egress teams, rollback only)
 
 Formal runs never use organizer model credits. "Formal" means every run for which
 `private.observer_personal_models_only()` is true: runs in a phase that counts for

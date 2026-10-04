@@ -2,7 +2,7 @@ import { DEFAULT_MODEL_ALIAS, encryptCredential } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
 import { databaseLocator, GitHubError, placement } from "./observer-github.ts";
 import type { GitHubApp } from "./observer-github.ts";
-import { randomCapability } from "./observer-orchestrate.ts";
+import { decodeTeamEgress, randomCapability } from "./observer-orchestrate.ts";
 
 export async function schedulePreparations(deps: {
   rpc: Rpc;
@@ -36,6 +36,13 @@ export async function schedulePreparations(deps: {
       } else if (revision.source_kind === "zip") {
         source = { archive_storage_ref: { bucket: "observer-staging", path: revision.source_location } };
       } else throw new GitHubError("invalid_source_kind");
+      // Direct model access (switch observer_hardening.prepare_direct_model): the
+      // adaptation calls the team's own provider with its variables, like an
+      // evaluation; otherwise the platform model proxy as before.
+      const team = await decodeTeamEgress(
+        await deps.rpc("observer_preparation_team_egress", { p_revision: revision.id }).catch(() => null),
+        deps.masterKey,
+      );
       const id = crypto.randomUUID(), nonce = randomCapability();
       const participant = randomCapability(), engine = randomCapability();
       const input = {
@@ -47,9 +54,11 @@ export async function schedulePreparations(deps: {
         artifact_upload: { kind: "github" },
         // Preparation always runs on the team's own model API (the online phase): ask for
         // the team's default model rather than a name the team's provider may not offer.
-        model: DEFAULT_MODEL_ALIAS,
-        model_base_url: base.href.replace(/\/$/, "") + "/functions/v1/observer-model/v1",
-        run_credential: "obs_" + revision.model_run_id + "." + participant,
+        ...(team ? { team_egress: team } : {
+          model: DEFAULT_MODEL_ALIAS,
+          model_base_url: base.href.replace(/\/$/, "") + "/functions/v1/observer-model/v1",
+          run_credential: "obs_" + revision.model_run_id + "." + participant,
+        }),
         // Only v4 public-test scenarios add this key; v3 preparation input is unchanged.
         ...(revision.gameplay === "v4" ? { gameplay: "v4" } : {}),
       };

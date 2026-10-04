@@ -11,9 +11,10 @@ from .adaptation import AdapterProposal
 from .artifacts import download_project, pack_files, store_private_artifact, upload_artifact
 from .job_client import Http, JobError
 from .model_adapter import propose_adapter
-from .model_client import ModelClient
+from .model_client import ModelClient, team_model_client
 from .package import project_digest, read_manifest
 from .repository import SnapshotRepository
+from .team_egress import checked_team_egress
 
 
 def resolve_image(image: str) -> str:
@@ -65,14 +66,19 @@ def prepare_project(payload: dict, http: Http, *, repository_credentials=None) -
     if manifest is not None:
         proposal = AdapterProposal(source_hash, manifest, (), "Project supplies its own JSON-Lines interface.")
     else:
-        if not all(payload.get(key) for key in ("model", "model_base_url", "run_credential")):
+        if "team_egress" in payload:
+            # Direct model access: the team's own provider from its variables, as in an
+            # evaluation; the platform model proxy is not involved.
+            client, model = team_model_client(checked_team_egress(payload["team_egress"]))
+        elif all(payload.get(key) for key in ("model", "model_base_url", "run_credential")):
+            client, model = ModelClient(payload["model_base_url"], payload["run_credential"]), payload["model"]
+        else:
             raise JobError("project_interface_required")
-        client = ModelClient(payload["model_base_url"], payload["run_credential"])
         # The public-test scenario decides the protocol the adapter must speak.
         gameplay = payload.get("gameplay", "v3")
         if gameplay not in ("v3", "v4"):
             raise JobError("invalid_job_payload")
-        proposal = propose_adapter(source, payload["model"], client, gameplay=gameplay)
+        proposal = propose_adapter(source, model, client, gameplay=gameplay)
     proposal = replace(proposal, manifest=replace(proposal.manifest, image=resolve_image(proposal.manifest.image)))
     # Materialization here is only for the public preview. It does not imply
     # participant approval and cannot enqueue a formal evaluation.
