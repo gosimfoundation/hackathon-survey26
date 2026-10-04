@@ -10,6 +10,7 @@ export function useOrganizers() {
   const committee = computed(() => t('home.credibility.committee.members') as CommitteeMember[])
   const logo = (name: string): string => (ORG_LOGOS[name] ? appUrl(ORG_LOGOS[name].src) : '')
   const wordmark = (name: string): boolean => !!ORG_LOGOS[name]?.wordmark
+  const site = (name: string): string => ORG_LOGOS[name]?.href ?? ''
   const photo = (member: CommitteeMember): string => appUrl(committeePhoto(member))
-  return { items, committee, logo, wordmark, photo }
+  return { items, committee, logo, wordmark, site, photo }
 }

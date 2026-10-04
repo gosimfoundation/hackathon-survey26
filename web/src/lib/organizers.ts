@@ -10,9 +10,9 @@ export type CommitteeMember = { photo: string; name: string; title: string; org:
  * Logos under web/public/media, keyed by the organisation name used in `home.credibility.items`.
  * A wordmark already spells the name, so the one-line credits strip shows it without the name beside it.
  */
-export const ORG_LOGOS: Record<string, { src: string; wordmark: boolean }> = {
-  'GOSIM Foundation': { src: 'media/gosim-logo.svg', wordmark: true },
-  KIMI: { src: 'media/kimi-logo.png', wordmark: false },
+export const ORG_LOGOS: Record<string, { src: string; wordmark: boolean; href: string }> = {
+  'GOSIM Foundation': { src: 'media/gosim-logo.svg', wordmark: true, href: 'https://gosim.org/' },
+  KIMI: { src: 'media/kimi-logo.png', wordmark: false, href: 'https://www.kimi.com/' },
 }
 
 /** Committee portrait under web/public/media. */
