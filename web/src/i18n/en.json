@@ -193,7 +193,7 @@
         "label": "worldwide · solo or team"
       }
     ],
-    "side_note": "Site 31.96°N / a decision every 15 minutes / one time budget for the whole run",
+    "side_note": "Site 31.96°N / a decision every 15 minutes / 900 s CPU budget per card",
     "console": {
       "title": "Official example replay",
       "replay_note": "Local practice card L1 · {nights} nights · {actions} decisions",
@@ -285,7 +285,7 @@
       "lede": "There are far more tiles than observing time, so every pointing is a trade-off.",
       "paragraphs": [
         "A survey telescope has thousands of tiles it could observe each night, while the weather, target visibility and science priorities keep changing. Each choice the observer makes affects the quality of the final sample.",
-        "We want this to be an open benchmark: an agent reads the state of the night sky and decides the next observation every 900 seconds. All teams get the same survey plan, weather replay, observation requests, simulator and scoring rule, so the only difference is strategy."
+        "We want this to be an open benchmark: an agent reads the state of the night sky and decides the next observation every 15 simulated minutes. All teams get the same survey plan, weather replay, observation requests, simulator and scoring rule, so the only difference is strategy."
       ],
       "link": "Read the full event brief"
     },
@@ -417,32 +417,40 @@
     "evaluation": {
       "kicker": "05 / Evaluation",
       "title": "Scoring rules",
-      "lede": "The scoring program is published and frozen before the competition starts and does not change afterwards. What an observation earns depends on the weather and moonlight at the time. Choosing the program that fits the conditions and finishing temporary observation requests on time earn extra points; rule violations cost points.",
-      "formula": "total = base_science + program_bonus + request_reward\n      − unsafe_observation − invalid_action − avoidable_wait\n      − required_miss − flexible_shortfall − request_miss\nbase  = Σ_segments V_tile · (dt / t_nominal) · combined\ncombined = min(eff · transp · sky / (seeing · airmass), 3) · lunar",
+      "lede": "Each card is scored by the published scorer, and the card's score settings arrive in full in the initialize message. Below are the main points; section 5 of the rules has the full rules and formulas.",
+      "formula": "total = Σ best score per target\n      − 50 × missing required targets\n      − 200 × (1 − J)        evenness penalty\n      ± fault reports\n      + rewards of completed observation requests\ntarget score = science weight × factor × program bonus\nfactor = min(brightness × exposure s × sky quality ÷ (f0 × T0), 1)",
       "criteria": [
         {
-          "term": "Base science",
-          "desc": "Σ science_weight of the tile's targets, scaled per segment by instrument efficiency, transparency, sky quality, seeing, airmass and the lunar factor. Only completed exposures score."
+          "term": "Target score",
+          "desc": "A target scores only if it falls in its assigned fibre's cell and stays at or above 30° altitude for the whole exposure. A target can be observed again, but only its best exposure counts. f0 × T0 is 0.5 × 900 = 450 on most cards."
         },
         {
           "term": "Program bonus",
-          "desc": "+25 % / +15 % / +8 % when the chosen program matches the DARK / BRIGHT / BACKUP band of the combined quality (thresholds 0.65 and 0.40)."
+          "desc": "If the declared program matches the target's sky band, the score is multiplied by DARK 1.20, BRIGHT 1.12 or BACKUP 1.06; otherwise by 1.00."
         },
         {
-          "term": "Requests",
-          "desc": "Temporary observation requests pay 140 per required tile when completed before the deadline and cost 190 per required tile when missed."
+          "term": "Required targets",
+          "desc": "Each required target that is not completed costs 50 points. Completion needs a best factor of at least 0.5, and the program bonus cannot replace that threshold."
         },
         {
-          "term": "Safety and validity",
-          "desc": "2000 for observing into a closed dome; 100 for an invalid action; 0.001 per second of avoidable waiting."
+          "term": "Even coverage",
+          "desc": "The completed fraction is computed per 10° right-ascension band and its evenness measured with Jain's index J. The penalty is 200 × (1 − J), at most 200 points."
         },
         {
-          "term": "Coverage",
-          "desc": "1000 per REQUIRED tile left unfinished; 100 per FLEXIBLE tile short of the quota of four per region. Applied at the end of every run, including runs that stop early."
+          "term": "Fault reports",
+          "desc": "Instrument faults never appear in bulletins or forecasts; only exposure scores reveal them. A report while an unrepaired fault exists earns 100 points and repairs it at once. After each correct report, wrong reports are free up to the card's allowance, then cost 150 each; consecutive reports have a separate cap."
         },
         {
-          "term": "Generalisation",
-          "desc": "Competition weather, directional events and their forecasts are hidden. Agents run on the platform under one global wall clock and see only the published snapshots."
+          "term": "Observation requests",
+          "desc": "A card may publish time-limited observation requests during the survey. Complete the minimum number of targets before the deadline (judged on the factor, without the program bonus) and you get the request's reward at the deadline; a missed request costs nothing. Valid exposures count automatically, with no accept action."
+        },
+        {
+          "term": "Time limit",
+          "desc": "Each card has a budget of 900 s of normalized CPU time. Only CPU time the agent uses during its own turns counts; waiting on a model API or the network does not. There is also a 30-minute real-time cap. The survey ends when time runs out, the agent errs or it sends finish; earlier observations still score and the terminal penalties still apply."
+        },
+        {
+          "term": "Results and ranking",
+          "desc": "An evaluation's result is the mean over cards A–D, and the online board is feedback only. The final ranking uses only the final version's results on the hidden cards E–H: each card is evaluated 3 times (at the same time) and averaged, then the four cards are averaged."
         }
       ],
       "link": "Read the full rules"
@@ -457,7 +465,7 @@
         },
         {
           "title": "Limits",
-          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 40 evaluations per team per day, each running cards A–D with 900 s per card."
+          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 40 evaluations per team per day, each running cards A–D, with a budget of 900 s of normalized CPU time and a 30-minute real-time cap per card."
         }
       ],
       "link": "Submission docs"
