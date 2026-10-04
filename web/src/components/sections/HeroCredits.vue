@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One line under the hero actions: organizer and sponsor (linking to their sites) and the scientific committee (linking to /about).
 import { useI18n } from '../../composables/useI18n'
+import { appUrl } from '../../composables/api'
 import { useOrganizers } from '../../composables/useOrganizers'
 
 const { t } = useI18n()
@@ -13,6 +14,11 @@ const { items, logo, wordmark, site } = useOrganizers()
       <span class="hero-credit-role">{{ item.role }}</span>
       <img v-if="logo(item.name)" :src="logo(item.name)" :alt="wordmark(item.name) ? item.name : ''" :title="item.name" class="hero-credit-logo" :class="{ wordmark: wordmark(item.name) }">
       <b v-if="!wordmark(item.name)">{{ item.name }}</b>
+    </a>
+    <a class="hero-credit" href="https://github.com/octos-org/" target="_blank" rel="noopener" data-testid="hero-credits-octos">
+      <span class="hero-credit-role">{{ t('home.credibility.octos.kicker') }}</span>
+      <img :src="appUrl('media/octos-logo.webp')" :alt="t('home.credibility.octos.logoAlt')" class="hero-credit-logo wordmark">
+      <b>Octos</b>
     </a>
     <router-link :to="{ path: '/about', hash: '#committee' }" class="hero-credit hero-credit-committee" data-testid="hero-credits-all">
       <b>{{ t('home.credibility.committee.kicker') }}</b><span aria-hidden="true">→</span>
