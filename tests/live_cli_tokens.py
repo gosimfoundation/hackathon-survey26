@@ -61,6 +61,10 @@ def main():
     ok(status == 200, "test account signs in")
     jwt, user = session["access_token"], session["user"]["id"]
 
+    _, previous = rest("rpc/my_cli_tokens", jwt, {})
+    for leftover in previous.get("tokens", []):
+        if leftover["name"] == "live-test":  # from an interrupted earlier run
+            rest("rpc/revoke_cli_token", jwt, {"p_id": leftover["id"]})
     status, created = rest("rpc/create_cli_token", jwt, {"p_name": "live-test"})
     ok(status == 200 and created["token"].startswith("s26_"), "token created and shown once")
     token = created["token"]
@@ -94,7 +98,7 @@ def main():
 
     # Other teams' data stays invisible, exactly as on the website.
     svc_headers = {"apikey": SVC, "Authorization": "Bearer " + SVC}
-    team = who["data"]["me"]["team"]["id"]
+    team = (who["data"]["me"]["team"] or {}).get("id") or "00000000-0000-0000-0000-000000000000"
     _, other_runs = call(URL + "/rest/v1/observer_runs?select=id,batch_id,observer_batches!inner(team_id)&observer_batches.team_id=neq.%s&result_path=not.is.null&limit=1" % team,
                          None, svc_headers, "GET")
     if other_runs:
@@ -117,8 +121,13 @@ def main():
 
     # Rate limit: 120 requests per minute per account.
     with concurrent.futures.ThreadPoolExecutor(16) as pool:
-        codes = list(pool.map(lambda _: gw(token, {"op": "unknown"})[0], range(140)))
-    ok(429 in codes, "rate limit answers 429 after 120 requests in a minute (%d x 429)" % codes.count(429))
+        def hit(_):
+            try:
+                return gw(token, {"op": "unknown"})[0]
+            except OSError:
+                return None  # a dropped connection under load is not an answer
+        codes = list(pool.map(hit, range(250)))
+    ok(429 in codes, "rate limit answers 429 beyond 120 requests per minute (%d x 429)" % codes.count(429))
 
     # Revocation is immediate.
     status, _ = rest("rpc/revoke_cli_token", jwt, {"p_id": created["id"]})

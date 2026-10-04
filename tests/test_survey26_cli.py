@@ -369,3 +369,22 @@ def test_waits_pause_on_rate_limit_instead_of_failing(gw, capsys):
     gw.routes["portal:list"] = (200, lambda body: next(answers, (200, {"data": listing()})))
     code, doc = run_json(capsys, "eval", "wait", "latest")
     assert code == 0 and doc["data"]["status"] == "scored"
+
+
+def test_cut_short_answers_are_retried_for_reads_and_reported_for_writes(gw, capsys, monkeypatch):
+    import http.client
+    real = survey26.urllib.request.urlopen
+    failures = {"left": 1}
+
+    def flaky(request, timeout=None):
+        if failures["left"]:
+            failures["left"] -= 1
+            raise http.client.IncompleteRead(b"")
+        return real(request, timeout=timeout)
+    monkeypatch.setattr(survey26.urllib.request, "urlopen", flaky)
+    code, doc = run_json(capsys, "whoami")
+    assert code == 0
+    failures["left"] = 1
+    gw.routes["rpc:join_team"] = (200, {"data": None})
+    code, doc = run_json(capsys, "team", "join", "ABCD1234")
+    assert code == 6 and doc["error"]["code"] == "network_error"
