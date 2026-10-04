@@ -7,6 +7,7 @@ import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
+import RunLogs from './RunLogs.vue'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
@@ -34,7 +35,8 @@ const uploadPercent = ref<number | null>(null)
 const retryStatus = ref('')
 const reviewPanel = ref<HTMLElement | null>(null)
 const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref('')
-const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
+/** The row whose logs are open under it: 'run:<id>' or 'rev:<id>' (one at a time). */
+const openLogs = ref('')
 /** Per batch id, progress of a "download all results" bundle in flight; absent once it is not running. */
 const zipProgress = ref<Record<string, { done: number; total: number }>>({})
 /** Per batch id, the outcome of the last bundle, shown beside its button (the page-level notice is often scrolled out of view). */
@@ -59,7 +61,6 @@ const sentences = (...parts: string[]) => parts.join(['zh', 'ja'].includes(local
 let timer: ReturnType<typeof setInterval> | undefined
 const words = computed(() => pick({
   title: 'Agent projects', intro: 'Submit a complete project, test its interface, then confirm the exact version for evaluation.',
-  diagnostics: 'Private run logs', diagnosticsHelp: 'Build and program output is visible only to your team and the organizers.', noLogs: 'No task logs yet.',
   localInfo: 'Local run instructions', runner: 'Download local runner', credential: 'Temporary run credential', copy: 'Copy credential',
   localCommand: 'Extract the runner, replace the project path, and run this command. Paste the credential at its hidden prompt.',
   expires: 'Credential expires', localSecret: 'This credential is only for this run. Do not commit it to a repository.',
@@ -73,7 +74,7 @@ const words = computed(() => pick({
   withdraw: 'Withdraw', withdrawConfirm: 'Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.',
   withdrawn: 'Version withdrawn.', withdrawnPill: 'Withdrawn', showWithdrawn: 'Show withdrawn versions', hideWithdrawn: 'Hide withdrawn versions',
   duplicate: 'You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.',
-  logs: 'Logs', refunded: 'Not counted toward the daily limit', noBatches: 'No evaluations yet.',
+  logs: 'View logs', refunded: 'Not counted toward the daily limit', noBatches: 'No evaluations yet.',
   prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from its current default branch? This uses one of today’s 10 uploads.',
   reuploadZip: 'Fix the project and upload the ZIP again (the uploaded ZIP is not kept for another attempt).',
   csv: 'Existing CSV submission', newProject: 'Submit a project', name: 'Project name', repository: 'Public GitHub repository',
@@ -113,7 +114,6 @@ const words = computed(() => pick({
   apiFinalNote: 'Nobody keeps a page open during the hidden final evaluation: teams whose program calls a model must switch to “Save encrypted on the server” before the online phase ends.',
 }, {
   title: '智能体项目', intro: '提交完整项目，测试接口后，确认用于评测的具体版本。',
-  diagnostics: '运行日志', diagnosticsHelp: '编译和程序输出只供本队与主办方查看。', noLogs: '暂时没有任务日志。',
   localInfo: '本地运行信息', runner: '下载本地运行器', credential: '本次临时凭证', copy: '复制凭证',
   localCommand: '解压运行器后，替换项目路径并运行下面的命令，按提示粘贴凭证；凭证输入不会显示。',
   expires: '凭证到期时间', localSecret: '凭证只用于这次运行，请勿提交到仓库。',
@@ -126,7 +126,7 @@ const words = computed(() => pick({
   withdraw: '撤回', withdrawConfirm: '撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。',
   withdrawn: '已撤回。', withdrawnPill: '已撤回', showWithdrawn: '显示已撤回的版本', hideWithdrawn: '隐藏已撤回的版本',
   duplicate: '几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。',
-  logs: '日志', refunded: '未计入次数', noBatches: '还没有评测记录。',
+  logs: '查看日志', refunded: '未计入次数', noBatches: '还没有评测记录。',
   prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库当前的默认分支重新准备？这会占用今天 10 次上传中的 1 次。',
   reuploadZip: '请修正后重新上传 ZIP（已上传的 ZIP 不会保留用于重试）。',
   closed: '当前比赛尚未开放项目评测。', csv: '原有 CSV 提交', newProject: '提交项目',
@@ -343,7 +343,7 @@ function withdraw(revision_id: string) {
   void action(async () => { await portal('withdraw', { revision_id }); if (review.value?.id === revision_id) review.value = null },
     words.value.withdrawn, 'withdraw:' + revision_id)
 }
-function showLogs(fields: Record<string, string>) { void action(async () => { diagnostics.value = await portal('diagnostics', fields) }) }
+function toggleLogs(key: string) { openLogs.value = openLogs.value === key ? '' : key }
 function chooseMode() {
   const mode = modeChoice.value, hadKey = !!savedModel.value
   if (mode === modelMode.value) return
@@ -553,7 +553,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
             <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" :aria-busy="pending === 'withdraw:'+r.id" @click="withdraw(r.id)">{{ pending === 'withdraw:'+r.id ? words.working : words.withdraw }}</button>
-            <button type="button" class="log-link" :disabled="busy" @click="showLogs({ revision_id: r.id })">{{ words.logs }}</button>
+            <button type="button" class="btn sm" :aria-expanded="openLogs === 'rev:'+r.id" data-testid="revision-logs" @click="toggleLogs('rev:'+r.id)">{{ words.logs }}</button>
+            <RunLogs v-if="openLogs === 'rev:'+r.id" :target="{ revision_id: r.id, test_run_id: r.public_test?.run_id }" :label="p.title + ' · ' + when(r.created_at)" :file-stem="'public-test-' + p.title" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         <button v-if="hiddenCount" type="button" class="log-link mt-4" @click="showWithdrawn = !showWithdrawn">{{ showWithdrawn ? words.hideWithdrawn : words.showWithdrawn + ' (' + hiddenCount + ')' }}</button>
@@ -652,17 +653,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
             <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
-            <button type="button" class="log-link" :disabled="busy" @click="showLogs({ run_id: run.id })">{{ words.logs }}</button>
+            <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
+            <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         </template>
-      </section>
-      <section v-if="diagnostics" class="panel mb-6" data-testid="project-diagnostics" aria-live="polite">
-        <h2>{{ words.diagnostics }}</h2><p class="help">{{ words.diagnosticsHelp }}</p>
-        <p v-if="!diagnostics.length">{{ words.noLogs }}</p>
-        <article v-for="(entry, index) in diagnostics" :key="index" class="mt-4">
-          <p>{{ entry.kind }} · {{ statuses[entry.status] ?? entry.status }} · {{ entry.code }}</p><pre v-if="entry.log">{{ entry.log }}</pre>
-        </article><button class="btn sm mt-3" @click="diagnostics = null">{{ words.close }}</button>
       </section>
       <p class="help mt-6">{{ pick('Bring your own model API; organizer credits are not provided. Awards require LLM-driven agent techniques in at least two stages (see Rules). Never include a permanent key in your repository or ZIP.','请自备模型 API，平台不提供额度。评奖要求至少两个环节采用大模型驱动的智能体技术（见规则）。不要把永久密钥放进仓库或 ZIP。') }}</p>
     </template>
@@ -677,7 +672,7 @@ h2 { font-size: 1.2rem; font-weight: 600; } h3 { font-weight: 600; }
 .repeat-member { padding-left: .75rem; border-left: 2px solid #333; }
 .repeat-cards { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .35rem; }
 .repeat-card { display: inline-flex; align-items: baseline; gap: .4rem; }
-/* Logs are secondary to the step actions: a quiet text link at the end of a row. */
+/* A quiet text link (the withdrawn-versions toggle). */
 .log-link { margin-left: auto; background: none; border: 0; padding: .25rem 0; font-size: .75rem; color: #858585; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .meta { font-size: .8rem; color: #858585; }
 .model-api > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; }

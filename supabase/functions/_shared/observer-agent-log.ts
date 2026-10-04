@@ -95,3 +95,29 @@ export async function fetchArchive(url: string, fetcher: typeof fetch = fetch): 
   }
   return out;
 }
+
+/**
+ * agent.log inside a run's result archive: a colocated run writes it beside
+ * decisions.csv (the archive has one wrapper folder), so it is found at the root
+ * or one folder deep.
+ */
+export async function resultAgentLog(archive: Uint8Array): Promise<Uint8Array | null> {
+  return await readZipEntry(archive, (name) => /^(?:[^/]+\/)?agent\.log$/.test(name), AGENT_LOG_BYTES * 3);
+}
+
+/** Characters of agent.log shown on the page; the whole file is a separate download. */
+export const AGENT_LOG_TAIL = 65536;
+
+/**
+ * The page's view of a run's agent.log: its last AGENT_LOG_TAIL characters, or the
+ * whole file when asked (bounded by AGENT_LOG_BYTES at upload). The runner already
+ * replaced the run credential and the team's secret variable values with [REDACTED].
+ */
+export function agentLogView(log: Uint8Array | null, full: boolean) {
+  if (!log) return { available: false };
+  const text = new TextDecoder().decode(log);
+  if (full || text.length <= AGENT_LOG_TAIL) return { available: true, bytes: log.length, truncated: false, log: text };
+  const tail = text.slice(-AGENT_LOG_TAIL);
+  // Start at a line boundary: a cut line could begin in the middle of anything.
+  return { available: true, bytes: log.length, truncated: true, log: tail.slice(tail.indexOf("\n") + 1) };
+}
