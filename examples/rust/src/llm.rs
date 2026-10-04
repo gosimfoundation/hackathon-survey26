@@ -89,8 +89,10 @@ impl LlmClient {
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let body = json!({
             "model": self.model,
-            "temperature": 0.2,
-            "max_tokens": 220,
+            // No "temperature": Kimi Coding Plan models (k3 / kimi-for-coding) reject any
+            // value but 1 with HTTP 400, so leave it to the provider's default. Reasoning
+            // models spend tokens thinking before the JSON answer, hence the roomy cap.
+            "max_tokens": 1024,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
