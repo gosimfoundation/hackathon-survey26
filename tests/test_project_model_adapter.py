@@ -132,3 +132,19 @@ def test_large_project_still_fits_with_the_v4_prompt():
         assert len(json.dumps(request, ensure_ascii=False).encode()) < MAX_PROMPT_BYTES
         return model_response(proposal())
     propose_adapter(source, "test", complete, gameplay="v4")
+
+
+def test_a_project_without_code_is_refused_without_a_model_call_and_names_its_files():
+    from project_platform.package import ProjectFile
+    calls=[]
+    files=(ProjectFile("agent/.env.example",b"KEY=1\n"),ProjectFile(".gitignore",b"*.pyc\n"),ProjectFile("README.md",b"x"))
+    with pytest.raises(ProjectError) as error:
+        propose_adapter(files,"m",lambda request:calls.append(request))
+    text=str(error.value)
+    assert calls==[] and "No code files" in text and "agent/.env.example" in text and "observer.project.json" in text
+
+
+def test_the_entry_point_error_lists_the_files_and_points_to_the_manifest():
+    with pytest.raises(ProjectError) as error:
+        propose_adapter(SOURCE,"test",lambda _:model_response({"error":"manual_interface_required","explanation":"x"}))
+    assert "Files seen: "+SOURCE[0].path in str(error.value) and "examples/python" in str(error.value)

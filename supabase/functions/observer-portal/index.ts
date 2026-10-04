@@ -41,7 +41,10 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
     });
     return Response.json({ data: result }, { headers: cors });
   } catch (error) {
-    return Response.json({ error: error instanceof ProxyError ? error.code : "portal_unavailable" }, {
+    const body = error instanceof ProxyError
+      ? { error: error.code, ...(error.code === "zip_has_no_code" && error.detail ? { detail: error.detail } : {}) }
+      : { error: "portal_unavailable" };
+    return Response.json(body, {
       status: error instanceof ProxyError ? error.status : 503,
       headers: cors,
     });

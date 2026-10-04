@@ -414,5 +414,9 @@
  "user_not_found": {
   "en": "No such person.",
   "zh": "找不到这个人。"
+ },
+ "zip_has_no_code": {
+  "en": "No code files were found in the ZIP. Make sure you zipped the folder that contains your program, or start from an official example (the examples include observer.project.json).",
+  "zh": "压缩包里没有找到代码文件。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。"
  }
 }

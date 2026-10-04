@@ -4,6 +4,7 @@ import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { supabase } from '../../lib/supabase'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
+import { inspectSourceNames, zipEntryNames, ZipWithoutCodeError } from '../../lib/sourceCheck'
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
@@ -245,6 +246,11 @@ const statuses = computed(() => pick<Record<string, string>>({ queued:'Queued', 
   { queued:'排队中', preparing:'准备中', reviewable:'等待确认', approved:'已确认', failed:'失败', starting:'启动中', ready:'已就绪',
     running:'运行中', awaiting_csv:'等待 CSV', scored:'已评分', cancelled:'已取消' }))
 function errorMessage(e: unknown) {
+  if (e instanceof ZipWithoutCodeError) {
+    const seen = e.files.length ? e.files.join(', ') : pick('nothing but folders', '只有空文件夹')
+    return pick(`No code files were found in the ZIP (only ${seen}). Make sure you zipped the folder that contains your program, or start from an official example — the examples include observer.project.json.`,
+      `压缩包里没有找到代码文件（只有 ${seen}）。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。`)
+  }
   const code = e instanceof Error ? e.message : ''
   const messages: Record<string, string> = {
     stale_approval: pick('The version changed. Reopen the review before confirming.', '版本已变化，请重新打开并检查。'),
@@ -327,9 +333,23 @@ async function action(work: () => Promise<void>, success = words.value.done, key
   notice.value = success; retryStatus.value = ''
   try { await reload() } catch { /* the periodic refresh retries and unlocks */ } finally { busy.value = false; pending.value = '' }
 }
-function submit() {
+async function zipCheck(file: File): Promise<string> {
+  // Refused here before uploading (and again by the server): no preparation is used.
+  let names: string[] | null = null
+  try { names = zipEntryNames(await file.arrayBuffer()) } catch { names = null }
+  if (!names) return ''
+  const check = inspectSourceNames(names)
+  if (!check.manifest && !check.code) throw new ZipWithoutCodeError(check.files)
+  return check.manifest ? '' : pick(' No observer.project.json: your model will adapt the project automatically, which may fail.',
+    ' 没有 observer.project.json：将使用你的模型自动适配，可能失败。')
+}
+async function submit() {
   const url = form.value.kind === 'repository' ? form.value.url : null
   if (recentDuplicate(data.value?.projects, form.value.title, url) && !window.confirm(words.value.duplicate)) return
+  let warning = ''
+  if (url === null && selectedFile.value) {
+    try { warning = await zipCheck(selectedFile.value) } catch (e) { error.value = errorMessage(e); notice.value = ''; return }
+  }
   const onRetry = () => { retryStatus.value = words.value.retrying }
   void action(async () => {
     if (url !== null) await portal('submit_repository', { title: form.value.title, url, branch: form.value.branch, subdir: form.value.subdir }, onRetry)
@@ -343,7 +363,7 @@ function submit() {
     }
     form.value = { title: '', kind: form.value.kind, url: '', branch: '', subdir: '' }; selectedFile.value = null
     const file = document.querySelector<HTMLInputElement>('[data-testid="project-zip"]'); if (file) file.value = ''
-  }, words.value.prepared, 'submit').then(() => {
+  }, words.value.prepared + warning, 'submit').then(() => {
     // Point at step 2 after a successful upload; on failure the error banner stays in view instead.
     if (!error.value) document.querySelector('[data-testid="project-versions"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })

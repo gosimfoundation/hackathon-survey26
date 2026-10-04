@@ -2,7 +2,7 @@
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 
 export class ProxyError extends Error {
-  constructor(public status: number, public code: string, public detail?: Record<string, number>) {
+  constructor(public status: number, public code: string, public detail?: Record<string, unknown>) {
     super(code);
   }
 }
