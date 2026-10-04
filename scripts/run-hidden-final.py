@@ -158,15 +158,21 @@ def public_pool(target):
                              + q(target) + '::uuid'), 'target phase')
     reason = None
     if pool.get('mode', 'off') == 'off': reason = 'switched off'
-    elif not pool.get('approved_sha'): reason = 'no approved runtime'
-    elif pool['mode'] != 'overflow': reason = f"mode {pool['mode']} (drill users only)"
+    elif pool['mode'] not in ('overflow', 'primary'): reason = f"mode {pool['mode']} (drill users only)"
     elif phase['slug'] not in (pool.get('phases') or []): reason = f"{phase['slug']} not switched on for the pool"
     elif phase['sealed'] and not pool.get('sealed_transfer_verified'): reason = 'sealed transfer not verified'
     elif not phase['sealed']: reason = 'unsealed phase: only while an organization is busy or near its minutes'
     cap_left = max(0.0, float(pool.get('monthly_minute_cap') or 0) - float(pool.get('month_minutes') or 0))
-    return {'used': reason is None, 'reason': reason, 'max_active': int(pool.get('max_active') or 0),
+    # One public repository per runner organization (migration 20261004061000): the healthy ones' slots, within the global cap.
+    targets = pool.get('targets')
+    slots = int(pool.get('max_active') or 0)
+    if isinstance(targets, list):
+        slots = min(slots, sum(int(t.get('max_active') or 0) for t in targets if t.get('healthy')))
+        if reason is None and not slots: reason = 'no healthy public repository'
+    return {'used': reason is None, 'reason': reason, 'max_active': slots,
             'cap_left': cap_left, 'cap': float(pool.get('monthly_minute_cap') or 0),
-            'where': f"{pool.get('organization', '?')}/{pool.get('repository', 'observer-public')}"}
+            'where': (f"{sum(1 for t in targets if t.get('healthy'))} public repositories" if isinstance(targets, list)
+                      else f"{pool.get('organization', '?')}/{pool.get('repository', 'observer-public')}")}
 
 
 def estimate(users, scenarios, runtime_seconds, capacity, pool=None):
@@ -189,7 +195,7 @@ def estimate(users, scenarios, runtime_seconds, capacity, pool=None):
                          f" up to {pool['max_active']} runs at a time, no Actions minutes,"
                          f" {pool['cap_left']:.0f} of {pool['cap']:.0f} pool minutes left this month;"
                          f" takes up to ~{share:.0f} of the ~{minutes} minutes, the rest runs on the organizations below")
-            if share < minutes and pool['max_active'] < 15:
+            if share < minutes and pool['max_active'] < 15 and pool['where'].endswith('observer-public'):
                 lines.append("  public pool: for a larger share raise max_active before --apply, e.g."
                              " select public.observer_set_public_pool(p_max_active=>15); (at most 20, shared with"
                              " the pool organization's own jobs; ops/public-runner-pool.md)")
