@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.3.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.4.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.3.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.3.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.4.0
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
@@ -58,7 +58,7 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 | Team | `team show`, `team members`, `team create NAME [--max-size N]`, `team join CODE`, `team leave`, `team code [--regenerate]`, `team set --name … --max-size … --lock/--unlock`, `team transfer USER_ID`, `team kick USER_ID`, `team disband`, `team directory`, `team request TEAM_ID`, `team invite-uid UID` (captain) |
 | Friends | `friends list` (your UID, friends, requests, blocked), `friends add UID`, `friends accept ID`, `friends decline ID`, `friends cancel ID`, `friends remove USER_ID`, `friends block USER_ID`, `friends unblock USER_ID` |
 | Notifications | `invites list`, `invites accept ID`, `invites decline ID`, `invites cancel ID` |
-| Keys and network | `env show`, `env set NAME --value-stdin [--plain]`, `env set NAME --from-env VAR`, `env unset NAME`, `env domains set HOST…`, `env domains clear` |
+| Keys and network | `env show`, `env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix NAME] [--replace]` (the “Add a model service” form), `env set NAME --value-stdin [--plain]`, `env set NAME --from-env VAR`, `env unset NAME`, `env domains set HOST…`, `env domains clear` |
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--branch BRANCH] [--subdir FOLDER] [--title …]` (a `…/tree/BRANCH/FOLDER` or `…/commit/SHA` link works too; the exact commit is saved at submission) |
 | Step 2 · Review and confirm | `project list [--all]`, `project wait REV`, `project show REV --files`, `project logs REV`, `project confirm REV`, `project withdraw REV`, `project download REV`, `project evidence REV --notes … --code-url …` |
 | Step 3 · Evaluate | `quota`, `eval start REV`, `eval selfcheck REV` (evaluate 3 times and average), `eval list`, `eval show BATCH`, `eval wait [BATCH]` |
@@ -72,7 +72,7 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 ## 4. A complete workflow
 
 ```bash
-survey26 env set OPENAI_API_KEY --value-stdin < key.txt     # secret, shown only as its last 4 characters
+survey26 env model --provider kimi --key - < key.txt       # OPENAI_API_KEY (secret), OPENAI_BASE_URL, OPENAI_MODEL
 survey26 project upload agent.zip --title "my agent"        # uses 1 of the 10 daily uploads
 survey26 project wait 1a2b3c4d                              # preparation and public test; exit 9 if it failed
 survey26 project logs 1a2b3c4d                              # build log and agent.log of the public test
@@ -84,6 +84,8 @@ survey26 results log RUN_ID --tail 100
 survey26 results download-all latest -o results.zip
 survey26 final set 1a2b3c4d
 ```
+
+`env model` writes the same three variables as the website's **Add a model service** form, with the same provider presets: the key as a secret, the base URL and the model as plain values. Without `--prefix` the names are `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `OPENAI_MODEL` (`ANTHROPIC_*` for Anthropic); with `--prefix KIMI` they are `KIMI_API_KEY` and so on, so that several providers can be configured side by side. Existing variables are not overwritten unless `--replace` is given (exit code 2 otherwise). `--key -` reads the key from standard input so that it does not appear in the shell history.
 
 ## 5. Output and exit codes
 

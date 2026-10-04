@@ -18,6 +18,8 @@ def _action(a):
             item["default"] = a.default
         if a.metavar:
             item["metavar"] = a.metavar
+    if a.required:
+        item["required"] = True
     item["help"] = a.help or ""
     return item
 

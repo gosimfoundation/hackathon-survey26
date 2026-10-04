@@ -378,6 +378,25 @@ SCENARIOS = [
     ("env-domains", ["--json", "env", "domains"], {"exit": 0}),
     ("env-domains-set", ["--json", "env", "domains", "set", "a.example", "b.example"], {"exit": 0}),
     ("env-domains-clear", ["--json", "env", "domains", "clear"], {"exit": 0}),
+    ("env-model-kimi", ["--json", "env", "model", "--provider", "kimi", "--key", "sk-kimi-123456789"], {"exit": 0}),
+    ("env-model-human", ["env", "model", "--provider", "deepseek", "--key", "sk-1"], {"exit": 0, "human": True}),
+    ("env-model-key-stdin", ["--json", "env", "model", "--provider", "moonshot", "--key", "-", "--model", " kimi-k3 "], {"stdin": "  sk-stdin-key \n", "exit": 0}),
+    ("env-model-taken", ["--json", "env", "model", "--provider", "kimi", "--prefix", "kimi", "--key", "sk-1"], {"exit": 2}),
+    ("env-model-replace", ["--json", "env", "model", "--provider", "kimi", "--prefix", " kimi ", "--key", "sk-1", "--replace"], {"exit": 0}),
+    ("env-model-prefix-normalized", ["--json", "env", "model", "--provider", "zhipu", "--prefix", "9-glm.x", "--key", "sk-1"], {"exit": 0}),
+    ("env-model-prefix-empty", ["--json", "env", "model", "--provider", "zhipu", "--prefix", "123", "--key", "sk-1"], {"exit": 2}),
+    ("env-model-anthropic", ["--json", "env", "model", "--provider", "anthropic", "--key", "sk-ant"], {"exit": 0}),
+    ("env-model-custom-no-url", ["--json", "env", "model", "--provider", "custom", "--key", "sk-1"], {"exit": 2}),
+    ("env-model-custom", ["--json", "env", "model", "--provider", "custom", "--key", "sk-1", "--base-url", "https://llm.example/v1", "--model", "m1"], {"exit": 0}),
+    ("env-model-http-url", ["--json", "env", "model", "--provider", "openai", "--key", "sk-1", "--base-url", "http://llm.example"], {"exit": 2}),
+    ("env-model-empty-key", ["--json", "env", "model", "--provider", "openai", "--key", "-"], {"stdin": "\n", "exit": 2}),
+    ("env-model-drops-old-model", ["--json", "env", "model", "--provider", "openai", "--key", "sk-1", "--replace"],
+     {"routes": {"portal:team_environment": (200, {"data": {"team_environment": dict(ENV, variables=ENV["variables"] + [
+         {"name": "OPENAI_MODEL", "secret": False, "hint": "", "value": "old", "updated_at": "t"}])}})}, "exit": 0}),
+    ("env-model-limit", ["--json", "env", "model", "--provider", "kimi", "--key", "sk-1"],
+     {"routes": {"portal:team_environment": (200, {"data": {"team_environment": dict(ENV, limits={"variables": 3})}})}, "exit": 8}),
+    ("env-model-missing-key", ["env", "model", "--provider", "kimi"], {"exit": 2, "human": True}),
+    ("env-model-bad-provider", ["env", "model", "--provider", "nope", "--key", "x"], {"exit": 2, "human": True}),
     ("project-list", ["--json", "project", "list"], {"exit": 0}),
     ("project-list-all", ["--json", "project", "list", "--all"], {"exit": 0}),
     ("project-show", ["--json", "project", "show", "33333333", "--files"], {"exit": 0}),
@@ -495,6 +514,12 @@ def test_builds_agree(gw, tmp_path, name, argv, options):
 
 def test_spec_matches_the_python_parser():
     assert json.loads((ROOT / "cli" / "spec.json").read_text("utf-8")) == cli_spec_introspect.spec(survey26)
+
+
+def test_model_presets_match_the_website():
+    web = json.loads((ROOT / "web" / "src" / "lib" / "modelProviders.json").read_text("utf-8"))
+    assert survey26.MODEL_PROVIDERS == [{"cli": p["cli"], "label": p["label"], "protocol": p["protocol"],
+                                         "base_url": p["baseUrl"], "model": p["model"]} for p in web]
 
 
 def test_messages_match_the_python_build():

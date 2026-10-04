@@ -1,5 +1,5 @@
 {
- "version": "1.3.0",
+ "version": "1.4.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1030,6 +1030,82 @@
     }
    ],
    "options": []
+  },
+  {
+   "path": [
+    "env",
+    "model"
+   ],
+   "help": "add a model service like the website's quick form: key (secret), base URL and model",
+   "group": false,
+   "func": "cmd_env_model",
+   "positionals": [],
+   "options": [
+    {
+     "flags": [
+      "--provider"
+     ],
+     "dest": "provider",
+     "kind": "value",
+     "type": "str",
+     "choices": [
+      "kimi",
+      "moonshot",
+      "deepseek",
+      "openai",
+      "anthropic",
+      "zhipu",
+      "custom"
+     ],
+     "required": true,
+     "help": ""
+    },
+    {
+     "flags": [
+      "--key"
+     ],
+     "dest": "key",
+     "kind": "value",
+     "type": "str",
+     "required": true,
+     "help": "the API key ('-' reads it from standard input; recommended)"
+    },
+    {
+     "flags": [
+      "--base-url"
+     ],
+     "dest": "base_url",
+     "kind": "value",
+     "type": "str",
+     "help": "https:// address (default: the provider's; required for custom)"
+    },
+    {
+     "flags": [
+      "--model"
+     ],
+     "dest": "model",
+     "kind": "value",
+     "type": "str",
+     "help": "model name (default: the provider's, if any)"
+    },
+    {
+     "flags": [
+      "--prefix"
+     ],
+     "dest": "prefix",
+     "kind": "value",
+     "type": "str",
+     "help": "variable prefix, e.g. KIMI gives KIMI_API_KEY (default: OPENAI_*, ANTHROPIC_* for Anthropic)"
+    },
+    {
+     "flags": [
+      "--replace"
+     ],
+     "dest": "replace",
+     "kind": "flag",
+     "help": "overwrite variables that already exist"
+    }
+   ]
   },
   {
    "path": [

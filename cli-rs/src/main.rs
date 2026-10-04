@@ -16,6 +16,8 @@ use util::*;
 
 pub const SPEC: &str = include_str!("../../cli/spec.json");
 const MESSAGES: &str = include_str!("../../cli/messages.json");
+/// Presets of the website's "Add a model service" form, shared with it.
+const MODEL_PROVIDERS: &str = include_str!("../../web/src/lib/modelProviders.json");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_API: &str = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli";
 const SITE: &str = "https://create.gosim.org/survey26/platform";
@@ -57,7 +59,7 @@ fn exit_code_for(code: &str) -> i32 {
         EXIT_NOT_FOUND
     } else if UNAVAILABLE_CODES.contains(&code) {
         EXIT_UNAVAILABLE
-    } else if ["confirmation_required", "usage", "ambiguous_id", "file_not_found"].contains(&code) {
+    } else if ["confirmation_required", "usage", "ambiguous_id", "file_not_found", "variables_exist"].contains(&code) {
         EXIT_USAGE
     } else if code == "wait_timeout" {
         EXIT_TIMEOUT
@@ -1229,6 +1231,86 @@ fn cmd_env_set(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     Ok(env)
 }
 
+fn normalize_prefix(raw: &str) -> String {
+    let upper = py_strip(raw).to_uppercase();
+    let mut value = String::new();
+    let mut in_bad = false;
+    for ch in upper.chars() {
+        if ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' {
+            value.push(ch);
+            in_bad = false;
+        } else if !in_bad {
+            value.push('_');
+            in_bad = true;
+        }
+    }
+    let value: String = value.trim_start_matches(|c: char| !c.is_ascii_uppercase()).trim_end_matches('_').to_string();
+    value.chars().take(40).collect()
+}
+
+fn cmd_env_model(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let presets: Value = serde_json::from_str(MODEL_PROVIDERS).expect("modelProviders.json");
+    let wanted = a.str("provider").unwrap_or_default();
+    let preset = arr(&presets).into_iter().find(|p| s_or(&p["cli"]) == wanted).ok_or_else(|| CliError::new("usage"))?;
+    let prefix_arg = a.str("prefix");
+    let prefix = normalize_prefix(&prefix_arg.clone().unwrap_or_default());
+    if prefix_arg.is_some() && prefix.is_empty() {
+        return Err(CliError::exit("usage", "--prefix needs a letter, e.g. KIMI", EXIT_USAGE));
+    }
+    let base = if !prefix.is_empty() { prefix } else if s_or(&preset["protocol"]) == "anthropic" { "ANTHROPIC".into() } else { "OPENAI".into() };
+    let (key_name, url_name, model_name) = (format!("{}_API_KEY", base), format!("{}_BASE_URL", base), format!("{}_MODEL", base));
+    let key_arg = a.str("key").unwrap_or_default();
+    let key = py_strip(&if key_arg == "-" { read_all_stdin() } else { key_arg });
+    if key.is_empty() {
+        return Err(CliError::exit("usage", "give the API key with --key KEY, or --key - to read it from standard input", EXIT_USAGE));
+    }
+    let base_url = py_strip(&a.str("base_url").unwrap_or_else(|| s_or(&preset["baseUrl"])));
+    let valid_url = base_url.starts_with("https://") && base_url.len() > 8 && !base_url.chars().any(char::is_whitespace);
+    if !valid_url {
+        let tail = if s_or(&preset["baseUrl"]).is_empty() { " (required for --provider custom)" } else { "" };
+        return Err(CliError::exit("usage", format!("--base-url must be an https:// address{}", tail), EXIT_USAGE));
+    }
+    let model = py_strip(&a.str("model").unwrap_or_else(|| s_or(&preset["model"])));
+    let env = or_empty(g(&or_empty(api.portal("team_environment", false, json!({}))?), "team_environment"));
+    let existing: Vec<String> = arr(&env["variables"]).iter().map(|v| s_or(&v["name"])).collect();
+    let mut writes: Vec<(String, String, bool)> = vec![(key_name.clone(), key, true), (url_name.clone(), base_url.clone(), false)];
+    if !model.is_empty() {
+        writes.push((model_name.clone(), model.clone(), false));
+    }
+    let deletes: Vec<String> = if model.is_empty() && existing.contains(&model_name) { vec![model_name.clone()] } else { vec![] };
+    let mut taken: Vec<String> = writes.iter().filter(|w| existing.contains(&w.0)).map(|w| w.0.clone()).collect();
+    taken.extend(deletes.iter().cloned());
+    if !taken.is_empty() && !a.flag("replace") {
+        return Err(CliError::detail("variables_exist", out.t("Already set: {0}. Pass --replace to overwrite them, or --prefix NAME to add another service.",
+            "已存在：{0}。如需覆盖请加 --replace，或用 --prefix 名称 添加另一个服务。").replace("{0}", &taken.join(", "))));
+    }
+    let added = writes.iter().filter(|w| !existing.contains(&w.0)).count();
+    if let Some(limit) = env["limits"]["variables"].as_i64() {
+        if (existing.len() + added) as i64 > limit {
+            return Err(CliError::new("team_variable_limit"));
+        }
+    }
+    let mut last = json!({});
+    for (name, value, secret) in &writes {
+        last = or_empty(api.portal("save_team_variable", true, json!({"name": name, "value": value, "secret": secret}))?);
+    }
+    for name in &deletes {
+        last = or_empty(api.portal("delete_team_variable", true, json!({"name": name}))?);
+    }
+    let label = s_or(&preset["label"]);
+    let model_part = if model.is_empty() { String::new() } else { format!("{}{}", out.t(", ", "、"), model_name) };
+    out.line(&out.t("Saved model service {0}: {1} (secret), {2}{3}.", "已保存模型服务 {0}：{1}（密文）、{2}{3}。")
+        .replace("{0}", &label).replace("{1}", &key_name).replace("{2}", &url_name).replace("{3}", &model_part));
+    Ok(obj(vec![
+        ("provider", preset["cli"].clone()), ("label", preset["label"].clone()), ("protocol", preset["protocol"].clone()),
+        ("variables", obj(vec![("key", json!(key_name)), ("base_url", json!(url_name)), ("model", json!(model_name))])),
+        ("base_url", json!(base_url)), ("model", if model.is_empty() { Value::Null } else { json!(model) }),
+        ("saved", Value::Array(writes.iter().map(|w| json!(w.0)).collect())),
+        ("deleted", Value::Array(deletes.iter().map(|d| json!(d)).collect())),
+        ("team_environment", env_view(or_empty(g(&last, "team_environment")))),
+    ]))
+}
+
 fn cmd_env_unset(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let name = a.str("name").unwrap_or_default();
     let env = team_environment(api.portal("delete_team_variable", true, json!({"name": name}))?);
@@ -2074,6 +2156,7 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_env_show" => cmd_env_show,
         "cmd_env_set" => cmd_env_set,
         "cmd_env_unset" => cmd_env_unset,
+        "cmd_env_model" => cmd_env_model,
         "cmd_env_domains" => cmd_env_domains,
         "cmd_project_list" => cmd_project_list,
         "cmd_project_submit_repo" => cmd_project_submit_repo,

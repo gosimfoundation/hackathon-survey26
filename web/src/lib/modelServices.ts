@@ -3,6 +3,8 @@
 // read (OPENAI_* or ANTHROPIC_*); with a prefix (KIMI, DEEPSEEK…) several providers live side by side.
 // Pure and unit-tested; the component only renders and calls the existing team-variable RPCs.
 
+import providerPresets from './modelProviders.json' with { type: 'json' }
+
 export type ServiceProtocol = 'openai' | 'anthropic'
 
 export type ProviderPreset = {
@@ -17,24 +19,13 @@ export type ProviderPreset = {
   prefix: string
   /** i18n key of a short provider note, if any. */
   note?: string
+  /** The provider's name in `survey26 env model --provider`. */
+  cli?: string
 }
 
 // Defaults checked against each provider's docs on 2026-10-04 (and the repo's examples for Kimi).
-export const PROVIDERS: ProviderPreset[] = [
-  { id: 'kimi-coding', label: 'Kimi Coding Plan', protocol: 'openai', baseUrl: 'https://api.kimi.com/coding/v1',
-    model: 'kimi-for-coding', placeholder: 'kimi-for-coding', prefix: 'KIMI', note: 'kimi' },
-  { id: 'moonshot', label: 'Moonshot (Kimi API)', protocol: 'openai', baseUrl: 'https://api.moonshot.cn/v1',
-    model: 'kimi-k3', placeholder: 'kimi-k3', prefix: 'MOONSHOT' },
-  { id: 'deepseek', label: 'DeepSeek', protocol: 'openai', baseUrl: 'https://api.deepseek.com',
-    model: 'deepseek-flash', placeholder: 'deepseek-flash', prefix: 'DEEPSEEK' },
-  { id: 'openai', label: 'OpenAI', protocol: 'openai', baseUrl: 'https://api.openai.com/v1',
-    model: '', placeholder: 'gpt-…', prefix: 'GPT' },
-  { id: 'anthropic', label: 'Anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com',
-    model: '', placeholder: 'claude-…', prefix: 'CLAUDE', note: 'anthropic' },
-  { id: 'zhipu', label: 'Zhipu GLM', protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    model: 'glm-5.3', placeholder: 'glm-5.3', prefix: 'ZHIPU' },
-  { id: 'custom', label: 'Custom', protocol: 'openai', baseUrl: '', model: '', placeholder: 'model-name', prefix: 'CUSTOM' },
-]
+// Shared with both survey26 command-line builds (`survey26 env model --provider <cli>`), so they cannot drift.
+export const PROVIDERS: ProviderPreset[] = providerPresets as ProviderPreset[]
 
 export function presetById(id: string): ProviderPreset {
   return PROVIDERS.find(p => p.id === id) ?? PROVIDERS[PROVIDERS.length - 1]
