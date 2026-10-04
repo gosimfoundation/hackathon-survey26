@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from '../../lib/observerPortal'
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
+import TeamEnvironment from './TeamEnvironment.vue'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
@@ -48,6 +49,8 @@ const protocolChoice = ref<ModelProtocol>(DEFAULT_MODEL_PROTOCOL)
 // Collapsed by default; teams that use a model (saved key or a key connected in this tab) always see it open.
 const modelOpen = ref(false)
 const modelForm = ref({ base_url: '', model: '', key: '' })
+// Rollout switch: the team's variables and allowed domains replace the model API settings.
+const teamEgress = computed(() => data.value?.team_egress === true)
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
 const when = (value: string | null | undefined) => formatDateTime(value, locale.value)
@@ -183,7 +186,7 @@ const titles = computed(() => new Map((data.value?.projects ?? []).flatMap(p => 
 const phaseName = (id: string) => { const p = data.value?.phases.find(x => x.phase_id === id)?.phases; return p ? pick(p.name_en, p.name_zh) : '' }
 // Team-key runs have no practical token cap (1,000,000,000 or more is shown as uncapped).
 const TOKENS_UNCAPPED = 1_000_000_000
-const relayFinalRisk = computed(() => relayMissesHiddenFinal(modelMode.value, !!finalVersion.value || competition.mode === 'competition'))
+const relayFinalRisk = computed(() => !teamEgress.value && relayMissesHiddenFinal(modelMode.value, !!finalVersion.value || competition.mode === 'competition'))
 const modelLimits = computed(() => {
   const p = activePhases.value[0]
   if (!p || !(p.model_call_limit > 0)) return null
@@ -213,6 +216,10 @@ function errorMessage(e: unknown) {
     invalid_repository_url: pick('Enter a public https://github.com/owner/repository URL.', '请输入公开 GitHub 仓库的完整地址。'),
     model_destination_not_enabled: t('submit.model_api.endpoint_refused'),
     invalid_team_model: t('submit.model_api.invalid'),
+    invalid_team_variable: t('submit.team_env.invalid_variable'),
+    team_variable_limit: t('submit.team_env.variable_limit'),
+    invalid_team_domains: t('submit.team_env.invalid_domain'),
+    team_domain_not_public: t('submit.team_env.domain_not_public'),
     final_version_locked: pick('The online phase has ended; the final version can no longer change.', '线上赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
@@ -238,7 +245,8 @@ async function reload() {
   locked.value = new Set()
   modeChoice.value = modelMode.value
   protocolChoice.value = teamModelProtocol(data.value?.team_model)
-  if (!modelOpen.value && (savedModel.value || personal.everConfigured.value)) modelOpen.value = true
+  if (!modelOpen.value && (savedModel.value || personal.everConfigured.value ||
+    data.value?.team_environment?.relay_key_missing || (teamEgress.value && data.value?.team_environment?.variables.length))) modelOpen.value = true
   await personal.refresh()
   // Bind evaluations to the entry phase (beta entry first), never to whatever
   // order the database happened to return.
@@ -437,10 +445,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <p v-if="!projectsOpen" class="panel">{{ words.closed }}</p>
       <details class="panel mb-6 model-api" data-testid="model-api-settings" :open="modelOpen" @toggle="modelOpen = ($event.target as HTMLDetailsElement).open">
         <summary class="model-api-summary" data-testid="model-api-toggle">
-          <span id="model-api" class="model-api-title" role="heading" aria-level="2">{{ t('submit.model_api.title') }}</span>
-          <span class="help model-api-hint" data-testid="model-api-hint">{{ t('submit.model_api.collapsed_hint') }}</span>
+          <span id="model-api" class="model-api-title" role="heading" aria-level="2">{{ teamEgress ? t('submit.team_env.title') : t('submit.model_api.title') }}</span>
+          <span class="help model-api-hint" data-testid="model-api-hint">{{ teamEgress ? t('submit.team_env.collapsed_hint') : t('submit.model_api.collapsed_hint') }}</span>
         </summary>
-        <div class="model-api-body">
+        <div v-if="teamEgress" class="model-api-body">
+          <TeamEnvironment :environment="data?.team_environment" :busy="busy" @act="(work, success) => action(work, success)" />
+        </div>
+        <div v-else class="model-api-body">
         <p class="help mt-3">{{ t('submit.model_api.intro') }}</p>
         <p class="help" data-testid="model-mode-tradeoff">{{ t('submit.model_api.tradeoff') }}</p>
         <p v-if="relayFinalRisk" class="errors" role="note" data-testid="model-mode-final-note">{{ words.apiFinalNote }}</p>

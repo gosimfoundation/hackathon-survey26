@@ -1596,7 +1596,7 @@
   "credits": {
     "title": "API credits",
     "kicker": "sponsor codes",
-    "lede": "Sponsor API codes, one per team per provider. Cloud evaluations use the model API you set on the Participate page.",
+    "lede": "Sponsor API codes, one per team per provider. Cloud evaluations use the keys you save under Keys and network on the Participate page.",
     "need_team": "Codes are issued per team. Create or join a team to claim them.",
     "empty": "No sponsor codes are available yet.",
     "available": "{n} left",
@@ -1802,6 +1802,35 @@
     "drop_results": "Drop your decisions.csv here",
     "pick_folder": "Choose a folder (we zip it for you)",
     "packed": "Packed {n} file(s) in the browser",
+    "team_env": {
+      "title": "Keys and network (optional)",
+      "collapsed_hint": "Model keys, endpoints and the domains your program may reach",
+      "intro": "No model credits are provided. If your program calls a model or another external service, save the variables it needs here (API keys, endpoints, model names) and list the domains it must reach. During evaluation these variables are provided to your program as environment variables, and the program can reach only the domains listed below, over HTTPS (port 443); all other network access is unavailable. You may use several providers, protocols and models at the same time; their cost is your team's.",
+      "relay_banner": "Your team previously chose not to save its key. Evaluations now use the variables saved here: please save the keys you need below and add your provider's domain, otherwise model calls will fail during evaluation.",
+      "final_note": "The hidden final uses the variables saved here as well; no page needs to stay open. Saved keys are deleted automatically after the hidden final results are published and verified, and you can delete or replace them at any time.",
+      "vars_title": "Environment variables",
+      "vars_help": "Use upper-case letters, digits and underscores for names, e.g. OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL. Values marked \"Save encrypted as a secret\" are stored encrypted and afterwards only their last 4 characters are shown; leave endpoints and model names unmarked so they stay visible. Saving a name again replaces it. Up to {variables} variables of at most 8 KB each; names starting with OBSERVER_ or SAC_ and proxy settings are reserved by the platform.",
+      "name": "Name",
+      "value": "Value",
+      "secret": "Save encrypted as a secret (not shown again)",
+      "save": "Save variable",
+      "delete": "Delete",
+      "no_variables": "No variables saved yet.",
+      "domains_title": "Allowed domains",
+      "domains_help": "Enter the domain only, without https:// or a path, e.g. api.kimi.com, api.deepseek.com, api.anthropic.com, generativelanguage.googleapis.com. Only names that resolve to public addresses are accepted, never IP addresses or internal names. Up to {domains} domains.",
+      "domain": "Domain",
+      "add_domain": "Add domain",
+      "remove": "Remove",
+      "no_domains": "No domains yet: during evaluation your program cannot reach any external service.",
+      "proxy_note": "The platform also sets HTTPS_PROXY and related variables, so common SDKs (OpenAI, Anthropic, requests, httpx, reqwest and others) reach these domains without extra configuration; programs that ignore proxy settings can connect to these domains directly as well.",
+      "saved": "Variable saved.",
+      "deleted": "Variable deleted.",
+      "domains_saved": "Domains updated.",
+      "invalid_variable": "Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
+      "variable_limit": "The variable limit has been reached; delete a variable you no longer use first.",
+      "invalid_domain": "Invalid domain: enter the name only (e.g. api.kimi.com), without https://, a port or a path, and not an IP address or internal name; at most 10.",
+      "domain_not_public": "This domain does not resolve right now, or resolves to a non-public address, so it cannot be added."
+    },
     "model_api": {
       "title": "Model API (optional)",
       "intro": "No model credits are provided. The platform does not require a model call, but awards require agent (LLM-driven) techniques in at least two stages. If your project never calls a model, skip this section entirely. Otherwise choose how the platform handles your key:",
@@ -2061,7 +2090,7 @@
       },
       {
         "q": "Can I use an LLM or a commercial API?",
-        "a": "Yes, and awards require agent (LLM-driven) techniques in at least two stages. Bring your own API and quota. In Participate, either save the key encrypted on the server (used only for evaluation and verification, deleted after the hidden final results are verified) or do not save it and keep that page open during evaluations. The hidden final runs with no page open: if your program calls a model, switch to saving the key before the online phase ends."
+        "a": "Yes, and awards require agent (LLM-driven) techniques in at least two stages. Bring your own API and quota. In the \"Keys and network\" section of Participate, save your keys and other variables and add your provider's domain; during evaluation the variables are provided to your program as environment variables and it can reach only the listed domains. Keys are stored encrypted, used only for evaluation and verification, and deleted after the hidden final results are verified; the hidden final uses them as well, with no page open."
       },
       {
         "q": "What is the global wall clock?",
@@ -2108,8 +2137,8 @@
         "a": "Yes. List them in requirements.txt at the project root and put the install command in the build field of observer.project.json; the platform runs it in the build step before the evaluation starts (the build has internet access, and its time does not count toward the 900 s per card). The container's system directories are read-only, so install into the project folder, for example \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]], and set \"PYTHONPATH\": \"/workspace/.deps\" under \"environment\"; a plain pip install -r requirements.txt fails because the system directories are read-only. A requirements.txt without a build step is not installed automatically. While the agent runs it has no network access except the model API, so downloading or installing anything at run time will not work. The same applies to other languages, for example npm ci or cargo build. We recommend one Practice submission first to confirm that the build and run succeed."
       },
       {
-        "q": "Can my agent use different models for different steps?",
-        "a": "Yes. With your team's own endpoint and key, your agent may set the model parameter of each request to any model your provider offers, for example a fast, inexpensive model for simple steps and a stronger one for key decisions; the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model entered under Model API. Model calls are paid for by your team's key, so please make sure the model names in your code are offered by your provider. If the provider rejects a request because it does not recognise the model name, the platform retries it once with the default model."
+        "q": "Can my agent use several models or several providers at once?",
+        "a": "Yes. In \"Keys and network\", save a key for each provider (e.g. KIMI_API_KEY, DEEPSEEK_API_KEY) and add each provider's domain (e.g. api.kimi.com, api.deepseek.com). Your program can then call several providers at the same time, over any protocol (OpenAI-compatible, Anthropic Messages or the provider's own API), and choose the model for each request, for example a fast, inexpensive model for simple steps and a stronger one for key decisions. Model calls are paid for by your team. See the example projects' READMEs for code."
       }
     ]
   },
@@ -2317,7 +2346,7 @@
       "hidden": "hidden",
       "locked": "locked",
       "final_title": "Final versions",
-      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run, so a program that calls a model needs its API key saved encrypted on the server.",
+      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run; it uses the variables and domains each team saved under Keys and network.",
       "final_phase": "Phase",
       "final_version": "Version",
       "final_source": "Source",

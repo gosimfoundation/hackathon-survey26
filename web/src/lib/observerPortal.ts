@@ -17,6 +17,13 @@ export type TeamModel = {
   protocol: 'openai' | 'anthropic'
   saved: { base_url: string; model: string; key_hint: string; saved_at: string } | null
 }
+export type TeamVariable = { name: string; secret: boolean; hint: string; value: string | null; updated_at: string }
+export type TeamEnvironment = {
+  variables: TeamVariable[]
+  domains: string[]
+  relay_key_missing: boolean
+  limits: { variables: number; domains: number; value_bytes: number }
+}
 export type PortalData = {
   phases: { phase_id: string; projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number
     model_token_limit: number; model_call_limit: number; model_concurrency: number; phases: { slug: string; name_en: string; name_zh: string; is_active: boolean
@@ -31,6 +38,8 @@ export type PortalData = {
   providers: { id: string; name: string; base_url: string; models: string[]; shared: boolean; enabled: boolean; daily_token_limit: number }[]
   team_model: TeamModel | null
   model_bases: string[]
+  team_environment?: TeamEnvironment | null
+  team_egress?: boolean
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
   /** The team's final version per open formal phase; missing until the database provides it. */

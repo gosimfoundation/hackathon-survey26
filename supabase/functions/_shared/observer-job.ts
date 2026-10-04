@@ -117,6 +117,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "session_url",
       "run_credential",
       "model_base_url",
+      "team_egress",
     ],
     engine: [
       "kind",
@@ -133,6 +134,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "colocated",
       "restricted_egress",
       "result_key",
+      "team_egress",
     ],
     // The independent rescore: the scenario and the run's stored result, no
     // session capability (a score job can never publish or finish a session).
@@ -236,6 +238,11 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
   } else if (kind === "engine" && (value.archive_url !== undefined || value.restricted_egress !== undefined)) {
     throw new ProxyError(503, "invalid_job_payload");
   }
+  // Team egress: the team's variables and allowed domains (project_platform/team_egress.py).
+  if (value.team_egress !== undefined) {
+    if (kind === "engine" && value.colocated === undefined) throw new ProxyError(503, "invalid_job_payload");
+    validateTeamEgress(value.team_egress);
+  }
   // Model-proxy-only egress for the colocated participant container.
   if (kind === "engine" && value.restricted_egress !== undefined && value.restricted_egress !== true) {
     throw new ProxyError(503, "invalid_job_payload");
@@ -300,6 +307,58 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     }
   }
   return value;
+}
+
+const VARIABLE_NAME = /^[A-Z][A-Z0-9_]{0,63}$/;
+const RESERVED_VARIABLES = new Set([
+  "HTTPS_PROXY",
+  "HTTP_PROXY",
+  "ALL_PROXY",
+  "NO_PROXY",
+  "NODE_USE_ENV_PROXY",
+  "PATH",
+  "HOME",
+  "HOSTNAME",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "PYTHONPATH",
+  "NODE_OPTIONS",
+]);
+const DOMAIN = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
+const RESERVED_SUFFIX = /(^|\.)(localhost|local|internal|intranet|lan|home\.arpa|arpa|test|example|invalid|onion)$/;
+
+export function validTeamVariableName(name: string) {
+  return VARIABLE_NAME.test(name) && !/^(OBSERVER_|SAC_)/.test(name) && !name.endsWith("_PROXY") &&
+    !RESERVED_VARIABLES.has(name);
+}
+export function validTeamDomain(host: unknown) {
+  return typeof host === "string" && DOMAIN.test(host) && !/^[\d.]+$/.test(host) && !RESERVED_SUFFIX.test(host);
+}
+
+function validateTeamEgress(value: unknown) {
+  const egress = value as Record<string, unknown> | null;
+  const invalid = () => new ProxyError(503, "invalid_job_payload");
+  if (
+    !egress || typeof egress !== "object" || Array.isArray(egress) ||
+    Object.keys(egress).sort().join(",") !== "domains,environment,secrets"
+  ) throw invalid();
+  const environment = egress.environment as Record<string, unknown> | null;
+  if (!environment || typeof environment !== "object" || Array.isArray(environment)) throw invalid();
+  const names = Object.keys(environment);
+  if (
+    names.length > 20 ||
+    names.some((name) => {
+      const text = environment[name];
+      return !validTeamVariableName(name) || typeof text !== "string" || text.includes("\0") ||
+        new TextEncoder().encode(text).length > 8192;
+    })
+  ) throw invalid();
+  const secrets = egress.secrets, domains = egress.domains;
+  if (
+    !Array.isArray(secrets) || secrets.some((name) => typeof name !== "string" || !names.includes(name)) ||
+    !Array.isArray(domains) || domains.length > 10 || new Set(domains).size !== domains.length ||
+    !domains.every(validTeamDomain)
+  ) throw invalid();
 }
 
 export async function jobRequest(request: Request, deps: JobDependencies) {

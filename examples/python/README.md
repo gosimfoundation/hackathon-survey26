@@ -139,25 +139,45 @@ OPENAI_API_KEY=sk-...
 `OPENAI_BASE_URL` / `OPENAI_MODEL` override the defaults, so any other
 OpenAI-compatible `/chat/completions` endpoint works too (OpenAI itself, a local proxy,
 etc.) -- just point them there. `KIMI_API_KEY` is accepted as an alternate name for the
-key if you'd rather set that. On the platform, `OPENAI_BASE_URL` / `OPENAI_API_KEY` are
-injected automatically (the platform's own model proxy and a temporary credential); you
-never need to configure them for a submission, and `.env` is never packed into the ZIP.
+key if you'd rather set that. `.env` is never packed into the ZIP.
 
 Without an API key (`OPENAI_API_KEY` or `KIMI_API_KEY`) configured, the process checks
 at startup, before reading anything from stdin, and exits with a message on stderr and
 a non-zero exit code.
 
-This agent calls the OpenAI-compatible `/chat/completions` shape. A team that instead
-chose the Anthropic Messages protocol in the workspace's **Model API** section also gets
-`ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY` injected on the platform (the Anthropic SDK's
-own env vars) -- use those with the official `anthropic` SDK if your own agent speaks
-Claude's Messages API instead. See `docs/model-api-keys.md` for the full comparison.
+## On the platform: keys and network
 
-On the platform, the `model` of each request is forwarded to your team's provider unchanged; the
-default model from the **Model API** section is used only when a request names none. This agent
-sends `OPENAI_MODEL` (default `k3`), so if your provider is not Kimi, set `OPENAI_MODEL` to one of
-your provider's models under `environment` in `observer.project.json`. Different steps may also use
-different models; model calls are paid for by your team's key.
+The platform does not inject a model endpoint. In the **Keys and network** section of
+Participate, save the variables this agent reads (`OPENAI_API_KEY`, and if needed
+`OPENAI_BASE_URL` / `OPENAI_MODEL`) and add the endpoint's domain (for the default Kimi
+endpoint: `api.kimi.com`). During evaluation these variables are the program's environment and
+only the listed domains are reachable, over HTTPS (port 443); `.env` is never read and never
+packed into the ZIP. The platform also sets `HTTPS_PROXY`: HTTP clients that honour it use it
+automatically, and clients that ignore it connect to the listed domains directly.
+
+Several providers, protocols and models can be used at the same time: save one key per provider
+and add each provider's domain. Model calls are paid for by your team.
+
+For example, two calls in parallel through the official `openai` and `anthropic` Python SDKs:
+
+```python
+import asyncio, os
+from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
+
+# One key saved as KIMI_API_KEY; domain api.kimi.com listed.
+openai_style = AsyncOpenAI(base_url="https://api.kimi.com/coding/v1", api_key=os.environ["KIMI_API_KEY"])
+anthropic_style = AsyncAnthropic(base_url="https://api.kimi.com/coding", api_key=os.environ["KIMI_API_KEY"])
+
+async def ask_both(question: str):
+    fast, careful = await asyncio.gather(
+        openai_style.chat.completions.create(
+            model="kimi-for-coding", max_tokens=256, messages=[{"role": "user", "content": question}]),
+        anthropic_style.messages.create(
+            model="k3", max_tokens=1024, messages=[{"role": "user", "content": question}]),
+    )
+    return fast.choices[0].message.content, careful.content[0].text
+```
 
 ## Running it locally
 

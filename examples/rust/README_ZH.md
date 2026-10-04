@@ -110,16 +110,6 @@ key），就能在没有真实服务商参与的情况下对着公开练习任�
   `OPENAI_BASE_URL` / `OPENAI_MODEL` 可以改用该服务的海外地址
   （`https://api.kimi.ai/coding/v1`），或者任何其它 OpenAI 兼容服务商。
 
-本示例调用的是 OpenAI 兼容接口。如果你的队伍在工作区的 **模型 API** 设置里改选了
-Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`；
-如果你自己的智能体改用 Claude 的 Messages API，用这两个变量即可，完整对比见
-`docs/model-api-keys.md`。
-
-在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
-中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
-`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
-使用不同的模型，模型调用的费用由本队密钥承担。
-
 每个观测夜都会发出两次调用，结果会合并（规避方位取并集，曝光时长缩放取
 平均）：
 
@@ -140,6 +130,17 @@ Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` / `ANTHRO
 - 整次运行调用次数上限 `LLM_MAX_CALLS`（默认 100 次）。
 - 一旦运行时间预算剩余不足 30 秒，规划器就不再尝试调用 LLM；剩余不足 10 秒时
   主动发送 `finish`，而不是冒险在决策过程中被直接杀掉。
+
+## 在平台上：密钥与网络
+
+平台不会注入模型接口。请在「参赛」页的 **密钥与网络** 中保存本示例读取的变量（`OPENAI_API_KEY`，
+需要时再加 `OPENAI_BASE_URL` / `OPENAI_MODEL`），并添加接口的域名（默认的 Kimi 接口为
+`api.kimi.com`）。评测时这些变量就是程序的环境变量，程序只能通过 HTTPS（443 端口）访问所列域名；
+`.env` 不会被读取，也不会被打进提交 ZIP。平台同时设置了 `HTTPS_PROXY`：支持代理设置的 HTTP
+客户端会自动使用它，不读取代理设置的客户端也可以直接连接所列域名。
+
+可以同时使用多个服务商、多种协议和多个模型：为每个服务商保存一个密钥，并添加各自的域名。模型调用的
+费用由本队承担。
 
 ## 关于确定性
 
