@@ -412,7 +412,7 @@
       ]
     },
     "leaderboard": {
-      "kicker": "05 / Leaderboard",
+      "kicker": "Leaderboard",
       "title": "Live standings",
       "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D). Both are feedback only; the final ranking uses only the hidden cards E–H.",
       "signal_live": "Board live",

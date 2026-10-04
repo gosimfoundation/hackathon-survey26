@@ -488,7 +488,7 @@
       ]
     },
     "leaderboard": {
-      "kicker": "05 / Classement",
+      "kicker": "Classement",
       "title": "Classement en direct",
       "lede": "Le classement se met à jour dès qu'une soumission est notée. Le tableau d'entraînement est indicatif ; celui de la compétition en ligne décide des prix.",
       "signal_live": "Classement en direct",
