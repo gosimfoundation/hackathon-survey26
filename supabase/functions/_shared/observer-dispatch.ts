@@ -123,13 +123,13 @@ async function tryFallback(
     : { id: job.id, dispatched: false, error: result.error };
 }
 
-export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: string) {
+export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: string, limit = 10) {
   await rpc("observer_reconcile_jobs", {});
   await rpc("observer_reconcile_sessions", {});
   // Public-pool runs that never started go back to their own organization.
   // Never let the optional pool hold up dispatching.
   await rpc("observer_public_pool_reconcile", {}).catch(() => 0);
-  const jobs: PendingJob[] = await rpc("observer_pending_jobs", { p_limit: 10 });
+  const jobs: PendingJob[] = await rpc("observer_pending_jobs", { p_limit: limit });
   const outcomes: Outcome[] = [];
   const partners = new Set<string>();
   for (const job of jobs) {
