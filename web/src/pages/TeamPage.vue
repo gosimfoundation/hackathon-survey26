@@ -14,6 +14,8 @@ import SoloTeamButton from '../components/SoloTeamButton.vue'
 import { useTeamCapacity } from '../composables/useTeamCapacity'
 import { showsTeamPlaces, teamCreationBlocked } from '../lib/teamCapacity'
 import { invalidateBoardCache } from '../lib/data'
+import { parseUid } from '../lib/friends'
+import { inviteToTeamByUid } from '../lib/friendsApi'
 
 interface Member { id: string; name: string; github: string | null; affiliation: string | null; is_leader: boolean; astro_level: number; ai_level: number; avatar_url: string | null }
 
@@ -30,6 +32,7 @@ const copied = ref(false)
 const linkCopied = ref(false)
 const createForm = ref({ name: '', max_size: 3, github_repo: '', project_idea: '' })
 const joinForm = ref({ code: '' })
+const inviteUid = ref('')
 watch(() => route.query.invite, value => {
   if (typeof value === 'string' && /^[A-Za-z0-9]{4,64}$/.test(value)) joinForm.value.code = value.toUpperCase()
 }, { immediate: true })
@@ -38,7 +41,7 @@ const inviteLink = computed(() => team.value
 const editForm = ref({ name: '', max_size: 3, github_repo: '', project_idea: '', is_locked: false })
 const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
 
-const errorText = (e: unknown) => describeError(e, i18n, ['team.errors', 'team'])
+const errorText = (e: unknown) => describeError(e, i18n, ['team.errors', 'friends.errors', 'team'])
 const { capacity, reload: reloadCapacity } = useTeamCapacity()
 const creationBlocked = computed(() => teamCreationBlocked(capacity.value, me.value?.is_admin))
 
@@ -94,6 +97,11 @@ const saveTeam = () => run(async () => {
   })
   invalidateBoardCache()
 }, t('flash.team_saved'))
+const inviteByUid = () => {
+  const uid = parseUid(inviteUid.value)
+  if (!uid) { flash.error(t('friends.invalid_uid')); return }
+  void run(async () => { await inviteToTeamByUid(uid); inviteUid.value = '' }, t('friends.invited'))
+}
 const regenerate = () => run(() => rpc('regenerate_invite_code'), t('team.code_regenerated'))
 const transfer = (id: string) => { if (window.confirm(t('team.transfer_confirm'))) void run(() => rpc('transfer_leadership', { p_user_id: id }), t('flash.team_saved')) }
 const kick = (id: string) => { if (window.confirm(t('team.kick_confirm'))) void run(() => rpc('remove_member', { p_user_id: id }), t('flash.team_saved')) }
@@ -174,6 +182,14 @@ onMounted(load)
             <button v-if="isLeader" type="button" class="copy-btn" :disabled="busy" @click="regenerate">{{ t('team.regenerate') }}</button>
           </div>
         </div>
+        <div v-if="isLeader" id="invite-uid" class="panel mt-8" data-testid="team-invite-uid">
+          <div class="hd"><h2>{{ t('friends.invite_uid_title') }}</h2></div>
+          <p class="text2 text-sm">{{ t('friends.invite_uid_lede') }}</p>
+          <form class="invite-uid-form mt-4" @submit.prevent="inviteByUid">
+            <label class="field"><span>UID</span><input v-model="inviteUid" data-testid="team-invite-uid-input" type="text" inputmode="numeric" autocomplete="off" maxlength="20" class="mono" :placeholder="t('friends.add_placeholder')"></label>
+            <button class="btn sm" type="submit" data-testid="team-invite-uid-send" :disabled="busy || !inviteUid.trim()">{{ t('friends.invite_uid_send') }}</button>
+          </form>
+        </div>
         <div class="panel mt-8">
           <div class="hd"><h2>{{ t('common.actions') }}</h2></div>
           <div class="actions-inline">
@@ -216,3 +232,8 @@ onMounted(load)
     </div>
   </DashShell>
 </template>
+
+<style scoped>
+.invite-uid-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem; }
+.invite-uid-form .field { flex: 1 1 10rem; margin-bottom: 0; }
+</style>

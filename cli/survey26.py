@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -51,9 +51,10 @@ EXIT_RATE, EXIT_UNAVAILABLE, EXIT_TIMEOUT, EXIT_LIMIT, EXIT_FAILED = 5, 6, 7, 8,
 AUTH_CODES = {"invalid_token", "cli_tokens_disabled", "account_banned", "account_unavailable", "login_required",
               "no_token", "banned", "not_authenticated"}
 LIMIT_CODES = {"daily_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
-               "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left"}
+               "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"}
 NOT_FOUND_CODES = {"revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
-                   "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found"}
+                   "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
+                   "uid_unavailable", "request_not_found", "user_not_found"}
 UNAVAILABLE_CODES = {"network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
                      "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"}
 
@@ -152,7 +153,23 @@ MESSAGES = {
     "avatar_too_large": ("That image is larger than 2 MB.", "图片超过 2 MB。"),
     "avatar_invalid_image": ("This file is not a readable image.", "无法读取这张图片。"),
     "invalid_field": ("A field is missing or invalid.", "有字段缺失或不符合要求。"),
+    # Friends and invitations by UID
+    "invalid_uid": ("A UID is the 9-digit number shown at the bottom right of the website (e.g. 100000123).",
+                    "UID 是网站右下角显示的 9 位数字（例如 100000123）。"),
+    "uid_self": ("That is your own UID.", "这是你自己的 UID。"),
+    "uid_unavailable": ("No one can be reached with this UID. Check the number.", "无法通过这个 UID 找到可添加的人，请检查号码。"),
+    "uid_not_found": ("No participant has this UID. Check the number.", "没有参赛者使用这个 UID，请检查号码。"),
+    "uid_daily_limit": ("You have used today's 20 actions by UID. Try again tomorrow.", "今天通过 UID 添加或邀请的 20 次机会已用完，请明天再试。"),
+    "blocked_by_you": ("You have blocked this person. Unblock them first.", "你已屏蔽此人，请先解除屏蔽。"),
+    "recipient_in_team": ("This person is already on a team.", "对方已经在一个队伍里了。"),
+    "request_not_found": ("This friend request is not addressed to you.", "你不是这条好友请求的接收方。"),
+    "request_finished": ("This friend request has already been handled.", "这条好友请求已经处理完毕。"),
+    "not_friends": ("You are not friends with this person.", "你们还不是好友。"),
+    "user_not_found": ("No such person.", "找不到这个人。"),
 }
+
+# Error codes of the by-UID actions (returned as {"error": code}) as the CLI's codes.
+UID_ERRORS = {"self": "uid_self", "daily_limit": "uid_daily_limit"}
 
 
 def exit_code_for(code: str) -> int:
@@ -594,7 +611,7 @@ def cmd_logout(api: Api, args, out: Out):
 
 
 def _public_me(me: dict) -> dict:
-    keys = ("id", "email", "name", "nickname", "github", "affiliation", "role", "locale", "city", "contact", "blurb",
+    keys = ("id", "uid", "email", "name", "nickname", "github", "affiliation", "role", "locale", "city", "contact", "blurb",
             "show_on_wall", "looking_for_team", "seeking", "seeking_count", "astro_level", "ai_level", "avatar_url")
     result = {k: me.get(k) for k in keys}
     team = me.get("team")
@@ -608,6 +625,8 @@ def _public_me(me: dict) -> dict:
 def cmd_whoami(api: Api, args, out: Out):
     me = _public_me((api.call("whoami") or {}).get("me") or {})
     out.line("%s  %s" % (me["nickname"] or me["name"], me["email"]))
+    if me.get("uid"):
+        out.line("UID " + str(me["uid"]))
     team = me["team"]
     out.line(out.t("Team: ", "队伍：") + (("%s (%s)" % (team["name"], out.t("captain", "队长") if team["is_captain"] else out.t("member", "队员")))
                                           if team else out.t("none", "无")))
@@ -868,6 +887,82 @@ def cmd_invites_respond(api: Api, args, out: Out):
 def cmd_invites_cancel(api: Api, args, out: Out):
     result = api.rpc("cancel_team_invite", write=True, p_invitation=args.invitation_id)
     out.line(out.t("Cancelled.", "已撤回。"))
+    return result
+
+
+# ---------------------------------------------------------------------------------------------
+# Commands: friends and invitations by UID
+
+
+def _uid(text: str) -> int:
+    text = (text or "").strip()
+    if not re.fullmatch(r"[1-9][0-9]{8}", text):
+        raise CliError("invalid_uid", exit_code=EXIT_USAGE)
+    return int(text)
+
+
+def _uid_result(result) -> dict:
+    result = result if isinstance(result, dict) else {}
+    if result.get("error"):
+        code = str(result["error"])
+        raise CliError(UID_ERRORS.get(code, code))
+    return result
+
+
+def cmd_friends_list(api: Api, args, out: Out):
+    data = api.rpc("my_friends") or {}
+    out.line(out.t("Your UID: ", "你的 UID：") + str(data.get("uid") or ""))
+    for title, key, columns in (
+            (out.t("Friends", "好友"), "friends", [("UID", "uid"), (out.t("Name", "名字"), "name"), (out.t("Team", "队伍"), "team_name"),
+                                                 ("USER_ID", "user_id")]),
+            (out.t("Requests to you", "收到的请求"), "incoming", [("ID", "id"), (out.t("Name", "名字"), "name"), ("USER_ID", "user_id"),
+                                                             (out.t("Sent", "时间"), "created_at")]),
+            (out.t("Your pending requests", "你发出的请求"), "outgoing", [("ID", "id"), ("UID", "uid"), (out.t("Sent", "时间"), "created_at")]),
+            (out.t("Blocked", "已屏蔽"), "blocked", [("USER_ID", "user_id"), (out.t("Name", "名字"), "name")])):
+        out.line()
+        out.line(title)
+        out.table(data.get(key) or [], columns)
+    return data
+
+
+def cmd_friends_add(api: Api, args, out: Out):
+    result = _uid_result(api.rpc("send_friend_request", write=True, p_uid=_uid(args.uid)))
+    status = result.get("status")
+    out.line(out.t("You are now friends." if status == "accepted" else "You are already friends." if status == "already_friends"
+                   else "Friend request sent.",
+                   "你们已成为好友。" if status == "accepted" else "你们已经是好友了。" if status == "already_friends" else "好友请求已发送。"))
+    return result
+
+
+def cmd_friends_respond(api: Api, args, out: Out):
+    accept = args.cmd == "accept"
+    result = api.rpc("respond_friend_request", write=True, p_request=args.request_id, p_accept=accept)
+    out.line(out.t("Accepted." if accept else "Declined.", "已接受。" if accept else "已拒绝。"))
+    return result
+
+
+def cmd_friends_cancel(api: Api, args, out: Out):
+    result = api.rpc("cancel_friend_request", write=True, p_request=args.request_id)
+    out.line(out.t("Cancelled.", "已撤回。"))
+    return result
+
+
+def cmd_friends_remove(api: Api, args, out: Out):
+    result = api.rpc("remove_friend", write=True, p_user=args.user_id)
+    out.line(out.t("Removed from your friends.", "已删除好友。"))
+    return result
+
+
+def cmd_friends_block(api: Api, args, out: Out):
+    block = args.cmd == "block"
+    result = api.rpc("block_user" if block else "unblock_user", write=True, p_user=args.user_id)
+    out.line(out.t("Blocked." if block else "Unblocked.", "已屏蔽。" if block else "已解除屏蔽。"))
+    return result
+
+
+def cmd_team_invite_uid(api: Api, args, out: Out):
+    result = _uid_result(api.rpc("send_team_invite_by_uid", write=True, p_uid=_uid(args.uid)))
+    out.line(out.t("Invitation sent.", "邀请已发送。"))
     return result
 
 
@@ -1587,12 +1682,23 @@ def build_parser() -> argparse.ArgumentParser:
     add(team, "directory", cmd_team_directory, "teams that accept join requests")
     add(team, "request", cmd_team_request, "ask a team's captain to let you join").add_argument("team_id")
     add(team, "capacity", cmd_team_capacity, "remaining team places")
+    add(team, "invite-uid", cmd_team_invite_uid, "captain: invite the person with this UID (9 digits) to your team").add_argument("uid")
 
     inv = sub.add_parser("invites", help="team invitations and join requests").add_subparsers(dest="invites_cmd", metavar="ACTION")
     add(inv, "list", cmd_invites_list, "list invitations and requests (marks received ones read)").add_argument("--keep-unread", action="store_true")
     add(inv, "accept", cmd_invites_respond, "accept an invitation or join request").add_argument("invitation_id")
     add(inv, "decline", cmd_invites_respond, "decline an invitation or join request").add_argument("invitation_id")
     add(inv, "cancel", cmd_invites_cancel, "withdraw an invitation or request you sent").add_argument("invitation_id")
+
+    fr = sub.add_parser("friends", help="friends, friend requests and your UID").add_subparsers(dest="cmd", metavar="ACTION")
+    add(fr, "list", cmd_friends_list, "your UID, friends, pending requests and blocked people")
+    add(fr, "add", cmd_friends_add, "send a friend request to a UID (at most 20 per day)").add_argument("uid")
+    add(fr, "accept", cmd_friends_respond, "accept a friend request").add_argument("request_id")
+    add(fr, "decline", cmd_friends_respond, "decline a friend request").add_argument("request_id")
+    add(fr, "cancel", cmd_friends_cancel, "withdraw a friend request you sent").add_argument("request_id")
+    add(fr, "remove", cmd_friends_remove, "remove a friend").add_argument("user_id")
+    add(fr, "block", cmd_friends_block, "block someone: their requests are no longer shown to you").add_argument("user_id")
+    add(fr, "unblock", cmd_friends_block, "unblock someone").add_argument("user_id")
 
     env = sub.add_parser("env", help="team variables (secrets) and allowed domains").add_subparsers(dest="cmd", metavar="ACTION")
     add(env, "show", cmd_env_show, "list variables (secret values masked to the last 4 characters) and domains")

@@ -2699,5 +2699,56 @@
   },
   "about_page": {
     "kicker": "主办 · 赞助 · 科学委员会"
+  },
+  "friends": {
+    "title": "好友",
+    "my_uid": "我的 UID",
+    "uid_hint": "把它告诉想加你为好友、或想邀请你入队的人。UID 只在这里对你自己显示。",
+    "add_label": "用 UID 加好友",
+    "add_placeholder": "9 位数字 UID",
+    "add": "发送好友请求",
+    "daily_note": "每天最多 {n} 次。",
+    "incoming_title": "好友请求",
+    "outgoing_title": "等待对方回应",
+    "friends_title": "我的好友",
+    "none": "还没有好友。把你的 UID 发给朋友吧。",
+    "accept": "接受",
+    "decline": "拒绝",
+    "block": "屏蔽",
+    "unblock": "取消屏蔽",
+    "remove": "删除",
+    "cancel": "撤回",
+    "invite_team": "邀请入队",
+    "no_team": "未组队",
+    "blocked_title": "已屏蔽",
+    "remove_confirm": "确定删除这位好友？",
+    "block_confirm": "确定屏蔽此人？对方不会收到通知，你也不会再看到他的好友请求。",
+    "invited": "邀请已发出，对方可在「通知」页接受。",
+    "invalid_uid": "UID 是 9 位数字。",
+    "invite_uid_title": "用 UID 邀请",
+    "invite_uid_lede": "请对方告诉你他的 UID（在其个人资料页可见）。对方接受邀请后即加入队伍。",
+    "invite_uid_send": "发送邀请",
+    "pending": "待回应",
+    "result": {
+      "sent": "好友请求已发送。",
+      "accepted": "你们已成为好友。",
+      "already_friends": "你们已经是好友了。"
+    },
+    "errors": {
+      "self": "这是你自己的 UID。",
+      "uid_unavailable": "该 UID 无法接收请求。",
+      "daily_limit": "今天的次数已用完，请明天再试。",
+      "blocked_by_you": "你已屏蔽此人，请先取消屏蔽。",
+      "request_not_found": "该请求不可用。",
+      "request_finished": "该请求已处理。",
+      "not_friends": "你们还不是好友。",
+      "user_not_found": "此用户不可用。",
+      "not_in_team": "请先创建或加入队伍。",
+      "leader_only": "只有队长可以邀请。",
+      "locked": "你的队伍已锁定。",
+      "full": "你的队伍已满。",
+      "uid_not_found": "没有参赛者使用这个 UID。",
+      "recipient_in_team": "对方已经在一个队伍里了。"
+    }
   }
 }

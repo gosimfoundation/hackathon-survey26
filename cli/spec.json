@@ -1,5 +1,5 @@
 {
- "version": "1.1.0",
+ "version": "1.2.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -705,6 +705,23 @@
   },
   {
    "path": [
+    "team",
+    "invite-uid"
+   ],
+   "help": "captain: invite the person with this UID (9 digits) to your team",
+   "group": false,
+   "func": "cmd_team_invite_uid",
+   "positionals": [
+    {
+     "name": "uid",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
     "invites"
    ],
    "help": "team invitations and join requests",
@@ -779,6 +796,147 @@
    "positionals": [
     {
      "name": "invitation_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends"
+   ],
+   "help": "friends, friend requests and your UID",
+   "group": true,
+   "func": null,
+   "positionals": [],
+   "options": [],
+   "subcommand_dest": "cmd"
+  },
+  {
+   "path": [
+    "friends",
+    "list"
+   ],
+   "help": "your UID, friends, pending requests and blocked people",
+   "group": false,
+   "func": "cmd_friends_list",
+   "positionals": [],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "add"
+   ],
+   "help": "send a friend request to a UID (at most 20 per day)",
+   "group": false,
+   "func": "cmd_friends_add",
+   "positionals": [
+    {
+     "name": "uid",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "accept"
+   ],
+   "help": "accept a friend request",
+   "group": false,
+   "func": "cmd_friends_respond",
+   "positionals": [
+    {
+     "name": "request_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "decline"
+   ],
+   "help": "decline a friend request",
+   "group": false,
+   "func": "cmd_friends_respond",
+   "positionals": [
+    {
+     "name": "request_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "cancel"
+   ],
+   "help": "withdraw a friend request you sent",
+   "group": false,
+   "func": "cmd_friends_cancel",
+   "positionals": [
+    {
+     "name": "request_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "remove"
+   ],
+   "help": "remove a friend",
+   "group": false,
+   "func": "cmd_friends_remove",
+   "positionals": [
+    {
+     "name": "user_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "block"
+   ],
+   "help": "block someone: their requests are no longer shown to you",
+   "group": false,
+   "func": "cmd_friends_block",
+   "positionals": [
+    {
+     "name": "user_id",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "friends",
+    "unblock"
+   ],
+   "help": "unblock someone",
+   "group": false,
+   "func": "cmd_friends_block",
+   "positionals": [
+    {
+     "name": "user_id",
      "nargs": 1,
      "help": ""
     }

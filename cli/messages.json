@@ -330,5 +330,49 @@
  "invalid_field": {
   "en": "A field is missing or invalid.",
   "zh": "有字段缺失或不符合要求。"
+ },
+ "invalid_uid": {
+  "en": "A UID is the 9-digit number shown at the bottom right of the website (e.g. 100000123).",
+  "zh": "UID 是网站右下角显示的 9 位数字（例如 100000123）。"
+ },
+ "uid_self": {
+  "en": "That is your own UID.",
+  "zh": "这是你自己的 UID。"
+ },
+ "uid_unavailable": {
+  "en": "No one can be reached with this UID. Check the number.",
+  "zh": "无法通过这个 UID 找到可添加的人，请检查号码。"
+ },
+ "uid_not_found": {
+  "en": "No participant has this UID. Check the number.",
+  "zh": "没有参赛者使用这个 UID，请检查号码。"
+ },
+ "uid_daily_limit": {
+  "en": "You have used today's 20 actions by UID. Try again tomorrow.",
+  "zh": "今天通过 UID 添加或邀请的 20 次机会已用完，请明天再试。"
+ },
+ "blocked_by_you": {
+  "en": "You have blocked this person. Unblock them first.",
+  "zh": "你已屏蔽此人，请先解除屏蔽。"
+ },
+ "recipient_in_team": {
+  "en": "This person is already on a team.",
+  "zh": "对方已经在一个队伍里了。"
+ },
+ "request_not_found": {
+  "en": "This friend request is not addressed to you.",
+  "zh": "你不是这条好友请求的接收方。"
+ },
+ "request_finished": {
+  "en": "This friend request has already been handled.",
+  "zh": "这条好友请求已经处理完毕。"
+ },
+ "not_friends": {
+  "en": "You are not friends with this person.",
+  "zh": "你们还不是好友。"
+ },
+ "user_not_found": {
+  "en": "No such person.",
+  "zh": "找不到这个人。"
  }
 }

@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.1.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.2.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.1.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.2.0
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
@@ -55,7 +55,8 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 | --- | --- |
 | Account and profile | `whoami`, `profile show`, `profile set --nickname … --github …`, `profile avatar set FILE`, `profile avatar clear` |
 | Find teammates | `teammates list [--looking]`, `teammates visibility show\|on\|off [--blurb … --contact … --seeking …]`, `teammates contact USER_ID`, `teammates invite USER_ID` |
-| Team | `team show`, `team members`, `team create NAME [--max-size N]`, `team join CODE`, `team leave`, `team code [--regenerate]`, `team set --name … --max-size … --lock/--unlock`, `team transfer USER_ID`, `team kick USER_ID`, `team disband`, `team directory`, `team request TEAM_ID` |
+| Team | `team show`, `team members`, `team create NAME [--max-size N]`, `team join CODE`, `team leave`, `team code [--regenerate]`, `team set --name … --max-size … --lock/--unlock`, `team transfer USER_ID`, `team kick USER_ID`, `team disband`, `team directory`, `team request TEAM_ID`, `team invite-uid UID` (captain) |
+| Friends | `friends list` (your UID, friends, requests, blocked), `friends add UID`, `friends accept ID`, `friends decline ID`, `friends cancel ID`, `friends remove USER_ID`, `friends block USER_ID`, `friends unblock USER_ID` |
 | Notifications | `invites list`, `invites accept ID`, `invites decline ID`, `invites cancel ID` |
 | Keys and network | `env show`, `env set NAME --value-stdin [--plain]`, `env set NAME --from-env VAR`, `env unset NAME`, `env domains set HOST…`, `env domains clear` |
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--title …]` |
@@ -105,7 +106,7 @@ Every command accepts `--json` and then prints exactly one JSON object on standa
 | 5 | Too many requests; wait one minute |
 | 6 | Network or server temporarily unavailable; retry later |
 | 7 | A `wait` command reached its `--timeout` |
-| 8 | A daily or team limit was reached (evaluations, uploads, active evaluation, team size) |
+| 8 | A daily or team limit was reached (evaluations, uploads, active evaluation, team size, 20 actions by UID per day) |
 | 9 | The awaited preparation or evaluation finished unsuccessfully |
 
 Actions that the website confirms with a dialog (evaluating a version again, the 3-evaluation self-check, withdrawing a version, clearing the final version, leaving, transferring, removing members, disbanding, submitting the same project again within a few minutes) ask for confirmation in an interactive terminal. With `--json` or without a terminal the tool never prompts: such actions fail with exit code 2 unless `--yes` is given. `project wait` and `eval wait` check the status every 15 and 20 seconds by default (`--interval`, at least 5) and stop after `--timeout` seconds.
