@@ -216,6 +216,9 @@ public repositories (`6adf43a`, previous `e49c8db`) and all 13 private
 `observer-control` repositories (`ops/github-installations.json`). Queued public
 jobs were moved to the new commit in the same transaction as the approval.
 
+**2026-10-04: egress route runtime** (hackathon-survey26 #301) approved on all 13
+public repositories (`266caa0`, previous `6adf43a`); see `ops/egress-routes.md`.
+
 ## Updating the runtime
 
 1. `python scripts/build-observer-control.py --public <new dir>` from the
