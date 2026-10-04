@@ -2,15 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { loadCompeteUiSetting, loadPhases,type Phase } from '../lib/data'
 import { COMPETE_UI_STORAGE, competeLayout, layoutOverride, type CompeteLayout } from '../lib/competeUi'
-import { competition, loadCompetition } from '../stores/competition'
+import { chooseEntry, competition, entryChoice, loadCompetition, useEntryFor } from '../stores/competition'
+import { offersPracticeSwitch } from '../lib/entryPhase'
 import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
 import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import TeamInbox from '../components/TeamInbox.vue'
-const {t,pick}=useI18n(),{team,refreshMe}=useAuth()
-const phase=ref<Phase|null>(null),loading=ref(true),failed=ref(false),layout=ref<CompeteLayout>('classic')
+const {t,pick}=useI18n(),{team,me,refreshMe}=useAuth()
+const phase=ref<Phase|null>(null),allPhases=ref<Phase[]>([]),loading=ref(true),failed=ref(false),layout=ref<CompeteLayout>('classic')
 // The header names the phase this page evaluates in: the workflow reports the one it binds to; until then the
 // first phase that has not ended, in the workflow's order (beta entry, complete-project board, global phase).
 const kickerPhase=ref<Phase|null>(null),workflowPhase=ref<{name_en:string;name_zh:string}|null>(null)
@@ -27,7 +28,11 @@ async function chooseLayout(){
   const override=layoutOverride(query,remembered)
   layout.value=competeLayout(override?{v2_all:false,v2_teams:[]}:await loadCompeteUiSetting(),team.value?.id,override)
 }
+// During the competition practice stays open: 线上赛 by default, 练习赛 one click away (remembered per user).
+const showSwitch=computed(()=>offersPracticeSwitch(competition))
+const boardSlug=computed(()=>entryChoice.value==='practice'?allPhases.value.find(p=>p.id===competition.practicePhaseId)?.slug??'practice-projects':'online')
 onMounted(async()=>{try{await refreshMe()
+  useEntryFor(me.value?.id)
   await chooseLayout()
   // Team or membership changes do not raise auth events, so the workspace always
   // re-resolves the beta entry fresh instead of trusting the 15s cache.
@@ -35,6 +40,7 @@ onMounted(async()=>{try{await refreshMe()
   // Public pages keep the single global phase; this workspace alone swaps in the
   // team-restricted beta entry for its access team.
   const phases=await loadPhases(true)
+  allPhases.value=phases
   const global=phases.find(p=>competition.phaseId?p.id===competition.phaseId:p.slug===(competition.mode==='practice'?'practice':'online'))
   phase.value=phases.find(p=>p.id===competition.betaPhaseId)??global??null
   const open=(p:Phase|undefined)=>!!p&&p.is_active!==false&&(!p.ends_at||Date.parse(p.ends_at)>Date.now())
@@ -49,6 +55,14 @@ onMounted(async()=>{try{await refreshMe()
     <p v-else-if="failed" role="alert">{{ pick('Could not load the competition. Please refresh.','比赛信息加载失败，请刷新重试。') }}</p>
     <div v-else-if="!team" class="panel"><p>{{ t('submit.errors.need_team') }}</p><p class="mt-5 actions-inline"><router-link class="btn primary sm" to="/team">{{ t('nav.team') }} →</router-link><SoloTeamButton /></p></div>
     <p v-else-if="!phase" class="panel">{{ pick('No competition is available yet.','当前还没有开放的比赛。') }}</p>
-    <ProjectWorkflow v-else :layout="layout" @phase="p => workflowPhase = p" />
+    <template v-else>
+      <div v-if="showSwitch" class="actions-inline mb-5" role="group" :aria-label="pick('Evaluation phase','评测赛程')" data-testid="entry-switch">
+        <button type="button" class="btn sm" :class="{ primary: entryChoice==='online' }" :aria-pressed="entryChoice==='online'" data-testid="entry-online" @click="chooseEntry('online')">{{ pick('Online competition','线上赛') }}</button>
+        <button type="button" class="btn sm" :class="{ primary: entryChoice==='practice' }" :aria-pressed="entryChoice==='practice'" data-testid="entry-practice" @click="chooseEntry('practice')">{{ pick('Practice','练习赛') }}</button>
+        <router-link class="text2 text-sm" :to="`/leaderboard/${boardSlug}`" data-testid="entry-board">{{ entryChoice==='practice' ? pick('Practice leaderboard →','练习赛排行榜 →') : pick('Online leaderboard →','线上赛排行榜 →') }}</router-link>
+        <span class="text3 text-sm">{{ entryChoice==='practice' ? pick('Practice does not affect the online ranking; it has its own daily evaluations.','练习赛不影响线上赛排名，评测次数单独计算。') : pick('Evaluations here count for the online leaderboard.','这里的评测计入线上赛排行榜。') }}</span>
+      </div>
+      <ProjectWorkflow :layout="layout" @phase="p => workflowPhase = p" />
+    </template>
   </DashShell>
 </template>

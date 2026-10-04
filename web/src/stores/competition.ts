@@ -1,8 +1,24 @@
-import { reactive, readonly } from 'vue'
+import { computed, reactive, readonly } from 'vue'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: null as string|null, betaPhaseId: null as string|null, projectPhaseId: null as string|null })
+import { browserStorage } from '../lib/quest'
+import { entryPhaseId, parseCompetition, readEntryChoice, rememberEntryChoice, type EntryChoice } from '../lib/entryPhase'
+const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: null as string|null, betaPhaseId: null as string|null, projectPhaseId: null as string|null,
+  // Competition mode only: the practice board that stays open next to the online phase.
+  practicePhaseId: null as string|null })
 let fetched = 0, pending: Promise<void>|null = null
 export const competition = readonly(state)
+// 线上赛 / 练习赛 on the 参赛 page during the competition, remembered per user in this browser.
+const entry = reactive({ userId: null as string|null, choice: 'online' as EntryChoice })
+export const entryChoice = computed(() => entry.choice)
+export const entryPhase = computed(() => entryPhaseId(state, entry.choice))
+export function useEntryFor(userId: string|null|undefined) {
+  entry.userId = userId ?? null
+  entry.choice = readEntryChoice(browserStorage(), userId)
+}
+export function chooseEntry(choice: EntryChoice) {
+  entry.choice = choice
+  rememberEntryChoice(browserStorage(), entry.userId, choice)
+}
 export async function loadCompetition(force=false) {
   if (pending) { await pending; if (!force) return state }
   if (!force && Date.now()-fetched<15000) return state
@@ -10,10 +26,8 @@ export async function loadCompetition(force=false) {
     if (!isSupabaseConfigured) return
     const {data,error}=await supabase.rpc('current_competition')
     if (!error && data) {
-      state.mode=data.mode==='competition'?'competition':'practice'
-      state.phaseId=typeof data.phase_id==='string'?data.phase_id:null
-      // Practice only: the separate complete-project board next to CSV practice.
-      state.projectPhaseId=typeof data.project_phase_id==='string'?data.project_phase_id:null
+      // Practice mode: project_phase_id is the separate complete-project board next to CSV practice.
+      Object.assign(state, parseCompetition(data))
       fetched=Date.now()
     }
     // Team-restricted beta entry: the RPC is granted to signed-in users only and

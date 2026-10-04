@@ -13,7 +13,8 @@ import RunLogs from './RunLogs.vue'
 import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
-import { competition } from '../../stores/competition'
+import { competition, entryPhase } from '../../stores/competition'
+import { entryPhaseIds, offersPracticeSwitch } from '../../lib/entryPhase'
 import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
@@ -193,11 +194,20 @@ const words = computed(() => pick({
   latestFailed: '最近一次评测失败', latestCardFailed: '最近一次评测有卡片失败', openFailLog: '查看失败日志', notCounted: '未计入次数', latestPill: '最近一次 · 失败',
   apiFinalNote: '隐藏任务卡 E–H 评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
 }))
-const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
+const activePhases = computed(() => (data.value?.phases ?? []).filter(p => entryPhaseIds(competition).includes(p.phase_id) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
 const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enabled))
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
+// 线上赛 / 练习赛 (competition mode with practice open): the page's switch picks the phase, and the records
+// below follow it; otherwise every evaluation is listed as before.
+const phaseSwitch = computed(() => offersPracticeSwitch(competition))
+function followEntry() {
+  const wanted = entryPhase.value
+  if (phaseSwitch.value && wanted && openPhases.value.some(p => p.phase_id === wanted)) phaseId.value = wanted
+}
+watch(entryPhase, followEntry)
+const listedBatches = computed(() => (data.value?.batches ?? []).filter(b => !phaseSwitch.value || b.phase_id === phaseId.value))
 watch(selectedPhase, p => emit('phase', p ? { name_en: p.phases.name_en, name_zh: p.phases.name_zh } : null))
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
@@ -301,8 +311,9 @@ async function reload() {
   await personal.refresh()
   // Bind evaluations to the entry phase (beta entry first), never to whatever
   // order the database happened to return.
-  const preferred=competition.betaPhaseId??competition.projectPhaseId??competition.phaseId
+  const preferred=entryPhase.value
   if (!openPhases.value.some(p => p.phase_id === phaseId.value)) phaseId.value = openPhases.value.find(p => p.phase_id===preferred)?.phase_id ?? openPhases.value[0]?.phase_id ?? ''
+  followEntry()
 }
 async function action(work: () => Promise<void>, success = words.value.done, key = '') {
   if (busy.value || (key && locked.value.has(key))) return
@@ -583,7 +594,7 @@ const best = computed(() => {
   const top = scored.reduce<(typeof scored)[number] | null>((m, b) => !m || b.score! > m.score! ? b : m, null)
   return top ? { score: top.score!, title: (top.revision_id && titles.value.get(top.revision_id)) || '' } : null
 })
-const newestBatch = computed(() => [...(data.value?.batches ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null)
+const newestBatch = computed(() => [...listedBatches.value].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null)
 const currentStep = computed(() => runningNow.value ? 3 : reviewable.value.length ? 2 : !live.value.length ? 1 : !approvedVersions.value.length ? 2 : !best.value ? 3 : 4)
 const steps = computed(() => {
   const w = w2.value, newest = live.value[0]
@@ -697,7 +708,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <div class="cw-tabs" role="tablist" data-testid="compete-tabs">
         <button v-for="tab in (['progress', 'history', 'settings'] as const)" :key="tab" type="button" role="tab" class="cw-tab" :class="{ on: v2Tab === tab }"
           :aria-selected="v2Tab === tab" :data-testid="'compete-tab-' + tab" @click="v2Tab = tab">
-          {{ tab === 'progress' ? w2.tabProgress : tab === 'history' ? w2.tabHistory : w2.tabSettings }}<span v-if="tab === 'history' && data?.batches.length" class="meta ml-2">{{ data.batches.length }}</span>
+          {{ tab === 'progress' ? w2.tabProgress : tab === 'history' ? w2.tabHistory : w2.tabSettings }}<span v-if="tab === 'history' && listedBatches.length" class="meta ml-2">{{ listedBatches.length }}</span>
         </button>
       </div>
 
@@ -826,8 +837,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <!-- 评测记录 -->
       <section v-else-if="v2Tab === 'history'" role="tabpanel" class="panel mt-4" data-testid="evaluation-history">
         <div class="cw-row-head"><h2 id="results">{{ words.batches }}</h2><span class="help">{{ w2.expandHint }}</span></div>
-        <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>
-        <template v-for="b in data?.batches" :key="b.id">
+        <p v-if="!listedBatches.length" class="text3 mt-3">{{ words.noBatches }}</p>
+        <template v-for="b in listedBatches" :key="b.id">
           <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="cw-batch repeat-summary" data-testid="self-check-summary">
             <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
               · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
@@ -1104,8 +1115,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </div>
       </section>
       <section class="panel mb-6"><h2 id="results">{{ words.batches }}</h2>
-        <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>
-        <template v-for="b in data?.batches" :key="b.id">
+        <p v-if="!listedBatches.length" class="text3 mt-3">{{ words.noBatches }}</p>
+        <template v-for="b in listedBatches" :key="b.id">
         <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="project-row repeat-summary" data-testid="self-check-summary">
           <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
             · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
