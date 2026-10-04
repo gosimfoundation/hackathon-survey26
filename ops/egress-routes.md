@@ -91,3 +91,33 @@ secret (`supabase secrets set OBSERVER_EGRESS_ROUTES=...` or the Management API)
 then redeploy nothing: `observer-job` reads it at start (a new isolate picks it up
 within minutes; redeploy `observer-job` for an immediate switch). Keep the node
 order stable so the labels (`overseas:node2`) keep meaning the same node.
+
+## Deployment record (2026-10-04)
+
+* Migration `20261005020000_egress_routes` applied and registered (14:19 UTC);
+  `observer-job`, `observer-dispatch`, `observer-portal`, `survey26-cli` deployed;
+  secret `OBSERVER_EGRESS_ROUTES` set (1 China node, 3 overseas nodes).
+* Runtime: public repositories `266caa0` on all 13 (previous `6adf43a`); private
+  organizations approved from main `7c22cd9` (#301), since superseded by #313
+  (which contains it).
+* Pilot (hidden test team, `egress_routes_teams`): 6 evaluations × 4 practice cards
+  with a probe agent (real model calls) — China route on a private organization
+  (runner-5) and in the public repositories, overseas route on both, plus a direct
+  baseline: 23 of 24 runs scored and verified by the rescore (one public run lost
+  its job API call with HTTP 401 at the end; the repeat batch scored 4/4). Exit
+  address: China route CN (Shenzhen), overseas route US, direct Microsoft/Azure;
+  model call latency to api.kimi.com ≈ 2.7–3.5 s (China), 1.1–1.6 s (overseas),
+  1.2–1.5 s (direct). Overseas runs used node1, node2 and node3 (random per run).
+* Leak check: every public run log of the 13 public repositories since the
+  approval (312 runs, 2,756 files), the team's result files, run logs, egress log,
+  workspace and environment responses, the organizers' tables and the private
+  organization run logs (370 sources): no node host, address, uuid, password,
+  public key or short id; the port number only inside unrelated timestamps and
+  decimals. No artifacts. Inside the container: no route client process or setting,
+  the SOCKS ports unreachable, CONNECT to loopback/other ports refused, no UDP.
+  The check found two older places that showed the China node's host name (it is
+  also the organizers' former model relay): the workspace list (`model_bases`,
+  shared provider row; fixed in #314) and `scripts/configure-observer-secrets.py`
+  (#315). Git history still contains the host name; only the host, no credential.
+* Global switch on 15:31 UTC (`egress_routes=true`).
+  Rollback: `update private.observer_hardening set egress_routes=false, egress_routes_teams='{}' where id;`
