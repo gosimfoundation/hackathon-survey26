@@ -11,6 +11,7 @@ from .adaptation import AdapterProposal
 from .artifacts import download_project, pack_files, store_private_artifact, upload_artifact
 from .job_client import Http, JobError
 from .model_adapter import propose_adapter
+from .manifest import ProjectError
 from .model_client import ModelClient, team_model_client
 from .package import project_digest, read_manifest
 from .repository import SnapshotRepository
@@ -78,7 +79,16 @@ def prepare_project(payload: dict, http: Http, *, repository_credentials=None) -
         gameplay = payload.get("gameplay", "v3")
         if gameplay not in ("v3", "v4"):
             raise JobError("invalid_job_payload")
-        proposal = propose_adapter(source, model, client, gameplay=gameplay)
+        used = getattr(client, "source", "")
+        try:
+            proposal = propose_adapter(source, model, client, gameplay=gameplay)
+        except ProjectError as error:
+            if not used:
+                raise
+            raise ProjectError("Automatic adaptation used " + used + ": " + str(error)) from None
+        if used:
+            proposal = replace(proposal, explanation=(proposal.explanation + "\n\nAutomatic adaptation used "
+                                                      + used + ".").strip())
     proposal = replace(proposal, manifest=replace(proposal.manifest, image=resolve_image(proposal.manifest.image)))
     # Materialization here is only for the public preview. It does not imply
     # participant approval and cannot enqueue a formal evaluation.

@@ -140,33 +140,84 @@ from .team_egress import valid_domain  # noqa: E402
 DIRECT_TIMEOUT=120.0
 
 
+_DEFAULT_TRIOS=(("OPENAI","openai","https://api.openai.com/v1"),("ANTHROPIC","anthropic","https://api.anthropic.com"))
+_NO_ADAPTATION=" Or add observer.project.json to the project so no automatic adaptation is needed."
+
+
+def _protocol(prefix: str, base: str, environment: dict) -> str:
+    """openai or anthropic for a prefixed trio: <PREFIX>_PROTOCOL if set, else from the base URL."""
+    stated=str(environment.get(prefix+"_PROTOCOL") or "").strip().lower()
+    if stated in ("openai","anthropic"):
+        return stated
+    parsed=urllib.parse.urlsplit(base)
+    host=(parsed.hostname or "").lower()
+    path=parsed.path.rstrip("/").lower()
+    # Anthropic itself, ".../anthropic" gateways and Kimi's Anthropic endpoint (api.kimi.com/coding
+    # without /v1); every other base speaks the OpenAI chat-completions protocol.
+    if "anthropic" in host or path.endswith("/anthropic") or (host=="api.kimi.com" and path=="/coding"):
+        return "anthropic"
+    return "openai"
+
+
+def _prefixed_trios(environment: dict) -> list:
+    """Prefixes with a complete <P>_API_KEY + <P>_BASE_URL + <P>_MODEL: KIMI first, then alphabetical."""
+    prefixes={name[:-len("_API_KEY")] for name in environment if name.endswith("_API_KEY") and len(name)>len("_API_KEY")}
+    prefixes-={"OPENAI","ANTHROPIC"}
+    complete=[p for p in prefixes if all(environment.get(p+suffix) for suffix in ("_API_KEY","_BASE_URL","_MODEL"))]
+    return sorted(complete,key=lambda p:(p!="KIMI",p))
+
+
+def _inventory(environment: dict) -> str:
+    """What the team saved, for the error message: names only, never values."""
+    groups={}
+    for name in environment:
+        for suffix in ("_API_KEY","_BASE_URL","_MODEL"):
+            if name.endswith(suffix) and len(name)>len(suffix) and environment.get(name):
+                groups.setdefault(name[:-len(suffix)],set()).add(suffix)
+    if not groups:
+        return "No model variables were found."
+    parts=[]
+    for prefix in sorted(groups):
+        missing=[prefix+s for s in ("_API_KEY","_BASE_URL","_MODEL") if s not in groups[prefix]
+                 and not (s=="_BASE_URL" and prefix in ("OPENAI","ANTHROPIC"))]
+        parts.append(prefix+"_*: "+("complete" if not missing else "missing "+", ".join(missing)))
+    return "Found "+"; ".join(parts)+"."
+
+
 def team_model_client(team: dict, *, timeout: float = DIRECT_TIMEOUT, allow_local: bool = False):
-    """(completion, model) from the team's variables, or a ProjectError naming what is missing."""
+    """(completion, model) from the team's variables, or a ProjectError naming what is found and missing.
+
+    Order: OPENAI_* then ANTHROPIC_* (base URL optional), then any complete prefixed trio
+    <P>_API_KEY + <P>_BASE_URL + <P>_MODEL (KIMI first, then alphabetical), whose protocol is
+    <P>_PROTOCOL or inferred from the base URL. client.source names the variables used."""
     environment=team.get("environment") or {}
     domains=set(team.get("domains") or ())
-    for prefix,protocol,default in (("OPENAI","openai","https://api.openai.com/v1"),
-                                    ("ANTHROPIC","anthropic","https://api.anthropic.com")):
-        key=environment.get(prefix+"_API_KEY")
-        if not key:
-            continue
-        model=environment.get(prefix+"_MODEL")
-        if not model:
-            raise ProjectError("Automatic adaptation uses your team's model: add the variable "+prefix+"_MODEL "
-                               "under Keys and network, or add observer.project.json so no automatic adaptation is needed.")
-        base=(environment.get(prefix+"_BASE_URL") or default).rstrip("/")
-        parsed=urllib.parse.urlsplit(base)
-        local=allow_local and parsed.scheme=="http" and parsed.hostname in ("localhost","127.0.0.1")
-        host=(parsed.hostname or "").lower()
-        # Open egress: any public DNS name (no IP literal or internal name); otherwise the allowed domains.
-        reachable=valid_domain(host) if team.get("open") is True else host in domains
-        if not local and (parsed.scheme!="https" or parsed.username or parsed.password or parsed.query
-                          or parsed.fragment or parsed.port not in (None,443) or not reachable):
-            raise ProjectError("Automatic adaptation calls "+prefix+"_BASE_URL directly: it must be a public https "
-                               "address (Keys and network).")
-        return DirectModelClient(protocol,base,key,timeout=timeout),model
-    raise ProjectError("Automatic adaptation uses your team's model: save OPENAI_API_KEY (or ANTHROPIC_API_KEY) with "
-                       "its _BASE_URL and _MODEL under Keys and network, or add observer.project.json so no "
-                       "automatic adaptation is needed.")
+    candidates=[(p,proto,default) for p,proto,default in _DEFAULT_TRIOS
+                if environment.get(p+"_API_KEY") and environment.get(p+"_MODEL")]
+    for prefix in _prefixed_trios(environment):
+        base=environment[prefix+"_BASE_URL"].strip()
+        candidates.append((prefix,_protocol(prefix,base,environment),None))
+    if not candidates:
+        raise ProjectError("Automatic adaptation uses your team's model but found no complete set of variables. "
+                           +_inventory(environment)+" Needed (Keys and network): <NAME>_API_KEY + <NAME>_BASE_URL + "
+                           "<NAME>_MODEL, e.g. KIMI_*, or OPENAI_API_KEY + OPENAI_MODEL (ANTHROPIC_* likewise)."
+                           +_NO_ADAPTATION)
+    prefix,protocol,default=candidates[0]
+    base=(environment.get(prefix+"_BASE_URL") or default or "").strip().rstrip("/")
+    parsed=urllib.parse.urlsplit(base)
+    local=allow_local and parsed.scheme=="http" and parsed.hostname in ("localhost","127.0.0.1")
+    host=(parsed.hostname or "").lower()
+    # Open egress: any public DNS name (no IP literal or internal name); otherwise the allowed domains.
+    reachable=valid_domain(host) if team.get("open") is True else host in domains
+    if not local and (parsed.scheme!="https" or parsed.username or parsed.password or parsed.query
+                      or parsed.fragment or parsed.port not in (None,443) or not reachable):
+        raise ProjectError("Automatic adaptation calls "+prefix+"_BASE_URL directly: it must be a public https "
+                           "address on your allowed domains (Keys and network)."+_NO_ADAPTATION)
+    client=DirectModelClient(protocol,base,environment[prefix+"_API_KEY"],timeout=timeout)
+    client.source=(prefix+"_API_KEY, "+(prefix+"_BASE_URL, " if environment.get(prefix+"_BASE_URL") else "")
+                   +prefix+"_MODEL ("+protocol+" protocol)")
+    client.variables=prefix
+    return client,environment[prefix+"_MODEL"]
 
 
 class DirectModelClient:
@@ -175,6 +226,8 @@ class DirectModelClient:
         if protocol not in ("openai","anthropic"):
             raise ProjectError("Unknown model protocol.")
         self.protocol=protocol
+        self.variables=None   # the variable prefix (team_model_client), named in error messages
+        self.source=""
         self.url=base.rstrip("/")+("/chat/completions" if protocol=="openai" else "/v1/messages")
         self.key=key
         self.timeout=timeout
@@ -207,8 +260,14 @@ class DirectModelClient:
                     raise ProjectError("Invalid model response.")
                 return value if self.protocol=="openai" else _anthropic_as_chat(value)
             except urllib.error.HTTPError as exc:
-                message=("The model provider rejected the request (HTTP "+str(exc.code)+"). Check the API "
-                         "endpoint, model name, key and balance under Keys and network.")
+                names=getattr(self,"variables",None)
+                if exc.code==404:
+                    message=("The model name or API address does not exist at the provider (HTTP 404; 模型名或接口地址在服务商处不存在). "
+                             "Check "+(names+"_MODEL and "+names+"_BASE_URL" if names else "the model name and API address")
+                             +" under Keys and network.")
+                else:
+                    message=("The model provider rejected the request (HTTP "+str(exc.code)+"). Check the API "
+                             "endpoint, model name, key and balance under Keys and network.")
                 if exc.code not in TRANSIENT_PROVIDER_STATUS or attempt:
                     raise ProjectError(message) from None
             except (urllib.error.URLError,TimeoutError,ConnectionError,ValueError) as exc:

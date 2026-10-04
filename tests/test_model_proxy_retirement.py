@@ -225,3 +225,59 @@ def test_local_env_file_refuses_platform_and_invalid_names(tmp_path, line):
     env_file.write_text(line + '\n')
     with pytest.raises(ProjectError, match='Line 1'):
         local.own_environment(env_file, environ={})
+
+
+KIMI_ONLY = {'environment': {'KIMI_API_KEY': 'sk-kimi', 'KIMI_BASE_URL': 'https://api.kimi.com/coding/v1',
+                             'KIMI_MODEL': 'kimi-for-coding'}, 'secrets': ['KIMI_API_KEY'], 'domains': ['api.kimi.com']}
+
+
+def test_a_complete_prefixed_trio_is_used_when_no_default_trio_exists():
+    client, model = team_model_client(KIMI_ONLY)
+    assert model == 'kimi-for-coding' and client.protocol == 'openai'
+    assert client.url == 'https://api.kimi.com/coding/v1/chat/completions'
+    assert client.source == 'KIMI_API_KEY, KIMI_BASE_URL, KIMI_MODEL (openai protocol)'
+    client.opener = Opener({'choices': [{'message': {'content': '{}'}}]})
+    client(REQUEST)
+    assert client.opener.requests[0].get_header('Authorization') == 'Bearer sk-kimi'
+
+
+def test_prefixed_trio_choice_is_deterministic_and_the_protocol_is_inferred_or_stated():
+    env = {**KIMI_ONLY['environment'],
+           'ACME_API_KEY': 'a', 'ACME_BASE_URL': 'https://api.acme.com/v1', 'ACME_MODEL': 'm',
+           'ZED_API_KEY': 'z', 'ZED_BASE_URL': 'https://api.zed.com/v1', 'ZED_MODEL': 'z1'}
+    team = {'environment': env, 'domains': ['api.kimi.com', 'api.acme.com', 'api.zed.com']}
+    assert team_model_client(team)[0].variables == 'KIMI'
+    del env['KIMI_MODEL']
+    assert team_model_client(team)[0].variables == 'ACME'   # KIMI incomplete: alphabetical
+    # A default trio, when complete, still comes first.
+    env.update({'OPENAI_API_KEY': 'o', 'OPENAI_MODEL': 'gpt', 'OPENAI_BASE_URL': 'https://api.zed.com/v1'})
+    assert team_model_client(team)[0].variables == 'OPENAI'
+    for base, protocol in (('https://api.kimi.com/coding', 'anthropic'), ('https://api.kimi.com/coding/v1', 'openai'),
+                           ('https://api.anthropic.com', 'anthropic'), ('https://gw.example.com/anthropic', 'anthropic'),
+                           ('https://api.deepseek.com', 'openai')):
+        host = base.split('/')[2]
+        t = {'environment': {'X_API_KEY': 'k', 'X_BASE_URL': base, 'X_MODEL': 'm'}, 'domains': [host]}
+        assert team_model_client(t)[0].protocol == protocol, base
+    stated = {'environment': {'X_API_KEY': 'k', 'X_BASE_URL': 'https://api.deepseek.com', 'X_MODEL': 'm',
+                              'X_PROTOCOL': 'Anthropic'}, 'domains': ['api.deepseek.com']}
+    client, _ = team_model_client(stated)
+    assert client.protocol == 'anthropic' and client.url == 'https://api.deepseek.com/v1/messages'
+
+
+def test_the_error_lists_what_was_found_and_missing_and_suggests_a_manifest():
+    team = {'environment': {'KIMI_API_KEY': 'sk-kimi', 'KIMI_BASE_URL': 'https://api.kimi.com/coding/v1'},
+            'domains': ['api.kimi.com']}
+    with pytest.raises(ProjectError) as error:
+        team_model_client(team)
+    text = str(error.value)
+    assert 'KIMI_*: missing KIMI_MODEL' in text and 'observer.project.json' in text and 'sk-kimi' not in text
+    with pytest.raises(ProjectError, match='No model variables were found'):
+        team_model_client({'environment': {}, 'domains': []})
+
+
+def test_a_provider_404_names_the_model_and_base_url_variables(monkeypatch):
+    client, _ = team_model_client(KIMI_ONLY)
+    client.opener = Opener(404)
+    with pytest.raises(ProjectError) as error:
+        client(REQUEST)
+    assert '模型名或接口地址在服务商处不存在' in str(error.value) and 'KIMI_MODEL and KIMI_BASE_URL' in str(error.value)
