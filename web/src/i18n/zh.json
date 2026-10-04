@@ -2819,5 +2819,8 @@
       "storage_unavailable": "上传失败，请稍后再试。",
       "admin_only": "仅限主办方。"
     }
+  },
+  "cards": {
+    "card_not_available": "无法查看这张名片（申请或邀请可能已处理或撤回）。"
   }
 }

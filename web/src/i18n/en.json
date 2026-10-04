@@ -2819,5 +2819,8 @@
       "storage_unavailable": "Upload failed. Please try again shortly.",
       "admin_only": "Organizers only."
     }
+  },
+  "cards": {
+    "card_not_available": "This card is not available (the request or invitation may have been answered or withdrawn)."
   }
 }
