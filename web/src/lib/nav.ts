@@ -1,4 +1,4 @@
-/** Header navigation: four main destinations, everything else under "More". */
+/** Header navigation: the main destinations (ending with About), everything else under "More". */
 export interface NavItem { key: string; to: string }
 
 export const mainNavItems: NavItem[] = [
@@ -6,6 +6,7 @@ export const mainNavItems: NavItem[] = [
   { key: 'nav.rules', to: '/rules' },
   { key: 'nav.leaderboard', to: '/leaderboard' },
   { key: 'nav.teammates', to: '/teammates' },
+  { key: 'nav.about', to: '/about' },
 ]
 
 /** The fourth main item: the prominent Participate button in the header. */

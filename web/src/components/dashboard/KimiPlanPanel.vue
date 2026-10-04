@@ -59,6 +59,7 @@ onMounted(load)
 <template>
   <div v-if="team" id="kimi-plan" class="panel" data-testid="kimi-plan-panel" :data-state="loading ? 'loading' : state">
     <div class="hd"><h2>{{ t('kimi_plan.title') }}</h2><span class="label">{{ t('kimi_plan.kicker') }}</span></div>
+    <p class="text3 mb-2 text-xs" data-testid="kimi-plan-sponsor">{{ t('kimi_plan.sponsor') }}</p>
     <p class="text2 text-sm">{{ t('kimi_plan.lede') }}</p>
     <p v-if="loading" class="text3 mt-3 text-sm">{{ t('common.loading') }}</p>
     <template v-else>

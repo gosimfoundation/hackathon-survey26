@@ -7,6 +7,10 @@
       "start": {
         "title": "3 ステップで開始",
         "description": "ドキュメントを読み、エージェントを作って提出——最初の参加はこの 3 ステップだけ。"
+      },
+      "about": {
+        "title": "運営",
+        "description": "Agentic Observer ハッカソンの主催者、スポンサー、科学委員会。"
       }
     },
     "wordmark_note": "Agentic Observer"
@@ -115,7 +119,8 @@
         }
       ]
     },
-    "register_float": "参加登録"
+    "register_float": "参加登録",
+    "about": "運営"
   },
   "phase_clock": {
     "now": "現在",
@@ -625,6 +630,12 @@
       "title": "公式サンプル：公開練習シナリオでのベースラインエージェントのリプレイ",
       "facts": "シナリオ {scenario} · シード {seed} · {nights} 夜 · {rounds} 回の判断 · 最終スコア {score}",
       "note": "ベースラインエージェントを、プラットフォームの採点器とリプレイ描画で処理した実際の出力です。8× で再生。空をドラッグすると視点を回せます。"
+    },
+    "credits": {
+      "aria": "主催、協賛、科学委員会",
+      "committee_names": "{names} ほか計 {total} 名",
+      "name_sep": "、",
+      "all": "すべて見る"
     }
   },
   "teammates": {
@@ -957,5 +968,8 @@
       "help_rules": "ルール",
       "help_suffix": "をご覧ください。"
     }
+  },
+  "about_page": {
+    "kicker": "主催 · 協賛 · 科学委員会"
   }
 }

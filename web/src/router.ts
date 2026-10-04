@@ -16,6 +16,7 @@ const router = createRouter({
     { path: '/docs', component: () => import('./pages/DocsPage.vue') , meta: { page: 'docs' }},
     { path: '/cli', component: () => import('./pages/CliPage.vue') , meta: { page: 'cli' }},
     { path: '/faq', component: () => import('./pages/FaqPage.vue') , meta: { page: 'faq' }},
+    { path: '/about', component: () => import('./pages/AboutPage.vue') , meta: { page: 'about' }},
     { path: '/resources', component: () => import('./pages/ResourcesPage.vue') , meta: { page: 'resources' }},
     { path: '/leaderboard/:phase?', component: () => import('./pages/LeaderboardPage.vue') , meta: { page: 'leaderboard' }},
     { path: '/announcements', component: () => import('./pages/AnnouncementsPage.vue') , meta: { page: 'announcements' }},

@@ -28,6 +28,7 @@ export const STATIC_ROUTES = {
   docs: 'docs',
   cli: 'cli',
   faq: 'faq',
+  about: 'about',
   resources: 'resources',
   leaderboard: 'leaderboard',
   'leaderboard/practice': 'leaderboard',

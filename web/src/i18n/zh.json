@@ -93,6 +93,10 @@
         "title": "命令行工具",
         "kicker": "survey26",
         "description": "安装 survey26 命令行工具、创建个人 API 令牌，在终端或编程智能体中完成网站提供的全部操作。"
+      },
+      "about": {
+        "title": "组委会",
+        "description": "智能体巡天黑客松的主办方、赞助方和科学委员会。"
       }
     }
   },
@@ -148,7 +152,8 @@
         }
       ]
     },
-    "register_float": "报名"
+    "register_float": "报名",
+    "about": "组委会"
   },
   "hero": {
     "eyebrow": "GOSIM 黑客松 · 智能巡天",
@@ -624,6 +629,12 @@
     "film": {
       "kicker": "活动短片",
       "play": "播放"
+    },
+    "credits": {
+      "aria": "主办、赞助和科学委员会",
+      "committee_names": "{names} 等 {total} 位",
+      "name_sep": "、",
+      "all": "查看全部"
     }
   },
   "vision": {
@@ -1654,7 +1665,8 @@
     "popup_title": "你的队伍可以领取 Kimi Coding Plan 兑换码",
     "popup_captain": "你的队伍已跑通练习赛，可领取一个 Kimi Coding Plan 兑换码。作为队长，请到控制台领取，领取后全队成员都能看到。",
     "popup_member": "你的队伍已跑通练习赛，可领取一个 Kimi Coding Plan 兑换码。请提醒队长到控制台领取，领取后全队成员都能看到。",
-    "popup_go": "去控制台领取"
+    "popup_go": "去控制台领取",
+    "sponsor": "由 KIMI 赞助"
   },
   "profile": {
     "title": "个人资料",
@@ -2684,5 +2696,8 @@
       "help_rules": "「规则」",
       "help_suffix": "。"
     }
+  },
+  "about_page": {
+    "kicker": "主办 · 赞助 · 科学委员会"
   }
 }
