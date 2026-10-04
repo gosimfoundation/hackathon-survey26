@@ -209,7 +209,7 @@ function errorMessage(e: unknown) {
     batch_already_active: pick(`Your team can run up to ${activeLimit.value} evaluations at a time.`, `本队最多可同时进行 ${activeLimit.value} 个评测。`),
     repeat_already_active: pick('An “Evaluate 3 times and average” set is already running. Start another when it finishes.', '已有一组「评测 3 次取平均」正在进行，请等它结束后再开始。'),
     preparation_limit: pick('Your team already has three projects being prepared.', '本队已有三个项目正在准备，请等待完成。'),
-    preparation_daily_limit: pick('Your team has used today’s ten project preparations.', '本队今天的十次项目准备机会已用完。'),
+    preparation_daily_limit: pick('Your team has used today’s 40 project preparations. The count resets at 00:00 UTC (08:00 Beijing time).', '本队今天的 40 次项目准备机会已用完，每天北京时间 8 点（UTC 0 点）重置。'),
     local_session_not_ready: pick('The local engine is not ready yet, or the run has ended. Refresh its status.', '本地会话尚未启动或已经结束，请刷新查看状态。'),
     daily_limit: pick('The daily evaluation limit has been reached.', '今天的评测次数已用完。'),
     repeat_daily_limit: pick('Evaluate 3 times and average needs 3 of today’s evaluations.', '「评测 3 次取平均」需要今天剩余至少 3 次评测。'),
