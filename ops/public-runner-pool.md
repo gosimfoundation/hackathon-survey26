@@ -170,7 +170,9 @@ How a job is placed:
    ten minutes, queued five minutes, GitHub error) gives the job back to its own
    organization for good, and three such returns within 15 minutes put the
    repository in a 15-minute cooldown: no new jobs, the load goes to the others.
-   Private organizations keep their placement and dispatch fallback as before.
+   Private organizations have the same health, cooldown and kill switch since
+   migration `20261004070000` (`ops/private-target-health.md`); all 26 targets:
+   `select public.observer_targets_status();`.
 
 Modes: `off`, `drill`, `overflow` as before, plus `primary`: public repositories
 are the first choice for the teams within `rollout_percent` (a stable hash of the
