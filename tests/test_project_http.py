@@ -153,7 +153,8 @@ def edge_stack(tmp_path_factory):
         env["DENO_CERT"]=str(team[2])
     env.update({"SUPABASE_URL":harness.url,"SUPABASE_SERVICE_ROLE_KEY":service_key(),"SUPABASE_ANON_KEY":anon_key(),
                 "OBSERVER_KEY_ENCRYPTION_KEY":encoded,"OBSERVER_DEFAULT_MODEL_PROVIDER":str(provider),
-                "OBSERVER_MODEL_BASES":",".join([*bases,"https://personal.example/v1"]),"OBSERVER_MODEL_HTTP_BASES":",".join(b for b in bases if b.startswith("http://"))})
+                "OBSERVER_MODEL_BASES":",".join([*bases,"https://personal.example/v1"]),"OBSERVER_MODEL_HTTP_BASES":",".join(b for b in bases if b.startswith("http://")),
+                "OBSERVER_TRUSTED_BASE_MODELS":"allowed-fast-model"})
     deno=os.environ["OBSERVER_DENO_BIN"]
     # Only disposable test credentials are used in this integration fixture.
     encrypted=subprocess.run([deno,"eval",
@@ -357,6 +358,14 @@ def test_formal_run_calls_the_saved_https_provider_without_page_or_organizer_fal
         assert key not in json.dumps(response) and '[REDACTED]' in response['choices'][0]['message']['content']
         assert query(uri,'select tokens_used,calls_used,calls_active from private.observer_sessions where run_id=%s',
                      (s['run'],))==[(17,1,0)]
+        # This stub base is organizer-configured (trusted): only the default model or one on
+        # OBSERVER_TRUSTED_BASE_MODELS is forwarded; the agent may pick among those per call.
+        for model,expected in (('allowed-fast-model','allowed-fast-model'),('team-model','team-model-v1')):
+            status,response=post(model_url,{**body,'model':model},credential)
+            assert status==200,response
+            assert provider.requests[-1]['body']['model']==expected
+        status,response=post(model_url,{**body,'model':'bad\nmodel'},credential)
+        assert (status,response['error']['code'])==(400,'invalid_model')
         # Redirects are never followed and provider rejections are never forwarded.
         for mode,code in (('redirect','model_provider_unavailable'),('reject','model_provider_error')):
             provider.mode=mode;count=len(provider.requests)

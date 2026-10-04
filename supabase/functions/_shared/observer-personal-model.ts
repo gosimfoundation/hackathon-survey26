@@ -3,6 +3,7 @@ import {
   anthropicMessagesUrl,
   boundedJson,
   capability,
+  chooseModel,
   providerError,
   ProxyError,
   type Rpc,
@@ -86,6 +87,8 @@ export async function fulfillPersonalModel(
     fetch: typeof fetch;
     // Exact organizer-configured bases, trusted as they are; any other base must be public HTTPS.
     trustedBases: Set<string>;
+    // Extra models allowed on a trusted base besides the team's default one.
+    trustedModels?: Set<string>;
     resolve?: Resolver | null;
     send: (topic: string, event: string, payload: unknown) => Promise<void>;
   },
@@ -93,7 +96,9 @@ export async function fulfillPersonalModel(
   if (
     !input || !UUID.test(input.run_id ?? "") || !UUID.test(input.call_id ?? "") || typeof input.api_key !== "string" ||
     input.api_key.length < 1 || input.api_key.length > 8192 || /[\r\n]/.test(input.api_key) ||
-    typeof input.model !== "string" || input.model.length < 1 || input.model.length > 256
+    typeof input.model !== "string" || input.model.length < 1 || input.model.length > 256 ||
+    // deno-lint-ignore no-control-regex
+    /[\u0000-\u001f\u007f-\u009f]/.test(input.model)
   ) throw new ProxyError(400, "invalid_personal_model");
   const protocol = input.protocol === "anthropic" ? "anthropic" : "openai";
   const body = (protocol === "anthropic" ? validateMessages(input.body) : validateChat(input.body)).body;
@@ -122,7 +127,12 @@ export async function fulfillPersonalModel(
       redirect: "error",
       signal: AbortSignal.timeout(110000),
       headers,
-      body: JSON.stringify({ ...body, model: input.model }),
+      // The agent's model (already in the digest-checked body) wins; the page's
+      // default model is used only when the agent sent none.
+      body: JSON.stringify({
+        ...body,
+        model: chooseModel(body.model, input.model, deps.trustedBases.has(normalized), deps.trustedModels),
+      }),
     });
     if (!response.ok) {
       await response.body?.cancel();

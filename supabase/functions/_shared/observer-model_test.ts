@@ -581,3 +581,66 @@ Deno.test("a slow Anthropic provider is reported as a timeout, and the reservati
   assertEquals([error.status, error.code], [504, "model_provider_timeout"]);
   assertEquals(f.calls.at(-1)?.args.p_actual_tokens, null);
 });
+
+// Per-call model choice on the team's own provider (not an organizer-configured base).
+const ownBase = { base_url: "https://api.own-provider.com/v1" };
+const publicDns = () => Promise.resolve(["8.8.8.8"]);
+const sentModel = (f: { upstream: { init: RequestInit | undefined }[] }) =>
+  JSON.parse(String(f.upstream[0].init?.body)).model;
+const chat = (model: unknown) =>
+  request({ ...(model === undefined ? {} : { model }), messages: [{ role: "user", content: "hi" }], max_tokens: 32 });
+
+Deno.test("the team's own provider receives the model the agent chose for this call", async () => {
+  const f = teamFixture({ resolve: publicDns }, ownBase);
+  await teamChatCompletion(chat("fast-model"), f.deps);
+  assertEquals(sentModel(f), "fast-model");
+  const g = teamFixture({ resolve: publicDns }, ownBase);
+  await teamChatCompletion(chat("strong-model"), g.deps);
+  assertEquals(sentModel(g), "strong-model");
+  // Different models are different requests for idempotency.
+  assert(f.calls[0].args.p_digest !== g.calls[0].args.p_digest);
+  const m = messagesFixture({ resolve: publicDns }, ownBase);
+  await teamMessages(messagesRequest(), m.deps);
+  assertEquals(sentModel(m), "project-chosen-model");
+});
+
+Deno.test("without a model (or with the team-model alias) the team's saved default model is used", async () => {
+  for (const model of [undefined, "", "team-model"]) {
+    const f = teamFixture({ resolve: publicDns }, ownBase);
+    await teamChatCompletion(chat(model), f.deps);
+    assertEquals(sentModel(f), "saved-model");
+  }
+});
+
+Deno.test("an invalid model is refused before any reservation or provider call", async () => {
+  for (const model of ["a".repeat(257), "bad\nmodel", "tab\tmodel", 42, null, ["m"]]) {
+    const f = teamFixture({ resolve: publicDns }, ownBase);
+    const error = await assertRejects(() => teamChatCompletion(chat(model), f.deps), ProxyError);
+    assertEquals([error.status, error.code], [400, "invalid_model"]);
+    assertEquals(f.calls.length + f.upstream.length, 0);
+  }
+  assertEquals(
+    validateChat({ model: "a".repeat(256), messages: [{ role: "user", content: "x" }] }).body.model.length,
+    256,
+  );
+});
+
+Deno.test("an organizer-configured base only accepts the saved model or one on the organizer allowlist", async () => {
+  // The fixture's saved base is listed in trustedBases.
+  const f = teamFixture();
+  await teamChatCompletion(chat("expensive-model"), f.deps);
+  assertEquals(sentModel(f), "saved-model");
+  const g = teamFixture({ trustedModels: new Set(["cheap-model"]) });
+  await teamChatCompletion(chat("cheap-model"), g.deps);
+  assertEquals(sentModel(g), "cheap-model");
+  const m = messagesFixture({ trustedModels: new Set(["cheap-model"]) });
+  await teamMessages(messagesRequest(), m.deps);
+  assertEquals(sentModel(m), "saved-model");
+});
+
+Deno.test("organizer-credit calls still require a model from the provider's list", async () => {
+  const f = fixture();
+  const error = await assertRejects(() => chatCompletion(chat(undefined), f.deps), ProxyError);
+  assertEquals([error.status, error.code], [400, "invalid_provider"]);
+  assertEquals(f.calls.length + f.upstream.length, 0);
+});

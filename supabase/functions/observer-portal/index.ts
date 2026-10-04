@@ -34,6 +34,7 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       userId: account.user.id,
       masterKey: Deno.env.get("OBSERVER_KEY_ENCRYPTION_KEY") ?? "",
       modelBases: list("OBSERVER_MODEL_BASES"),
+      trustedModels: list("OBSERVER_TRUSTED_BASE_MODELS"),
       httpBases: list("OBSERVER_MODEL_HTTP_BASES"),
       artifactDownload: async (reference) => artifactDownload(await configuredApp(service), reference),
     });

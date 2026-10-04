@@ -153,6 +153,12 @@ chose the Anthropic Messages protocol in the workspace's **Model API** section a
 own env vars) -- use those with the official `anthropic` SDK if your own agent speaks
 Claude's Messages API instead. See `docs/model-api-keys.md` for the full comparison.
 
+On the platform, the `model` of each request is forwarded to your team's provider unchanged; the
+default model from the **Model API** section is used only when a request names none. This agent
+sends `OPENAI_MODEL` (default `k3`), so if your provider is not Kimi, set `OPENAI_MODEL` to one of
+your provider's models under `environment` in `observer.project.json`. Different steps may also use
+different models; model calls are paid for by your team's key.
+
 ## Running it locally
 
 This project is agent-side only -- it does not ship the simulator/scorer. Test it with

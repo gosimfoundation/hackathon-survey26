@@ -1806,7 +1806,7 @@
       "relay": "Do not save (page relay)",
       "relay_help": "The key stays only in this page and is never stored on the server. Keep this page open until each evaluation finishes; model calls fail while it is closed. If your team is verified as a top team, you must also open this page at the time agreed with the organizers.",
       "relay_deletes": "Choosing this deletes the saved key.",
-      "usage": "Your project keeps using the OPENAI_BASE_URL and OPENAI_API_KEY provided for each run; model calls go to your endpoint and model.",
+      "usage": "Your project keeps using the OPENAI_BASE_URL and OPENAI_API_KEY provided for each run; model calls go to your endpoint. The model named in each request is forwarded unchanged; the default model is used when none is given.",
       "limits": "Each run allows up to {calls} model calls, at most {concurrency} at a time. Tokens are not capped (your team's key pays for them).",
       "limits_tokens": "Each run allows up to {calls} model calls and {tokens} tokens, at most {concurrency} calls at a time.",
       "saved_title": "Saved model API",
@@ -1821,7 +1821,8 @@
       "protocol_openai": "OpenAI-compatible (/v1/chat/completions)",
       "protocol_anthropic": "Anthropic Messages (/v1/messages)",
       "protocol_hint": "OpenAI-compatible is the default. Choose Anthropic Messages only if your provider speaks that API, and give its endpoint exactly as the Anthropic SDK expects (usually without a trailing /v1 — the SDK appends /v1/messages itself). The platform never translates between the two; a mismatched call is refused.",
-      "model": "Model",
+      "model": "Default model",
+      "model_hint": "Your agent may set the model parameter of each request to any model your provider offers (for example a fast, inexpensive model for simple steps and a stronger one for key decisions); the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model here. Model calls are paid for by your team's key. With an endpoint preset by the organizers in the suggestions list, only the default model or a model the organizers allow is forwarded.",
       "key": "API key",
       "save": "Save encrypted key",
       "replace": "Replace key",
@@ -2099,6 +2100,10 @@
       {
         "q": "Can a Python agent use third-party libraries such as numpy?",
         "a": "Yes. List them in requirements.txt at the project root and put the install command in the build field of observer.project.json; the platform runs it in the build step before the evaluation starts (the build has internet access, and its time does not count toward the 900 s per card). The container's system directories are read-only, so install into the project folder, for example \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]], and set \"PYTHONPATH\": \"/workspace/.deps\" under \"environment\"; a plain pip install -r requirements.txt fails because the system directories are read-only. A requirements.txt without a build step is not installed automatically. While the agent runs it has no network access except the model API, so downloading or installing anything at run time will not work. The same applies to other languages, for example npm ci or cargo build. We recommend one Practice submission first to confirm that the build and run succeed."
+      },
+      {
+        "q": "Can my agent use different models for different steps?",
+        "a": "Yes. With your team's own endpoint and key, your agent may set the model parameter of each request to any model your provider offers, for example a fast, inexpensive model for simple steps and a stronger one for key decisions; the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model entered under Model API. Model calls are paid for by your team's key, so please make sure the model names in your code are offered by your provider. With an endpoint preset by the organizers in the suggestions list, only the default model or a model the organizers allow is forwarded."
       }
     ]
   },

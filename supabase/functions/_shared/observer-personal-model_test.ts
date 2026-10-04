@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
-import { fulfillPersonalModel, personalChat, personalMessages } from "./observer-personal-model.ts";
+import { fulfillPersonalModel, personalChat, personalDigest, personalMessages } from "./observer-personal-model.ts";
 const run = "10000000-0000-4000-8000-000000000001", call = "10000000-0000-4000-8000-000000000002";
 const key = "private-key-fixture-never-store";
 const input = () => ({
@@ -196,5 +196,82 @@ Deno.test("a mismatched Anthropic content shape from the provider is refused lik
       send: async () => {},
     }),
     { completed: false },
+  );
+});
+
+// Relay mode: the open page forwards the agent's body unchanged; the page's model is the default.
+async function relayed(body: Record<string, unknown>, extra: Record<string, unknown> = {}, deps = {}) {
+  const sent: string[] = [], digests: unknown[] = [];
+  const result = await fulfillPersonalModel(
+    { ...input(), base_url: "https://api.team.com/v1", body, ...extra },
+    "owner",
+    {
+      trustedBases: new Set(["https://personal.example/v1"]),
+      resolve: () => Promise.resolve(["8.8.8.8"]),
+      rpc: async (name, args) => {
+        if (name === "observer_claim_personal_model") digests.push(args.p_digest);
+        return "topic";
+      },
+      fetch: ((_url, opts) => {
+        sent.push(JSON.parse(String(opts!.body)).model);
+        return Promise.resolve(Response.json({ choices: [{ message: { content: "OK" } }] }));
+      }) as typeof fetch,
+      send: async () => {},
+      ...deps,
+    },
+  );
+  return { result, sent, digests };
+}
+const relayBody = (model?: unknown) => ({
+  ...(model === undefined ? {} : { model }),
+  messages: [{ role: "user", content: "Choose a tile" }],
+  max_tokens: 40,
+});
+Deno.test("relay passes the agent's model to the team's own provider and keeps the digest of what the agent sent", async () => {
+  // The project proxy records a digest and broadcasts the body; the page forwards that body as is.
+  let requested = "", forwarded: Record<string, unknown> = {};
+  await personalChat(
+    new Request("https://platform.test/v1/chat/completions", {
+      method: "POST",
+      headers: { authorization: "Bearer obs_" + run + "." + "a".repeat(43), "idempotency-key": call },
+      body: JSON.stringify(relayBody("fast-model")),
+    }),
+    "topic",
+    {
+      rpc: async (name, args) => {
+        if (name === "observer_request_personal_model") requested = String(args.p_digest);
+        return true;
+      },
+      exchange: async (_t, _c, payload) => {
+        forwarded = payload.body as Record<string, unknown>;
+        return { choices: [] };
+      },
+    },
+  );
+  const { result, sent, digests } = await relayed(forwarded);
+  assertEquals(result, { completed: true });
+  assertEquals(sent, ["fast-model"]);
+  // Both sides agree on the digest, so the page's claim matches the agent's request.
+  assertEquals(digests, [requested]);
+  assertEquals(requested, await personalDigest(forwarded));
+});
+Deno.test("relay falls back to the page's default model when the agent sent none", async () => {
+  assertEquals((await relayed(relayBody())).sent, ["own-model"]);
+  assertEquals((await relayed(relayBody(""))).sent, ["own-model"]);
+});
+Deno.test("relay refuses an invalid model before claiming or calling", async () => {
+  for (const model of ["bad\u0000model", "x".repeat(257), 7]) {
+    const { sent, digests } = await relayed(relayBody(model)).catch(() => ({ sent: [], digests: [] }));
+    assertEquals([sent.length, digests.length], [0, 0]);
+    await assertRejects(() => relayed(relayBody(model)));
+  }
+  await assertRejects(() => relayed(relayBody("m"), { model: "bad\nmodel" }));
+});
+Deno.test("relay to an organizer-configured base keeps only the default or an allowlisted model", async () => {
+  const trusted = { base_url: "https://personal.example/v1" };
+  assertEquals((await relayed(relayBody("expensive-model"), trusted)).sent, ["own-model"]);
+  assertEquals(
+    (await relayed(relayBody("cheap-model"), trusted, { trustedModels: new Set(["cheap-model"]) })).sent,
+    ["cheap-model"],
   );
 });

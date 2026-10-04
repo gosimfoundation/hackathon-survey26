@@ -99,7 +99,7 @@ DEEPSEEK_API_KEY=<your-key>
 `OPENAI_API_KEY`（本次运行的临时凭证，不是你的密钥）。`model_factory.py` 优先读取这两个变量，
 没有时才回退到上面的 `MODEL_BASE_URL` 和各服务商密钥，所以同一份代码本地和平台都能用。
 模型名读取 `OPENAI_MODEL` 或 `MODEL_NAME`；在平台上可以留空，代理会使用本队在「参赛」页设置的
-地址、模型和密钥。平台上要启用模型，把 `MODEL_PROVIDER` 设为 `openai`（写在 `observer.project.json`
+地址、默认模型和密钥。填写模型名时，代理会把它原样转发给本队服务商，因此可以在不同步骤使用不同的模型（费用由本队承担）。平台上要启用模型，把 `MODEL_PROVIDER` 设为 `openai`（写在 `observer.project.json`
 的 `environment` 中），并在构建步骤里安装依赖，见入门包 `README.md` 的 "Upload a complete project"。
 
 ## JSON-Lines 协议

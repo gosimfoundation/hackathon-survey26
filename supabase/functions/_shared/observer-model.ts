@@ -84,6 +84,38 @@ function object(value: unknown): value is Record<string, any> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// deno-lint-ignore no-control-regex
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+/** The request's `model` is optional; when present it must be 1-256 characters without control characters. */
+function checkModel(model: unknown) {
+  if (model === undefined || model === "") return;
+  if (typeof model !== "string" || model.length > 256 || CONTROL.test(model)) {
+    throw new ProxyError(400, "invalid_model");
+  }
+}
+
+/** A model name that always means "the team's default model" (also what platform preparation sends). */
+export const DEFAULT_MODEL_ALIAS = "team-model";
+
+/**
+ * Which model the team's own provider receives. The agent's model is passed through,
+ * so a project may use a fast model for some steps and a stronger one for others (the
+ * team's key pays). Without a model, with "" or with DEFAULT_MODEL_ALIAS the team's
+ * saved default is used. On an organizer-configured base (OBSERVER_MODEL_BASES) only
+ * the saved model or one on the explicit organizer allowlist is passed; anything else
+ * becomes the saved model.
+ */
+export function chooseModel(
+  requested: unknown,
+  configured: string,
+  trusted: boolean,
+  allowlist: Set<string> = new Set(),
+): string {
+  if (typeof requested !== "string" || !requested || requested === DEFAULT_MODEL_ALIAS) return configured;
+  if (trusted && requested !== configured && !allowlist.has(requested)) return configured;
+  return requested;
+}
+
 export function validateChat(body: unknown) {
   if (!object(body)) throw new ProxyError(400, "invalid_chat");
   const allowed = new Set([
@@ -103,10 +135,8 @@ export function validateChat(body: unknown) {
     "chat_template_kwargs",
   ]);
   if (Object.keys(body).some((k) => !allowed.has(k))) throw new ProxyError(400, "unsupported_chat_option");
-  if (
-    typeof body.model !== "string" || body.model.length > 256 ||
-    !Array.isArray(body.messages) || !body.messages.length || body.messages.length > 128
-  ) {
+  checkModel(body.model);
+  if (!Array.isArray(body.messages) || !body.messages.length || body.messages.length > 128) {
     throw new ProxyError(400, "invalid_chat");
   }
   if (body.stream === true) throw new ProxyError(400, "streaming_not_supported");
@@ -139,7 +169,7 @@ export function validateChat(body: unknown) {
   ) {
     throw new ProxyError(400, "unsupported_template_option");
   }
-  const cleaned: Record<string, any> & { model: string } = { ...body, model: body.model, stream: false, n: 1 };
+  const cleaned: Record<string, any> = { ...body, model: body.model, stream: false, n: 1 };
   if (body.max_completion_tokens === undefined) cleaned.max_tokens = maxTokens;
   const bytes = new TextEncoder().encode(JSON.stringify(cleaned)).length;
   if (bytes > 65536) throw new ProxyError(413, "chat_too_large");
@@ -187,10 +217,8 @@ export function validateMessages(body: unknown) {
     "stream",
   ]);
   if (Object.keys(body).some((k) => !allowed.has(k))) throw new ProxyError(400, "unsupported_chat_option");
-  if (
-    typeof body.model !== "string" || body.model.length > 256 ||
-    !Array.isArray(body.messages) || !body.messages.length || body.messages.length > 128
-  ) {
+  checkModel(body.model);
+  if (!Array.isArray(body.messages) || !body.messages.length || body.messages.length > 128) {
     throw new ProxyError(400, "invalid_chat");
   }
   if (body.stream === true) throw new ProxyError(400, "streaming_not_supported");
@@ -223,7 +251,7 @@ export function validateMessages(body: unknown) {
   ) {
     throw new ProxyError(400, "unsupported_chat_option");
   }
-  const cleaned: Record<string, any> & { model: string } = { ...body, model: body.model, stream: false };
+  const cleaned: Record<string, any> = { ...body, model: body.model, stream: false };
   const bytes = new TextEncoder().encode(JSON.stringify(cleaned)).length;
   if (bytes > 65536) throw new ProxyError(413, "chat_too_large");
   return { body: cleaned, reservedTokens: bytes + body.messages.length * 128 + 1024 + maxTokens };
@@ -275,6 +303,8 @@ export type TeamProxyDependencies = {
   decrypt: (ciphertext: string, providerId: string) => Promise<string>;
   // Exact organizer-configured bases, trusted as they are; any other base must be public HTTPS.
   trustedBases: Set<string>;
+  // Extra models allowed on a trusted base besides the team's saved one.
+  trustedModels?: Set<string>;
   resolve?: Resolver | null;
   timeoutMs?: number;
 };
@@ -313,8 +343,10 @@ export async function teamChatCompletion(request: Request, deps: TeamProxyDepend
       method: "POST",
       redirect: "error",
       headers: { "content-type": "application/json", "authorization": "Bearer " + key },
-      // The saved model replaces the project's model name.
-      body: JSON.stringify({ ...checked.body, model: reservation.model }),
+      body: JSON.stringify({
+        ...checked.body,
+        model: chooseModel(checked.body.model, reservation.model, deps.trustedBases.has(base), deps.trustedModels),
+      }),
       signal: AbortSignal.timeout(deps.timeoutMs ?? 120000),
     });
     if (!response.ok) {
@@ -391,8 +423,10 @@ export async function teamMessages(request: Request, deps: TeamProxyDependencies
         "anthropic-version": request.headers.get("anthropic-version") ?? "2023-06-01",
         ...(request.headers.get("anthropic-beta") ? { "anthropic-beta": request.headers.get("anthropic-beta")! } : {}),
       },
-      // The saved model replaces the project's model name.
-      body: JSON.stringify({ ...checked.body, model: reservation.model }),
+      body: JSON.stringify({
+        ...checked.body,
+        model: chooseModel(checked.body.model, reservation.model, deps.trustedBases.has(base), deps.trustedModels),
+      }),
       signal: AbortSignal.timeout(deps.timeoutMs ?? 120000),
     });
     if (!response.ok) {
@@ -438,6 +472,8 @@ export async function teamMessages(request: Request, deps: TeamProxyDependencies
 export async function chatCompletion(request: Request, deps: ProxyDependencies): Promise<Response> {
   const { run, token } = capability(request.headers.get("authorization"));
   const checked = validateChat(await boundedJson(request, 65536));
+  // Organizer credits: the provider's own model list (database) is the allowlist.
+  if (typeof checked.body.model !== "string" || !checked.body.model) throw new ProxyError(400, "invalid_provider");
   const separator = checked.body.model.indexOf("::");
   const provider = separator < 0 ? deps.defaultProvider : checked.body.model.slice(0, separator);
   const model = separator < 0 ? checked.body.model : checked.body.model.slice(separator + 2);

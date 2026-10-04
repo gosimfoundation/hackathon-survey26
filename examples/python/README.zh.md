@@ -134,6 +134,11 @@ OPENAI_API_KEY=sk-...
 自己的智能体改用 Claude 的 Messages API,配上官方 `anthropic` SDK 使用这两个变量即可。
 完整对比见 `docs/model-api-keys.md`。
 
+在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
+中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
+`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
+使用不同的模型，模型调用的费用由本队密钥承担。
+
 ## 本地运行
 
 本项目只是智能体一侧——不含模拟器/评分器。请用任何支持该协议(stdin/stdout)的

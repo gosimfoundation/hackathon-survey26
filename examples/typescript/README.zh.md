@@ -104,6 +104,11 @@ npm start             # node dist/index.js（从 stdin 读取 JSON Lines，写�
 - `OPENAI_API_KEY` —— 该服务的密钥（也接受 `KIMI_API_KEY`）。
 - `OPENAI_MODEL` —— 默认 `k3`。
 
+在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
+中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
+`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
+使用不同的模型，模型调用的费用由本队密钥承担。
+
 在平台上，这些变量会在每次运行时自动注入，指向平台自己的模型代理和一个临时凭据。如果你的队伍在工作区的
 **模型 API** 设置里改选了 Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` /
 `ANTHROPIC_API_KEY`（Anthropic SDK 自己的环境变量名）；如果你自己的智能体改用 Claude 的 Messages

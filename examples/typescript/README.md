@@ -120,6 +120,12 @@ Coding Plan (see https://www.kimi.com/code/docs/en/):
 - `OPENAI_API_KEY` -- credential for that endpoint (`KIMI_API_KEY` also accepted).
 - `OPENAI_MODEL` -- defaults to `k3`.
 
+On the platform, the `model` of each request is forwarded to your team's provider unchanged; the
+default model from the **Model API** section is used only when a request names none. This agent
+sends `OPENAI_MODEL` (default `k3`), so if your provider is not Kimi, set `OPENAI_MODEL` to one of
+your provider's models under `environment` in `observer.project.json`. Different steps may also use
+different models; model calls are paid for by your team's key.
+
 On the platform these are injected for every run, pointing at the platform's own model proxy and a
 temporary credential. A team that instead chose the Anthropic Messages protocol in the workspace's
 **Model API** section also gets `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY` injected (the Anthropic

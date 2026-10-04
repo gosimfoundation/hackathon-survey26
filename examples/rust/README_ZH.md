@@ -115,6 +115,11 @@ Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` / `ANTHRO
 如果你自己的智能体改用 Claude 的 Messages API，用这两个变量即可，完整对比见
 `docs/model-api-keys.md`。
 
+在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
+中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
+`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
+使用不同的模型，模型调用的费用由本队密钥承担。
+
 每个观测夜都会发出两次调用，结果会合并（规避方位取并集，曝光时长缩放取
 平均）：
 
