@@ -66,7 +66,7 @@ npm run build        # tsc -> dist/
 
 Then upload this folder as a ZIP (or push it to a GitHub repository) via the
 Participate page. `observer.project.json` at the root already declares the build
-and run steps (`npm ci && npm run build`, then `node dist/index.js`), so the
+and run steps (`npm ci --include=dev && npm run build`, then `node dist/index.js`), so the
 platform compiles it for you -- you do not need to commit `dist/`. Exclude
 `node_modules/`, `dist/`, and `.env` from any ZIP you build by hand.
 

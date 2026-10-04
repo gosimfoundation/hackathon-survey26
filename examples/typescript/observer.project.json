@@ -3,12 +3,13 @@
   "protocol": "jsonl-v4",
   "image": "node:20-slim",
   "build": [
-    ["npm", "ci"],
+    ["npm", "ci", "--include=dev"],
     ["npm", "run", "build"]
   ],
   "run": ["node", "dist/index.js"],
   "working_directory": ".",
   "environment": {
-    "NODE_ENV": "production"
+    "NPM_CONFIG_CACHE": "/workspace/.npm-cache",
+    "NPM_CONFIG_UPDATE_NOTIFIER": "false"
   }
 }

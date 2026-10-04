@@ -162,8 +162,10 @@ HTTPS（443 端口）和 HTTP（80 端口）访问公网上的任何地址；其
 2. 在 Participate 页面把本文件夹打包上传（或推送到一个 GitHub 仓库）。根目录的
    `observer.project.json` 已经声明好：
    - `"image": "node:20-slim"` —— 直接使用标准公开镜像拉取 Node，不涉及任何 Python；
-   - `"build": [["npm", "ci"], ["npm", "run", "build"]]` —— 安装两个开发期依赖并把 TypeScript
-     编译到 `dist/`；
+   - `"build": [["npm", "ci", "--include=dev"], ["npm", "run", "build"]]` —— 安装两个开发期依赖并把
+     TypeScript 编译到 `dist/`；
+   - `"environment"` 设置了 `NPM_CONFIG_CACHE=/workspace/.npm-cache`：平台构建时使用清单里的环境变量，
+     且 home 目录只读，所以把 npm 缓存放在项目目录里。清单里的环境变量名必须大写；
    - `"run": ["node", "dist/index.js"]` —— 运行编译产物；
    - `"protocol": "jsonl-v4"` —— 与 Python 示例相同的 JSON Lines 传输协议。
 3. 如果你添加了运行时依赖，请写进 `package.json` 的 `dependencies`（而不是 `devDependencies`——
