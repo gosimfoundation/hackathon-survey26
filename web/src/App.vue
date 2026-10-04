@@ -14,6 +14,7 @@ import UidTag from './components/layout/UidTag.vue'
 import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
 import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
 import QuotaResetDialog from './components/layout/QuotaResetDialog.vue'
+import TeamRequestDialog from './components/layout/TeamRequestDialog.vue'
 
 const { t } = provideI18n()
 provideTheme()
@@ -43,4 +44,5 @@ provideTheme()
   <PinnedAnnouncementDialog />
   <KimiPlanDialog />
   <QuotaResetDialog />
+  <TeamRequestDialog />
 </template>

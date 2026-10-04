@@ -10,6 +10,7 @@ import { useFlash } from '../stores/flash'
 import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
 import TeamDirectory from '../components/TeamDirectory.vue'
+import TeamInbox from '../components/TeamInbox.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import { useTeamCapacity } from '../composables/useTeamCapacity'
 import { showsTeamPlaces, teamCreationBlocked } from '../lib/teamCapacity'
@@ -124,6 +125,7 @@ onMounted(load)
 
 <template>
   <DashShell :kicker="t('dash.title')" :title="t('team.title')">
+    <TeamInbox @changed="load" />
     <p v-if="loading" class="text3 text-sm">{{ t('common.loading') }}</p>
 
     <div v-else-if="team" class="dash-grid">
