@@ -15,6 +15,10 @@ API support: `ANTHROPIC_BASE_URL`/`ANTHROPIC_API_KEY` injected next to the
 `OPENAI_*` pair, #214), verified blob-by-blob against the export; each org's
 own `observer-control` repo commit SHA differs (own repo history), recorded
 per org below.
+On 2026-10-04 all thirteen (and the thirteen public `observer-public`
+repositories, commit `4a98545`) were moved to the runtime exported from main
+`656f955` (fair clock, #243), verified blob-by-blob; runner-11 ran first as a
+canary (hidden test team, 4 practice cards scored and rescored).
 
 Each organization needs (reference: runner-1…13, runtime from main `b1466d6`):
 
