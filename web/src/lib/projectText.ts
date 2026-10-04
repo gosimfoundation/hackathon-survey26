@@ -35,6 +35,8 @@ const REVISION_ERRORS: Record<string, string> = {
   'Invalid preparation result. Please retry.': '项目准备结果无效，请重新提交。',
   'Public test scenario is unavailable.': '公开测试场景暂不可用，请稍后重新提交。',
   'Public test failed. Check the project interface and submit again.': '公开场景测试未通过，请检查项目接口后重新上传。',
+  'The uploaded file is no longer available. Please re-upload this version; it will not count against your submission quota.':
+    '上传的文件已失效，请重新上传该版本，本次不计入次数。',
 }
 const PREPARATION_FAILED = 'Project preparation failed: '
 
