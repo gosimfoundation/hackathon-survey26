@@ -275,14 +275,24 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       return { run_id: run, credential: token, expires_at: access.expires_at };
     }
     case "list": {
+      // The caller's own team only: an organizer account may read every team's rows,
+      // but its workspace (site and CLI) must not show or resolve another team's versions.
+      const profile = await d.service.from("profiles").select("team_id").eq("id", d.userId).maybeSingle();
+      failure(profile.error);
+      const team = (profile.data as { team_id?: string | null } | null)?.team_id ??
+        "00000000-0000-0000-0000-000000000000";
       const queries = [
         d.user.from("observer_phase_settings").select("*,phases(id,slug,name_en,name_zh,starts_at,ends_at,is_active)"),
-        d.user.from("observer_projects").select("*,observer_revisions(*,observer_evidence(*))").order("created_at", {
-          ascending: false,
-        }).limit(100),
-        d.user.from("observer_batches").select("*,observer_runs(*)").eq("purpose", "formal").order("created_at", {
-          ascending: false,
-        }).limit(
+        d.user.from("observer_projects").select("*,observer_revisions(*,observer_evidence(*))").eq("team_id", team)
+          .order("created_at", {
+            ascending: false,
+          }).limit(100),
+        d.user.from("observer_batches").select("*,observer_runs(*)").eq("team_id", team).eq("purpose", "formal").order(
+          "created_at",
+          {
+            ascending: false,
+          },
+        ).limit(
           50,
         ),
       ];
