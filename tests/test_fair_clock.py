@@ -65,6 +65,7 @@ def test_turn_charges_cpu_by_speed_and_waiting_by_mode(mode, waiting):
     view = clock.snapshot()
     assert view["elapsed_seconds"] == pytest.approx(6.0 + waiting)
     assert view["remaining_seconds"] == pytest.approx(894.0 - waiting)
+    assert view["remaining_real_cpu_seconds"] == pytest.approx(2 * (894.0 - waiting))
     assert (view["speed_factor"], view["cpu_seconds"], view["wait_seconds"], view["clock_mode"]) == (2.0, 12.0, 8.0, mode)
     two_threads = FairClock(900, gauge=fixed(1.0), clock=fake.clock, cpu=fake.cpu, mode=mode)
     two_threads.begin_turn()
@@ -189,4 +190,4 @@ def test_initialize_and_requests_carry_the_clock(bundle, tmp_path):
     view = v4_workflow.V4Workflow.request_message(1, {}, FairClock(60, gauge=fixed(1.25)).snapshot())
     assert set(view["payload"]["wallclock"]) == {"elapsed_seconds", "remaining_seconds", "speed_factor",
                                                  "cpu_seconds", "wait_seconds", "wall_remaining_seconds",
-                                                 "clock_mode"}
+                                                 "clock_mode", "remaining_real_cpu_seconds"}

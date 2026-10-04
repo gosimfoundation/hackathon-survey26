@@ -260,6 +260,9 @@ class FairClock:
         return {
             "elapsed_seconds": round(self.charged, 3),
             "remaining_seconds": round(self.remaining, 3),
+            # The same budget in real CPU seconds of this machine at its current speed: compare it
+            # with CPU time the agent measures itself (time.process_time and the like).
+            "remaining_real_cpu_seconds": round(self.remaining * self.factor, 3),
             "speed_factor": round(self.factor, 4),
             "cpu_seconds": round(self.cpu_seconds, 3),
             "wait_seconds": round(self.window_seconds - self.cpu_seconds, 3),
