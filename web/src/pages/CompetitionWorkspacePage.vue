@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { loadPhases,type Phase } from '../lib/data'
+import { loadCompeteUiSetting, loadPhases,type Phase } from '../lib/data'
+import { COMPETE_UI_STORAGE, competeLayout, layoutOverride, type CompeteLayout } from '../lib/competeUi'
 import { competition, loadCompetition } from '../stores/competition'
 import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
@@ -9,8 +10,21 @@ import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import TeamInbox from '../components/TeamInbox.vue'
 const {t,pick}=useI18n(),{team,refreshMe}=useAuth()
-const phase=ref<Phase|null>(null),loading=ref(true),failed=ref(false)
+const phase=ref<Phase|null>(null),loading=ref(true),failed=ref(false),layout=ref<CompeteLayout>('classic')
+// Simplified layout behind a switch (site_settings 'event'.compete_ui); ?ui=v2|v1|auto overrides it for this browser.
+async function chooseLayout(){
+  const query=new URLSearchParams(location.search).get('ui')
+  let remembered:string|null=null
+  try{
+    if(query==='auto')localStorage.removeItem(COMPETE_UI_STORAGE)
+    else if(query==='v2'||query==='v1')localStorage.setItem(COMPETE_UI_STORAGE,query)
+    remembered=localStorage.getItem(COMPETE_UI_STORAGE)
+  }catch{/* storage blocked: the switch alone decides */}
+  const override=layoutOverride(query,remembered)
+  layout.value=competeLayout(override?{v2_all:false,v2_teams:[]}:await loadCompeteUiSetting(),team.value?.id,override)
+}
 onMounted(async()=>{try{await refreshMe()
+  await chooseLayout()
   // Team or membership changes do not raise auth events, so the workspace always
   // re-resolves the beta entry fresh instead of trusting the 15s cache.
   await loadCompetition(true)
@@ -29,6 +43,6 @@ onMounted(async()=>{try{await refreshMe()
     <p v-else-if="failed" role="alert">{{ pick('Could not load the competition. Please refresh.','比赛信息加载失败，请刷新重试。') }}</p>
     <div v-else-if="!team" class="panel"><p>{{ t('submit.errors.need_team') }}</p><p class="mt-5 actions-inline"><router-link class="btn primary sm" to="/team">{{ t('nav.team') }} →</router-link><SoloTeamButton /></p></div>
     <p v-else-if="!phase" class="panel">{{ pick('No competition is available yet.','当前还没有开放的比赛。') }}</p>
-    <ProjectWorkflow v-else />
+    <ProjectWorkflow v-else :layout="layout" />
   </DashShell>
 </template>
