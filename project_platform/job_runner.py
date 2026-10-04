@@ -15,7 +15,7 @@ from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
 from .egress import RestrictedEgress, anthropic_base
 from .team_egress import TeamEgress, checked_team_egress, report_text
 from .executor import execute
-from .job_client import GitHubIdentity, Http, JobClient, JobError
+from .job_client import GitHubIdentity, Http, JobClient, JobError, retrying
 from .manifest import ProjectError, ProjectManifest
 from .package import MAX_ARCHIVE_BYTES, extract_project, project_digest, read_project_zip
 from .sealing import OVERHEAD, SealKey, decode_key, seal
@@ -174,7 +174,7 @@ class SealedTransfer:
         self.client = client
 
     def download(self, http: Http, url: str, name: str, digest: str | None = None):
-        raw = http.request(url, limit=MAX_ARCHIVE_BYTES + OVERHEAD, timeout=120)
+        raw = retrying(lambda: http.request(url, limit=MAX_ARCHIVE_BYTES + OVERHEAD, timeout=120))
         data = self.client.seal_key.open(raw, name + ":" + self.client.job_id)
         if digest is not None and hashlib.sha256(data).hexdigest() != digest:
             raise JobError("archive_digest_mismatch")
@@ -184,11 +184,17 @@ class SealedTransfer:
         if len(archive) + OVERHEAD > MAX_ARCHIVE_BYTES:
             raise JobError("artifact_too_large")
         sealed = seal(decode_key(payload.get("result_key")), archive, "result:" + self.client.job_id)
-        upload = self.client.result_upload()
-        if upload["path"] != payload["artifact_upload"].get("path"):
-            raise JobError("invalid_artifact_destination")
-        http.request(upload["url"], data=sealed, method="PUT", headers={"Content-Type": "application/zip"},
-                     limit=65536)
+
+        def put():
+            # A fresh signed URL per attempt; the object is upserted, so a
+            # repeated PUT of the same ciphertext is harmless.
+            upload = self.client.result_upload()
+            if upload["path"] != payload["artifact_upload"].get("path"):
+                raise JobError("invalid_artifact_destination")
+            http.request(upload["url"], data=sealed, method="PUT", headers={"Content-Type": "application/zip"},
+                         limit=65536)
+
+        retrying(put)
         return self.client.store_sealed_result()
 
 
