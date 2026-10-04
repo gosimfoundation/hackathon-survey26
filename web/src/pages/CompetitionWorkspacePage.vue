@@ -7,6 +7,7 @@ import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
 import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
+import TeamInbox from '../components/TeamInbox.vue'
 const {t,pick}=useI18n(),{team,refreshMe}=useAuth()
 const phase=ref<Phase|null>(null),loading=ref(true),failed=ref(false)
 onMounted(async()=>{try{await refreshMe()
@@ -22,6 +23,8 @@ onMounted(async()=>{try{await refreshMe()
 </script>
 <template>
   <DashShell :kicker="phase?pick(phase.name_en,phase.name_zh):''" :title="pick('Participate','参赛')">
+    <!-- Join requests and invitations waiting for an answer: shown here too so a captain cannot miss them. -->
+    <TeamInbox compact class="mt-6" @changed="refreshMe" />
     <p v-if="loading" role="status">{{ t('common.loading') }}</p>
     <p v-else-if="failed" role="alert">{{ pick('Could not load the competition. Please refresh.','比赛信息加载失败，请刷新重试。') }}</p>
     <div v-else-if="!team" class="panel"><p>{{ t('submit.errors.need_team') }}</p><p class="mt-5 actions-inline"><router-link class="btn primary sm" to="/team">{{ t('nav.team') }} →</router-link><SoloTeamButton /></p></div>
