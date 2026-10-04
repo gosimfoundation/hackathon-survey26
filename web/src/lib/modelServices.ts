@@ -1,0 +1,141 @@
+// "Add a model service": a provider preset becomes three team variables — the key (encrypted secret),
+// the base URL and the model (plain values). Without a prefix it writes the trio the official examples
+// read (OPENAI_* or ANTHROPIC_*); with a prefix (KIMI, DEEPSEEK…) several providers live side by side.
+// Pure and unit-tested; the component only renders and calls the existing team-variable RPCs.
+
+export type ServiceProtocol = 'openai' | 'anthropic'
+
+export type ProviderPreset = {
+  id: string
+  label: string
+  protocol: ServiceProtocol
+  baseUrl: string
+  /** Empty when the provider's current model name was not verified; the field then shows `placeholder`. */
+  model: string
+  placeholder: string
+  /** Suggested prefix when the default trio is already taken. */
+  prefix: string
+  /** i18n key of a short provider note, if any. */
+  note?: string
+}
+
+// Defaults checked against each provider's docs on 2026-10-04 (and the repo's examples for Kimi).
+export const PROVIDERS: ProviderPreset[] = [
+  { id: 'kimi-coding', label: 'Kimi Coding Plan', protocol: 'openai', baseUrl: 'https://api.kimi.com/coding/v1',
+    model: 'kimi-for-coding', placeholder: 'kimi-for-coding', prefix: 'KIMI', note: 'kimi' },
+  { id: 'moonshot', label: 'Moonshot (Kimi API)', protocol: 'openai', baseUrl: 'https://api.moonshot.cn/v1',
+    model: 'kimi-k3', placeholder: 'kimi-k3', prefix: 'MOONSHOT' },
+  { id: 'deepseek', label: 'DeepSeek', protocol: 'openai', baseUrl: 'https://api.deepseek.com',
+    model: 'deepseek-flash', placeholder: 'deepseek-flash', prefix: 'DEEPSEEK' },
+  { id: 'openai', label: 'OpenAI', protocol: 'openai', baseUrl: 'https://api.openai.com/v1',
+    model: '', placeholder: 'gpt-…', prefix: 'GPT' },
+  { id: 'anthropic', label: 'Anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com',
+    model: '', placeholder: 'claude-…', prefix: 'CLAUDE', note: 'anthropic' },
+  { id: 'zhipu', label: 'Zhipu GLM', protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-5.3', placeholder: 'glm-5.3', prefix: 'ZHIPU' },
+  { id: 'custom', label: 'Custom', protocol: 'openai', baseUrl: '', model: '', placeholder: 'model-name', prefix: 'CUSTOM' },
+]
+
+export function presetById(id: string): ProviderPreset {
+  return PROVIDERS.find(p => p.id === id) ?? PROVIDERS[PROVIDERS.length - 1]
+}
+
+/** Normalises a typed prefix: upper case, separators to `_`, no trailing `_`; '' when nothing usable is left. */
+export function normalizePrefix(raw: string): string {
+  const value = raw.trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_').replace(/^[^A-Z]+/, '').replace(/_+$/, '')
+  return value.slice(0, 40)
+}
+
+export type ServiceNames = { key: string; baseUrl: string; model: string }
+
+/** The three variable names: `<prefix>_API_KEY` etc.; no prefix means the protocol's default trio. */
+export function serviceNames(protocol: ServiceProtocol, prefix = ''): ServiceNames {
+  const p = normalizePrefix(prefix) || (protocol === 'anthropic' ? 'ANTHROPIC' : 'OPENAI')
+  return { key: `${p}_API_KEY`, baseUrl: `${p}_BASE_URL`, model: `${p}_MODEL` }
+}
+
+type Variable = { name: string; secret: boolean; hint: string; value: string | null }
+
+export type ConfiguredService = {
+  prefix: string
+  names: ServiceNames
+  provider: ProviderPreset | null
+  /** Provider label for the summary card: a matching preset, otherwise the URL's host, otherwise the prefix. */
+  label: string
+  baseUrl: string
+  model: string
+  hint: string
+  hasKey: boolean
+}
+
+function sameUrl(a: string, b: string): boolean {
+  const n = (s: string) => s.trim().toLowerCase().replace(/\/+$/, '')
+  return !!a && n(a) === n(b)
+}
+
+export function providerForUrl(url: string): ProviderPreset | null {
+  return PROVIDERS.find(p => p.baseUrl && sameUrl(p.baseUrl, url)) ??
+    (/^https:\/\/api\.kimi\.ai\/coding/i.test(url.trim()) ? presetById('kimi-coding') : null)
+}
+
+function hostOf(url: string): string {
+  try { return new URL(url).host } catch { return '' }
+}
+
+/**
+ * Services found among the team's variables: every `<PREFIX>_API_KEY` together with its `<PREFIX>_BASE_URL`
+ * and `<PREFIX>_MODEL` when present. Default trios (OPENAI, ANTHROPIC) come first.
+ */
+export function configuredServices(variables: Variable[]): ConfiguredService[] {
+  const byName = new Map(variables.map(v => [v.name, v]))
+  const out: ConfiguredService[] = []
+  for (const v of variables) {
+    const m = /^([A-Z][A-Z0-9_]*)_API_KEY$/.exec(v.name)
+    if (!m) continue
+    const prefix = m[1]
+    const names = { key: v.name, baseUrl: `${prefix}_BASE_URL`, model: `${prefix}_MODEL` }
+    const plain = (name: string) => { const x = byName.get(name); return x && !x.secret ? x.value ?? '' : '' }
+    const baseUrl = plain(names.baseUrl)
+    const model = plain(names.model)
+    const provider = providerForUrl(baseUrl) ?? (prefix === 'ANTHROPIC' && !baseUrl ? presetById('anthropic') : null)
+    out.push({ prefix, names, provider, label: provider?.label ?? (hostOf(baseUrl) || prefix), baseUrl, model,
+      hint: v.secret ? v.hint : (v.value ?? '').slice(-4), hasKey: true })
+  }
+  const rank = (s: ConfiguredService) => (s.prefix === 'OPENAI' ? 0 : s.prefix === 'ANTHROPIC' ? 1 : 2)
+  return out.sort((a, b) => rank(a) - rank(b) || a.prefix.localeCompare(b.prefix))
+}
+
+/** Names the quick form manages, so the advanced list can say which ones are covered. */
+export function managedNames(services: ConfiguredService[]): Set<string> {
+  return new Set(services.flatMap(s => [s.names.key, s.names.baseUrl, s.names.model]))
+}
+
+export type ServiceForm = { provider: string; key: string; baseUrl: string; model: string; prefix: string }
+
+export type ServiceWrite =
+  | { op: 'save'; name: string; value: string; secret: boolean }
+  | { op: 'delete'; name: string }
+
+/**
+ * The RPC calls for one save. An empty key keeps the stored key (editing); an empty model deletes an old
+ * model variable only when it exists. Returns null when the form is incomplete.
+ */
+export function serviceWrites(form: ServiceForm, existing: Set<string>): ServiceWrite[] | null {
+  const preset = presetById(form.provider)
+  const names = serviceNames(preset.protocol, form.prefix)
+  const baseUrl = form.baseUrl.trim()
+  const model = form.model.trim()
+  if (!/^https:\/\/\S+$/.test(baseUrl)) return null
+  if (!form.key.trim() && !existing.has(names.key)) return null
+  const writes: ServiceWrite[] = []
+  if (form.key.trim()) writes.push({ op: 'save', name: names.key, value: form.key.trim(), secret: true })
+  writes.push({ op: 'save', name: names.baseUrl, value: baseUrl, secret: false })
+  if (model) writes.push({ op: 'save', name: names.model, value: model, secret: false })
+  else if (existing.has(names.model)) writes.push({ op: 'delete', name: names.model })
+  return writes
+}
+
+/** How many new variables a save would add (for the per-team limit). */
+export function newVariableCount(writes: ServiceWrite[], existing: Set<string>): number {
+  return writes.filter(w => w.op === 'save' && !existing.has(w.name)).length
+}

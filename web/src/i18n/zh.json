@@ -1864,7 +1864,40 @@
       "invalid_variable": "变量名或值不符合要求：变量名使用大写字母、数字和下划线，不能使用平台保留的名称；值不能为空且不超过 8 KB。",
       "variable_limit": "变量数量已达上限，请先删除不再使用的变量。",
       "invalid_domain": "域名格式不正确：只填写域名本身（例如 api.kimi.com），不含 https://、端口或路径，不能是 IP 地址或内网名称；最多 10 个。",
-      "domain_not_public": "这个域名目前无法解析，或解析到了非公网地址，不能添加。"
+      "domain_not_public": "这个域名目前无法解析，或解析到了非公网地址，不能添加。",
+      "svc": {
+        "title": "添加模型服务",
+        "intro": "选一个服务商，填入 API 密钥就可以了。接口地址和模型名已经预先填好，可以修改。密钥加密保存，之后只显示末尾 4 位；接口地址和模型名作为普通变量保存。",
+        "examples": "官方示例程序读取 OPENAI_API_KEY、OPENAI_BASE_URL、OPENAI_MODEL 这三个变量。不填前缀时，就保存为这三个变量（Anthropic 保存为 ANTHROPIC_API_KEY、ANTHROPIC_BASE_URL、ANTHROPIC_MODEL，需要程序自己读取）。",
+        "provider": "服务商",
+        "custom": "自定义（OpenAI 兼容）",
+        "key": "API 密钥",
+        "key_keep": "留空则保留已保存的密钥",
+        "base_url": "接口地址（Base URL）",
+        "model": "模型名",
+        "model_empty": "模型名留空时不保存 _MODEL 变量，由程序自己决定；具体模型名请查看服务商文档。",
+        "prefix": "名称前缀（可选）",
+        "prefix_help": "想同时配置多个服务商时填写，例如 KIMI，会保存为 KIMI_API_KEY、KIMI_BASE_URL、KIMI_MODEL，不会覆盖 OPENAI_*。带前缀的变量需要你的程序自己读取。",
+        "saves_as": "将保存为：",
+        "clash": "本队已经保存了 {prefix}_*（{current}）。要替换它，还是另存为其他前缀？",
+        "replace": "替换现有的 {prefix}_*",
+        "use_prefix": "另存为 {prefix}_*",
+        "save": "保存模型服务",
+        "cancel": "取消编辑",
+        "edit": "编辑",
+        "editing": "正在编辑 {prefix}_*。密钥留空则保留原来的密钥。",
+        "saved": "模型服务已保存。",
+        "deleted": "模型服务已删除。",
+        "delete_confirm": "删除这些变量？{names}",
+        "over_limit": "保存后变量数量会超过上限（{n} 个），请先删除不再使用的变量。",
+        "key_ending": "密钥 …{hint}",
+        "no_model": "未设置模型",
+        "advanced": "高级：自定义变量",
+        "notes": {
+          "kimi": "Kimi Coding Plan：模型可填 kimi-for-coding 或 k3。这些模型只接受默认 temperature，请求里不要设置 temperature。中国大陆以外的账号请把接口地址改为 https://api.kimi.ai/coding/v1。",
+          "anthropic": "Anthropic 使用 Messages 协议，保存为 ANTHROPIC_* 变量；官方示例只读取 OPENAI_*，需要你的程序用 Anthropic SDK 读取这些变量。"
+        }
+      }
     },
     "model_api": {
       "title": "模型 API（可选）",
