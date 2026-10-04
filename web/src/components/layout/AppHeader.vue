@@ -8,7 +8,7 @@ import { useFlash } from '../../stores/flash'
 import { useRegistrationOpen } from '../../composables/useRegistrationOpen'
 import { usePhaseClock } from '../../composables/usePhaseClock'
 import { isFullMoonToday } from '../../lib/eggs'
-import { mainNavItems, moreNavItems, participateItem } from '../../lib/nav'
+import { mainNavItems, maxFold, moreNavItems, participateItem, type NavItem } from '../../lib/nav'
 import { computed } from 'vue'
 
 const { t, pick, toggleLocale, locale } = useI18n()
@@ -37,16 +37,20 @@ const { nextLine } = usePhaseClock()
 
 const items = mainNavItems
 const more = moreNavItems
-const wideItems = mainNavItems.filter(item => item.wide)
 // When the desktop header row does not fit (narrow screens, long labels, the extra links of a
-// signed-in user), the `wide` main links move under More instead of pushing the page sideways.
+// signed-in user), main links move under More by their `fold` order, only as many as needed.
 const row = ref<HTMLElement | null>(null)
-const compact = ref(false)
+const foldLevel = ref(0)
+const folded = (item: NavItem) => !!item.fold && item.fold <= foldLevel.value
+const foldedItems = computed(() => items.filter(folded))
+const overflowing = () => { const el = row.value; return !!el && el.scrollWidth > el.clientWidth + 1 }
 async function fitRow() {
-  compact.value = false
+  foldLevel.value = 0
   await nextTick()
-  const el = row.value
-  compact.value = !!el && el.scrollWidth > el.clientWidth + 1
+  while (overflowing() && foldLevel.value < maxFold) {
+    foldLevel.value += 1
+    await nextTick()
+  }
 }
 let rowObserver: ResizeObserver | undefined
 onMounted(() => {
@@ -68,7 +72,7 @@ const seriesOpen = ref(false)
 type SeriesItem = { n: string; name: string; sub: string; href: string; current: boolean }
 const seriesItems = computed(() => t('nav.series.items') as SeriesItem[])
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`)
-const moreActive = () => more.some(item => isActive(item.to))
+const moreActive = () => [...more, ...foldedItems.value].some(item => isActive(item.to))
 const dashActive = () => ['/dashboard', '/team', '/compete', '/submissions', '/profile'].some(p => route.path.startsWith(p))
 watch(() => route.fullPath, () => { mobileOpen.value = false; moreOpen.value = false; seriesOpen.value = false })
 
@@ -81,7 +85,7 @@ async function logout() {
 </script>
 
 <template>
-  <header class="cosmos-header sticky top-0 z-50 border-b border-border backdrop-blur" :class="{ 'nav-compact': compact }">
+  <header class="cosmos-header sticky top-0 z-50 border-b border-border backdrop-blur">
     <div ref="row" class="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-6 sm:px-5 md:px-10 lg:gap-4 xl:gap-6 xl:px-14">
       <div class="flex items-center gap-3">
         <router-link to="/" :aria-label="`${t('meta.brand')} · ${t('meta.pages.home.title')}`" class="flex items-center gap-3">
@@ -114,14 +118,15 @@ async function logout() {
           :key="item.to"
           :to="item.to"
           class="main-link inline-flex h-10 items-center whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]"
-          :class="[isActive(item.to) ? 'text-[#78a6ff]' : 'text-white/50', { 'nav-wide': item.wide }]"
+          :class="isActive(item.to) ? 'text-[#78a6ff]' : 'text-white/50'"
+          v-show="!folded(item)"
         >{{ t(item.key) }}</router-link>
         <div class="nav-drop relative" @mouseenter="moreOpen = true" @mouseleave="moreOpen = false">
           <button type="button" class="main-link inline-flex h-10 items-center gap-1 whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="moreActive() ? 'text-[#78a6ff]' : 'text-white/50'" :aria-expanded="moreOpen" data-testid="nav-more" @click="moreOpen = !moreOpen">
             {{ t('nav.more') }} <span aria-hidden="true" class="text-[.6rem]">▾</span>
           </button>
           <div v-show="moreOpen" class="nav-drop-panel">
-            <router-link v-for="item in wideItems" :key="item.to" :to="item.to" class="nav-drop-item nav-narrow" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
+            <router-link v-for="item in foldedItems" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
             <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
           </div>
         </div>
@@ -170,9 +175,5 @@ async function logout() {
 </template>
 
 <style scoped>
-/* See fitRow(): links marked `wide` sit under More whenever the header row would overflow. */
-.nav-compact .nav-wide { display: none !important; }
-.nav-narrow { display: none; }
-.nav-compact .nav-narrow { display: block; }
 @media (max-width: 1279px) { .main-link { letter-spacing: .02em; } }
 </style>

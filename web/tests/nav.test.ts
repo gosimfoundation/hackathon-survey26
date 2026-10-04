@@ -16,6 +16,8 @@ test('every former header page stays reachable under More', () => {
   }
 })
 
-test('below 1280px the wide main links still have a place under More', () => {
-  assert.deepEqual(mainNavItems.filter(item => item.wide).map(item => item.to), ['/teammates', '/about'])
+test('a narrow header folds Find teammates and About first, then Rules, then Leaderboard', () => {
+  const order = [...mainNavItems].filter(item => item.fold).sort((a, b) => a.fold! - b.fold!).map(item => item.to)
+  assert.deepEqual(order, ['/teammates', '/about', '/rules', '/leaderboard'])
+  assert.equal(mainNavItems.find(item => item.to === '/start')?.fold, undefined)
 })
