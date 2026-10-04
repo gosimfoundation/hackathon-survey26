@@ -45,6 +45,9 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
       overall_rank: numberOrNull(row.overall_rank),
       targets_observed: numberOrNull(row.targets_observed),
       components: numberMap(row.components),
+      averaged_runs: numberOrNull(row.averaged_runs),
+      final_version: row.final_version && typeof row.final_version === 'object'
+        ? { chosen: row.final_version.chosen === true, score: numberOrNull(row.final_version.score) } : null,
     } : {}),
   }
 }
@@ -52,7 +55,7 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
 /**
  * Card boards (migration 20260928004100): a complete-project phase whose settings.board_layout is 'cards' (one board
  * per card) or 'cards_overall' (per card plus the overall mean). Every entry comes from the team's best complete
- * evaluation. Card labels are the scenario names returned by the database, so no card is named in the site.
+ * evaluation, or in a phase with repeated evaluations (the hidden final) the mean of its first ones (averaged_runs). Card labels are the scenario names returned by the database, so no card is named in the site.
  */
 export type BoardLayout = 'overall' | 'cards' | 'cards_overall'
 export interface BoardCard { slug: string; name: string }

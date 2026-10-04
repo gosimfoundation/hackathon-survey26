@@ -10,7 +10,7 @@ import { scenarioLabel } from '../../lib/scenarioLabels'
 // team's overall score where the phase has one, and whatever numeric score components the runs report.
 const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null }>()
 const emit = defineEmits<{ select: [entry: LeaderboardEntry] }>()
-const { t, locale } = useI18n()
+const { t, tf, locale } = useI18n()
 
 const overallTab = computed(() => props.tab === null)
 const componentKeys = computed(() => {
@@ -28,6 +28,13 @@ const showMissing = computed(() => !overallTab.value && has('required_missing'))
 const showTargets = computed(() => !overallTab.value && has('targets_observed'))
 const showTiles = computed(() => !overallTab.value && has('completed_tiles'))
 const showOverall = computed(() => !overallTab.value && props.layout === 'cards_overall')
+// The final-version mark under the score (formal phase where teams choose one): its score, or the default.
+function finalMark(row: LeaderboardEntry) {
+  const f = row.final_version
+  if (!f) return ''
+  if (!f.chosen) return t('leaderboard.final_version_default')
+  return f.score == null ? t('leaderboard.final_version_unscored') : tf('leaderboard.final_version', { score: num(f.score) })
+}
 const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value))}`
 </script>
 
@@ -50,7 +57,7 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
             @click="emit('select', row)" @keydown.enter.prevent="emit('select', row)">
           <td class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
           <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="teamId === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
-          <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}<small v-if="!overallTab && row.unfinished" class="unfinished" :title="t('leaderboard.unfinished_help')" data-testid="card-unfinished">{{ t('leaderboard.unfinished') }}</small></td>
+          <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}<small v-if="!overallTab && row.unfinished" class="unfinished" :title="t('leaderboard.unfinished_help')" data-testid="card-unfinished">{{ t('leaderboard.unfinished') }}</small><small v-if="row.averaged_runs" class="sub" :title="tf('leaderboard.averaged_runs_help', { n: row.averaged_runs })" data-testid="averaged-runs">{{ tf('leaderboard.averaged_runs', { n: row.averaged_runs }) }}</small><small v-if="row.final_version" class="sub" :class="{ chosen: row.final_version.chosen }" :title="t('leaderboard.final_version_help')" data-testid="final-version-mark">{{ finalMark(row) }}</small></td>
           <template v-if="overallTab"><td v-for="c in cards" :key="c.slug" class="r m">{{ row.card_scores?.[c.slug] == null ? '—' : num(row.card_scores[c.slug]!) }}<small v-if="row.unfinished_cards?.includes(c.slug)" class="unfinished" :title="t('leaderboard.unfinished_help')" data-testid="card-unfinished">{{ t('leaderboard.unfinished') }}</small></td></template>
           <td v-if="showOverall" class="r m">{{ row.overall_score == null ? '—' : num(row.overall_score) }}<small v-if="row.overall_rank" class="text3"> · #{{ row.overall_rank }}</small></td>
           <td v-for="k in componentKeys" :key="k" class="r m" :class="{ 'text-[#ff6b6b]': (row.components?.[k] ?? 0) < 0 }">{{ row.components?.[k] == null ? '—' : signed(row.components[k]!) }}</td>
@@ -69,4 +76,7 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
 .lb-click:hover { background: rgba(49,94,251,.08); }
 .lb-click:focus-visible { outline: 2px solid #78a6ff; outline-offset: -2px; }
 .unfinished { margin-left: .4em; font-size: .75em; color: #ff9b6b; white-space: nowrap; }
+/* Secondary lines under the score: wrap inside the cell instead of widening the table on phones. */
+.sub { display: block; margin-left: auto; max-width: 12em; font-size: .72em; line-height: 1.3; color: #9aa0a6; white-space: normal; }
+.sub.chosen { color: #78a6ff; }
 </style>

@@ -135,7 +135,7 @@ def test_admin_sees_every_teams_final_version(online):
     query(uri, 'update public.profiles set is_admin=true where id=%s', (admin,))
     rows = rpc(uri, 'observer_admin_final_versions', s['phase'], role='authenticated', user=admin)
     row = next(r for r in rows if r['team_id'] == str(s['team']))
-    assert (row['revision_id'], row['source'], row['project_title'], row['model_mode']) == (str(rev), 'chosen', 'Agent', 'relay')
+    assert (row['revision_id'], row['source'], row['project_title'], row['model_mode']) == (str(rev), 'chosen', 'Agent', 'stored')
 
 
 def test_sealed_phase_is_invisible_to_participants_until_published(hidden):
@@ -305,12 +305,12 @@ def test_organizer_script_dry_run_and_apply(hidden, monkeypatch, capsys):
         main()
     assert 'has not ended yet' in capsys.readouterr().err
     out = main('--team', team_slug, '--before-freeze')
-    assert 'DRY RUN' in out and 'would_create' in out and 'relay model mode: model calls will fail' in out
+    assert 'DRY RUN' in out and 'would_create' in out and 'stored model mode without a saved key' in out
     assert 'scenario(s) per batch' in out and 'colocated=false' in out and 'v4_requires_colocated' in out
     assert query(uri, 'select count(*) from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(0,)]
     query(uri, "update public.phases set ends_at=now()-interval '1 second' where id=%s", (s['phase'],))
     out = main('--apply', '--team', team_slug)
-    assert 'APPLIED' in out and 'created=1' in out
+    assert 'APPLIED' in out and 'created=1' in out and '1 evaluation(s) per team' in out
     assert query(uri, 'select revision_id from public.observer_batches where phase_id=%s', (s['hidden'],)) == [(rev,)]
     assert '"already_evaluated"' in main('--team', team_slug, '--json')
 

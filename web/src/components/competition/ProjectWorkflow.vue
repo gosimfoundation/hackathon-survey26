@@ -9,7 +9,7 @@ import { usePersonalModel } from '../../composables/usePersonalModel'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
-import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 const { pick, t, tf, locale } = useI18n()
@@ -94,7 +94,12 @@ const words = computed(() => pick({
   close: 'Close review', done: 'Saved.', prepared: 'Project queued for preparation. When it is ready, open the review in step 2 below.', confirmed: 'Version confirmed. Start it in step 3 below.',
   queued: 'Evaluation queued.', failed: 'This request could not be completed. Refresh and try again.', working: 'Working…',
   team: 'Join or create a team first.', phaseUnavailable: 'No evaluation phase is open.',
-  final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version once on the hidden cards E–H (900 s per card). Only the mean over E–H decides the final ranking; the online board does not.',
+  final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version 3 times on each of the hidden cards E–H (900 s per card); each card’s score is the mean of its 3 evaluations. Only the mean over E–H decides the final ranking; the online board does not.',
+  selfCheck: 'Evaluate 3 times and average', selfCheckNote: 'Self-check: like the final, this evaluates the same version 3 times in a row. The record shows the mean per card and overall and the range (lowest–highest) across the 3 evaluations, so you can see how stable your agent is. It uses 3 of today’s evaluations. Each of the 3 evaluations counts as an ordinary evaluation on the online board (which keeps your best single evaluation); the 3-evaluation mean is not shown on the board.',
+  selfCheckNeed: 'Evaluate 3 times and average needs 3 of today’s evaluations.', selfCheckConfirm: 'Evaluate this version 3 times in a row? This uses 3 of today’s evaluations ({n} left today).',
+  selfCheckQueued: 'Queued: the 3 evaluations run one after another.', selfCheckTitle: 'Evaluate 3 times and average (self-check)',
+  selfCheckDone: '{done} of {total} evaluations scored', selfCheckCards: 'Mean per card (lowest–highest)', selfCheckOverall: 'Combined mean (lowest–highest)',
+  selfCheckOff: 'Not used for the leaderboard.', selfCheckOne: 'Evaluation {n} of {total} in a 3-evaluation self-check',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
   finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
@@ -141,7 +146,12 @@ const words = computed(() => pick({
   saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。准备好后请到下方第2步点“检查接口”。',
   confirmed: '已确认版本。请到下方第3步开始评测。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
   team: '请先加入或创建队伍。', phaseUnavailable: '当前没有开放的评测赛程。',
-  final: '最终版本', finalIntro: '线上赛结束后，主办方会在隐藏任务卡 E–H 上对每队的最终版本评测一次（每张卡 900 秒）。最终排名只看 E–H 四张卡的平均分，线上榜不决定最终排名。',
+  final: '最终版本', finalIntro: '线上赛结束后，主办方会在隐藏任务卡 E–H 上对每队的最终版本各评测 3 次（每张卡 900 秒），每张卡的成绩取 3 次评测的平均分。最终排名只看 E–H 四张卡的平均分，线上榜不决定最终排名。',
+  selfCheck: '评测 3 次取平均', selfCheckNote: '自检工具：与决赛相同，将同一版本连续评测 3 次，评测记录中显示各卡及综合的平均分，以及 3 次之间的最低–最高分，便于检查智能体是否稳定。占用今天 3 次评测。这 3 次评测各自按普通评测计入线上榜（线上榜取单次最高分），3 次的平均分不上榜。',
+  selfCheckNeed: '「评测 3 次取平均」需要今天剩余至少 3 次评测。', selfCheckConfirm: '将对此版本连续评测 3 次，占用今天 3 次评测（今天还剩 {n} 次）。确定继续吗？',
+  selfCheckQueued: '已加入评测队列，3 次评测将依次进行。', selfCheckTitle: '评测 3 次取平均（自检）',
+  selfCheckDone: '已完成 {done}/{total} 次', selfCheckCards: '各卡平均分（最低–最高）', selfCheckOverall: '综合平均分（最低–最高）',
+  selfCheckOff: '不计入排行榜。', selfCheckOne: '自检第 {n}/{total} 次',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
@@ -194,6 +204,7 @@ function errorMessage(e: unknown) {
     preparation_daily_limit: pick('Your team has used today’s ten project preparations.', '本队今天的十次项目准备机会已用完。'),
     local_session_not_ready: pick('The local engine is not ready yet, or the run has ended. Refresh its status.', '本地会话尚未启动或已经结束，请刷新查看状态。'),
     daily_limit: pick('The daily evaluation limit has been reached.', '今天的评测次数已用完。'),
+    repeat_daily_limit: pick('Evaluate 3 times and average needs 3 of today’s evaluations.', '「评测 3 次取平均」需要今天剩余至少 3 次评测。'),
     revision_already_evaluated: pick('This version has already been evaluated.', '这个版本已经评测过。'),
     revision_withdrawn: pick('This version was withdrawn.', '这个版本已撤回。'),
     revision_not_withdrawable: pick('Only versions that are not being prepared and were never evaluated can be withdrawn.', '只能撤回未在准备中、也从未评测过的版本。'),
@@ -294,6 +305,24 @@ function evaluate(revision_id: string) {
     }
   }, words.value.queued, 'evaluate:' + revision_id)
 }
+// The self-check: SELF_CHECK_RUNS evaluations of one version, run one after another (observer_create_repeat_batches).
+function selfCheck(revision_id: string) {
+  const phase_id = phaseId.value
+  if (!window.confirm(words.value.selfCheckConfirm.replace('{n}', String(quota.value?.remaining ?? '?')))) return
+  void action(async () => {
+    const { error } = await supabase.rpc('observer_create_repeat_batches', { p_phase: phase_id, p_revision: revision_id, p_confirm_repeat: true })
+    if (error) throw new Error(error.message)
+  }, words.value.selfCheckQueued, 'selfcheck:' + revision_id)
+}
+const repeats = computed(() => repeatSummaries(data.value?.batches))
+// The position of an evaluation in its self-check (1 = the first one started).
+function repeatIndex(b: { id: string; repeat_group?: string | null }) {
+  const own = (data.value?.batches ?? []).filter(x => x.repeat_group === b.repeat_group).sort((x, y) => x.created_at.localeCompare(y.created_at) || x.id.localeCompare(y.id))
+  return own.findIndex(x => x.id === b.id) + 1
+}
+// The summary goes above the newest evaluation of its self-check (the list is newest first).
+const firstOfGroup = (b: { id: string; repeat_group?: string | null }) => !!b.repeat_group && (data.value?.batches ?? []).find(x => x.repeat_group === b.repeat_group)?.id === b.id
+const fmt2 = (v: number) => v.toFixed(2)
 function setFinal(revision_id: string | null) {
   const final = finalVersion.value
   if (!final || (revision_id === null && !window.confirm(words.value.finalClearConfirm))) return
@@ -539,6 +568,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="dailyLimit != null" class="help" data-testid="evaluation-reset"> ({{ formatDailyReset(quota?.resets_at, locale) }})</span></p>
           <p v-if="quota && quota.remaining <= 0" class="help">{{ words.noneLeft }}</p>
           <p v-else-if="activeBatch" class="help">{{ words.active }}</p>
+          <p v-if="approvedVersions.length" class="help mt-3" data-testid="self-check-note">{{ words.selfCheckNote }}<template v-if="!canSelfCheck(quota)"> {{ words.selfCheckNeed }}</template></p>
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
@@ -546,6 +576,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
             <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" :aria-busy="pending === 'evaluate:'+v.revision.id" @click="evaluate(v.revision.id)">{{ pending === 'evaluate:'+v.revision.id ? words.working : v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
+            <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || !canSelfCheck(quota)" :title="canSelfCheck(quota) ? words.selfCheckNote : words.selfCheckNeed" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.revision.id" @click="selfCheck(v.revision.id)">{{ pending === 'selfcheck:'+v.revision.id ? words.working : words.selfCheck }}</button>
           </div>
         </template>
       </section>
@@ -572,9 +603,22 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </section>
       <section class="panel mb-6"><h2 id="results">{{ words.batches }}</h2>
         <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>
-        <article v-for="b in data?.batches" :key="b.id" :id="'batch-'+b.id" class="project-row" :class="{ target: b.id === targetBatch }">
+        <template v-for="b in data?.batches" :key="b.id">
+        <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="project-row repeat-summary" data-testid="self-check-summary">
+          <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
+            · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
+            <span class="pill info ml-2">{{ words.selfCheckOff }}</span></p>
+          <p v-if="repeats.get(b.repeat_group!)!.overall" class="mt-2" data-testid="self-check-overall">{{ words.selfCheckOverall }}: <strong>{{ fmt2(repeats.get(b.repeat_group!)!.overall!.mean) }}</strong>
+            <span class="meta">({{ fmt2(repeats.get(b.repeat_group!)!.overall!.min) }}–{{ fmt2(repeats.get(b.repeat_group!)!.overall!.max) }})</span></p>
+          <template v-if="repeats.get(b.repeat_group!)!.cards.length"><p class="meta mt-2">{{ words.selfCheckCards }}</p>
+          <div class="repeat-cards"><span v-for="c in repeats.get(b.repeat_group!)!.cards" :key="c.scenario_id" class="repeat-card" data-testid="self-check-card">
+            <span class="m text-sm">{{ scenarioNames[c.scenario_id] ? scenarioLabel(scenarioNames[c.scenario_id]!.slug, scenarioNames[c.scenario_id]!.name, locale) : '—' }}</span>
+            <strong>{{ fmt2(c.mean) }}</strong> <span class="meta">({{ fmt2(c.min) }}–{{ fmt2(c.max) }})</span></span></div></template>
+        </article>
+        <article :id="'batch-'+b.id" class="project-row" :class="{ target: b.id === targetBatch, 'repeat-member': !!b.repeat_group }">
           <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
-            <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span></p>
+            <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
+            <span v-if="b.repeat_group" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
@@ -589,6 +633,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <button type="button" class="log-link" :disabled="busy" @click="showLogs({ run_id: run.id })">{{ words.logs }}</button>
           </div>
         </article>
+        </template>
       </section>
       <section v-if="diagnostics" class="panel mb-6" data-testid="project-diagnostics" aria-live="polite">
         <h2>{{ words.diagnostics }}</h2><p class="help">{{ words.diagnosticsHelp }}</p>
@@ -606,6 +651,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 h2 { font-size: 1.2rem; font-weight: 600; } h3 { font-weight: 600; }
 .project-row { padding: 1rem 0; border-bottom: 1px solid #333; }
 .project-row.target { outline: 1px solid #315efb; outline-offset: .25rem; }
+.repeat-summary { border-left: 2px solid #315efb; padding-left: .75rem; }
+.repeat-member { padding-left: .75rem; border-left: 2px solid #333; }
+.repeat-cards { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .35rem; }
+.repeat-card { display: inline-flex; align-items: baseline; gap: .4rem; }
 /* Logs are secondary to the step actions: a quiet text link at the end of a row. */
 .log-link { margin-left: auto; background: none; border: 0; padding: .25rem 0; font-size: .75rem; color: #858585; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .meta { font-size: .8rem; color: #858585; }

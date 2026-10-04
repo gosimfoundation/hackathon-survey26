@@ -81,3 +81,14 @@ test('hidden final rows keep the cards the team itself failed (shown as 0)', () 
   const plain = toLeaderboardEntry({ team_id: 't2', total_score: 10, card_scores: { 'card-a': 10 } }, 0)
   assert.deepEqual([plain.unfinished_cards, plain.unfinished], [[], false])
 })
+
+test('rows carry the averaged evaluation count and the final-version mark', async () => {
+  const { parseCardBoard } = await import('../src/lib/cardBoard.ts')
+  const board = parseCardBoard({ layout: 'cards_overall', cards: [], rows: [
+    { team_id: 't1', total_score: 5, card_scores: {}, averaged_runs: 3, final_version: { chosen: true, score: 7123.4 } },
+    { team_id: 't2', total_score: 4, card_scores: {}, final_version: { chosen: false, score: null } },
+    { team_id: 't3', total_score: 3, card_scores: {} },
+  ] })
+  assert.deepEqual(board.rows.map(r => [r.averaged_runs, r.final_version]), [
+    [3, { chosen: true, score: 7123.4 }], [null, { chosen: false, score: null }], [null, null]])
+})

@@ -36,9 +36,11 @@ Final version and hidden final (organizer decision 2026-09-26, migration 2026092
   signed-in user can start an evaluation there. Its scenario files stay private even after publication, and its
   scenario cannot be linked to any other phase.
 - After `online` ends, `scripts/run-hidden-final.py` (dry run by default, `--apply`, `--limit`, `--team`,
-  `--retry-failed`, `--status`, `--results`) creates one formal batch per team for its final version, outside the
-  daily limit: one run per hidden card (E–H); the normal dispatcher runs them. Only batches on the phase's current
-  card set count; `--retry-failed` reruns platform failures only (migration 20261001000200). Procedure, estimates
+  `--retry-failed`, `--status`, `--results`) creates `observer_phase_settings.repeat_runs` (3 for `final-hidden`) formal batches per team for its final
+  version, outside the daily limit: one run per hidden card (E–H) each; the normal dispatcher runs them round by
+  round, one team's batches one after another. Only batches on the phase's current card set count; `--retry-failed`
+  replaces platform failures only (migrations 20261001000200, 20261004030000). The final board averages each team's
+  first `repeat_runs` scored batches per card and overall (`averaged_runs`); every batch stays stored. Procedure, estimates
   and confidentiality: `docs/hidden-final-runbook.md`. Publish by setting
   `final-hidden.leaderboard_mode='published'`.
 - Model keys (organizer rule 2026-09-27): teams whose program calls a model must switch to stored mode
