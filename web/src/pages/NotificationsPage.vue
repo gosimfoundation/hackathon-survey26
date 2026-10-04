@@ -5,9 +5,10 @@ import { useI18n } from '../composables/useI18n'
 import { describeError } from '../lib/errors'
 import { useAuth } from '../stores/auth'
 import { teamAction } from '../stores/teamNotifications'
+import { openPersonCard, openTeamCard } from '../stores/profileCard'
 const i18n = useI18n(), { pick, t } = i18n
 const { refreshMe } = useAuth()
-type Invitation = { id:string; kind:'invite'|'request'; direction:'sent'|'received'; team_name:string; sender_name:string; recipient_name:string; status:string; updated_at:string; unread:boolean }
+type Invitation = { id:string; kind:'invite'|'request'; direction:'sent'|'received'; team_id:string|null; sender_id:string; recipient_id:string; team_name:string; sender_name:string; recipient_name:string; status:string; updated_at:string; unread:boolean }
 const rows=ref<Invitation[]>([]), loading=ref(true), busy=ref(''), error=ref(''), more=ref(false), fetching=ref(false)
 const statuses=computed(() => pick<Record<string,string>>({pending:'Waiting for a response',accepted:'Accepted',declined:'Declined',cancelled:'Cancelled'}, {pending:'等待处理',accepted:'已接受',declined:'已拒绝',cancelled:'已撤回'}))
 async function reload(append=false) {
@@ -50,8 +51,8 @@ onMounted(()=>reload())
         <div class="hd"><h2>{{ direction==='received' ? pick('Received','收到的') : pick('Sent','发出的') }}</h2></div>
         <p v-if="!rows.some(r=>r.direction===direction)" class="text3">{{ pick('Nothing here yet.','暂无记录。') }}</p>
         <article v-for="row in rows.filter(r=>r.direction===direction)" :key="row.id" class="border-b border-border-subtle py-4" :data-invitation-id="row.id">
-          <h3>{{ row.team_name }} · {{ row.kind==='invite' ? pick('Team invitation','队伍邀请') : pick('Request to join','加入申请') }}</h3>
-          <p class="text2 text-sm mt-2">{{ direction==='received' ? row.sender_name : row.recipient_name }} · <strong>{{ statuses[row.status] }}</strong></p>
+          <h3><button v-if="row.status==='pending' && row.team_id" type="button" class="card-link" data-testid="notification-open-team" @click="openTeamCard(row.team_id)">{{ row.team_name }}</button><template v-else>{{ row.team_name }}</template> · {{ row.kind==='invite' ? pick('Team invitation','队伍邀请') : pick('Request to join','加入申请') }}</h3>
+          <p class="text2 text-sm mt-2"><button v-if="row.status==='pending'" type="button" class="card-link" data-testid="notification-open-person" @click="openPersonCard(direction==='received' ? row.sender_id : row.recipient_id)">{{ direction==='received' ? row.sender_name : row.recipient_name }}</button><template v-else>{{ direction==='received' ? row.sender_name : row.recipient_name }}</template> · <strong>{{ statuses[row.status] }}</strong></p>
           <div v-if="row.status==='pending'" class="actions-inline mt-3">
             <template v-if="direction==='received'">
               <button class="btn primary sm" :disabled="!!busy" @click="respond(row,true)">{{ pick('Accept','接受') }}</button>
@@ -66,3 +67,8 @@ onMounted(()=>reload())
     </template>
   </DashShell>
 </template>
+
+<style scoped>
+.card-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-decoration: underline dotted rgba(158,173,255,.7); text-underline-offset: 4px; }
+.card-link:hover { color: #c4ceff; }
+</style>

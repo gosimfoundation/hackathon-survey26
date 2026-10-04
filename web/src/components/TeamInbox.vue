@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase'
 import { blockedText, normalizeInbox, type InboxRow, type TeamInbox } from '../lib/teamInbox'
 import { useAuth } from '../stores/auth'
 import { pendingTeamActions, teamAction } from '../stores/teamNotifications'
+import { openPersonCard, openTeamCard } from '../stores/profileCard'
 
 const props = defineProps<{ compact?: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -70,8 +71,13 @@ defineExpose({ load })
         : pick('Accepting puts you in that team.', '接受后你会加入该队伍。') }}</p>
       <article v-for="row in group[1]" :key="row.id" class="inbox-row" :class="{ blocked: row.blocked }" :data-invitation-id="row.id">
         <div class="min-w-0">
-          <strong>{{ group[0] === 'request' ? row.sender_name : row.team_name }}</strong>
-          <span class="text3 text-xs ml-2">{{ group[0] === 'invite' ? pick('from ', '邀请人 ') + row.sender_name + ' · ' : '' }}{{ fmtUtc(row.created_at, { short: true }) }}</span>
+          <button v-if="group[0] === 'request'" type="button" class="card-link" data-testid="inbox-open-card" :title="pick('View profile card', '查看名片')"
+            @click="openPersonCard(row.sender_id)">{{ row.sender_name }}</button>
+          <button v-else type="button" class="card-link" data-testid="inbox-open-card" :title="pick('View team card', '查看队伍名片')"
+            @click="openTeamCard(row.team_id)">{{ row.team_name }}</button>
+          <span class="text3 text-xs ml-2"><template v-if="group[0] === 'invite'">{{ pick('from ', '邀请人 ') }}<button type="button" class="card-link-sm"
+            @click="openPersonCard(row.sender_id)">{{ row.sender_name }}</button> · </template>{{ fmtUtc(row.created_at, { short: true }) }}</span>
+          <span class="card-hint">{{ pick('Click the name to see their card', '点名字查看名片') }}</span>
           <p v-if="blockedText(row.blocked)" class="text3 text-xs mt-1">{{ pick(blockedText(row.blocked)!.en, blockedText(row.blocked)!.zh) }}</p>
         </div>
         <div class="actions-inline">
@@ -87,7 +93,9 @@ defineExpose({ load })
         <router-link class="label accent" to="/notifications">{{ pick('All notifications', '全部通知') }} →</router-link></div>
       <article v-for="row in sent" :key="row.id" class="inbox-row" :data-invitation-id="row.id">
         <div class="min-w-0">
-          <strong>{{ row.kind === 'request' ? row.team_name : row.recipient_name }}</strong>
+          <button v-if="row.status === 'pending'" type="button" class="card-link" data-testid="inbox-open-card"
+            @click="row.kind === 'request' ? openTeamCard(row.team_id) : openPersonCard(row.recipient_id)">{{ row.kind === 'request' ? row.team_name : row.recipient_name }}</button>
+          <strong v-else>{{ row.kind === 'request' ? row.team_name : row.recipient_name }}</strong>
           <span class="text3 text-xs ml-2">{{ row.kind === 'request' ? pick('Join request', '入队申请') : pick('Invitation to ', '邀请加入 ') + row.team_name }} · {{ fmtUtc(row.updated_at, { short: true }) }}</span>
         </div>
         <div class="actions-inline">
@@ -104,5 +112,10 @@ defineExpose({ load })
 .inbox-panel { border-color: rgba(120,166,255,.55); }
 .inbox-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem 0; border-bottom: 1px solid var(--color-border-subtle, rgba(255,255,255,.08)); }
 .inbox-row:last-child { border-bottom: 0; }
-.inbox-row.blocked strong { opacity: .6; }
+.inbox-row.blocked strong, .inbox-row.blocked .card-link { opacity: .6; }
+.card-link { padding: 0; border: 0; background: none; color: inherit; font-weight: 600; cursor: pointer; text-align: left;
+  text-decoration: underline dotted rgba(158,173,255,.7); text-underline-offset: 4px; }
+.card-link:hover, .card-link-sm:hover { color: #c4ceff; }
+.card-link-sm { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.card-hint { display: block; margin-top: .15rem; font-size: .72rem; color: rgba(205,214,238,.45); }
 </style>

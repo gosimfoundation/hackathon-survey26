@@ -4,6 +4,7 @@ const KEEP = 200
 
 export interface InboxRow {
   id: string; kind: 'invite' | 'request'; direction: 'received' | 'sent'; team_id: string | null; team_name: string
+  sender_id?: string; recipient_id?: string
   sender_name: string; recipient_name: string; status: string; created_at: string; updated_at: string
   /** Why it cannot be accepted right now (null = it can). */
   blocked: string | null
