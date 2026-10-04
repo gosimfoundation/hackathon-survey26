@@ -75,7 +75,7 @@ jobs:
           [ "${{ runner.os }}" = "Windows" ] && src="$src.exe"
           cp "$src" "dist/${{ matrix.asset }}"
           "./dist/${{ matrix.asset }}" --version
-          if [ "${{ runner.os }}" = "Linux" ]; then file "dist/${{ matrix.asset }}" | grep -q "statically linked"; fi
+          if [ "${{ runner.os }}" = "Linux" ]; then file "dist/${{ matrix.asset }}" | grep -Eq "statically linked|static-pie linked"; fi
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
