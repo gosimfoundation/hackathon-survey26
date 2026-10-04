@@ -71,7 +71,9 @@ def server():
         httpd.server_close()
 
 
-def test_claim_retry_receipt_refreshes_identity_without_changing_claim(server):
+def test_claim_retry_receipt_refreshes_identity_without_changing_claim(server, monkeypatch):
+    import project_platform.job_client as job_client
+    monkeypatch.setattr(job_client.time, "sleep", lambda _s: None)
     base, state = server
     identities = iter(("identity1", "identity2", "identity3"))
     client = JobClient(base + "/job", JOB, "n" * 43, lambda: next(identities), http=Http(local=True))

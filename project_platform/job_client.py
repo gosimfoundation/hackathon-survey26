@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import random
 import re
 import time
 import urllib.error
@@ -19,6 +20,28 @@ AGENT_LOG_MAX_BODY = 3 * 1024 * 1024
 
 class JobError(RuntimeError):
     """A fixed error code, safe to send to the job receipt or Actions log."""
+
+
+# Every job API action is backend-idempotent for the claiming run, so a
+# transient failure (network, 429, 5xx incl. edge 52x, cold starts) is retried
+# with the same body for about a minute before a whole evaluation is given up.
+RETRY_DELAYS = (2, 5, 10, 20, 30)
+
+
+def transient(error: JobError) -> bool:
+    code = str(error)
+    return code == "job_network_error" or code == "job_http_429" or code.startswith("job_http_5")
+
+
+def retrying(operation: Callable[[], object]):
+    """Run an idempotent operation, riding out transient errors (RETRY_DELAYS, jittered)."""
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            return operation()
+        except JobError as exc:
+            if not transient(exc) or delay is None:
+                raise
+            time.sleep(delay * random.uniform(0.8, 1.2))
 
 
 def checked_url(url: str, *, local: bool = False) -> str:
@@ -124,21 +147,17 @@ class JobClient:
         self.seal_key = seal_key
 
     def _call(self, action: str, *, max_body: int = 1100000, timeout: int = 60, **fields):
-        # Claim and receipt are backend-idempotent; retry exactly the same body.
+        # Every action is backend-idempotent; retry exactly the same body.
         body = {"action": action, "job_id": self.job_id, **fields}
-        for attempt in range(3):
-            try:
-                response = self.http.json(self.url, body=body, bearer=self.identity(), max_body=max_body,
-                                          timeout=timeout)
-                value = response.get("data")
-                if not isinstance(value, dict):
-                    raise JobError("invalid_job_response")
-                return value
-            except JobError as exc:
-                retry = str(exc) == "job_network_error" or str(exc).startswith("job_http_5")
-                if not retry or attempt == 2:
-                    raise
-                time.sleep(0.2 * (attempt + 1))
+
+        def once():
+            response = self.http.json(self.url, body=body, bearer=self.identity(), max_body=max_body, timeout=timeout)
+            value = response.get("data")
+            if not isinstance(value, dict):
+                raise JobError("invalid_job_response")
+            return value
+
+        return retrying(once)
 
     def claim(self) -> dict:
         if self.seal_key is None:
@@ -168,17 +187,8 @@ class JobClient:
     def store_sealed_result(self) -> str:
         # The backend opens the sealed result it just received and commits it to
         # the team's private repository; this runner never holds a repository token.
-        # A lost result cannot be recomputed: ride out a longer GitHub hiccup
-        # than the generic quick retries do (storing is idempotent).
-        for delay in (5, 15, 30, None):
-            try:
-                path = self._call("store_result").get("result_path")
-                break
-            except JobError as exc:
-                transient = str(exc) == "job_network_error" or str(exc).startswith("job_http_5")
-                if not transient or delay is None:
-                    raise
-                time.sleep(delay)
+        # Storing is idempotent; _call rides out transient failures.
+        path = self._call("store_result").get("result_path")
         if not isinstance(path, str) or not path.startswith("github:"):
             raise JobError("invalid_job_response")
         return path

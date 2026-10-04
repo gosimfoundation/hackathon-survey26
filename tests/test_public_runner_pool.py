@@ -144,12 +144,41 @@ def test_public_export_has_engine_and_score_workflows_with_only_an_opaque_input(
     assert result.returncode == 0, result.stderr
 
 
-def test_storing_a_sealed_result_rides_out_transient_backend_errors(monkeypatch):
+def test_sealed_result_upload_retries_an_edge_520_with_a_fresh_signed_url(monkeypatch):
+    # 2026-10-04 run b9285236: Storage answered the result PUT with a Cloudflare 520.
     import project_platform.job_client as job_client
     monkeypatch.setattr(job_client.time, "sleep", lambda _s: None)
-    answers = iter([JobError("job_http_503")] * 4 + [{"data": {"result_path": "github:org/participant@" + "c" * 40}}])
+    key, backend = SealKey(), SealKey()
+    issued = iter(range(10))
+    http = FakeHttp({"result_upload": lambda body: {"data": {"url": "https://storage.test/upload/" + str(next(issued)),
+                                                             "path": "sealed/" + JOB + "/result.zip"}},
+                     "store_result": lambda body: {"data": {"result_path": "github:org/participant@" + "b" * 40}}})
+    puts = []
+
+    def request(url, *, data=None, headers=None, method="GET", limit=0, timeout=0):
+        puts.append(url)
+        if len(puts) == 1:
+            raise JobError("job_http_520")
+        return b"{}"
+
+    http.request = request
+    client = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", http=http, seal_key=key)
+    payload = {"artifact_upload": {"kind": "sealed", "path": "sealed/" + JOB + "/result.zip"},
+               "result_key": backend.public_text}
+    assert SealedTransfer(client).publish(http, payload, b"result zip") == "github:org/participant@" + "b" * 40
+    assert puts == ["https://storage.test/upload/0", "https://storage.test/upload/1"]
+
+
+def test_storing_a_sealed_result_rides_out_transient_backend_errors(monkeypatch):
+    import project_platform.job_client as job_client
+    slept = []
+    monkeypatch.setattr(job_client.time, "sleep", slept.append)
+    errors = [JobError(code) for code in ("job_http_520", "job_network_error", "job_http_429", "job_http_503")]
+    answers = iter(errors + [{"data": {"result_path": "github:org/participant@" + "c" * 40}}])
+    bodies = []
 
     def store(body):
+        bodies.append(body)
         value = next(answers)
         if isinstance(value, Exception):
             raise value
@@ -161,8 +190,21 @@ def test_storing_a_sealed_result_rides_out_transient_backend_errors(monkeypatch)
 
     client = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", http=Flaky(), seal_key=SealKey())
     assert client.store_sealed_result() == "github:org/participant@" + "c" * 40
+    assert all(body == bodies[0] for body in bodies) and len(bodies) == 5
+    assert 25 < sum(slept) < 60
+    # About a minute of retries, then the transient error is reported.
+    slept.clear()
+    down = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", seal_key=SealKey(),
+                     http=type("H", (FakeHttp,), {"json": lambda self, url, **kw: (_ for _ in ()).throw(
+                         JobError("job_http_520"))})())
+    with pytest.raises(JobError, match="job_http_520"):
+        down.result_upload()
+    assert len(slept) == len(job_client.RETRY_DELAYS) and 50 < sum(slept) < 90
+    # A refusal is final at once.
+    slept.clear()
     hopeless = JobClient("https://jobs.test/job", JOB, None, lambda: "identity", seal_key=SealKey(),
                          http=type("H", (FakeHttp,), {"json": lambda self, url, **kw: (_ for _ in ()).throw(
                              JobError("job_http_403"))})())
     with pytest.raises(JobError, match="job_http_403"):
         hopeless.store_sealed_result()
+    assert slept == []

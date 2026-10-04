@@ -9,13 +9,13 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
-from .job_client import Http, JobError
+from .job_client import Http, JobError, retrying
 from .package import MAX_ARCHIVE_BYTES, MAX_EXPANDED_BYTES, ProjectFile, read_project_zip, validate_files
 from .repository import SnapshotRepository
 
 
 def download_project(http: Http, url: str, digest: str | None = None) -> tuple[ProjectFile, ...]:
-    raw = http.request(url, limit=MAX_ARCHIVE_BYTES, timeout=120)
+    raw = retrying(lambda: http.request(url, limit=MAX_ARCHIVE_BYTES, timeout=120))
     if digest is not None and (not re.fullmatch(r"[0-9a-f]{64}", digest) or hashlib.sha256(raw).hexdigest() != digest):
         raise JobError("archive_digest_mismatch")
     return read_project_zip(raw)
