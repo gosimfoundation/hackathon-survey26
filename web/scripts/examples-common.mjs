@@ -13,7 +13,7 @@ export const downloadsDir = process.env.EXAMPLES_OUT_DIR
 export const mtime = new Date('2026-10-01T00:00:00Z')
 export const REQUIRED = ['AGENTS.md', 'README.md', 'observer.project.json']
 
-const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'target', '__pycache__', '.git', '.pytest_cache', '.idea', '.vscode', 'run_output', '.venv', '.secrets'])
+const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'target', '__pycache__', '.git', '.pytest_cache', '.idea', '.vscode', 'run_output', '.venv', '.secrets', '.npm-cache'])
 const EXCLUDED_FILES = new Set(['.DS_Store', 'Thumbs.db'])
 const excludeFile = (name) => EXCLUDED_FILES.has(name) || name.endsWith('.pyc') || name.endsWith('.pyo') || name.endsWith('.zip')
   || name === '.env' || (name.startsWith('.env.') && !['.env.example', '.env.sample', '.env.template'].includes(name))

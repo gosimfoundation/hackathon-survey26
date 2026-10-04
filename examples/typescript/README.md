@@ -187,8 +187,11 @@ Model calls are paid for by your team.
 2. Upload this folder as a ZIP (or push it to a GitHub repository) via the Participate page.
    `observer.project.json` at the root already declares:
    - `"image": "node:20-slim"` -- Node is pulled from a standard public image; no Python is involved.
-   - `"build": [["npm", "ci"], ["npm", "run", "build"]]` -- installs the two dev dependencies and
-     compiles TypeScript to `dist/`.
+   - `"build": [["npm", "ci", "--include=dev"], ["npm", "run", "build"]]` -- installs the two dev
+     dependencies and compiles TypeScript to `dist/`.
+   - `"environment"` sets `NPM_CONFIG_CACHE=/workspace/.npm-cache`: the build uses the manifest's
+     environment and the home directory is read-only there, so npm's cache lives in the project
+     directory. Manifest environment variable names must be uppercase.
    - `"run": ["node", "dist/index.js"]` -- runs the compiled agent.
    - `"protocol": "jsonl-v4"` -- the same JSON-Lines transport as the Python example.
 3. If you add runtime dependencies, add them to `package.json`'s `dependencies` (not
