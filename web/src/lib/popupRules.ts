@@ -19,6 +19,7 @@ export const POPUP_PRIORITY: Record<string, number> = {
   'quota-reset': 2,
   'pinned-announcement': 3,
   'kimi-plan': 4,
+  'compete-guide': 5,
 }
 
 /** The one popup this page load shows, among the names that asked (in asking order). */
