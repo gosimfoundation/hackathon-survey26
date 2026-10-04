@@ -5,6 +5,7 @@ import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sourceRepository } from "./observer-github.ts";
 import { fetchArchive, resultDownloadPath, resultWithAgentLog } from "./observer-agent-log.ts";
+import { validTeamDomain, validTeamVariableName } from "./observer-job.ts";
 
 type Dependencies = {
   user: SupabaseClient;
@@ -54,6 +55,10 @@ const known = new Set([
   "diagnostics_not_found",
   "final_phase_invalid",
   "final_version_locked",
+  "invalid_team_variable",
+  "team_variable_limit",
+  "invalid_team_domains",
+  "team_domain_not_public",
 ]);
 function failure(error: { message: string } | null) {
   if (error) throw new ProxyError(400, known.has(error.message) ? error.message : "portal_request_failed");
@@ -82,6 +87,11 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
     const { data, error } = await d.user.rpc(name, args);
     failure(error);
     return data;
+  };
+  // Informational: a database without the function yet returns null instead of failing the page.
+  const optionalUserRpc = async (name: string) => {
+    const { data, error } = await d.user.rpc(name, {});
+    return error ? null : data;
   };
   const serviceRpc = async (name: string, args: Record<string, unknown>) => {
     const { data, error } = await d.service.rpc(name, args);
@@ -141,6 +151,7 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         quota: quota.error ? null : quota.data,
         providers: await userRpc("observer_list_providers"),
         team_model: await userRpc("observer_team_model"),
+        team_environment: await optionalUserRpc("observer_team_environment"),
         model_bases: d.modelBases,
         // Informational like the quota; an older database without the RPC shows no choice.
         final_versions: finals.error ? null : finals.data,
@@ -235,6 +246,57 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         p_code_url: url,
       });
       return { accepted: true };
+    }
+    case "team_environment":
+      return { team_environment: await userRpc("observer_team_environment") };
+    case "save_team_variable": {
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      const secret = body.secret !== false;
+      let value = typeof body.value === "string" ? body.value.trim() : "";
+      body.value = "";
+      if (
+        !validTeamVariableName(name) || !value || value.includes("\0") ||
+        new TextEncoder().encode(value).length > 8192
+      ) throw new ProxyError(400, "invalid_team_variable");
+      const id = crypto.randomUUID();
+      // Secret values are encrypted here, bound to the variable id; the database only receives ciphertext.
+      const encrypted = secret ? await encryptCredential(value, id, d.masterKey) : null;
+      const hint = secret ? keyHint(value) : "";
+      const plain = secret ? null : value;
+      value = "";
+      await serviceRpc("observer_save_team_variable", {
+        p_user: d.userId,
+        p_id: id,
+        p_name: name,
+        p_secret: secret,
+        p_encrypted: encrypted,
+        p_plain: plain,
+        p_hint: hint,
+      });
+      return { team_environment: await userRpc("observer_team_environment") };
+    }
+    case "delete_team_variable": {
+      const name = typeof body.name === "string" ? body.name : "";
+      if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(name)) throw new ProxyError(400, "invalid_team_variable");
+      await userRpc("observer_delete_team_variable", { p_name: name });
+      return { team_environment: await userRpc("observer_team_environment") };
+    }
+    case "set_team_domains": {
+      if (!Array.isArray(body.domains) || body.domains.length > 10) throw new ProxyError(400, "invalid_team_domains");
+      const hosts = [
+        ...new Set(
+          body.domains.map((h: unknown) => typeof h === "string" ? h.trim().toLowerCase().replace(/\.$/, "") : ""),
+        ),
+      ] as string[];
+      if (!hosts.every(validTeamDomain)) throw new ProxyError(400, "invalid_team_domains");
+      // Every name must resolve to public addresses now; the sidecar checks again at each connection.
+      for (const host of hosts) {
+        if (!await publicBase("https://" + host, new Set(), d.resolve)) {
+          throw new ProxyError(400, "team_domain_not_public");
+        }
+      }
+      await serviceRpc("observer_set_team_domains", { p_user: d.userId, p_hosts: hosts });
+      return { team_environment: await userRpc("observer_team_environment") };
     }
     case "save_provider":
       // The former multi-provider settings stay retired; teams use save_team_model.

@@ -25,7 +25,11 @@ function clients(status: unknown = { base_url: "https://api.example.test/v1", mo
     }) as unknown as SupabaseClient;
   return { calls, user: client("user"), service: client("service") };
 }
-function portal(body: Record<string, unknown>, c = clients()) {
+function portal(
+  body: Record<string, unknown>,
+  c = clients(),
+  resolve: ((host: string, type: "A" | "AAAA") => Promise<string[]>) | null = null,
+) {
   return portalRequest(new Request("https://portal.test", { method: "POST", body: JSON.stringify(body) }), {
     user: c.user,
     service: c.service,
@@ -33,6 +37,7 @@ function portal(body: Record<string, unknown>, c = clients()) {
     masterKey: master,
     modelBases: ["https://api.example.test/v1", "http://organizer-test.example.test/v1"],
     httpBases: ["http://organizer-test.example.test/v1"],
+    resolve,
   });
 }
 
@@ -290,4 +295,79 @@ Deno.test("a result the participant cannot read (another team, or a sealed hidde
   );
   assertEquals(error.code, "result_not_ready");
   assertEquals(signed, []);
+});
+
+Deno.test("a secret team variable is encrypted to its own id; a plain one is stored as given", async () => {
+  const c = clients({ variables: [], domains: [] });
+  const result = await portal({ action: "save_team_variable", name: "KIMI_API_KEY", value: "  " + key + "\n" }, c);
+  assertEquals(c.calls.map((x) => [x.client, x.name]), [
+    ["service", "observer_save_team_variable"],
+    ["user", "observer_team_environment"],
+  ]);
+  const saved = c.calls[0].args;
+  assertEquals([saved.p_user, saved.p_name, saved.p_secret, saved.p_plain, saved.p_hint], [
+    user,
+    "KIMI_API_KEY",
+    true,
+    null,
+    "9Zq4",
+  ]);
+  assertEquals(await decryptCredential(String(saved.p_encrypted), String(saved.p_id), master), key);
+  assert(!JSON.stringify(c.calls).includes(key) && !JSON.stringify(result).includes(key));
+  const plain = clients({});
+  await portal({ action: "save_team_variable", name: "KIMI_MODEL", value: " k3 ", secret: false }, plain);
+  assertEquals([plain.calls[0].args.p_secret, plain.calls[0].args.p_plain, plain.calls[0].args.p_encrypted], [
+    false,
+    "k3",
+    null,
+  ]);
+  for (const name of ["OBSERVER_RUN_TOKEN", "SAC_X", "HTTPS_PROXY", "PATH", "lower", "", "A".repeat(65)]) {
+    const bad = clients();
+    const error = await assertRejects(() => portal({ action: "save_team_variable", name, value: key }, bad));
+    assertEquals((error as ProxyError).code, "invalid_team_variable");
+    assertEquals(bad.calls.length, 0);
+  }
+  const big = clients();
+  await assertRejects(() => portal({ action: "save_team_variable", name: "BIG", value: "x".repeat(8193) }, big));
+  assertEquals(big.calls.length, 0);
+});
+
+Deno.test("allowed domains must be public names that resolve only to public addresses", async () => {
+  const dns = (map: Record<string, string[]>) => (host: string, type: "A" | "AAAA") =>
+    type === "A" && map[host]
+      ? Promise.resolve(map[host])
+      : Promise.reject(Object.assign(new Error(), { name: "NotFound" }));
+  const ok = clients({});
+  await portal(
+    { action: "set_team_domains", domains: [" API.Kimi.com. ", "api.deepseek.com", "api.kimi.com"] },
+    ok,
+    dns({ "api.kimi.com": ["104.18.20.246"], "api.deepseek.com": ["8.8.8.8"] }),
+  );
+  assertEquals(ok.calls[0], {
+    client: "service",
+    name: "observer_set_team_domains",
+    args: { p_user: user, p_hosts: ["api.kimi.com", "api.deepseek.com"] },
+  });
+  const cases: [unknown, string][] = [
+    [["127.0.0.1"], "invalid_team_domains"],
+    [["localhost"], "invalid_team_domains"],
+    [["svc.internal"], "invalid_team_domains"],
+    [["https://api.kimi.com"], "invalid_team_domains"],
+    [Array.from({ length: 11 }, (_, i) => `d${i}.com`), "invalid_team_domains"],
+    [["inside.example.com"], "team_domain_not_public"],
+    [["metadata.example.com"], "team_domain_not_public"],
+    [["missing.example.com"], "team_domain_not_public"],
+  ];
+  for (const [domains, code] of cases) {
+    const c = clients({});
+    const error = await assertRejects(() =>
+      portal(
+        { action: "set_team_domains", domains },
+        c,
+        dns({ "inside.example.com": ["10.0.0.8"], "metadata.example.com": ["169.254.169.254"] }),
+      )
+    );
+    assertEquals((error as ProxyError).code, code);
+    assertEquals(c.calls.length, 0);
+  }
 });

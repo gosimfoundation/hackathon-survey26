@@ -67,7 +67,7 @@ npm start             # node dist/index.js（从 stdin 读取 JSON Lines，写�
 - **memory.ts**：轻量的滚动计数器（命中率、已见预报），既用于 stderr 进度日志，也用于为大模型
   拼装精简、且只含公开信息的上下文。
 - **llmClient.ts**：基于 Node 内置 `fetch`（Node ≥ 18）实现的轻量 OpenAI 兼容对话客户端，默认对接
-  Kimi Coding Plan，也可以通过环境变量指向 OpenAI、平台自带的模型代理，或其他任何兼容
+  Kimi Coding Plan，也可以通过环境变量指向 OpenAI 或其他任何兼容
   `/chat/completions` 的服务。每次调用都有超时，整个运行还有调用预算上限；单次调用失败或超时会
   重试有限次数，回复格式错误时解析结果为 `null`，绝不抛出异常。
 - **validate.ts**：在发出之前，依据公开限制（高度角/方位角范围、曝光时长边界、光纤/目标是否
@@ -104,15 +104,7 @@ npm start             # node dist/index.js（从 stdin 读取 JSON Lines，写�
 - `OPENAI_API_KEY` —— 该服务的密钥（也接受 `KIMI_API_KEY`）。
 - `OPENAI_MODEL` —— 默认 `k3`。
 
-在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
-中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
-`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
-使用不同的模型，模型调用的费用由本队密钥承担。
-
-在平台上，这些变量会在每次运行时自动注入，指向平台自己的模型代理和一个临时凭据。如果你的队伍在工作区的
-**模型 API** 设置里改选了 Anthropic Messages 协议，平台同样会注入 `ANTHROPIC_BASE_URL` /
-`ANTHROPIC_API_KEY`（Anthropic SDK 自己的环境变量名）；如果你自己的智能体改用 Claude 的 Messages
-API，配上官方 `@anthropic-ai/sdk` 使用这两个变量即可，完整对比见 `docs/model-api-keys.md`。本地试用方法：
+本地试用方法：
 
 ```bash
 cp .env.example .env     # 然后编辑 OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL
@@ -126,6 +118,17 @@ set -a && source .env && set +a && node dist/index.js < some_transcript.jsonl
 ```
 
 **切勿**提交真实的 `.env` 或把它打进提交 ZIP——平台会直接拒绝含 `.env` 的包。
+
+## 在平台上：密钥与网络
+
+平台不会注入模型接口。请在「参赛」页的 **密钥与网络** 中保存本示例读取的变量（`OPENAI_API_KEY`，
+需要时再加 `OPENAI_BASE_URL` / `OPENAI_MODEL`），并添加接口的域名（默认的 Kimi 接口为
+`api.kimi.com`）。评测时这些变量就是程序的环境变量，程序只能通过 HTTPS（443 端口）访问所列域名；
+`.env` 不会被读取，也不会被打进提交 ZIP。平台同时设置了 `HTTPS_PROXY`：支持代理设置的 HTTP
+客户端会自动使用它，不读取代理设置的客户端也可以直接连接所列域名。
+
+可以同时使用多个服务商、多种协议和多个模型：为每个服务商保存一个密钥，并添加各自的域名。模型调用的
+费用由本队承担。
 
 ## 提交方式
 

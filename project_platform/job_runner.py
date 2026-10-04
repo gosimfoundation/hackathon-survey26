@@ -12,6 +12,7 @@ from .artifacts import download_project, pack_results, store_private_artifact, u
 from .docker_runtime import DockerWorkspace
 from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
 from .egress import RestrictedEgress, anthropic_base
+from .team_egress import TeamEgress, checked_team_egress
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
 from .manifest import ProjectError, ProjectManifest
@@ -40,6 +41,27 @@ def deliver_agent_log(client: JobClient, text: str | None) -> None:
         pass
 
 
+def _team(payload: dict) -> dict | None:
+    """The team's variables and allowed domains, when the platform sends them.
+
+    With them the project reaches only those domains (team egress) and gets the
+    variables as its environment; the platform model proxy is not involved."""
+    if "team_egress" not in payload:
+        return None
+    return checked_team_egress(payload["team_egress"])
+
+
+def _team_environment(environment: dict[str, str]) -> dict[str, str]:
+    """Run identity only: no model-proxy settings next to the team's own variables."""
+    return {key: environment[key] for key in ("OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID")}
+
+
+def _team_secrets(team: dict | None) -> tuple[str, ...]:
+    if team is None:
+        return ()
+    return tuple(team["environment"][name] for name in team["secrets"] if len(team["environment"][name]) >= 4)
+
+
 def execute_job(payload: dict, root: Path, http: Http) -> dict:
     files = download_project(http, payload["archive_url"])
     # This is the digest of the fully materialized, approved project, including
@@ -57,7 +79,9 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         "ANTHROPIC_BASE_URL": anthropic_base(payload["model_base_url"]), "ANTHROPIC_API_KEY": payload["run_credential"],
     }
     runtime= DockerWorkspace(workspace, manifest, manifest.image)
-    secrets = (payload['run_credential'],)
+    team = _team(payload)
+    secrets = (payload['run_credential'], *_team_secrets(team))
+    egress = None
     def logs():
         stderr = runtime.transport.log if runtime.transport else ''
         return (private_log(runtime.build_log+'\n'+stderr, secrets),
@@ -67,15 +91,29 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         # The image is immutable; pull happens on the disposable execution host,
         # before any participant process. No installation/model master keys exist.
         runtime.pull()
+        egress = TeamEgress(team["domains"], client_env=runtime.client_env) if team is not None else None
+        if egress is not None:
+            # The build keeps its registry access; only the run joins the internal network.
+            runtime.build()
+            runtime.build = lambda: runtime.build_log
+            egress.start()
+            runtime.network = egress.network
+            start = runtime.start
+            runtime.start = lambda env: start({**_team_environment(env), **egress.environment}, team=team,
+                                              hosts=tuple(egress.hosts))
         outcome = execute(runtime, client, environment)
     except Exception as error:
         runtime.close()
+        if egress is not None:
+            egress.close()
         log, full = logs()
         failure = ProjectJobFailure({'stage':'execute','code':safe_code(error),'log':log})
         failure.agent_log = full
         raise failure from None
     finally:
         runtime.close()
+        if egress is not None:
+            egress.close()
     log, full = logs()
     return {"run_id": payload["run_id"], "status": outcome["status"],
             'diagnostics':{'stage':'execute','code':'completed','log':log}, AGENT_LOG_KEY: full}
@@ -150,11 +188,17 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         if payload.get("instance") is not None:
             raise JobError("colocated_private_instance")
         runtime, environment = _participant_runtime(payload, participant, root, http, sealed)
-        secrets = (payload["run_credential"], participant["run_credential"])
-        # Organizer switch (observer_hardening.restricted_egress), carried in the
-        # payload: the running project reaches the model proxy and nothing else.
-        egress = (RestrictedEgress(participant["model_base_url"], client_env=runtime.client_env, local=http.local)
-                  if payload.get("restricted_egress") is True else None)
+        team = _team(payload)
+        secrets = (payload["run_credential"], participant["run_credential"], *_team_secrets(team))
+        # Team egress: the team's variables and allowed domains, nothing else.
+        # Otherwise the organizer switch (observer_hardening.restricted_egress),
+        # carried in the payload: the running project reaches the model proxy only.
+        if team is not None:
+            egress = TeamEgress(team["domains"], client_env=runtime.client_env)
+        elif payload.get("restricted_egress") is True:
+            egress = RestrictedEgress(participant["model_base_url"], client_env=runtime.client_env, local=http.local)
+        else:
+            egress = None
         try:
             # The trusted forwarder image downloads while the project builds; a
             # failed build does not wait for it.
@@ -167,12 +211,18 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
                     forwarder.result()
             finally:
                 pool.shutdown(wait=False)
-            if egress:
+            if isinstance(egress, TeamEgress):
                 egress.start()
                 runtime.network = egress.network
-                environment = {**environment, "OPENAI_BASE_URL": egress.base_url,
-                               "ANTHROPIC_BASE_URL": egress.anthropic_base_url}
-            transport = runtime.start(environment)
+                transport = runtime.start({**_team_environment(environment), **egress.environment}, team=team,
+                                          hosts=tuple(egress.hosts))
+            else:
+                if egress:
+                    egress.start()
+                    runtime.network = egress.network
+                    environment = {**environment, "OPENAI_BASE_URL": egress.base_url,
+                                   "ANTHROPIC_BASE_URL": egress.anthropic_base_url}
+                transport = runtime.start(environment)
             provider = ColocatedProvider(transport, client, SessionClient(payload["session_url"], participant["run_credential"]))
             result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],
                                         provider=provider)

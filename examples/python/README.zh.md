@@ -121,23 +121,42 @@ OPENAI_API_KEY=sk-...
 
 `OPENAI_BASE_URL` / `OPENAI_MODEL` 会覆盖上面的默认值,所以任何其它 OpenAI 兼容的
 `/chat/completions` 接口(OpenAI 本身、本地代理等)改两个变量就能用。key 也可以用
-`KIMI_API_KEY` 这个别名来设。在平台上,`OPENAI_BASE_URL` / `OPENAI_API_KEY` 会被
-自动注入(平台自己的模型代理和一次性临时凭证),提交时完全不需要自己配置,`.env`
-也永远不会被打进提交 ZIP。
+`KIMI_API_KEY` 这个别名来设。`.env` 永远不会被打进提交 ZIP。
 
 没配 API key(`OPENAI_API_KEY` 或 `KIMI_API_KEY`)时,进程会在启动时、读任何 stdin
 之前就检查这一点,然后把错误信息打到 stderr,以非零退出码退出。
 
-本示例调用的是 OpenAI 兼容的 `/chat/completions` 接口。如果你的队伍在工作区的
-**模型 API** 设置里改选了 Anthropic Messages 协议,平台同样会注入
-`ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`(Anthropic SDK 自己的环境变量名);如果你
-自己的智能体改用 Claude 的 Messages API,配上官方 `anthropic` SDK 使用这两个变量即可。
-完整对比见 `docs/model-api-keys.md`。
+## 在平台上：密钥与网络
 
-在平台上，每次请求中的 `model` 会原样转发给本队的服务商；请求未指定模型时才使用 **模型 API**
-中的默认模型。本示例发送 `OPENAI_MODEL`（默认 `k3`），如果你的服务商不是 Kimi，请在
-`observer.project.json` 的 `environment` 中把 `OPENAI_MODEL` 设为服务商支持的模型。不同步骤也可以
-使用不同的模型，模型调用的费用由本队密钥承担。
+平台不会注入模型接口。请在「参赛」页的 **密钥与网络** 中保存本示例读取的变量（`OPENAI_API_KEY`，
+需要时再加 `OPENAI_BASE_URL` / `OPENAI_MODEL`），并添加接口的域名（默认的 Kimi 接口为
+`api.kimi.com`）。评测时这些变量就是程序的环境变量，程序只能通过 HTTPS（443 端口）访问所列域名；
+`.env` 不会被读取，也不会被打进提交 ZIP。平台同时设置了 `HTTPS_PROXY`：支持代理设置的 HTTP
+客户端会自动使用它，不读取代理设置的客户端也可以直接连接所列域名。
+
+可以同时使用多个服务商、多种协议和多个模型：为每个服务商保存一个密钥，并添加各自的域名。模型调用的
+费用由本队承担。
+
+例如，用官方 `openai` 与 `anthropic` Python SDK 同时发出两个请求：
+
+```python
+import asyncio, os
+from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
+
+# One key saved as KIMI_API_KEY; domain api.kimi.com listed.
+openai_style = AsyncOpenAI(base_url="https://api.kimi.com/coding/v1", api_key=os.environ["KIMI_API_KEY"])
+anthropic_style = AsyncAnthropic(base_url="https://api.kimi.com/coding", api_key=os.environ["KIMI_API_KEY"])
+
+async def ask_both(question: str):
+    fast, careful = await asyncio.gather(
+        openai_style.chat.completions.create(
+            model="kimi-for-coding", max_tokens=256, messages=[{"role": "user", "content": question}]),
+        anthropic_style.messages.create(
+            model="k3", max_tokens=1024, messages=[{"role": "user", "content": question}]),
+    )
+    return fast.choices[0].message.content, careful.content[0].text
+```
 
 ## 本地运行
 

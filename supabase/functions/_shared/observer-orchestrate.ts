@@ -1,4 +1,4 @@
-import { encryptCredential, ProxyError } from "./observer-model.ts";
+import { decryptCredential, encryptCredential, ProxyError } from "./observer-model.ts";
 import type { Rpc } from "./observer-model.ts";
 import { databaseLocator, GitHubError, placement } from "./observer-github.ts";
 
@@ -14,6 +14,24 @@ export function randomCapability() {
     .replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
+/**
+ * A run's team variables (secret values decrypted here, in memory only) and allowed
+ * domains, for the job input. The job input itself is encrypted before it is stored,
+ * and the runner receives it only through its authenticated claim.
+ */
+export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, run: string) {
+  const value = await deps.rpc("observer_run_team_egress", { p_run: run });
+  if (value?.enabled !== true) return null;
+  const environment: Record<string, string> = {}, secrets: string[] = [];
+  for (const variable of value?.variables ?? []) {
+    environment[variable.name] = variable.secret
+      ? await decryptCredential(String(variable.encrypted_value ?? ""), variable.id, deps.masterKey)
+      : String(variable.plain_value ?? "");
+    if (variable.secret) secrets.push(variable.name);
+  }
+  return { environment, secrets, domains: [...(value?.domains ?? [])] as string[] };
+}
+
 export async function scheduleRuns(deps: RunScheduler) {
   const base = new URL(deps.apiBase);
   if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash || base.port) {
@@ -25,11 +43,12 @@ export async function scheduleRuns(deps: RunScheduler) {
   if (!installations.length) return [];
   const enabled = new Set(installations.map((i: { organization: string }) => i.organization));
   const runs = await deps.rpc("observer_pending_runs", { p_limit: 5 });
-  // Organizer switch: model-proxy-only egress for colocated participant
-  // containers. Read once per pass, and only when a colocated run needs it.
-  let restrictedEgress: Promise<boolean> | undefined;
-  const egressSwitch = () =>
-    restrictedEgress ??= deps.rpc("observer_hardening", {}).then((value) => value?.restricted_egress === true);
+  // Organizer switch, read once per pass and only when a colocated run needs it:
+  // model-proxy-only egress for colocated containers. Team egress is decided per
+  // run by observer_run_team_egress (global switch or pilot team).
+  let switches: Promise<{ restricted_egress?: boolean } | null> | undefined;
+  const hardening = () => switches ??= deps.rpc("observer_hardening", {});
+  const egressSwitch = async () => (await hardening())?.restricted_egress === true;
   const outcomes = [];
   for (const run of runs) {
     try {
@@ -44,6 +63,8 @@ export async function scheduleRuns(deps: RunScheduler) {
       const colocated = run.mode === "project" && !instance &&
         await deps.rpc("observer_run_colocated", { p_run: run.id }) === true;
       const restricted = colocated && await egressSwitch();
+      // Team egress for this run's team: globally, or as a listed pilot team.
+      const team = run.mode === "project" ? await teamEgress(deps, run.id) : null;
       const participant = randomCapability(), engine = randomCapability();
       const jobs = [];
       const encodeJob = async (kind: string, input: Record<string, unknown>) => {
@@ -69,6 +90,7 @@ export async function scheduleRuns(deps: RunScheduler) {
           ...(colocated
             ? {
               ...(restricted ? { restricted_egress: true } : {}),
+              ...(team ? { team_egress: team } : {}),
               archive_ref: run.archive_ref,
               colocated: {
                 run_credential: "obs_" + run.id + "." + participant,
@@ -87,6 +109,7 @@ export async function scheduleRuns(deps: RunScheduler) {
             run_credential: "obs_" + run.id + "." + participant,
             session_url: api + "observer-session",
             model_base_url: api + "observer-model/v1",
+            ...(team ? { team_egress: team } : {}),
             archive_ref: run.archive_ref,
             source_digest: run.materialized_digest,
             manifest: run.manifest,

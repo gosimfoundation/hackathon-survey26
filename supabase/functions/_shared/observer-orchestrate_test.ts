@@ -1,5 +1,5 @@
-import { assertEquals, assertNotEquals, assertThrows } from "@std/assert";
-import { decryptCredential } from "./observer-model.ts";
+import { assert, assertEquals, assertNotEquals, assertThrows } from "@std/assert";
+import { decryptCredential, encryptCredential } from "./observer-model.ts";
 import { placement } from "./observer-github.ts";
 
 // Recorded placement from public.observer_placement; runner-9 is one of the added organizations.
@@ -47,6 +47,8 @@ for (const randomized of [false, true]) {
             if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
             if (name === "observer_instance_input") return Promise.resolve(instance);
             if (name === "observer_run_colocated") return Promise.resolve(false);
+            if (name === "observer_hardening") return Promise.resolve({ restricted_egress: true, rescore: true });
+            if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
             if (name === "observer_pending_runs") {
               return Promise.resolve([{
                 id: run,
@@ -173,6 +175,7 @@ Deno.test("a final formal run whose instance lookup is refused is never schedule
       if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
+      if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
       if (name === "observer_pending_runs") {
         return Promise.resolve([{ id: run, user_id: user, lease, mode: "project" }]);
       }
@@ -205,6 +208,7 @@ Deno.test("a colocated public run gets one engine job that also starts the parti
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_instance_input") return Promise.resolve(null);
       if (name === "observer_run_colocated") return Promise.resolve(true);
+      if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
       if (name === "observer_pending_runs") {
         return Promise.resolve([{
           id: run,
@@ -258,6 +262,7 @@ for (const restricted of [true, false]) {
             switchReads++;
             return Promise.resolve({ restricted_egress: restricted, rescore: true });
           }
+          if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
           if (name === "observer_pending_runs") {
             return Promise.resolve([run, lease].map((id) => ({
               id,
@@ -300,6 +305,111 @@ for (const restricted of [true, false]) {
       assertThrows(() => validateJobPayload({ ...input, restricted_egress: false }, expected, job.id));
       const { colocated: _c, archive_url: _a, ...split } = input;
       assertThrows(() => validateJobPayload({ ...split, restricted_egress: true }, expected, job.id));
+    },
+  );
+}
+
+for (const colocated of [true, false]) {
+  Deno.test(
+    "team egress puts the team's variables and domains into the " + (colocated ? "engine" : "execute") + " job",
+    async () => {
+      const organization = "AGENTIC-OBSERVER26-runner-9";
+      const manifest = {
+        schema_version: "observer-project-v1",
+        image: "python@sha256:" + "a".repeat(64),
+        run: ["python3", "agent.py"],
+      };
+      const archive = "github:" + organization + "/participant-" + user.replaceAll("-", "") + "@" + "b".repeat(40);
+      const variable = crypto.randomUUID();
+      const cipher = await encryptCredential("sk-team-key-0123456789", variable, key);
+      let scheduled: Record<string, any> = {};
+      await scheduleRuns({
+        masterKey: key,
+        apiBase: "https://platform.test",
+        ensureRepository: () => Promise.resolve(),
+        rpc: (name, args) => {
+          if (name === "observer_placement") return Promise.resolve(organization);
+          if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
+          if (name === "observer_instance_input") return Promise.resolve(null);
+          if (name === "observer_run_colocated") return Promise.resolve(colocated);
+          if (name === "observer_hardening") {
+            return Promise.resolve({ restricted_egress: true, rescore: true, team_egress: true });
+          }
+          if (name === "observer_run_team_egress") {
+            assertEquals(args.p_run, run);
+            return Promise.resolve({
+              enabled: true,
+              variables: [
+                { id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: cipher, plain_value: null },
+                {
+                  id: crypto.randomUUID(),
+                  name: "OPENAI_MODEL",
+                  secret: false,
+                  encrypted_value: null,
+                  plain_value: "k3",
+                },
+              ],
+              domains: ["api.kimi.com"],
+            });
+          }
+          if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
+          if (name === "observer_pending_runs") {
+            return Promise.resolve([{
+              id: run,
+              user_id: user,
+              lease,
+              mode: "project",
+              storage_path: "scenario/bundle.zip",
+              scenario_digest: "c".repeat(64),
+              runtime_seconds: 900,
+              archive_ref: archive,
+              materialized_digest: "d".repeat(64),
+              manifest,
+            }]);
+          }
+          assertEquals(name, "observer_schedule_run");
+          scheduled = args;
+          return Promise.resolve(null);
+        },
+      });
+      const job = scheduled.p_jobs.find((j: { kind: string }) => j.kind === (colocated ? "engine" : "execute"));
+      // The plaintext key exists only inside the encrypted job input.
+      assert(!JSON.stringify(scheduled).includes("sk-team-key"));
+      const input = JSON.parse(await decryptCredential(job.encrypted_input, job.id, key));
+      assertEquals(input.team_egress, {
+        environment: { OPENAI_API_KEY: "sk-team-key-0123456789", OPENAI_MODEL: "k3" },
+        secrets: ["OPENAI_API_KEY"],
+        domains: ["api.kimi.com"],
+      });
+      if (!colocated) {
+        const engine = scheduled.p_jobs.find((j: { kind: string }) => j.kind === "engine");
+        const engineInput = JSON.parse(await decryptCredential(engine.encrypted_input, engine.id, key));
+        assertEquals(engineInput.team_egress, undefined);
+      }
+      delete input.scenario_ref;
+      delete input.archive_ref;
+      input.archive_url = "https://codeload.github.com/fresh.zip";
+      if (colocated) input.scenario_url = "https://storage.test/fresh.zip";
+      const expected = {
+        organization,
+        organizationId: "101",
+        repositoryId: "303",
+        approvedSha: "e".repeat(40),
+        workflow: (colocated ? "observer-engine.yml" : "observer-execute.yml") as
+          | "observer-engine.yml"
+          | "observer-execute.yml",
+      };
+      validateJobPayload(input, expected, job.id);
+      for (
+        const bad of [
+          { ...input.team_egress, domains: ["127.0.0.1"] },
+          { ...input.team_egress, domains: ["svc.internal"] },
+          { ...input.team_egress, environment: { OBSERVER_RUN_TOKEN: "x" }, secrets: [] },
+          { ...input.team_egress, environment: { HTTPS_PROXY: "http://evil" }, secrets: [] },
+          { ...input.team_egress, secrets: ["MISSING"] },
+          { ...input.team_egress, extra: 1 },
+        ]
+      ) assertThrows(() => validateJobPayload({ ...input, team_egress: bad }, expected, job.id));
     },
   );
 }

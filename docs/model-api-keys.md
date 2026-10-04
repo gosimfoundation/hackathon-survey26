@@ -1,4 +1,99 @@
-# Participant model API keys for formal runs
+# Participant keys, network access and model APIs
+
+## Keys and network (team egress)
+
+With the organizer switch `observer_hardening.team_egress` on, the platform no
+longer relays model traffic for project runs. Each team saves, in the workspace
+section **Keys and network**:
+
+- **Variables** (`private.observer_team_variables`): up to 20 `NAME=value` pairs,
+  `NAME` matching `[A-Z][A-Z0-9_]{0,63}`, at most 8 KB each. Names starting with
+  `OBSERVER_` or `SAC_`, ending in `_PROXY`, and `PATH`, `HOME`, `HOSTNAME`,
+  `LD_PRELOAD`, `LD_LIBRARY_PATH`, `PYTHONPATH`, `NODE_OPTIONS` are reserved.
+  Secret values are encrypted by the portal Edge function (AES-GCM bound to the
+  variable's id) and shown only by their last 4 characters; plain values (base
+  URLs, model names) are stored and shown as they are. Secret values are deleted on
+  the saved-key schedule (`observer_key_purge_after`, hourly cron
+  `observer-purge-team-variables`).
+- **Allowed domains** (`private.observer_team_domains`): up to 10 public DNS
+  names. The portal refuses IP literals, reserved/internal names and any name that
+  does not resolve only to public addresses.
+
+The scheduler (`observer-orchestrate.ts`) reads `observer_run_team_egress`,
+decrypts the secret values in memory and puts
+`team_egress: {environment, secrets, domains}` into the encrypted input of the
+engine job (colocated runs) or the execute job (split runs, e.g. the hidden final).
+`observer-job` validates it again at claim time. The runner
+(`project_platform/team_egress.py`):
+
+1. builds the project exactly as before (the build keeps registry access);
+2. starts the pinned forwarder sidecar on a per-run internal Docker network,
+   dual-homed onto the default bridge, with public resolvers (1.1.1.1, 8.8.8.8);
+3. starts the participant container on the internal network only, with the
+   team's variables as its environment (they override the manifest's
+   `environment`), `--add-host <domain>:<sidecar>` for every allowed domain, and
+   `HTTPS_PROXY`/`HTTP_PROXY` (both spellings), `NO_PROXY=""` and
+   `NODE_USE_ENV_PROXY=1`.
+
+The sidecar accepts HTTPS `CONNECT host:443` (port 3128) and direct TLS on port
+443, where it reads the ClientHello's server name. Either way it allows only an
+allowed domain on port 443, resolves it itself, refuses it unless every address
+is public (no private, loopback, link-local, CGNAT, benchmarking or metadata
+range, also for IPv4-mapped IPv6), and connects only to those checked addresses,
+so DNS rebinding cannot reach an internal service. TLS is end to end; the sidecar
+never sees plaintext, keys or responses. Secret values are redacted from the
+private run logs. The participant container still gets `OBSERVER_API_URL`,
+`OBSERVER_RUN_TOKEN` and `OBSERVER_RUN_ID`, and no platform model credential.
+
+Several providers, protocols and models work at the same time: one key per
+provider, one domain each. Example (Python, official SDKs, `KIMI_API_KEY` saved
+and `api.kimi.com` allowed; Kimi speaks both the OpenAI and the Anthropic shape):
+
+```python
+import asyncio, os
+from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
+
+openai_style = AsyncOpenAI(base_url="https://api.kimi.com/coding/v1", api_key=os.environ["KIMI_API_KEY"])
+anthropic_style = AsyncAnthropic(base_url="https://api.kimi.com/coding", api_key=os.environ["KIMI_API_KEY"])
+
+async def ask_both(question: str):
+    fast, careful = await asyncio.gather(
+        openai_style.chat.completions.create(
+            model="kimi-for-coding", max_tokens=256, messages=[{"role": "user", "content": question}]),
+        anthropic_style.messages.create(
+            model="k3", max_tokens=1024, messages=[{"role": "user", "content": question}]),
+    )
+    return fast.choices[0].message.content, careful.content[0].text
+```
+
+Google Gemini works the same way through its OpenAI-compatible endpoint
+(`https://generativelanguage.googleapis.com/v1beta/openai/`, domain
+`generativelanguage.googleapis.com`); any other HTTPS API (e.g. a decision API
+called with plain HTTP requests) only needs its key saved and its domain allowed.
+
+**Migration.** `20261004040000_team_variables_and_egress` turns each team's saved
+model API into variables (`OPENAI_*` or `ANTHROPIC_*` by its protocol: `_API_KEY`
+reusing the ciphertext, whose provider id becomes the variable id, plus
+`_BASE_URL` and `_MODEL`) and allows the base's host. Teams that used the page
+relay have no stored key; the workspace asks them to enter it
+(`relay_key_missing`). Re-running `private.observer_backfill_team_variables()`
+fills only teams without variables.
+
+**Rollout and rollback.** Apply the migration, deploy `observer-job`,
+`observer-portal` and `observer-dispatch`, publish the runtime to every control
+repository (and the public pool) and approve it, then
+`update private.observer_hardening set team_egress=true`. Turning it off again
+restores the previous behaviour for newly scheduled runs (model proxy, Model API
+section); a runtime without team egress support simply ignores the field.
+
+**What still uses the model proxy below.** Model-assisted project preparation
+(projects without `observer.project.json`), local sessions, and every run while
+the switch is off. The organizer-credit route was last used on 2026-09-24.
+
+---
+
+# Model proxy (previous path; preparation, local sessions, switch off)
 
 Formal runs never use organizer model credits. "Formal" means every run for which
 `private.observer_personal_models_only()` is true: runs in a phase that counts for
