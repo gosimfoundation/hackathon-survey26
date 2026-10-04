@@ -6,8 +6,11 @@ final version in that phase (its choice, else the version of its best scored
 evaluation) this creates observer_phase_settings.repeat_runs formal evaluations of
 it in the sealed hidden phase ('final-hidden'), outside the daily limit: each with
 one run per card linked to that phase (the v4 cards E-H). The normal dispatcher
-then runs them, round by round (every team's first evaluation before anyone's
-second) and one team's evaluations one after another.
+starts a team's repeats of each card together (migration 20261004120000): repeats
+run one after another could carry what a program saw of a hidden card into the
+next repeat. Any rerun (--retry-failed) replaces the team's whole set, so a card's
+repeats always overlap in time; --results checks it and never ranks a set whose
+repeats did not overlap (status not_concurrent).
 Results stay invisible to participants until the hidden phase's
 leaderboard_mode is set to 'published'. Operating procedure: docs/hidden-final-runbook.md.
 
@@ -235,11 +238,12 @@ FAILURE = """case when exists(select 1 from public.observer_runs r where r.batch
     and r.status in ('failed','cancelled') and not private.observer_participant_failure(r.id))
   then 'participant' else 'platform' end"""
 
-# Every evaluation on the phase's current card set, oldest first.
+# Every evaluation on the phase's current card set that was not replaced by a new set, oldest first.
 CURRENT_BATCHES = """
 with cur as (
   select b.* from public.observer_batches b
-  where b.phase_id={target}::uuid and b.purpose='formal' and private.observer_batch_covers_phase(b.id,b.phase_id))
+  where b.phase_id={target}::uuid and b.purpose='formal' and b.superseded_at is null
+    and private.observer_batch_covers_phase(b.id,b.phase_id))
 """
 
 
@@ -305,6 +309,10 @@ def results(target):
         ' where ps.phase_id='+q(target)+'::uuid'))
     mode = one(deploy.query('select leaderboard_mode from public.phases where id='+q(target)+'::uuid'), 'phase')['leaderboard_mode']
     need = repeat_runs(target)
+    # Whether each card's repeats all overlapped in time (latest start before earliest finish).
+    concurrent = {r['team_id']: r['ok'] for r in deploy.query(
+        'select distinct b.team_id, private.observer_final_set_concurrent(b.team_id,b.phase_id) as ok'
+        ' from public.observer_batches b where b.phase_id=' + q(target) + "::uuid and b.purpose='formal'")}
     teams = {}
     for b in batches:
         b['runs'] = jsonish(b['runs']) or {}
@@ -318,8 +326,11 @@ def results(target):
         r = {'team_id': team_id, 'team_name': last['team_name'], 'is_hidden': last['is_hidden'],
              'revision_id': last['revision_id'], 'batch_id': scored[0]['batch_id'] if scored else last['batch_id'],
              'batch_ids': [b['batch_id'] for b in scored], 'evaluations': len(scored), 'repeat_runs': need,
-             'finished_at': max((b['finished_at'] for b in scored), default=None), 'failure': None}
-        if len(scored) >= need:
+             'finished_at': max((b['finished_at'] for b in scored), default=None), 'failure': None,
+             'concurrent': concurrent.get(team_id, True) if need > 1 else True}
+        if len(scored) >= need and not r['concurrent']:
+            r['status'] = 'not_concurrent'   # replaced with --retry-failed; never ranked
+        elif len(scored) >= need:
             r['status'] = 'scored'
         elif active:
             r['status'] = 'running'
@@ -365,6 +376,9 @@ def format_results(rows, cards, mode):
     ranked = sum(1 for r in rows if 'rank' in r)
     lines.append(f'  ranked={ranked}, not ranked={len(rows) - ranked} (incomplete, failed or hidden teams)')
     lines.append('  each card and the mean average the first evaluations of each team; range: lowest-highest evaluation mean')
+    if any(not r['concurrent'] for r in rows):
+        lines.append('  ! not_concurrent: a card\'s repeats did not all run at the same time; not ranked.'
+                     ' Replace the whole set with --apply --retry-failed')
     if any(r['unfinished'] for r in rows):
         lines.append("  * failed because of the team's project (build, crash, protocol) or a rejected trace: 0, counted in the mean")
     return '\n'.join(lines)
@@ -374,13 +388,13 @@ def write_csv(path, rows, cards):
     with open(path, 'w', newline='', encoding='utf-8') as handle:
         out = csv.writer(handle)
         out.writerow(['rank', 'team_id', 'team_name', 'hidden_team', 'revision_id', 'batch_id', 'status', 'failure',
-                      *cards, 'mean', 'unfinished_cards', 'evaluations', 'min', 'max', 'batch_ids'])
+                      *cards, 'mean', 'unfinished_cards', 'evaluations', 'min', 'max', 'batch_ids', 'concurrent'])
         for r in rows:
             out.writerow([r.get('rank', ''), r['team_id'], r['team_name'], r['is_hidden'], r['revision_id'], r['batch_id'],
                           r['status'], r['failure'] or '', *('' if (v := card_score(r, c)) is None else v for c in cards),
                           '' if r['score'] is None else r['score'], ' '.join(r['unfinished']), r['evaluations'],
                           '' if r['min'] is None else r['min'], '' if r['max'] is None else r['max'],
-                          ' '.join(str(b) for b in r['batch_ids'])])
+                          ' '.join(str(b) for b in r['batch_ids']), r['concurrent']])
 
 
 def main():
@@ -391,7 +405,8 @@ def main():
     parser.add_argument('--apply', action='store_true', help='Create the evaluations (default: dry run)')
     parser.add_argument('--before-freeze', action='store_true', help='With --team: allow before the source phase ends')
     parser.add_argument('--retry-failed', action='store_true',
-                        help='Create a new evaluation where the previous one failed because of the platform')
+                        help='Replace a team\'s whole set of evaluations where one failed because of the platform,'
+                             ' the set is incomplete, or a card\'s repeats did not run at the same time')
     parser.add_argument('--retry-participant-failures', action='store_true',
                         help="Also recreate evaluations that failed because of the team's project (organizer decision)")
     parser.add_argument('--limit', type=int, help='With --apply: create at most this many evaluations now')
