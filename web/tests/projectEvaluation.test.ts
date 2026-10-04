@@ -83,3 +83,12 @@ test('a self-check shows the mean and range per card and overall over its scored
   assert.ok(canSelfCheck({ phase_id: 'p', daily_batches: 4, used: 1, remaining: 3 }))
   assert.ok(!canSelfCheck({ phase_id: 'p', daily_batches: 4, used: 2, remaining: 2 }))
 })
+
+test('a self-check set counts once toward the evaluations in flight', async () => {
+  const { activeEvaluations } = await import('../src/lib/projectEvaluation.ts')
+  assert.equal(activeEvaluations([
+    { id: '1', status: 'running' }, { id: '2', status: 'queued' }, { id: '3', status: 'scored' },
+    { id: '4', status: 'running', repeat_group: 'g' }, { id: '5', status: 'queued', repeat_group: 'g' },
+  ]), 3)
+  assert.equal(activeEvaluations(null), 0)
+})

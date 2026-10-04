@@ -81,8 +81,10 @@ def test_contestant_failures_count_and_platform_failures_retry_without_ever_fail
     assert batch_state(s, retried) == ('queued', False)
     assert query(s['uri'], 'select status,error from public.observer_runs where id=%s', (run,)) == [('queued', '')]
     assert (quota(s)['used'], quota(s)['remaining']) == (2, 1)
+    query(s['uri'], 'update public.observer_phase_settings set max_active_evaluations=1 where phase_id=%s', (s['phase'],))
     with pytest.raises(psycopg.Error, match='batch_already_active'):
         evaluate(s, rev, True)
+    query(s['uri'], 'update public.observer_phase_settings set max_active_evaluations=4 where phase_id=%s', (s['phase'],))
     # No organizer action needed: the retry just runs again like a fresh
     # attempt, and a genuine success finishes the batch normally.
     query(s['uri'], "update public.observer_runs set status='scored',score=10,finished_at=now() where id=%s", (run,))

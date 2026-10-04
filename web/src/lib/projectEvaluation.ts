@@ -109,3 +109,8 @@ export function repeatSummaries(batches: RepeatBatch[] | null | undefined): Map<
 export function canSelfCheck(quota: EvaluationQuota | null | undefined): boolean {
   return quota == null || quota.remaining >= SELF_CHECK_RUNS
 }
+
+/** Evaluations in flight that count toward the team's limit: a self-check set counts once. */
+export function activeEvaluations(batches: { id: string; status: string; repeat_group?: string | null }[] | null | undefined): number {
+  return new Set((batches ?? []).filter(b => ['queued', 'running'].includes(b.status)).map(b => b.repeat_group ?? b.id)).size
+}
