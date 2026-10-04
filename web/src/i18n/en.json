@@ -2783,5 +2783,40 @@
       "uid_not_found": "No participant has this UID.",
       "recipient_in_team": "This person is already on a team."
     }
+  },
+  "wechat_qr": {
+    "title": "WeChat QR code",
+    "lede": "Optional. Add your WeChat QR code so teammates can reach you. Only signed-in participants you allow can see it; it is never public.",
+    "upload": "Upload QR code",
+    "replace": "Replace",
+    "delete": "Delete",
+    "hint": "PNG, JPG or WEBP, at most 1 MB. It must be a QR code.",
+    "visibility": "Who can see it",
+    "vis_friends": "Friends only",
+    "vis_all": "All signed-in participants",
+    "uploaded": "QR code saved.",
+    "deleted": "QR code deleted.",
+    "visibility_saved": "Saved.",
+    "delete_confirm": "Delete your WeChat QR code?",
+    "show": "WeChat QR",
+    "view_note": "Shown only to signed-in participants. Please do not share it elsewhere.",
+    "report": "Report this image",
+    "report_prompt": "What is wrong with this image? (optional)",
+    "reported": "Thank you. The organizers will review it.",
+    "admin_title": "Reported WeChat QR codes",
+    "admin_count": "Reports:",
+    "admin_replaced": "already replaced or deleted",
+    "admin_remove": "Remove image",
+    "admin_dismiss": "Dismiss",
+    "admin_remove_confirm": "Remove this QR code? The image is deleted.",
+    "errors": {
+      "too_large": "The image is larger than 1 MB.",
+      "not_an_image": "Please choose a PNG, JPG or WEBP image.",
+      "not_a_qr": "No QR code was found in this image. Please upload a clear picture of your WeChat QR code.",
+      "no_wechat_qr": "This QR code is not available.",
+      "invalid_visibility": "Unknown visibility.",
+      "storage_unavailable": "Upload failed. Please try again shortly.",
+      "admin_only": "Organizers only."
+    }
   }
 }

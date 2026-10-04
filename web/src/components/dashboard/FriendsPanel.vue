@@ -9,6 +9,8 @@ import { emptyFriends, parseUid, type FriendsData } from '../../lib/friends'
 import { blockUser, cancelFriendRequest, inviteToTeamByUid, loadFriends, removeFriend, respondFriendRequest,
   sendFriendRequest, unblockUser } from '../../lib/friendsApi'
 import UserAvatar from '../UserAvatar.vue'
+import WechatQrButton from '../wechat/WechatQrButton.vue'
+import { visibleWechatQrs } from '../../lib/wechatQrApi'
 
 const { t, tf } = useI18n()
 const i18n = useI18n()
@@ -19,12 +21,16 @@ const loaded = ref(false)
 const busy = ref(false)
 const uidInput = ref('')
 const copied = ref(false)
+const qrs = ref<Record<string, string>>({})
 const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
 const myUid = computed(() => data.value.uid ?? me.value?.uid ?? null)
 const errorText = (e: unknown) => describeError(e, i18n, ['friends.errors', 'team.errors'])
 
 async function reload() {
-  try { data.value = await loadFriends() } catch (e) { flash.error(errorText(e)) }
+  try {
+    data.value = await loadFriends()
+    qrs.value = await visibleWechatQrs(data.value.friends.map(f => f.user_id)).catch(() => ({}))
+  } catch (e) { flash.error(errorText(e)) }
   finally { loaded.value = true }
 }
 async function run(action: () => Promise<unknown>, success?: string | ((r: unknown) => string)) {
@@ -100,6 +106,7 @@ onMounted(reload)
           <span><b>{{ f.name }}</b><small class="friends-sub">{{ f.team_name || (f.in_team ? '—' : t('friends.no_team')) }}<template v-if="f.uid"> · <span class="mono" translate="no">{{ f.uid }}</span></template></small></span>
         </span>
         <span class="actions-inline">
+          <WechatQrButton v-if="qrs[f.user_id]" :user-id="f.user_id" :path="qrs[f.user_id]!" :name="f.name" />
           <button v-if="isLeader && !f.in_team && f.uid" type="button" class="copy-btn" data-testid="friend-invite" :disabled="busy" @click="invite(f.uid)">{{ t('friends.invite_team') }}</button>
           <button type="button" class="copy-btn" :disabled="busy" @click="remove(f.user_id)">{{ t('friends.remove') }}</button>
           <button type="button" class="copy-btn" :disabled="busy" @click="block(f.user_id)">{{ t('friends.block') }}</button>

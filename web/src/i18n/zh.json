@@ -2783,5 +2783,40 @@
       "uid_not_found": "没有参赛者使用这个 UID。",
       "recipient_in_team": "对方已经在一个队伍里了。"
     }
+  },
+  "wechat_qr": {
+    "title": "微信二维码",
+    "lede": "选填。上传你的微信二维码，方便队友联系你。只有你允许的已登录参赛者能看到，不会公开。",
+    "upload": "上传二维码",
+    "replace": "更换",
+    "delete": "删除",
+    "hint": "PNG、JPG 或 WEBP，最大 1 MB，必须是二维码图片。",
+    "visibility": "谁可以看到",
+    "vis_friends": "仅好友可见",
+    "vis_all": "所有参赛者可见",
+    "uploaded": "二维码已保存。",
+    "deleted": "二维码已删除。",
+    "visibility_saved": "已保存。",
+    "delete_confirm": "确定删除你的微信二维码？",
+    "show": "微信二维码",
+    "view_note": "仅对已登录参赛者显示，请勿外传。",
+    "report": "举报此图片",
+    "report_prompt": "这张图片有什么问题？（选填）",
+    "reported": "感谢反馈，主办方会尽快处理。",
+    "admin_title": "被举报的微信二维码",
+    "admin_count": "举报次数：",
+    "admin_replaced": "已被更换或删除",
+    "admin_remove": "删除图片",
+    "admin_dismiss": "驳回",
+    "admin_remove_confirm": "确定删除这张二维码？图片会被一并删除。",
+    "errors": {
+      "too_large": "图片超过 1 MB。",
+      "not_an_image": "请选择 PNG、JPG 或 WEBP 图片。",
+      "not_a_qr": "图片里没有识别到二维码，请上传清晰的微信二维码图片。",
+      "no_wechat_qr": "该二维码不可用。",
+      "invalid_visibility": "未知的可见范围。",
+      "storage_unavailable": "上传失败，请稍后再试。",
+      "admin_only": "仅限主办方。"
+    }
   }
 }

@@ -11,6 +11,8 @@ import UserAvatar from '../components/UserAvatar.vue'
 import TeamDirectory from '../components/TeamDirectory.vue'
 import WechatGroup from '../components/WechatGroup.vue'
 import { teamAction } from '../stores/teamNotifications'
+import WechatQrButton from '../components/wechat/WechatQrButton.vue'
+import { visibleWechatQrs } from '../lib/wechatQrApi'
 
 const { t, tf } = useI18n()
 const i18n = useI18n()
@@ -25,6 +27,8 @@ const lookingOnly = ref(false)
 const complementary = ref(true)
 const contacts = ref<Record<string, { contact: string; github: string } | null>>({})
 const contactBusy = ref<string | null>(null)
+/** Signed-in viewers only: whose WeChat QR this viewer may open (owner's choice: friends or everyone). */
+const qrs = ref<Record<string, string>>({})
 const inviteBusy = ref(''), invited = ref(new Set<string>())
 async function invite(e: WallEntry) {
   if (inviteBusy.value || invited.value.has(e.id)) return
@@ -60,7 +64,10 @@ async function syncWallForm() {
 async function reload() {
   if (!isSupabaseConfigured) { loading.value = false; return }
   loading.value = true
-  try { entries.value = await loadParticipantsWall(200) }
+  try {
+    entries.value = await loadParticipantsWall(200)
+    if (isLoggedIn.value) qrs.value = await visibleWechatQrs(entries.value.map(e => e.id)).catch(() => ({}))
+  }
   catch (e) { flash.error(describeError(e, i18n)) }
   finally { loading.value = false }
 }
@@ -217,6 +224,7 @@ const tierNames = (kind: 'astro' | 'ai') => t(`tiers.${kind}`) as string[]
                 <p v-else class="text3 text-sm">{{ t('teammates.no_contact') }}</p>
               </div>
               <button v-else type="button" class="copy-btn" :disabled="contactBusy === e.id" @click="reveal(e)">{{ contactBusy === e.id ? t('common.working') : t('teammates.reveal') }}</button>
+              <WechatQrButton v-if="qrs[e.id]" class="ml-2" :user-id="e.id" :path="qrs[e.id]!" :name="e.name" :self="e.id === me?.id" />
             </template>
             <router-link v-else class="copy-btn inline-block" to="/register?mode=login">{{ t('teammates.login_to_contact') }}</router-link>
           </div>
