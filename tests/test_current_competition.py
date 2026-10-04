@@ -131,6 +131,21 @@ def test_playground_project_board_is_offered_only_in_practice_mode(database):
         assert answer.get('project_phase_id') is None
         # Practice stays usable next to the competition, under its own key.
         assert answer['practice_phase_id']==str(board)
+        # Once the online phase has ended, practice becomes the default entry for every client.
+        online=query(uri,"select id from public.phases where slug='online'")
+        created=not online
+        if created:
+            query(uri,"insert into public.phases(slug,name_en,name_zh,counts_for_final) values('online','Online','线上赛',true)")
+            online=query(uri,"select id from public.phases where slug='online'")
+        online=online[0][0]
+        ends=query(uri,'select ends_at from public.phases where id=%s',(online,))[0][0]
+        query(uri,"update public.phases set ends_at=now()+interval '1 hour' where id=%s",(online,))
+        assert 'project_phase_id' not in rpc(uri,'current_competition',role='anon')
+        query(uri,"update public.phases set ends_at=now()-interval '1 minute' where id=%s",(online,))
+        ended=rpc(uri,'current_competition',role='anon')
+        assert ended['phase_id']==str(online) and ended['practice_phase_id']==str(board) and ended['project_phase_id']==str(board)
+        query(uri,'update public.phases set ends_at=%s where id=%s',(ends,online))
+        if created: query(uri,'delete from public.phases where id=%s',(online,))
         query(uri,"update public.phases set ends_at=now()-interval '1 minute' where id=%s",(board,))
         assert 'practice_phase_id' not in rpc(uri,'current_competition',role='anon')
         query(uri,"update public.phases set ends_at=null where id=%s",(board,))

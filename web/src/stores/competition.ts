@@ -1,7 +1,7 @@
 import { computed, reactive, readonly } from 'vue'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { browserStorage } from '../lib/quest'
-import { entryPhaseId, parseCompetition, readEntryChoice, rememberEntryChoice, type EntryChoice } from '../lib/entryPhase'
+import { entryPhaseId, initialEntryChoice, parseCompetition, rememberEntryChoice, type EntryChoice } from '../lib/entryPhase'
 const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: null as string|null, betaPhaseId: null as string|null, projectPhaseId: null as string|null,
   // Competition mode only: the practice board that stays open next to the online phase.
   practicePhaseId: null as string|null })
@@ -11,9 +11,9 @@ export const competition = readonly(state)
 const entry = reactive({ userId: null as string|null, choice: 'online' as EntryChoice })
 export const entryChoice = computed(() => entry.choice)
 export const entryPhase = computed(() => entryPhaseId(state, entry.choice))
-export function useEntryFor(userId: string|null|undefined) {
+export function useEntryFor(userId: string|null|undefined, onlineEnded = false) {
   entry.userId = userId ?? null
-  entry.choice = readEntryChoice(browserStorage(), userId)
+  entry.choice = initialEntryChoice(browserStorage(), userId, onlineEnded)
 }
 export function chooseEntry(choice: EntryChoice) {
   entry.choice = choice

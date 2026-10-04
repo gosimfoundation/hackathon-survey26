@@ -391,3 +391,27 @@ def test_cut_short_answers_are_retried_for_reads_and_reported_for_writes(gw, cap
     gw.routes["rpc:join_team"] = (200, {"data": None})
     code, doc = run_json(capsys, "team", "join", "ABCD1234")
     assert code == 6 and doc["error"]["code"] == "network_error"
+
+
+ONLINE = "44444444-4444-4444-4444-444444444444"
+
+
+@pytest.mark.parametrize("online_ends,comp_extra,flag,expected", [
+    # During the online competition the default is online; practice stays reachable with --phase.
+    ("2099-01-01T00:00:00Z", {"practice_phase_id": PHASE}, [], "online"),
+    ("2099-01-01T00:00:00Z", {"practice_phase_id": PHASE}, ["--phase", "practice-projects"], "practice-projects"),
+    # After the online deadline the server also answers project_phase_id, so every CLI defaults to practice.
+    ("2020-01-01T00:00:00Z", {"practice_phase_id": PHASE, "project_phase_id": PHASE}, [], "practice-projects"),
+])
+def test_default_phase_during_and_after_the_online_competition(gw, capsys, online_ends, comp_extra, flag, expected):
+    data = listing()
+    data["phases"].append({"phase_id": ONLINE, "projects_enabled": True, "daily_batches": 40,
+                           "phases": {"slug": "online", "name_en": "Online", "name_zh": "线上赛", "is_active": True,
+                                      "starts_at": "2026-10-04 16:00:00+00", "ends_at": online_ends}})
+    data["quota"].append({"phase_id": ONLINE, "daily_batches": 40, "used": 0, "remaining": 40})
+    gw.routes["portal:list"] = (200, {"data": data})
+    gw.routes["rpc:current_competition"] = (200, {"data": {"mode": "competition", "phase_id": ONLINE, **comp_extra}})
+    gw.routes["rpc:my_observer_phase"] = (200, {"data": None})
+    gw.routes["portal:evaluate"] = (200, {"data": {"batch_id": BATCH}})
+    code, doc = run_json(capsys, "eval", "start", REV2, "--yes", *flag)
+    assert code == 0 and doc["data"]["phase"] == expected
