@@ -16,9 +16,11 @@ import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
 import QuotaResetDialog from './components/layout/QuotaResetDialog.vue'
 import TeamRequestDialog from './components/layout/TeamRequestDialog.vue'
 import ProfileCardDialog from './components/ProfileCardDialog.vue'
+import { useDeepLink } from './composables/useDeepLink'
 
 const { t } = provideI18n()
 provideTheme()
+useDeepLink()
 </script>
 
 <template>

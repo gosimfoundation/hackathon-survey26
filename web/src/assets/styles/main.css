@@ -1061,3 +1061,8 @@ i.user-avatar { vertical-align: middle; }
 .egg-object-card h2 { margin-top: .3rem; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; color: #f5f7ff; }
 .egg-object-card p { margin-top: .45rem; font-size: .9rem; line-height: 1.7; color: #c7d2ea; }
 @media (prefers-reduced-motion: reduce) { .moon-chip, .champ-star { animation: none; } }
+
+/* Deep-link target (composables/useDeepLink): a brief ring so the reader sees where the link landed. */
+.deep-link-flash { outline: 2px solid rgba(158, 173, 255, .95); outline-offset: 4px; border-radius: 6px; animation: deep-link-flash 2.6s ease-out forwards; }
+@keyframes deep-link-flash { 0%, 55% { outline-color: rgba(158, 173, 255, .95); } 100% { outline-color: rgba(158, 173, 255, 0); } }
+@media (prefers-reduced-motion: reduce) { .deep-link-flash { animation: none; } }

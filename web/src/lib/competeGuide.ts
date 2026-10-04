@@ -87,8 +87,10 @@ export function stepCopy(r: ResolvedStep, locale: GuideLocale): Copy {
   return r.fallback && r.step.fallback ? r.step.fallback[lang] : r.step[lang]
 }
 
-/** Auto-show only on the simplified layout, to someone who has not seen the guide yet. */
-export const shouldAutoShow = (layout: string, seen: Set<string>) => layout === 'v2' && !seen.has(COMPETE_GUIDE_KEY)
+/** Auto-show only on the simplified layout, to someone who has not seen the guide yet, and not over a deep link
+ * (a link to #keys etc. wants that place; the guide waits for a later visit). */
+export const shouldAutoShow = (layout: string, seen: Set<string>, deepLinked = false) =>
+  layout === 'v2' && !deepLinked && !seen.has(COMPETE_GUIDE_KEY)
 
 export type Rect = { top: number; left: number; width: number; height: number }
 export type Placement = { top: number; left: number; side: 'below' | 'above' | 'over' }

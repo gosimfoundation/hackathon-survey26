@@ -144,7 +144,7 @@ onMounted(() => {
     if (!q('[data-testid="compete-tabs"]')) return
     clearInterval(poll)
     available.value = true
-    if (shouldAutoShow('v2', await seenKeys()) && !disposed) { autoRequested.value = true; requestOverlay(COMPETE_GUIDE_POPUP) }
+    if (shouldAutoShow('v2', await seenKeys(), !!location.hash) && !disposed) { autoRequested.value = true; requestOverlay(COMPETE_GUIDE_POPUP) }
   }, 250)
 })
 // Its turn as this page load's popup.
