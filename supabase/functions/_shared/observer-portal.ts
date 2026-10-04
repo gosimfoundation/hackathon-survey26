@@ -51,13 +51,37 @@ async function boundedDownload(url: string, fetcher: typeof fetch, limit: number
     await response.body?.cancel();
     throw new ProxyError(503, "source_snapshot_unavailable");
   }
-  const chunks: Uint8Array[] = [];
   let size = 0;
-  for await (const chunk of response.body) {
-    size += chunk.length;
-    if (size > limit) throw new ProxyError(400, "source_too_large");
-    chunks.push(chunk);
+  const body = response.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        size += chunk.length;
+        if (size > limit) throw new ProxyError(400, "source_too_large");
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+  // A large archive goes through a temporary file: holding thousands of network
+  // chunks in memory costs several times the archive size (each keeps its larger
+  // buffer) and can exceed the function's memory limit. Without a writable temporary
+  // directory (tests) every chunk is copied to its own size instead.
+  let path: string | null = null;
+  try {
+    path = await Deno.makeTempFile({ prefix: "source-", suffix: ".zip" });
+  } catch {
+    path = null;
   }
+  if (path) {
+    try {
+      const file = await Deno.open(path, { write: true, truncate: true });
+      await body.pipeTo(file.writable);
+      return await Deno.readFile(path);
+    } finally {
+      await Deno.remove(path).catch(() => {});
+    }
+  }
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of body) chunks.push(chunk.slice());
   const out = new Uint8Array(size);
   let at = 0;
   for (const chunk of chunks) {
