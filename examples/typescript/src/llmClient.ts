@@ -80,8 +80,10 @@ export class LLMAdvisor {
               { role: "system", content: system },
               { role: "user", content: user },
             ],
-            temperature: 0,
-            max_tokens: 200,
+            // No temperature: Kimi Coding Plan models (k3 / kimi-for-coding) reject any value
+            // but 1 with HTTP 400, so leave it to the provider's default. Reasoning models
+            // spend tokens thinking before the JSON answer, hence the roomy cap.
+            max_tokens: 1024,
           }),
           signal: controller.signal,
         });
