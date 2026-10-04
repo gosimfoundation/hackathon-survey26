@@ -105,7 +105,7 @@ def receipt(run, digest, total):
 
 
 # Model proxy retirement switches (20261004080000), off by default.
-OFF = {"prepare_direct_model": False, "model_proxy_retired": False}
+OFF = {"prepare_direct_model": False, "model_proxy_retired": False, "open_egress": False}
 
 
 def test_switches_default_on_and_are_service_role_only(formal):

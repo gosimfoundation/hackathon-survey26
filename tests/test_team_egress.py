@@ -41,8 +41,9 @@ def test_variable_names():
 def test_payload_validation():
     good = {"environment": {"OPENAI_API_KEY": "sk-1", "OPENAI_MODEL": "k3"}, "secrets": ["OPENAI_API_KEY"],
             "domains": ["api.kimi.com"]}
-    assert checked_team_egress(good) == good
-    for bad in (None, {}, {**good, "extra": 1}, {**good, "domains": ["127.0.0.1"]},
+    assert checked_team_egress(good) == {**good, "open": False}
+    assert checked_team_egress({**good, "open": True})["open"] is True
+    for bad in (None, {}, {**good, "extra": 1}, {**good, "open": False}, {**good, "open": "yes"}, {**good, "domains": ["127.0.0.1"]},
                 {**good, "domains": ["a.com"] * 2}, {**good, "domains": [f"d{i}.com" for i in range(11)]},
                 {**good, "secrets": ["MISSING"]}, {**good, "environment": {"PATH": "/x"}},
                 {**good, "environment": {"K": "x" * 8193}}, {**good, "environment": {"K": 1}},
@@ -182,10 +183,117 @@ def test_direct_tls_is_spliced_by_server_name(sidecar):
 def test_production_script_never_carries_test_settings():
     script = render_team_proxy_script(["api.kimi.com"]).decode()
     assert 'TEST_HOSTS, TEST_PORT = {}, 0' in script and '["api.kimi.com"]' in script
+    assert "PORTS = frozenset([443])" in script and "DNS = 0" in script
+    opened = render_team_proxy_script(None).decode()
+    assert 'TEST_HOSTS, TEST_PORT = {}, 0' in opened and "ALLOWED = None" in opened
+    assert "PORTS = frozenset([443, 80])" in opened and "DNS = 1" in opened
     with pytest.raises(JobError):
         render_team_proxy_script(["allowed.test"])
     with pytest.raises(JobError):
         render_team_proxy_script(["10.0.0.1"])
+
+
+@pytest.fixture(scope="module")
+def open_sidecar(tls_stub, tmp_path_factory):
+    """Open mode: any public destination on 443/80, DNS answers, per-destination record."""
+    port, _ = tls_stub
+    http = _http_stub()
+    report = tmp_path_factory.mktemp("report") / "egress.json"
+    ports = {name: _free_port() for name in ("connect", "tls", "dns")}
+    script = render_team_proxy_script(
+        None, connect_port=ports["connect"], tls_port=ports["tls"], http_port=http["proxy_port"],
+        dns_port=ports["dns"], report=str(report), test_port=port, dns=True,
+        test_hosts={"public.test": ["127.0.0.1"], "anything.test": ["127.0.0.1"], "private.test": ["10.0.0.5"],
+                    "rebind.test": ["127.0.0.1", "192.168.0.2"], "metadata.test": ["169.254.169.254"],
+                    "cgnat.test": ["100.64.1.1"], "v6local.test": ["::1"], "mapped.test": ["::ffff:10.0.0.1"]})
+    process = subprocess.Popen([sys.executable, "-u", "-"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    process.stdin.write(script)
+    process.stdin.close()
+    assert process.stdout.readline().strip() == b"READY"
+    yield {**ports, "http": http["proxy_port"], "report": report, "http_stub": http}
+    process.kill()
+    process.wait()
+
+
+def _http_stub():
+    """A plain HTTP server on the TLS stub's port? No: the open sidecar's port-80 handler
+    connects to TEST_PORT as well, so HTTP tests use the TLS stub's port only for refusals."""
+    return {"proxy_port": _free_port()}
+
+
+def test_open_mode_connects_any_public_host_and_refuses_internal_ones(open_sidecar):
+    connect = open_sidecar["connect"]
+    for target in ("public.test:443", "anything.test:443"):
+        status, body = _via_connect(connect, target)
+        assert b" 200 " in status and body == b"HELLO " + target.split(":")[0].encode(), target
+    for target in ("private.test:443", "rebind.test:443", "metadata.test:443", "cgnat.test:443",
+                   "v6local.test:443", "mapped.test:443", "public.test:22", "public.test:8080",
+                   "127.0.0.1:443", "10.0.0.1:443", "169.254.169.254:80", "[::1]:443", "unknown.test:443"):
+        assert b" 200 " not in _via_connect(connect, target)[0], target
+    assert _via_tls(open_sidecar["tls"], "anything.test") == b"HELLO anything.test"
+    for name in ("private.test", "metadata.test", "rebind.test"):
+        with pytest.raises((ssl.SSLError, OSError)):
+            _via_tls(open_sidecar["tls"], name)
+
+
+def test_open_mode_plain_http_is_routed_by_host_and_refused_for_internal_hosts(open_sidecar):
+    def get(host):
+        with socket.create_connection(("127.0.0.1", open_sidecar["http"]), timeout=10) as raw:
+            raw.sendall(f"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n".encode())
+            raw.settimeout(5)
+            try:
+                return raw.recv(1024)
+            except (ConnectionResetError, socket.timeout):
+                return b""
+    for host in ("private.test", "metadata.test", "rebind.test", "127.0.0.1", "169.254.169.254"):
+        assert b" 403 " in get(host), host
+
+
+def test_open_mode_dns_answers_every_name_with_the_sidecar():
+    import struct
+    port = _free_port()
+    script = render_team_proxy_script(None, connect_port=_free_port(), tls_port=_free_port(), http_port=_free_port(),
+                                      dns_port=port, test_port=1, dns=True, report="/dev/null")
+    process = subprocess.Popen([sys.executable, "-u", "-"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    process.stdin.write(script)
+    process.stdin.close()
+    try:
+        assert process.stdout.readline().strip() == b"READY"
+        own = socket.gethostbyname(socket.gethostname())
+        def ask(name, qtype):
+            query = b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + b"".join(
+                bytes([len(p)]) + p.encode() for p in name.split(".")) + b"\x00" + struct.pack(">HH", qtype, 1)
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.settimeout(5)
+                sock.sendto(query, ("127.0.0.1", port))
+                return sock.recv(512)
+        answer = ask("api.kimi.com", 1)
+        assert answer[:2] == b"\x12\x34" and answer[6:8] == b"\x00\x01" and answer[-4:] == socket.inet_aton(own)
+        assert ask("example.org", 28)[6:8] == b"\x00\x00"          # AAAA: no answer
+    finally:
+        process.kill()
+        process.wait()
+
+
+def test_open_mode_records_each_destination_without_content(open_sidecar):
+    import json
+    import time
+    from project_platform.team_egress import checked_report, report_text
+    _via_connect(open_sidecar["connect"], "public.test:443")
+    _via_connect(open_sidecar["connect"], "private.test:443")
+    time.sleep(1.5)
+    rows = checked_report(json.loads(open_sidecar["report"].read_text()))
+    by = {(r["host"], r["port"]): r for r in rows}
+    ok = by[("public.test", 443)]
+    assert ok["connections"] >= 1 and ok["bytes_up"] > 0 and ok["bytes_down"] > 0 and ok["first"] <= ok["last"]
+    assert by[("private.test", 443)]["refused"] >= 1 and by[("private.test", 443)]["connections"] == 0
+    raw = open_sidecar["report"].read_text()
+    assert "HELLO" not in raw and "GET /" not in raw
+    text = report_text(rows)
+    assert "public.test:443" in text and "no content is recorded" in text
+    # Re-validation drops malformed entries.
+    assert checked_report([{"host": "x;rm", "port": 1}, "junk", {**ok, "port": -1}]) == []
 
 
 # --- real Docker: a container on the internal network --------------------------------------
@@ -260,9 +368,13 @@ def _fake_egress(events):
         network = "observer-egress-" + "1" * 32
         environment = {"HTTPS_PROXY": "http://172.30.0.2:3128", "https_proxy": "http://172.30.0.2:3128"}
 
-        def __init__(self, domains, *, client_env):
-            events.append(("team-egress", tuple(domains)))
-            self.hosts = [f"{d}:172.30.0.2" for d in domains]
+        report = [{"host": "api.kimi.com", "port": 443, "connections": 2, "refused": 0, "bytes_up": 10,
+                   "bytes_down": 20, "first": "2026-10-04T00:00:00Z", "last": "2026-10-04T00:00:01Z"}]
+
+        def __init__(self, domains, *, client_env, open=False):
+            events.append(("team-egress", tuple(domains), open))
+            self.hosts = [] if open else [f"{d}:172.30.0.2" for d in domains]
+            self.dns = "172.30.0.2" if open else None
 
         def pull(self):
             events.append("forwarder-pull")
@@ -318,10 +430,12 @@ def test_engine_job_injects_team_variables_and_joins_only_the_team_network(monke
                "scenario_url": "https://platform.test/c", "scenario_digest": "c" * 64, "runtime_seconds": 900,
                "archive_url": "https://platform.test/a", "colocated": participant, "restricted_egress": True,
                "team_egress": TEAM}
-    with pytest.raises(job_runner.ProjectJobFailure):
+    with pytest.raises(job_runner.ProjectJobFailure) as failure:
         job_runner.engine_job(payload, tmp_path, job_runner.Http(local=False))
-    assert events[0] == ("team-egress", ("api.kimi.com", "api.deepseek.com"))
-    assert events[-2:] == ["forwarder-start", "forwarder-close"]
+    assert events[0] == ("team-egress", ("api.kimi.com", "api.deepseek.com"), False)
+    assert "forwarder-start" in events and events[-1] == "forwarder-close"
+    # Even a failed run hands over its destination record (job receipt -> database).
+    assert failure.value.egress[0]["host"] == "api.kimi.com"
     assert started["kwargs"]["hosts"] == ("api.kimi.com:172.30.0.2", "api.deepseek.com:172.30.0.2")
     env = started["env"]
     # The team's variables, the run identity and the proxy; never the platform model proxy.
@@ -360,3 +474,123 @@ def test_docker_start_merges_team_variables_over_the_manifest_and_redacts_secret
     with pytest.raises(ProjectError):
         runtime.start({k: v for k, v in run_env.items() if k != "HTTPS_PROXY"}, team=TEAM,
                       hosts=("api.kimi.com:172.30.0.2",))
+
+
+def test_engine_job_open_mode_uses_sidecar_dns_and_records_destinations(monkeypatch, tmp_path):
+    import json
+    import uuid
+    from project_platform import job_runner
+    from project_platform.docker_runtime import DockerWorkspace
+
+    events, started, published = [], {}, {}
+    real_start = DockerWorkspace.start
+
+    def start(self, environment, **kwargs):
+        transport = real_start(self, environment, **kwargs)
+        started.update(env=dict(transport.environment), command=list(transport.command), kwargs=kwargs)
+        return transport
+
+    run = str(uuid.uuid4())
+    manifest = {"schema_version": "observer-project-v1", "image": "python@sha256:" + "e" * 64, "run": ["python3"]}
+    participant = {"run_credential": f"obs_{run}." + "p" * 43, "model_base_url": "https://platform.test/m/v1",
+                   "source_digest": "d" * 64, "manifest": manifest}
+    (tmp_path / "project").mkdir()
+    monkeypatch.setattr(job_runner, "TeamEgress", _fake_egress(events))
+    monkeypatch.setattr(job_runner, "_participant_runtime", lambda payload, p, root, http, sealed=None: (
+        DockerWorkspace(tmp_path / "project", job_runner.ProjectManifest.parse(manifest), manifest["image"]),
+        {"OBSERVER_API_URL": "https://platform.test/s", "OBSERVER_RUN_TOKEN": p["run_credential"],
+         "OBSERVER_RUN_ID": run, "OPENAI_BASE_URL": p["model_base_url"], "OPENAI_API_KEY": p["run_credential"]}))
+    monkeypatch.setattr(job_runner, "download_project", lambda *a: ())
+    monkeypatch.setattr(job_runner, "extract_project", lambda files, root: root.mkdir(parents=True))
+    monkeypatch.setattr(job_runner, "is_v4_bundle", lambda root: True)
+    monkeypatch.setattr(DockerWorkspace, "pull", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "build", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "start", start)
+    monkeypatch.setattr(job_runner, "ColocatedProvider", lambda *a: None)
+    monkeypatch.setattr(job_runner, "run_session", lambda scenario, output, *a, **k: (output.mkdir(parents=True,
+                        exist_ok=True), ({"status": "scored"}, "f" * 64))[1])
+
+    def publish(payload, client, output, result, digest, http, credentials, sealed=None):
+        published.update({p.name: p.read_text() for p in output.iterdir()})
+        return {"run_id": payload["run_id"], "result_path": "x", "decisions_digest": digest}
+    monkeypatch.setattr(job_runner, "_publish_result", publish)
+    payload = {"run_id": run, "run_credential": f"obs_{run}." + "e" * 43, "session_url": "https://platform.test/s",
+               "scenario_url": "https://platform.test/c", "scenario_digest": "c" * 64, "runtime_seconds": 900,
+               "archive_url": "https://platform.test/a", "colocated": participant,
+               "team_egress": {**TEAM, "domains": [], "open": True}}
+    receipt = job_runner.engine_job(payload, tmp_path, job_runner.Http(local=False))
+    assert events[0] == ("team-egress", (), True)
+    command = started["command"]
+    assert command[command.index("--dns") + 1] == "172.30.0.2" and "--add-host" not in command
+    assert receipt["egress"][0]["host"] == "api.kimi.com"
+    assert json.loads(published["egress.json"])[0]["bytes_down"] == 20
+    assert "api.kimi.com:443 | 2 | 0 | 10 | 20" in published["agent.log"]
+
+
+@pytest.mark.skipif(not _docker_available(), reason="Docker is required")
+def test_docker_open_mode_reaches_public_hosts_only_and_records_them():
+    """Real network, open mode: public hosts work by proxy, by direct TLS and by plain HTTP;
+    names resolving to loopback / private / metadata addresses, IP routes and other ports fail;
+    the sidecar's record lists the destinations."""
+    import json
+    import os
+    from project_platform.egress import PROXY_IMAGE
+    from project_platform.team_egress import TeamEgress
+    env = {k: os.environ[k] for k in ("PATH", "HOME", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG")
+           if k in os.environ}
+    egress = TeamEgress([], client_env=env, open=True)
+    probe = r"""
+import json, os, socket, urllib.request
+out = {}
+def get(url, proxy=True):
+    opener = urllib.request.build_opener() if proxy else urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(url, timeout=20) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        return e.code
+    except Exception as e:
+        return type(e).__name__
+out["proxy_github"] = get("https://api.github.com/zen")
+out["proxy_google"] = get("https://www.google.com/")
+out["direct_github"] = get("https://api.github.com/zen", proxy=False)
+out["direct_http"] = get("http://example.com/", proxy=False)
+out["proxy_loopback_name"] = get("https://localtest.me/")
+out["direct_loopback_name"] = get("https://localtest.me/", proxy=False)
+out["proxy_private_name"] = get("https://10.0.0.1.nip.io/")
+out["proxy_metadata_name"] = get("https://169.254.169.254.nip.io/")
+out["direct_metadata_http"] = get("http://169.254.169.254.nip.io/latest/meta-data/", proxy=False)
+out["proxy_other_port"] = get("https://portquiz.net:8443/")
+for name, (host, port) in {"ip_direct": ("1.1.1.1", 443), "metadata_ip": ("169.254.169.254", 80)}.items():
+    try:
+        socket.create_connection((host, port), timeout=5).close(); out[name] = "open"
+    except OSError:
+        out[name] = "blocked"
+print(json.dumps(out))
+"""
+    try:
+        egress.start()
+        command = ["docker", "run", "--rm", "--network", egress.network, "--cap-drop=ALL", "--user", "65534:65534",
+                   "--dns", egress.dns]
+        for key, value in egress.environment.items():
+            command += ["-e", f"{key}={value}"]
+        result = subprocess.run(command + ["--entrypoint", "python3", PROXY_IMAGE, "-c", probe],
+                                capture_output=True, text=True, timeout=300, env=env)
+        assert result.returncode == 0, result.stderr + egress.log
+        out = json.loads(result.stdout.strip().splitlines()[-1])
+        assert out["proxy_github"] == 200 and out["direct_github"] == 200, out
+        assert out["proxy_google"] == 200 and out["direct_http"] == 200, out
+        for key in ("proxy_loopback_name", "direct_loopback_name", "proxy_private_name", "proxy_metadata_name",
+                    "direct_metadata_http", "proxy_other_port"):
+            assert out[key] not in (200, 301, 302, 404), (key, out)
+        assert out["ip_direct"] == "blocked" and out["metadata_ip"] == "blocked", out
+        report = egress.collect()
+    finally:
+        egress.close()
+    by = {(r["host"], r["port"]): r for r in egress.report}
+    assert by[("api.github.com", 443)]["connections"] >= 2 and by[("api.github.com", 443)]["bytes_down"] > 0
+    assert by[("example.com", 80)]["connections"] >= 1
+    assert by[("localtest.me", 443)]["refused"] >= 1 and by[("localtest.me", 443)]["connections"] == 0
+    assert by[("169.254.169.254.nip.io", 80)]["refused"] >= 1, (egress.report, out)
+    assert by[("169.254.169.254.nip.io", 443)]["refused"] >= 1 and by[("portquiz.net", 8443)]["refused"] >= 1
+    assert report == egress.report

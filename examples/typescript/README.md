@@ -168,14 +168,16 @@ set -a && source .env && set +a && node dist/index.js < some_transcript.jsonl
 
 The platform does not inject a model endpoint. In the **Keys and network** section of
 Participate, save the variables this agent reads (`OPENAI_API_KEY`, and if needed
-`OPENAI_BASE_URL` / `OPENAI_MODEL`) and add the endpoint's domain (for the default Kimi
-endpoint: `api.kimi.com`). During evaluation these variables are the program's environment and
-only the listed domains are reachable, over HTTPS (port 443); `.env` is never read and never
-packed into the ZIP. The platform also sets `HTTPS_PROXY`: HTTP clients that honour it use it
-automatically, and clients that ignore it connect to the listed domains directly.
+`OPENAI_BASE_URL` / `OPENAI_MODEL`). During evaluation these variables are the program's
+environment, and the program can reach any public address over HTTPS (port 443) and HTTP
+(port 80); other ports, private and internal addresses and cloud metadata addresses are
+unreachable. `.env` is never read and never packed into the ZIP. The platform also sets
+`HTTPS_PROXY`: HTTP clients that honour it use it automatically, and clients that ignore it can
+connect by host name directly. Every address the program connects to is recorded (host, port,
+connection count, bytes, first and last time; never content) in your run log and result files.
 
-Several providers, protocols and models can be used at the same time: save one key per provider
-and add each provider's domain. Model calls are paid for by your team.
+Several providers, protocols and models can be used at the same time: save one key per provider.
+Model calls are paid for by your team.
 
 ## Submitting
 

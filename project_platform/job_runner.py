@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import hashlib
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -12,7 +13,7 @@ from .artifacts import download_project, pack_results, store_private_artifact, u
 from .docker_runtime import DockerWorkspace
 from .diagnostics import ProjectJobFailure, agent_log, private_log, safe_code
 from .egress import RestrictedEgress, anthropic_base
-from .team_egress import TeamEgress, checked_team_egress
+from .team_egress import TeamEgress, checked_team_egress, report_text
 from .executor import execute
 from .job_client import GitHubIdentity, Http, JobClient, JobError
 from .manifest import ProjectError, ProjectManifest
@@ -56,6 +57,16 @@ def _team_environment(environment: dict[str, str]) -> dict[str, str]:
     return {key: environment[key] for key in ("OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID")}
 
 
+def _team_egress(team: dict, client_env: dict[str, str]) -> TeamEgress:
+    """Open egress (any public destination) or the team's allow-list, as the payload says."""
+    return TeamEgress(team["domains"], client_env=client_env, open=team.get("open") is True)
+
+
+def _start_with(runtime, egress: TeamEgress, team: dict, environment: dict[str, str]):
+    return runtime.start({**_team_environment(environment), **egress.environment}, team=team,
+                         hosts=tuple(egress.hosts), dns=egress.dns)
+
+
 def _team_secrets(team: dict | None) -> tuple[str, ...]:
     if team is None:
         return ()
@@ -91,7 +102,7 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         # The image is immutable; pull happens on the disposable execution host,
         # before any participant process. No installation/model master keys exist.
         runtime.pull()
-        egress = TeamEgress(team["domains"], client_env=runtime.client_env) if team is not None else None
+        egress = _team_egress(team, runtime.client_env) if team is not None else None
         if egress is not None:
             # The build keeps its registry access; only the run joins the internal network.
             runtime.build()
@@ -100,7 +111,7 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
             runtime.network = egress.network
             start = runtime.start
             runtime.start = lambda env: start({**_team_environment(env), **egress.environment}, team=team,
-                                              hosts=tuple(egress.hosts))
+                                              hosts=tuple(egress.hosts), dns=egress.dns)
         outcome = execute(runtime, client, environment)
     except Exception as error:
         runtime.close()
@@ -108,15 +119,21 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
             egress.close()
         log, full = logs()
         failure = ProjectJobFailure({'stage':'execute','code':safe_code(error),'log':log})
-        failure.agent_log = full
+        failure.agent_log = (full or '') + (report_text(egress.report) if egress is not None else '')
+        if egress is not None:
+            failure.egress = egress.report
         raise failure from None
     finally:
         runtime.close()
         if egress is not None:
             egress.close()
     log, full = logs()
-    return {"run_id": payload["run_id"], "status": outcome["status"],
-            'diagnostics':{'stage':'execute','code':'completed','log':log}, AGENT_LOG_KEY: full}
+    result = {"run_id": payload["run_id"], "status": outcome["status"],
+              'diagnostics':{'stage':'execute','code':'completed','log':log},
+              AGENT_LOG_KEY: (full or '') + (report_text(egress.report) if egress is not None else '')}
+    if egress is not None:
+        result["egress"] = egress.report
+    return result
 
 
 class SealedTransfer:
@@ -194,7 +211,7 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         # Otherwise the organizer switch (observer_hardening.restricted_egress),
         # carried in the payload: the running project reaches the model proxy only.
         if team is not None:
-            egress = TeamEgress(team["domains"], client_env=runtime.client_env)
+            egress = _team_egress(team, runtime.client_env)
         elif payload.get("restricted_egress") is True:
             egress = RestrictedEgress(participant["model_base_url"], client_env=runtime.client_env, local=http.local)
         else:
@@ -214,8 +231,7 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
             if isinstance(egress, TeamEgress):
                 egress.start()
                 runtime.network = egress.network
-                transport = runtime.start({**_team_environment(environment), **egress.environment}, team=team,
-                                          hosts=tuple(egress.hosts))
+                transport = _start_with(runtime, egress, team, environment)
             else:
                 if egress:
                     egress.start()
@@ -227,8 +243,13 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
             result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],
                                         provider=provider)
         except Exception as error:
-            raise ProjectJobFailure({'stage':'execute','code':safe_code(error),
-                'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),secrets)}) from None
+            failure = ProjectJobFailure({'stage':'execute','code':safe_code(error),
+                'log':private_log(runtime.build_log+'\n'+(runtime.transport.log if runtime.transport else ''),secrets)})
+            runtime.close()
+            if isinstance(egress, TeamEgress):
+                egress.close()
+                failure.egress = egress.report
+            raise failure from None
         finally:
             runtime.close()
             if egress:
@@ -237,9 +258,16 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         # its private result, next to decisions.csv.
         text = agent_log(runtime.build_log, runtime.transport.log if runtime.transport else '', secrets,
                          truncated=bool(runtime.transport and runtime.transport.log_truncated))
+        if isinstance(egress, TeamEgress):
+            # The platform's record of every destination (no content), for the team and the organizers.
+            text = (text or '') + report_text(egress.report)
+            (output / "egress.json").write_text(json.dumps(egress.report, indent=1))
         if text:
             (output / "agent.log").write_text(text)
-        return _publish_result(payload, client, output, result, digest, http, repository_credentials, sealed)
+        receipt = _publish_result(payload, client, output, result, digest, http, repository_credentials, sealed)
+        if isinstance(egress, TeamEgress):
+            receipt["egress"] = egress.report
+        return receipt
     if sealed is not None:
         # The public pool takes colocated public-scenario runs only.
         raise JobError("sealed_transfer_mismatch")
@@ -360,7 +388,10 @@ def run_claimed(kind: str, client: JobClient, root: Path) -> None:
             # Must precede the receipt: the job API binds the log to this run
             # only while the job is still claimed.
             deliver_agent_log(client, getattr(error, "agent_log", None))
-        client.complete({'diagnostics':diagnostics}, error=kind + "_job_failed")
+        receipt = {'diagnostics':diagnostics}
+        if isinstance(getattr(error, "egress", None), list):
+            receipt["egress"] = error.egress
+        client.complete(receipt, error=kind + "_job_failed")
         raise JobError(kind + "_job_failed") from None
     if kind == "execute":
         deliver_agent_log(client, result.pop(AGENT_LOG_KEY, None))

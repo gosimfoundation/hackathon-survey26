@@ -1,6 +1,53 @@
 # Participant keys, network access and model APIs
 
-## Keys and network (team egress)
+## Open egress and the egress log (current)
+
+With `observer_hardening.open_egress` on (or the team in `open_egress_teams`;
+migration `20261004120000_open_egress_and_egress_log`), the team's domain list is
+not used. The scheduler sends `team_egress: {environment, secrets, domains: [],
+open: true}` and the runner's sidecar (`project_platform/team_egress.py`, open
+mode) lets the participant container reach **any public destination on port 443
+or 80**:
+
+- HTTPS `CONNECT host:443|80` on port 3128 (`HTTPS_PROXY`/`https_proxy` are set;
+  `HTTP_PROXY` is not, so plain `http://` goes the transparent way);
+- transparent: the sidecar is the container's DNS server (`--dns`) and answers
+  every A query with its own address (AAAA: empty), then splices TLS on 443 by the
+  ClientHello's server name and HTTP on 80 by the `Host` header.
+
+Other ports are refused (only 443 and 80 are needed for HTTP APIs; add one to
+`OPEN_PORTS` if a real need appears). The sidecar resolves every destination
+itself and refuses it unless **every** address is public (`ipaddress.is_global`,
+not multicast; IPv4-mapped IPv6 unwrapped): private, loopback, link-local
+(169.254/16, so every cloud metadata address), CGNAT (100.64/10), benchmarking and
+documentation ranges are never reached, also when a public name resolves or
+rebinds to them. A public IP literal is allowed through CONNECT; the container has
+no route of its own, so direct IP connections without the proxy fail.
+
+**Egress log.** The sidecar keeps, per destination host and port, connections,
+refusals (blocked or unreachable), bytes up/down and first/last time (UTC), at
+most 500 destinations (more go to `(other)`), never any content, in
+`/tmp/egress.json` inside the sidecar. The runner reads it before removing the
+sidecar and:
+
+- appends a table to the team's run log (`agent.log`, "Network connections during
+  this run") and writes `egress.json` into the run's result bundle (engine jobs);
+- puts it into the job receipt (`result.egress`, also for failed runs); a trigger
+  on `private.observer_jobs` copies it into `private.observer_run_egress`
+  (organizers: `select * from private.observer_run_egress where run_id=...`);
+  teams: `observer_run_egress_log(p_run)` for their own runs.
+
+**Rollout / rollback.** Pilot: `update private.observer_hardening set
+open_egress_teams=array['<team>']::uuid[] where id;` Global:
+`update private.observer_hardening set open_egress=true where id;` Rollback (one
+line): `update private.observer_hardening set open_egress=false, open_egress_teams='{}' where id;`
+New runs then use each team's domain list again (allow-list mode below). The
+workspace hides the domain list while open egress is on.
+
+Automatic adaptation (preparation) with open egress accepts any public https base
+name (no IP literal, internal name or other port) for `*_BASE_URL`.
+
+## Keys and network (team egress, allow-list mode)
 
 With the organizer switch `observer_hardening.team_egress` on, the platform no
 longer relays model traffic for project runs. Each team saves, in the workspace

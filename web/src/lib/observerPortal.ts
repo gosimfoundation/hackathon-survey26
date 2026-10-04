@@ -20,6 +20,7 @@ export type TeamModel = {
 export type TeamVariable = { name: string; secret: boolean; hint: string; value: string | null; updated_at: string }
 export type TeamEnvironment = {
   enabled: boolean
+  open?: boolean
   variables: TeamVariable[]
   domains: string[]
   relay_key_missing: boolean

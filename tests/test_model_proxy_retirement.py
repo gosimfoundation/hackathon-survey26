@@ -126,14 +126,27 @@ def test_anthropic_variables_use_messages_and_answer_in_chat_shape():
 
 @pytest.mark.parametrize('change,message', [
     ({'OPENAI_MODEL': ''}, 'OPENAI_MODEL'),
-    ({'OPENAI_BASE_URL': 'https://169.254.169.254/v1'}, 'allowed domains'),
-    ({'OPENAI_BASE_URL': 'http://api.kimi.com/v1'}, 'allowed domains'),
+    ({'OPENAI_BASE_URL': 'https://169.254.169.254/v1'}, 'public https'),
+    ({'OPENAI_BASE_URL': 'http://api.kimi.com/v1'}, 'public https'),
+    ({'OPENAI_BASE_URL': 'https://api.other.com/v1'}, 'public https'),
     ({'OPENAI_API_KEY': ''}, 'OPENAI_API_KEY'),
 ])
 def test_direct_access_needs_a_model_and_an_allowed_https_base(change, message):
     team = {**TEAM, 'environment': {**TEAM['environment'], **change}}
     with pytest.raises(ProjectError, match=message):
         team_model_client(team)
+
+
+def test_open_egress_allows_any_public_https_name_for_direct_access():
+    for base in ('https://api.other.com/v1', 'https://api.kimi.com/coding/v1'):
+        team = {**TEAM, 'domains': [], 'open': True, 'environment': {**TEAM['environment'], 'OPENAI_BASE_URL': base}}
+        client, _ = team_model_client(team)
+        assert client.url == base + '/chat/completions'
+    for base in ('https://169.254.169.254/v1', 'https://10.0.0.1/v1', 'https://svc.internal/v1', 'http://api.other.com/v1',
+                 'https://localhost/v1', 'https://api.other.com:8443/v1'):
+        team = {**TEAM, 'domains': [], 'open': True, 'environment': {**TEAM['environment'], 'OPENAI_BASE_URL': base}}
+        with pytest.raises(ProjectError, match='public https'):
+            team_model_client(team)
 
 
 def test_provider_errors_never_carry_provider_text_and_transient_ones_retry_once(monkeypatch):
