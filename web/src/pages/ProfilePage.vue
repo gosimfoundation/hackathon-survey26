@@ -115,7 +115,9 @@ async function changePassword() {
 <template>
   <DashShell :kicker="t('dash.title')" :title="t('profile.title')">
     <p v-if="loading" class="text3 text-sm">{{ t('common.loading') }}</p>
-    <div v-else class="dash-grid">
+    <!-- Near the top, so it is easy to find (owner feedback); the profile form follows. -->
+    <WechatQrPanel v-if="!loading" class="qr-top" />
+    <div v-if="!loading" class="dash-grid">
       <div class="panel">
         <div class="hd"><h2>{{ t('profile.title') }}</h2><span class="m text3 text-sm">{{ me?.email }}</span></div>
         <div class="avatar-row mb-4" v-if="me">
@@ -180,9 +182,12 @@ async function changePassword() {
           </form>
         </div>
         <FriendsPanel />
-        <WechatQrPanel />
         <ApiTokensPanel />
       </div>
     </div>
   </DashShell>
 </template>
+
+<style scoped>
+.qr-top { margin-bottom: 2rem; }
+</style>

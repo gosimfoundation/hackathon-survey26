@@ -154,7 +154,8 @@
     },
     "register_float": "Register",
     "about": "About",
-    "find_uid": "Find by UID"
+    "find_uid": "Find by UID",
+    "wechat_qr": "WeChat QR code"
   },
   "hero": {
     "eyebrow": "GOSIM Hackathon · Intelligent Survey Operations",
@@ -2844,7 +2845,12 @@
       "invalid_visibility": "Unknown visibility.",
       "storage_unavailable": "Upload failed. Please try again shortly.",
       "admin_only": "Organizers only."
-    }
+    },
+    "prompt": "Upload your WeChat QR code so others can reach you.",
+    "prompt_button": "Upload WeChat QR code",
+    "prompt_done": "Saved. By default only your friends can see it.",
+    "prompt_settings": "Change who can see it",
+    "menu": "WeChat QR code"
   },
   "cards": {
     "card_not_available": "This card is not available (the request or invitation may have been answered or withdrawn)."

@@ -135,6 +135,7 @@ async function logout() {
             <router-link v-for="item in foldedItems" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
             <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
             <router-link v-if="isLoggedIn" to="/teammates#find-uid" class="nav-drop-item" data-testid="nav-find-uid">{{ t('nav.find_uid') }}</router-link>
+            <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="nav-drop-item" data-testid="nav-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
           </div>
         </div>
         <router-link v-if="isLoggedIn" to="/dashboard" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="dashActive() ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.dashboard') }}<span v-if="pendingAll" class="nav-count" data-testid="nav-dashboard-count">{{ badgeText(pendingAll) }}</span></router-link>
@@ -168,6 +169,7 @@ async function logout() {
       <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
       <router-link v-if="isLoggedIn" to="/dashboard" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.dashboard') }}</router-link>
       <router-link v-if="isLoggedIn" to="/teammates#find-uid" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-find-uid">{{ t('nav.find_uid') }}</router-link>
+      <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
       <router-link v-if="isLoggedIn && pendingTeamActions" to="/team#requests" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-team-requests">{{ pick('Team requests waiting for you', '待处理的组队请求') }} <span class="nav-count">{{ badgeText(pendingTeamActions) }}</span></router-link>
       <router-link v-if="isLoggedIn && pendingFriendRequests" to="/profile#friends" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-friend-requests">{{ pick('Friend requests waiting for you', '待处理的好友请求') }} <span class="nav-count">{{ badgeText(pendingFriendRequests) }}</span></router-link>
       <router-link v-if="isAdmin" to="/admin" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.admin') }}</router-link>
