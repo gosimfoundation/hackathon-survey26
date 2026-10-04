@@ -714,3 +714,37 @@ Deno.test("a ZIP without any program is refused before a revision exists; a miss
   assertEquals(inspectSourceNames(["a/Cargo.toml"]).code, true);
   assertEquals(inspectSourceNames(["__MACOSX/a.py", ".git/hooks/x.sh", "a/README.md"]).code, false);
 });
+
+Deno.test("the workspace list shows https model bases and the team's own providers only", async () => {
+  const query = () => {
+    const chain: Record<string, unknown> = {};
+    for (const step of ["select", "order", "limit", "eq"]) chain[step] = () => chain;
+    chain.then = (resolve: (v: unknown) => void) => resolve({ data: [], error: null });
+    return chain;
+  };
+  const rpc = (name: string) =>
+    Promise.resolve({
+      data: name === "observer_list_providers"
+        ? [
+          { id: "a", base_url: "http://relay.organizer.test:8000/v1", shared: true },
+          { id: "b", base_url: "https://api.example.test/v1", shared: false },
+        ]
+        : null,
+      error: null,
+    });
+  const client = { from: query, rpc, storage: { from: () => ({}) } } as unknown as SupabaseClient;
+  const data = await portalRequest(
+    new Request("https://portal.test", { method: "POST", body: JSON.stringify({ action: "list" }) }),
+    {
+      user: client,
+      service: client,
+      userId: user,
+      masterKey: master,
+      modelBases: ["https://api.example.test/v1", "http://relay.organizer.test:8000/v1"],
+      httpBases: ["http://relay.organizer.test:8000/v1"],
+    },
+  ) as { model_bases: string[]; providers: { id: string }[] };
+  assertEquals(data.model_bases, ["https://api.example.test/v1"]);
+  assertEquals(data.providers.map((p) => p.id), ["b"]);
+  assert(!JSON.stringify(data).includes("relay.organizer.test"));
+});

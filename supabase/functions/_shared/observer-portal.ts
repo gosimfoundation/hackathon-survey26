@@ -296,10 +296,14 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         projects: results[1].data,
         batches: results[2].data,
         quota: quota.error ? null : quota.data,
-        providers: await userRpc("observer_list_providers"),
+        // The team's own legacy providers only: shared organizer entries (the retired
+        // model relay) are not the team's to see.
+        providers: ((await userRpc("observer_list_providers")) ?? []).filter((p: { shared?: boolean }) => !p.shared),
         team_model: await userRpc("observer_team_model"),
         team_environment: await optionalUserRpc("observer_team_environment"),
-        model_bases: d.modelBases,
+        // Only https:// bases are offered to teams (the page lists no other); internal
+        // http:// organizer relays stay private.
+        model_bases: d.modelBases.filter((base) => base.startsWith("https://")),
         // Informational like the quota; an older database without the RPC shows no choice.
         final_versions: finals.error ? null : finals.data,
       };
