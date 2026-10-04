@@ -125,3 +125,29 @@ export function canSelfCheck(quota: EvaluationQuota | null | undefined): boolean
 export function activeEvaluations(batches: { id: string; status: string; repeat_group?: string | null }[] | null | undefined): number {
   return new Set((batches ?? []).filter(b => ['queued', 'running'].includes(b.status)).map(b => b.repeat_group ?? b.id)).size
 }
+
+type FailureBatch = { id: string; status: string; created_at: string
+  observer_runs: { id: string; status: string }[] }
+/**
+ * The newest evaluation when it failed (the batch failed, or it finished with a failed card), else null.
+ * `run` is the first failed card, whose logs explain the failure.
+ */
+export function latestFailure<T extends FailureBatch>(batches: T[] | null | undefined): { batch: T; run: T['observer_runs'][number] | null } | null {
+  const newest = [...(batches ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+  if (!newest || ['queued', 'running'].includes(newest.status)) return null
+  const run = newest.observer_runs.find(r => r.status === 'failed') ?? null
+  return newest.status === 'failed' || run ? { batch: newest, run } : null
+}
+
+export type EvaluateBlock = 'busy' | 'phase_closed' | 'no_quota' | 'active_limit' | 'self_check_running' | 'self_check_quota' | null
+/** Why the evaluate (or, with selfCheck, the self-check) button is disabled; null when it can be clicked. */
+export function evaluateBlock(s: { busy: boolean; phaseEnabled: boolean; quota: EvaluationQuota | null | undefined
+  activeAtLimit: boolean; selfCheckActive?: boolean }, selfCheck = false): EvaluateBlock {
+  if (!s.phaseEnabled) return 'phase_closed'
+  if (s.quota && s.quota.remaining <= 0) return 'no_quota'
+  if (s.activeAtLimit) return 'active_limit'
+  if (selfCheck && s.selfCheckActive) return 'self_check_running'
+  if (selfCheck && !canSelfCheck(s.quota)) return 'self_check_quota'
+  if (s.busy) return 'busy'
+  return null
+}

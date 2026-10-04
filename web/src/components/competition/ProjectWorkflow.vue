@@ -8,10 +8,11 @@ import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
 import RunLogs from './RunLogs.vue'
+import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
-import { activeEvaluations, canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
@@ -111,6 +112,15 @@ const words = computed(() => pick({
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
   finalBadge: 'Final version', finalScore: 'score',
   finalRelay: 'If your program calls a large model, switch the model API to “Save encrypted on the server” before the competition ends; otherwise model calls will fail in the hidden final evaluation.',
+  concurrent: 'Running now', concurrentOf: 'of', blocked: 'Unavailable',
+  block_busy: 'Wait for the action in progress to finish.', block_phase_closed: 'This phase is not taking evaluations now.',
+  block_no_quota: 'No evaluations left today; the count resets at the time shown above.',
+  block_active_limit: 'Your team already has {n} evaluations running; start the next one when one finishes.',
+  block_self_check_running: 'An “Evaluate 3 times and average” set is already running; only one set runs at a time.',
+  block_self_check_quota: 'Evaluate 3 times and average needs 3 of today’s evaluations.',
+  submitBlocked: 'Today’s uploads are used up; they reset at the time shown above.', approveNeedsTest: 'This version did not pass the public scenario test, so it cannot be confirmed. Open its logs, fix the project and upload again.',
+  configured: 'Configured', otherVars: '{n} other variables', noVars: 'Nothing configured yet',
+  latestFailed: 'Latest evaluation failed', latestCardFailed: 'Latest evaluation has a failed card', openFailLog: 'View the failure log', notCounted: 'not counted toward the daily limit', latestPill: 'Latest · failed',
   apiFinalNote: 'Nobody keeps a page open during the hidden final evaluation: teams whose program calls a model must switch to “Save encrypted on the server” before the online phase ends.',
 }, {
   title: '智能体项目', intro: '提交完整项目，测试接口后，确认用于评测的具体版本。',
@@ -162,6 +172,15 @@ const words = computed(() => pick({
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
   finalBadge: '最终版本', finalScore: '分数',
   finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则隐藏任务卡 E–H 评测时模型调用会失败。',
+  concurrent: '同时进行', concurrentOf: '/', blocked: '暂不可用',
+  block_busy: '请等正在进行的操作完成。', block_phase_closed: '当前赛程暂不接受评测。',
+  block_no_quota: '今天的评测次数已用完，按上方的时间重置。',
+  block_active_limit: '本队已有 {n} 个评测在进行，等其中一个结束后再开始。',
+  block_self_check_running: '已有一组「评测 3 次取平均」在进行，同一时间只能进行一组。',
+  block_self_check_quota: '「评测 3 次取平均」需要今天剩余至少 3 次评测。',
+  submitBlocked: '今天的上传次数已用完，按上方的时间重置。', approveNeedsTest: '这个版本没有通过公开场景测试，不能确认。请查看日志，修正项目后重新上传。',
+  configured: '已配置', otherVars: '另有 {n} 个变量', noVars: '尚未配置',
+  latestFailed: '最近一次评测失败', latestCardFailed: '最近一次评测有卡片失败', openFailLog: '查看失败日志', notCounted: '未计入次数', latestPill: '最近一次 · 失败',
   apiFinalNote: '隐藏任务卡 E–H 评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
@@ -257,8 +276,9 @@ async function reload() {
   locked.value = new Set()
   modeChoice.value = modelMode.value
   protocolChoice.value = teamModelProtocol(data.value?.team_model)
-  if (!modelOpen.value && (savedModel.value || personal.everConfigured.value ||
-    data.value?.team_environment?.relay_key_missing || (teamEgress.value && data.value?.team_environment?.variables.length))) modelOpen.value = true
+  // Saved keys stay collapsed behind their summary; only things that need attention open the panel
+  // (a relay key connected in this tab, or a missing relay key).
+  if (!modelOpen.value && (personal.everConfigured.value || data.value?.team_environment?.relay_key_missing)) modelOpen.value = true
   await personal.refresh()
   // Bind evaluations to the entry phase (beta entry first), never to whatever
   // order the database happened to return.
@@ -335,6 +355,33 @@ function selfCheck(revision_id: string) {
   }, words.value.selfCheckQueued, 'selfcheck:' + revision_id)
 }
 const repeats = computed(() => repeatSummaries(data.value?.batches))
+// What the collapsed keys panel shows: the configured model services, other variables, or the saved key.
+const keysSummary = computed(() => {
+  if (teamEgress.value) {
+    const vars = data.value?.team_environment?.variables ?? []
+    const services = configuredServices(vars)
+    const used = new Set(services.flatMap(s => [s.names.key, s.names.baseUrl, s.names.model]))
+    const parts = services.map(s => `${s.label}${s.model ? ' · ' + s.model : ''} (${s.prefix}_*)`)
+    const rest = vars.filter(v => !used.has(v.name)).length
+    if (rest) parts.push(words.value.otherVars.replace('{n}', String(rest)))
+    return parts.join('；')
+  }
+  return savedModel.value ? `${savedModel.value.base_url} · ${savedModel.value.model}` : ''
+})
+const blockState = computed(() => ({ busy: busy.value, phaseEnabled: !!selectedPhase.value?.projects_enabled, quota: quota.value,
+  activeAtLimit: activeBatch.value, selfCheckActive: selfCheckActive.value }))
+const blockText = (b: EvaluateBlock) => b ? (words.value as Record<string, string>)['block_' + b]!.replace('{n}', String(activeLimit.value)) : ''
+const evalBlocked = computed(() => evaluateBlock(blockState.value))
+const selfCheckBlocked = computed(() => evaluateBlock(blockState.value, true))
+const runningNow = computed(() => activeEvaluations(data.value?.batches))
+// The newest evaluation when it failed: marked in the list and announced at the top with a link to its log.
+const failure = computed(() => latestFailure(data.value?.batches))
+function openFailure() {
+  const f = failure.value
+  if (!f) return
+  if (f.run) openLogs.value = 'run:' + f.run.id
+  void nextTick(() => document.getElementById('batch-' + f.batch.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
 // The position of an evaluation in its self-check (1 = the first one started).
 function repeatIndex(b: { id: string; repeat_group?: string | null }) {
   const own = (data.value?.batches ?? []).filter(x => x.repeat_group === b.repeat_group).sort((x, y) => x.created_at.localeCompare(y.created_at) || x.id.localeCompare(y.id))
@@ -459,11 +506,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <template v-else>
       <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
       <p v-if="notice" role="status" class="mb-4">{{ notice }}</p>
+      <p v-if="failure" class="latest-failure mb-5" role="status" data-testid="latest-failure">
+        <strong>{{ failure.batch.status === 'failed' ? words.latestFailed : words.latestCardFailed }}</strong>
+        <span>{{ when(failure.batch.created_at) }}<template v-if="failure.batch.revision_id && titles.get(failure.batch.revision_id)"> · {{ titles.get(failure.batch.revision_id) }}</template></span>
+        <span v-if="failure.batch.quota_refunded" class="pill info">{{ words.notCounted }}</span>
+        <button type="button" class="btn primary sm" data-testid="latest-failure-logs" @click="openFailure">{{ words.openFailLog }}</button>
+      </p>
       <p v-if="!projectsOpen" class="panel">{{ words.closed }}</p>
       <details class="panel mb-6 model-api" data-testid="model-api-settings" :open="modelOpen" @toggle="modelOpen = ($event.target as HTMLDetailsElement).open">
         <summary class="model-api-summary" data-testid="model-api-toggle">
           <span id="model-api" class="model-api-title" role="heading" aria-level="2">{{ teamEgress ? t('submit.team_env.title') : t('submit.model_api.title') }}</span>
-          <span class="help model-api-hint" data-testid="model-api-hint">{{ teamEgress ? (data?.team_environment?.open ? t('submit.team_env.collapsed_hint_open') : t('submit.team_env.collapsed_hint')) : t('submit.model_api.collapsed_hint') }}</span>
+          <span v-if="!modelOpen && keysSummary" class="model-api-configured" data-testid="model-api-configured"><span class="pill ok">{{ words.configured }}</span> {{ keysSummary }}</span>
+          <span v-else class="help model-api-hint" data-testid="model-api-hint">{{ teamEgress ? (data?.team_environment?.open ? t('submit.team_env.collapsed_hint_open') : t('submit.team_env.collapsed_hint')) : t('submit.model_api.collapsed_hint') }}</span>
         </summary>
         <div v-if="teamEgress" class="model-api-body">
           <TeamEnvironment :environment="data?.team_environment" :busy="busy" @act="(work, success) => action(work, success)" />
@@ -553,6 +607,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
         <p class="help mb-4">{{ words.privacy }}</p>
         <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+        <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
       </form>
       <section class="panel mb-6" data-testid="project-versions">
         <h2 id="review">{{ words.step2 }}</h2><p class="help">{{ words.step2Note }}</p>
@@ -587,7 +642,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div v-for="(code, path) in review.adapter_files" :key="path"><h4 class="break-all">{{ path }}</h4><pre>{{ code }}</pre></div>
         <template v-if="review.status === 'reviewable' && !review.archived_at"><label class="check mt-4"><input v-model="confirmed" type="checkbox" data-testid="project-confirm">{{ words.check }}</label>
           <p v-if="!confirmed" class="help mt-2" data-testid="project-approve-hint">{{ words.approveHint }}</p>
-          <button class="btn primary mt-3" :disabled="busy || !confirmed || !review.public_test.passed || locked.has('approve:'+review.id)" data-testid="project-approve" @click="approve">{{ words.approve }}</button></template>
+          <button class="btn primary mt-3" :disabled="busy || !confirmed || !review.public_test.passed || locked.has('approve:'+review.id)" data-testid="project-approve" @click="approve">{{ words.approve }}</button>
+          <p v-if="!review.public_test.passed" class="help mt-2" data-testid="project-approve-blocked">{{ words.approveNeedsTest }}</p></template>
         <form class="mt-6" @submit.prevent="action(async () => { await portal('evidence', { revision_id: review!.id, notes, code_url: codeUrl }) })">
           <h3>{{ words.evidence }}</h3><p class="help">{{ words.evidenceHelp }}</p>
           <label class="field"><span>{{ words.notes }}</span><textarea v-model="notes" maxlength="8000" rows="5"></textarea></label>
@@ -602,6 +658,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p class="mt-4" data-testid="evaluation-quota">{{ selectedPhase ? pick(selectedPhase.phases.name_en, selectedPhase.phases.name_zh) : '' }}<template v-if="dailyLimit != null">
             · <strong data-testid="evaluation-daily-limit">{{ pick(`${words.dailyLimit}: ${dailyLimit}`, `${words.dailyLimit} ${dailyLimit} 次`) }}</strong></template><template v-if="quota">
             · <strong>{{ pick(`${words.left}: ${quota.remaining}`, `${words.left} ${quota.remaining} 次`) }}</strong></template>
+            · <strong data-testid="evaluation-active-count">{{ pick(`${words.concurrent}: ${runningNow} ${words.concurrentOf} ${activeLimit}`, `${words.concurrent} ${runningNow}${words.concurrentOf}${activeLimit}`) }}</strong>
             <span v-if="dailyLimit != null" class="help" data-testid="evaluation-reset"> ({{ formatDailyReset(quota?.resets_at, locale) }})</span></p>
           <p v-if="quota && quota.remaining <= 0" class="help">{{ words.noneLeft }}</p>
           <p v-else-if="activeBatch" class="help" data-testid="evaluation-active-limit">{{ words.active.replace('{n}', String(activeLimit)) }}</p>
@@ -612,9 +669,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
-            <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" :aria-busy="pending === 'evaluate:'+v.revision.id" @click="evaluate(v.revision.id)">{{ pending === 'evaluate:'+v.revision.id ? words.working : v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
-            <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || selfCheckActive || !canSelfCheck(quota)" :title="canSelfCheck(quota) ? words.selfCheckNote : words.selfCheckNeed" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.revision.id" @click="selfCheck(v.revision.id)">{{ pending === 'selfcheck:'+v.revision.id ? words.working : words.selfCheck }}</button>
+            <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" :title="blockText(evalBlocked)" :aria-busy="pending === 'evaluate:'+v.revision.id" @click="evaluate(v.revision.id)">{{ pending === 'evaluate:'+v.revision.id ? words.working : v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
+            <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || selfCheckActive || !canSelfCheck(quota)" :title="selfCheckBlocked ? blockText(selfCheckBlocked) : words.selfCheckNote" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.revision.id" @click="selfCheck(v.revision.id)">{{ pending === 'selfcheck:'+v.revision.id ? words.working : words.selfCheck }}</button>
           </div>
+          <p v-if="approvedVersions.length && (evalBlocked || selfCheckBlocked) && evalBlocked !== 'busy'" class="help mt-3" role="status" data-testid="evaluation-disabled-reason">
+            {{ words.blocked }}{{ pick(': ', '：') }}{{ blockText(evalBlocked ?? selfCheckBlocked) }}<template v-if="!evalBlocked && selfCheckBlocked"> ({{ words.selfCheck }})</template></p>
         </template>
       </section>
       <section v-if="finalVersion" class="panel mb-6" data-testid="final-version">
@@ -652,8 +711,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span class="m text-sm">{{ scenarioNames[c.scenario_id] ? scenarioLabel(scenarioNames[c.scenario_id]!.slug, scenarioNames[c.scenario_id]!.name, locale) : '—' }}</span>
             <strong>{{ fmt2(c.mean) }}</strong> <span class="meta">({{ fmt2(c.min) }}–{{ fmt2(c.max) }})</span></span></div></template>
         </article>
-        <article :id="'batch-'+b.id" class="project-row" :class="{ target: b.id === targetBatch, 'repeat-member': !!b.repeat_group }">
+        <article :id="'batch-'+b.id" class="project-row" :class="{ target: b.id === targetBatch, 'repeat-member': !!b.repeat_group, 'latest-failed': failure?.batch.id === b.id }">
           <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
+            <span v-if="failure?.batch.id === b.id" class="pill failed ml-2" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
             <span v-if="b.repeat_group" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
@@ -695,6 +755,9 @@ h2 { font-size: 1.2rem; font-weight: 600; } h3 { font-weight: 600; }
 .model-api[open] > summary::after { content: '–'; }
 .model-api-title { font-size: 1.2rem; font-weight: 600; }
 .model-api-hint { margin: 0; }
+.model-api-configured { font-size: .85rem; color: #bdbdbd; overflow-wrap: anywhere; }
+.latest-failure { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; padding: .75rem 1rem; border: 1px solid #a33a45; background: #1a0c0f; }
+.project-row.latest-failed { border-left: 3px solid #e5484d; padding-left: .75rem; }
 .model-api-body { margin-top: .75rem; }
 .upload-progress { display: block; width: 100%; max-width: 24rem; height: .5rem; margin-top: .35rem; accent-color: #315efb; }
 .log-link:hover { color: #bdbdbd; } .log-link:disabled { opacity: .5; cursor: default; }
