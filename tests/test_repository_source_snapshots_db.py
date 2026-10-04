@@ -58,3 +58,35 @@ def test_invalid_snapshots_are_refused(setup):
     with pytest.raises(psycopg.Error, match="permission denied"):
         rpc(uri, "observer_record_source_snapshot", rev, COMMIT, f"{s['user']}/{COMMIT}-{uuid.uuid4()}.zip", 1, "a" * 64,
             role="authenticated", user=s["user"])
+
+
+def test_branch_and_folder_are_recorded_and_preparation_reads_the_snapshot(setup):
+    """20261004230000: a named branch/tag/commit and project folder (repository source options)."""
+    s = setup; uri = s["uri"]
+    rev = submit(s)
+    assert rpc(uri, "observer_preparation_source", rev) is None
+    path = f"{s['user']}/{COMMIT}-{uuid.uuid4()}.zip"
+    rpc(uri, "observer_record_source_snapshot", rev, COMMIT, path, 10, "a" * 64, "feature/x", "apps/agent")
+    assert query(uri, "select submitted_commit,source_ref,source_subdir,source_location from public.observer_revisions where id=%s",
+                 (rev,)) == [(COMMIT, "feature/x", "apps/agent", "https://github.com/example/agent")]
+    assert query(uri, "select source_ref,source_subdir from private.observer_source_snapshots where revision_id=%s",
+                 (rev,)) == [("feature/x", "apps/agent")]
+    assert rpc(uri, "observer_preparation_source", rev) == path
+    # Participants see the ref and folder on their own revision but cannot call the service functions.
+    assert query(uri, "select source_ref,source_subdir from public.observer_revisions where id=%s", (rev,),
+                 role="authenticated", user=s["user"]) == [("feature/x", "apps/agent")]
+    with pytest.raises(psycopg.Error, match="permission denied"):
+        query(uri, "select public.observer_preparation_source(%s)", (rev,), role="authenticated", user=s["user"])
+    # The five-argument call (edge functions deployed before this migration) still works.
+    other = submit(s)
+    rpc(uri, "observer_record_source_snapshot", other, COMMIT, f"{s['user']}/{COMMIT}-{uuid.uuid4()}.zip", 1, "a" * 64)
+    assert query(uri, "select source_ref,source_subdir from public.observer_revisions where id=%s", (other,)) == [(None, None)]
+
+
+def test_invalid_branch_or_folder_is_refused(setup):
+    s = setup; uri = s["uri"]
+    rev = submit(s)
+    for ref, subdir in (("a b", None), ("x" * 201, None), (None, "../up"), (None, "a/./b"), (None, "/abs"), (None, "a//b")):
+        with pytest.raises(psycopg.Error, match="invalid_source_snapshot"):
+            rpc(uri, "observer_record_source_snapshot", rev, COMMIT, f"{s['user']}/{COMMIT}-{uuid.uuid4()}.zip", 1,
+                "a" * 64, ref, subdir)

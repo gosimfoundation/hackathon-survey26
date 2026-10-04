@@ -110,12 +110,21 @@ Deno.test("preparation receives only its organization repository and a bounded p
   );
   assertEquals(validateJobPayload({ ...input, gameplay: "v4" }, expected, job).gameplay, "v4");
   // Direct model access: the team's variables instead of the model proxy, never both.
-  const team = { environment: { OPENAI_API_KEY: "sk-team", OPENAI_MODEL: "m" }, secrets: ["OPENAI_API_KEY"], domains: ["api.example.com"] };
+  const team = {
+    environment: { OPENAI_API_KEY: "sk-team", OPENAI_MODEL: "m" },
+    secrets: ["OPENAI_API_KEY"],
+    domains: ["api.example.com"],
+  };
   assertEquals(validateJobPayload({ ...input, team_egress: team }, expected, job).team_egress, team);
   for (
     const change of [
       { team_egress: { ...team, model: "test-model" } },
-      { team_egress: team, model: "test-model", model_base_url: payload.model_base_url, run_credential: payload.run_credential },
+      {
+        team_egress: team,
+        model: "test-model",
+        model_base_url: payload.model_base_url,
+        run_credential: payload.run_credential,
+      },
       { team_egress: { ...team, secrets: ["MISSING"] } },
       { gameplay: "v3" },
       { gameplay: 4 },
@@ -339,6 +348,38 @@ Deno.test("private source ZIP signing is restricted to preparation and the immut
   input.archive_storage_ref.bucket = "observer-scenarios";
   await assertRejects(() => jobRequest(request(), deps), ProxyError);
   assertEquals(signed, 1);
+});
+
+Deno.test("a stored repository snapshot is signed from observer-sources only at its snapshot path", async () => {
+  const snapshot = job + "/" + "f".repeat(40) + "-" + payload.run_id + ".zip";
+  const input = {
+    kind: "prepare",
+    job_id: job,
+    revision_id: payload.run_id,
+    archive_storage_ref: { bucket: "observer-sources", path: snapshot },
+    repository: { full_name: identity.organization + "/participant-" + "a".repeat(32), token: "scoped-test-token" },
+    artifact_upload: { kind: "github" },
+  };
+  const signed: [string, string | undefined][] = [];
+  const deps: JobDependencies = {
+    masterKey: key,
+    verify: () => Promise.resolve({ runId: "404", runAttempt: "1", subject: "expected" }),
+    rpc: async (name) =>
+      name === "observer_job_identity"
+        ? { ...identity, workflow: "observer-prepare.yml" }
+        : await encryptCredential(JSON.stringify(input), job, key),
+    sourceDownload: (path, bucket) => {
+      signed.push([path, bucket]);
+      return Promise.resolve("https://storage.test/snapshot.zip");
+    },
+  };
+  const result: Record<string, unknown> = await jobRequest(request(), deps);
+  assertEquals(result.archive_url, "https://storage.test/snapshot.zip");
+  assertEquals(signed, [[snapshot, "observer-sources"]]);
+  // A staging-style path in the sources bucket (or the reverse) is refused.
+  input.archive_storage_ref.path = job + "/" + payload.run_id + "/source.zip";
+  await assertRejects(() => jobRequest(request(), deps), ProxyError);
+  assertEquals(signed.length, 1);
 });
 
 Deno.test("a colocated engine job carries only the execute job's own fields", () => {

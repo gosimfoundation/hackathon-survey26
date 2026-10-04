@@ -5,9 +5,12 @@ import {
   GitHubApp,
   GitHubError,
   isRunnerOrganization,
+  parseSourceUrl,
   placement,
   PUBLIC_POOL_REPOSITORY,
+  sourceRef,
   sourceRepository,
+  sourceSubdir,
   verifyWorkflowIdentity,
 } from "./observer-github.ts";
 import type { WorkflowIdentity } from "./observer-github.ts";
@@ -27,6 +30,8 @@ function backend() {
   const repos = new Map<string, any>();
   const permissions = new Map<string, boolean>();
   const refs = new Map<string, string>();
+  // Named branches, tags and commits of public source repositories ("repo@ref" -> sha).
+  const sourceRefs = new Map<string, string>();
   let treeFailures = 0;
   let suspended = false;
   let installAccount = organization;
@@ -76,6 +81,10 @@ function backend() {
     if (path.endsWith("/commits/main")) return Response.json({ sha: branchSha });
     if (path.includes("/commits/observer-runtime-")) {
       return tagSha ? Response.json({ sha: tagSha }) : Response.json({ message: "not found" }, { status: 404 });
+    }
+    if (path.includes("/commits/")) {
+      const named = sourceRefs.get(full + "@" + decodeURIComponent(path.split("/commits/")[1]));
+      return named ? Response.json({ sha: named }) : Response.json({ message: "No commit found" }, { status: 422 });
     }
     if (path.endsWith("/forks") && method === "POST") {
       const original = repos.get(full);
@@ -129,6 +138,7 @@ function backend() {
     wrongBranch: () => branchSha = "b".repeat(40),
     tag: (value: string) => tagSha = value,
     refs,
+    sourceRefs,
     failTrees: (n: number) => treeFailures = n,
   };
 }
@@ -172,7 +182,9 @@ Deno.test("only canonical GitHub repository links enter the ingestion queue", ()
       "http://github.com/a/b",
       "https://github.com.evil.test/a/b",
       "https://x:y@github.com/a/b",
-      "https://github.com/a/b/tree/main",
+      "https://github.com/a/b/blob/main/x",
+      "https://github.com/a/b/tree/",
+      "https://github.com/a/b/commit/main",
       "https://github.com/a/b?download=1",
       "https://github.com/a/%2e%2e",
     ]
@@ -486,4 +498,94 @@ Deno.test("a fork for a pinned submission keeps the submitted commit", async () 
   const result = await f.app.forkPublicSource(user, "https://github.com/example/project", pinned);
   assertEquals(result.sourceCommit, pinned);
   assert(!f.calls.some((c) => c.path === "/repos/example/project/commits/main"));
+});
+
+Deno.test("branch, tag, commit and folder links are recognized; the ref is resolved later", () => {
+  assertEquals(parseSourceUrl("https://github.com/a/b"), { repository: "a/b", tree: null, commit: null });
+  assertEquals(parseSourceUrl("https://www.github.com/a/b.git/"), { repository: "a/b", tree: null, commit: null });
+  assertEquals(parseSourceUrl("https://github.com/a/b/tree/feature/x/apps/agent/"), {
+    repository: "a/b",
+    tree: ["feature", "x", "apps", "agent"],
+    commit: null,
+  });
+  assertEquals(parseSourceUrl("https://github.com/a/b/tree/v1.0%2Brc"), {
+    repository: "a/b",
+    tree: ["v1.0+rc"],
+    commit: null,
+  });
+  assertEquals(parseSourceUrl("https://github.com/a/b/commit/" + "A".repeat(40)), {
+    repository: "a/b",
+    tree: null,
+    commit: "a".repeat(40),
+  });
+  assertEquals(sourceRef(" feature/x "), "feature/x");
+  assertEquals(sourceRef(""), null);
+  for (const bad of ["a b", "../x", "x..y", "/x", "x/", "x.lock", "-x", "a/.b", 3]) {
+    assertThrows(() => sourceRef(bad), GitHubError, "invalid_source_ref");
+  }
+  assertEquals(sourceSubdir("./apps/agent/"), "apps/agent");
+  assertEquals(sourceSubdir("  "), null);
+  for (const bad of ["a/../b", "a//b", "a\\b", ".git/x", "a/./b"]) {
+    assertThrows(() => sourceSubdir(bad), GitHubError, "invalid_source_subdir");
+  }
+});
+
+Deno.test("a submission resolves the named branch, tag or commit and the folder", async () => {
+  const f = backend();
+  f.repos.set("example/project", {
+    id: 72,
+    full_name: "example/project",
+    private: false,
+    fork: false,
+    default_branch: "main",
+  });
+  const branch = "b".repeat(40), tag = "c".repeat(40), pinned = "d".repeat(40);
+  f.sourceRefs.set("example/project@feature/x", branch);
+  f.sourceRefs.set("example/project@v2", tag);
+  f.sourceRefs.set("example/project@" + pinned, pinned);
+  const resolve = (url: string, options = {}) => f.app.resolvePublicSource(user, url, options);
+  // Default branch: unchanged behaviour, no ref recorded.
+  let r = await resolve("https://github.com/example/project");
+  assertEquals([r.commit, r.ref, r.subdir], [sha, null, null]);
+  // A branch with "/" followed by a folder: the shortest existing ref wins.
+  r = await resolve("https://github.com/example/project/tree/feature/x/apps/agent");
+  assertEquals([r.commit, r.ref, r.subdir], [branch, "feature/x", "apps/agent"]);
+  // The resolved commit's zipball is returned, not the branch's.
+  assert(f.calls.some((c) => c.path === "/repos/example/project/zipball/" + branch));
+  r = await resolve("https://github.com/example/project/tree/v2");
+  assertEquals([r.commit, r.ref, r.subdir], [tag, "v2", null]);
+  r = await resolve("https://github.com/example/project/commit/" + pinned, { subdir: "src" });
+  assertEquals([r.commit, r.ref, r.subdir], [pinned, pinned, "src"]);
+  // Fields instead of a long link.
+  r = await resolve("https://github.com/example/project", { ref: "feature/x", subdir: "apps/agent" });
+  assertEquals([r.commit, r.ref, r.subdir], [branch, "feature/x", "apps/agent"]);
+  r = await resolve("https://github.com/example/project/tree/feature/x/apps/agent", { ref: "feature/x" });
+  assertEquals([r.ref, r.subdir], ["feature/x", "apps/agent"]);
+  r = await resolve("https://github.com/example/project", { subdir: "apps" });
+  assertEquals([r.commit, r.ref, r.subdir], [sha, null, "apps"]);
+  await assertRejects(
+    () => resolve("https://github.com/example/project/tree/nope/apps"),
+    GitHubError,
+    "source_ref_not_found",
+  );
+  await assertRejects(
+    () => resolve("https://github.com/example/project", { ref: "nope" }),
+    GitHubError,
+    "source_ref_not_found",
+  );
+  await assertRejects(
+    () => resolve("https://github.com/example/project/tree/v2", { ref: "feature/x" }),
+    GitHubError,
+    "source_options_conflict",
+  );
+  await assertRejects(
+    () => resolve("https://github.com/example/project/tree/v2/apps", { subdir: "other" }),
+    GitHubError,
+    "source_options_conflict",
+  );
+  await assertRejects(
+    () => resolve("https://github.com/example/project/commit/" + pinned, { ref: "v2" }),
+    GitHubError,
+    "source_options_conflict",
+  );
 });

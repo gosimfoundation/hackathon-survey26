@@ -75,6 +75,8 @@ for (const source_kind of ["repository", "zip"]) {
           }
           // Direct model access switched off: the model proxy as before.
           if (name === "observer_preparation_team_egress") return Promise.resolve({ enabled: false });
+          // A revision submitted before snapshots existed: forked as before.
+          if (name === "observer_preparation_source") return Promise.resolve(null);
           assertEquals(name, "observer_schedule_preparation");
           scheduled = args;
           return Promise.resolve(null);
@@ -132,7 +134,13 @@ Deno.test("an unavailable source does not open a model session or expose backend
 
 Deno.test("direct model access gives the adaptation the team's variables instead of the model proxy", async () => {
   const { organization, privateRepository } = await placement(user, locate);
-  const privateRepo = { id: 42, full_name: organization + "/" + privateRepository, private: true, fork: false, default_branch: "main" };
+  const privateRepo = {
+    id: 42,
+    full_name: organization + "/" + privateRepository,
+    private: true,
+    fork: false,
+    default_branch: "main",
+  };
   const variable = "00000000-0000-4000-8000-000000000009";
   let scheduled: Record<string, any> = {};
   const output = await schedulePreparations({
@@ -148,14 +156,26 @@ Deno.test("direct model access gives the adaptation the team's variables instead
       if (name === "observer_placement") return "AGENTIC-OBSERVER26-runner-9";
       if (name === "observer_runner_configuration") return [{ organization }];
       if (name === "observer_pending_preparations") {
-        return [{ id: revision, owner_id: user, lease, source_kind: "zip", source_location: user + "/" + revision + "/source.zip", model_run_id: modelRun }];
+        return [{
+          id: revision,
+          owner_id: user,
+          lease,
+          source_kind: "zip",
+          source_location: user + "/" + revision + "/source.zip",
+          model_run_id: modelRun,
+        }];
       }
       if (name === "observer_preparation_team_egress") {
         assertEquals(args, { p_revision: revision });
         return {
           enabled: true,
           variables: [
-            { id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: await encryptCredential("sk-team", variable, key) },
+            {
+              id: variable,
+              name: "OPENAI_API_KEY",
+              secret: true,
+              encrypted_value: await encryptCredential("sk-team", variable, key),
+            },
             { id: "x", name: "OPENAI_MODEL", secret: false, plain_value: "team-model" },
           ],
           domains: ["api.example.com"],
@@ -174,4 +194,55 @@ Deno.test("direct model access gives the adaptation the team's variables instead
     domains: ["api.example.com"],
   });
   assertEquals([input.model, input.model_base_url, input.run_credential], [undefined, undefined, undefined]);
+});
+
+Deno.test("a repository revision with a stored snapshot is prepared from exactly that snapshot, not a fork", async () => {
+  const { organization, privateRepository } = await placement(user, locate);
+  const snapshot = user + "/" + "f".repeat(40) + "-" + revision + ".zip";
+  let scheduled: Record<string, any> = {};
+  const output = await schedulePreparations({
+    masterKey: key,
+    apiBase: "https://platform.test",
+    app: {
+      privateParticipantRepository: () =>
+        Promise.resolve({
+          id: 42,
+          full_name: organization + "/" + privateRepository,
+          private: true,
+          fork: false,
+          default_branch: "main",
+        }),
+      forkPublicSource: () => Promise.reject(new Error("must not fork")),
+    },
+    rpc: (name, args) => {
+      if (name === "observer_placement") return Promise.resolve(organization);
+      if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
+      if (name === "observer_pending_preparations") {
+        return Promise.resolve([{
+          id: revision,
+          owner_id: user,
+          lease,
+          source_kind: "repository",
+          source_location: "https://github.com/example/project",
+          submitted_commit: "f".repeat(40),
+          model_run_id: modelRun,
+          model: "qwen-test",
+          gameplay: "v3",
+        }]);
+      }
+      if (name === "observer_preparation_team_egress") return Promise.resolve({ enabled: false });
+      if (name === "observer_preparation_source") {
+        assertEquals(args, { p_revision: revision });
+        return Promise.resolve(snapshot);
+      }
+      assertEquals(name, "observer_schedule_preparation");
+      scheduled = args;
+      return Promise.resolve(null);
+    },
+  });
+  assertEquals(output, [{ id: revision, scheduled: true }]);
+  const j = scheduled.p_job;
+  const input = JSON.parse(await decryptCredential(j.encrypted_input, j.id, key));
+  assertEquals(input.archive_storage_ref, { bucket: "observer-sources", path: snapshot });
+  assertEquals(input.archive_ref, undefined);
 });

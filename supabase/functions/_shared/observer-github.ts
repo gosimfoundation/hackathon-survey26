@@ -56,25 +56,87 @@ export async function placement(userId: string, locate: Locator) {
   };
 }
 
-export function sourceRepository(input: string): string {
+/**
+ * A public GitHub source as typed by a participant: the repository page, a branch,
+ * tag or commit page (/tree/<ref>[/<folder>]) or a commit page (/commit/<sha>).
+ * `tree` holds the decoded path after /tree/; which part of it is the ref is only
+ * known once GitHub resolves it (branch names may contain "/").
+ */
+export type SourceUrl = { repository: string; tree: string[] | null; commit: string | null };
+
+export function parseSourceUrl(input: string): SourceUrl {
   let url: URL;
   try {
-    url = new URL(input);
+    url = new URL(input.trim());
   } catch {
     throw new GitHubError("invalid_repository_url");
   }
   if (
-    url.protocol !== "https:" || url.hostname !== "github.com" || url.username || url.password || url.port ||
-    url.search || url.hash
+    url.protocol !== "https:" || !["github.com", "www.github.com"].includes(url.hostname) || url.username ||
+    url.password || url.port || url.search || url.hash
   ) throw new GitHubError("invalid_repository_url");
-  const parts = url.pathname.replace(/\/$/, "").slice(1).split("/");
-  if (parts.length !== 2 || parts.some((p) => !NAME.test(p) || p === "." || p === "..")) {
+  let parts: string[];
+  try {
+    parts = url.pathname.replace(/\/+$/, "").slice(1).split("/").map(decodeURIComponent);
+  } catch {
+    throw new GitHubError("invalid_repository_url");
+  }
+  if (parts.length < 2 || parts.slice(0, 2).some((p) => !NAME.test(p) || p === "." || p === "..")) {
     throw new GitHubError("invalid_repository_url");
   }
   const repo = parts[1].replace(/\.git$/, "");
   if (!repo) throw new GitHubError("invalid_repository_url");
-  return parts[0] + "/" + repo;
+  const repository = parts[0] + "/" + repo, rest = parts.slice(2);
+  if (!rest.length) return { repository, tree: null, commit: null };
+  if (rest[0] === "tree" && rest.length > 1 && rest.slice(1).every((p) => p && !p.includes("\0"))) {
+    return { repository, tree: rest.slice(1), commit: null };
+  }
+  if (rest[0] === "commit" && rest.length === 2 && SHA.test(rest[1].toLowerCase())) {
+    return { repository, tree: null, commit: rest[1].toLowerCase() };
+  }
+  throw new GitHubError("invalid_repository_url");
 }
+
+export function sourceRepository(input: string): string {
+  return parseSourceUrl(input).repository;
+}
+
+/** An optional branch, tag or commit name (Git ref rules, conservatively). */
+export function sourceRef(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw new GitHubError("invalid_source_ref");
+  const ref = value.trim();
+  if (!ref) return null;
+  if (
+    ref.length > 200 || !/^[A-Za-z0-9._\/+@-]+$/.test(ref) || ref.includes("..") || ref.includes("//") ||
+    ref.includes("@{") || ref.startsWith("/") || ref.endsWith("/") || ref.endsWith(".") || ref.endsWith(".lock") ||
+    ref.startsWith("-") || ref.split("/").some((p) => p.startsWith("."))
+  ) throw new GitHubError("invalid_source_ref");
+  return ref;
+}
+
+/** An optional project folder inside the repository, as a normalized relative path. */
+export function sourceSubdir(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw new GitHubError("invalid_source_subdir");
+  const path = value.trim().replace(/^\.\//, "").replace(/^\/+|\/+$/g, "");
+  if (!path) return null;
+  const parts = path.split("/");
+  if (
+    path.length > 300 || path.includes("\\") || path.includes("\0") ||
+    parts.some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git")
+  ) throw new GitHubError("invalid_source_subdir");
+  return parts.join("/");
+}
+
+export type ResolvedSource = {
+  sourceRepository: string;
+  commit: string;
+  archiveUrl: string;
+  /** The branch, tag or commit named by the participant; null means the default branch. */
+  ref: string | null;
+  subdir: string | null;
+};
 
 function target(organization: string, repository: string) {
   if (
@@ -270,24 +332,61 @@ export class GitHubApp {
   }
 
   /**
-   * The exact commit a public source repository's default branch points at now, and a
-   * temporary codeload URL of that commit's zipball (no fork, nothing written). Used at
-   * submission time so every submitted version is pinned and preserved.
+   * The exact commit a public source points at now (the default branch, or the
+   * branch, tag or commit the participant named in the URL or in `options`), the
+   * project folder inside it, and a temporary codeload URL of that commit's zipball
+   * (no fork, nothing written). Used at submission time so every submitted version
+   * is pinned and preserved.
    */
   async resolvePublicSource(
     userId: string,
     url: string,
-  ): Promise<{ sourceRepository: string; commit: string; archiveUrl: string }> {
-    const source = sourceRepository(url);
+    options: { ref?: unknown; subdir?: unknown } = {},
+  ): Promise<ResolvedSource> {
+    const parsed = parseSourceUrl(url);
+    const source = parsed.repository;
+    const ref = sourceRef(options.ref), subdir = sourceSubdir(options.subdir);
+    // Candidate (ref, folder) splits, shortest ref first. Git cannot hold both
+    // "a" and "a/b" as branches, so at most one split of a /tree/ path resolves.
+    let candidates: [string | null, string | null][], conflicting = false;
+    if (parsed.commit) {
+      if (ref && ref.toLowerCase() !== parsed.commit) throw new GitHubError("source_options_conflict");
+      candidates = [[parsed.commit, subdir]];
+    } else if (parsed.tree) {
+      const tree = parsed.tree;
+      const splits = ref
+        ? (tree.slice(0, ref.split("/").length).join("/") === ref ? [ref.split("/").length] : [])
+        : Array.from({ length: Math.min(tree.length, 10) }, (_, i) => i + 1);
+      const all = splits.map((n): [string, string | null] => [
+        tree.slice(0, n).join("/"),
+        sourceSubdir(tree.slice(n).join("/")),
+      ]);
+      // A folder in the link must agree with the folder field.
+      candidates = all.filter(([, folder]) => !folder || !subdir || folder === subdir)
+        .map(([name, folder]) => [name, folder ?? subdir]);
+      conflicting = candidates.length < all.length;
+      if (!candidates.length) throw new GitHubError("source_options_conflict");
+    } else candidates = [[ref, subdir]];
     const { organization } = await placement(userId, this.locate);
     const token = await this.installationToken(organization);
     const original: Repository = await this.request("/repos/" + source, token);
     if (original.private) throw new GitHubError("private_source_requires_zip");
-    const commit = await this.request(
-      "/repos/" + source + "/commits/" + encodeURIComponent(original.default_branch),
-      token,
-    );
-    if (!SHA.test(commit.sha)) throw new GitHubError("invalid_source_commit");
+    let commit: { sha?: unknown } | null = null, chosen: [string | null, string | null] = [null, subdir];
+    for (const [name, folder] of candidates) {
+      try {
+        commit = await this.request(
+          "/repos/" + source + "/commits/" + encodeURIComponent(name ?? original.default_branch),
+          token,
+        );
+        chosen = [name, folder];
+        break;
+      } catch (error) {
+        // 404/422: no such branch, tag or commit; try the next split.
+        if (!(error instanceof GitHubError) || (error.status !== 404 && error.status !== 422)) throw error;
+      }
+    }
+    if (!commit) throw new GitHubError(conflicting ? "source_options_conflict" : "source_ref_not_found");
+    if (typeof commit.sha !== "string" || !SHA.test(commit.sha)) throw new GitHubError("invalid_source_commit");
     const response = await this.fetcher(API + "/repos/" + source + "/zipball/" + commit.sha, {
       redirect: "manual",
       signal: AbortSignal.timeout(30000),
@@ -307,7 +406,13 @@ export class GitHubApp {
     ) {
       throw new GitHubError("unexpected_archive_destination");
     }
-    return { sourceRepository: source, commit: commit.sha, archiveUrl: archive.href };
+    return {
+      sourceRepository: source,
+      commit: commit.sha,
+      archiveUrl: archive.href,
+      ref: chosen[0],
+      subdir: chosen[1],
+    };
   }
 
   async forkPublicSource(

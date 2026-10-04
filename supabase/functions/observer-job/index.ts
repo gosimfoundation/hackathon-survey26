@@ -119,8 +119,8 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
         if (error || !data?.signedUrl) throw new ProxyError(503, "scenario_download_unavailable");
         return data.signedUrl;
       },
-      sourceDownload: async (path) => {
-        const { data, error } = await service.storage.from("observer-staging").createSignedUrl(path, 600);
+      sourceDownload: async (path, bucket = "observer-staging") => {
+        const { data, error } = await service.storage.from(bucket).createSignedUrl(path, 600);
         if (error || !data?.signedUrl) throw new ProxyError(503, "source_download_unavailable");
         return data.signedUrl;
       },

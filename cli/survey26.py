@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -54,7 +54,8 @@ LIMIT_CODES = {"daily_limit", "repeat_daily_limit", "preparation_limit", "prepar
                "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"}
 NOT_FOUND_CODES = {"revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
                    "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
-                   "uid_unavailable", "request_not_found", "user_not_found"}
+                   "uid_unavailable", "request_not_found", "user_not_found", "repository_not_found",
+                   "source_ref_not_found", "source_subdir_not_found"}
 UNAVAILABLE_CODES = {"network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
                      "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"}
 
@@ -100,7 +101,15 @@ MESSAGES = {
     "revision_not_approved": ("Only a confirmed version can be chosen.", "只能选择已确认的版本。"),
     "wrong_file_type": ("Choose a file with the required extension.", "请选择要求的文件类型。"),
     "file_too_large": ("The file is empty or exceeds the size limit.", "文件为空或超过大小限制。"),
-    "invalid_repository_url": ("Enter a public https://github.com/owner/repository URL.", "请输入公开 GitHub 仓库的完整地址。"),
+    "invalid_repository_url": ("Enter a public GitHub link: https://github.com/owner/repository, optionally with /tree/<branch>/<folder> or /commit/<sha>.", "请输入公开 GitHub 仓库链接：https://github.com/owner/repository，可带 /tree/分支/子目录 或 /commit/提交号。"),
+    "repository_not_found": ("This GitHub repository was not found. Check the owner and name, and that it is public.", "找不到这个 GitHub 仓库，请检查用户名、仓库名，并确认仓库是公开的。"),
+    "source_ref_not_found": ("This branch, tag or commit does not exist in the repository.", "仓库里没有这个分支、标签或 commit。"),
+    "source_subdir_not_found": ("This folder does not exist at that branch or commit (folder names are case-sensitive).", "在这个分支或 commit 中找不到该子目录（区分大小写）。"),
+    "source_options_conflict": ("The branch or folder in the link differs from --branch/--subdir. Keep only one of them.", "链接里的分支或子目录与 --branch/--subdir 不一致，请只保留一处。"),
+    "invalid_source_ref": ("The branch, tag or commit name is not valid.", "分支、标签或 commit 名称格式不正确。"),
+    "invalid_source_subdir": ("Enter the folder as a relative path such as agent or apps/agent.", "子目录请填写相对路径，例如 agent 或 apps/agent。"),
+    "source_options_unavailable": ("Branch and folder choices are temporarily unavailable. Submit the plain repository link, or upload a ZIP.", "暂时不支持指定分支或子目录，请提交仓库主页链接，或上传 ZIP。"),
+    "invalid_source_archive": ("This folder contains links or files that cannot be packaged. Upload the project as a ZIP instead.", "该目录包含符号链接或无法打包的文件，请改为上传 ZIP。"),
     "private_source_requires_zip": ("This repository is private. Make it public, or upload the project as a ZIP.", "这个仓库是私有的。请把它设为公开，或改为上传 ZIP。"),
     "source_too_large": ("The repository archive is larger than 100 MB. Upload a smaller ZIP of the project instead.", "仓库压缩包超过 100 MB，请改为上传精简后的项目 ZIP。"),
     "source_snapshot_unavailable": ("Could not save a copy of this repository version right now. Please try again in a minute.", "暂时无法保存该仓库版本的副本，请稍后再试。"),
@@ -1082,7 +1091,13 @@ def cmd_project_submit_repo(api: Api, args, out: Out):
     if _recent_duplicate(portal_list(api), title, url):
         confirm(args, out, "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s project preparations.",
                 "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次项目准备机会。")
-    result = api.portal("submit_repository", write=True, title=title, url=url) or {}
+    # A branch/tag/commit or folder may also be part of the link (.../tree/<branch>/<folder>).
+    options = {k: v.strip() for k, v in (("branch", args.branch), ("subdir", args.subdir)) if v and v.strip()}
+    result = api.portal("submit_repository", write=True, title=title, url=url, **options) or {}
+    if result.get("source_commit"):
+        out.line(out.t("Saved commit %s%s.", "已记录 commit %s%s。") % (
+            result["source_commit"][:12],
+            "".join(f" · {result[k]}" for k in ("source_ref", "source_subdir") if result.get(k))))
     out.line(out.t("Project queued for preparation: version %s. Wait with: survey26 project wait %s",
                    "项目已排队，等待准备：版本 %s。可用 survey26 project wait %s 等待。") % (result.get("revision_id"), str(result.get("revision_id"))[:8]))
     return result
@@ -1720,8 +1735,10 @@ def build_parser() -> argparse.ArgumentParser:
     proj = sub.add_parser("project", help="submit projects and manage versions").add_subparsers(dest="cmd", metavar="ACTION")
     add(proj, "list", cmd_project_list, "your project versions").add_argument("--all", action="store_true", help="include withdrawn versions")
     sr = yes(add(proj, "submit-repo", cmd_project_submit_repo, "submit a public GitHub repository (uses one of 10 daily uploads)"))
-    sr.add_argument("url")
+    sr.add_argument("url", help="https://github.com/OWNER/REPO, or a branch/folder link .../tree/BRANCH/FOLDER")
     sr.add_argument("--title")
+    sr.add_argument("--branch", help="branch, tag or commit (default: the default branch)")
+    sr.add_argument("--subdir", help="project folder inside the repository (default: the repository root)")
     up = yes(add(proj, "upload", cmd_project_upload, "upload a complete project ZIP, at most 50 MB (uses one of 10 daily uploads)"))
     up.add_argument("zip")
     up.add_argument("--title")

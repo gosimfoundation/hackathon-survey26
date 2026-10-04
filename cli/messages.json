@@ -136,8 +136,40 @@
   "zh": "文件为空或超过大小限制。"
  },
  "invalid_repository_url": {
-  "en": "Enter a public https://github.com/owner/repository URL.",
-  "zh": "请输入公开 GitHub 仓库的完整地址。"
+  "en": "Enter a public GitHub link: https://github.com/owner/repository, optionally with /tree/<branch>/<folder> or /commit/<sha>.",
+  "zh": "请输入公开 GitHub 仓库链接：https://github.com/owner/repository，可带 /tree/分支/子目录 或 /commit/提交号。"
+ },
+ "repository_not_found": {
+  "en": "This GitHub repository was not found. Check the owner and name, and that it is public.",
+  "zh": "找不到这个 GitHub 仓库，请检查用户名、仓库名，并确认仓库是公开的。"
+ },
+ "source_ref_not_found": {
+  "en": "This branch, tag or commit does not exist in the repository.",
+  "zh": "仓库里没有这个分支、标签或 commit。"
+ },
+ "source_subdir_not_found": {
+  "en": "This folder does not exist at that branch or commit (folder names are case-sensitive).",
+  "zh": "在这个分支或 commit 中找不到该子目录（区分大小写）。"
+ },
+ "source_options_conflict": {
+  "en": "The branch or folder in the link differs from --branch/--subdir. Keep only one of them.",
+  "zh": "链接里的分支或子目录与 --branch/--subdir 不一致，请只保留一处。"
+ },
+ "invalid_source_ref": {
+  "en": "The branch, tag or commit name is not valid.",
+  "zh": "分支、标签或 commit 名称格式不正确。"
+ },
+ "invalid_source_subdir": {
+  "en": "Enter the folder as a relative path such as agent or apps/agent.",
+  "zh": "子目录请填写相对路径，例如 agent 或 apps/agent。"
+ },
+ "source_options_unavailable": {
+  "en": "Branch and folder choices are temporarily unavailable. Submit the plain repository link, or upload a ZIP.",
+  "zh": "暂时不支持指定分支或子目录，请提交仓库主页链接，或上传 ZIP。"
+ },
+ "invalid_source_archive": {
+  "en": "This folder contains links or files that cannot be packaged. Upload the project as a ZIP instead.",
+  "zh": "该目录包含符号链接或无法打包的文件，请改为上传 ZIP。"
  },
  "private_source_requires_zip": {
   "en": "This repository is private. Make it public, or upload the project as a ZIP.",
