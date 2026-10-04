@@ -26,6 +26,7 @@ const w = computed(() => pick({
   platform: 'Platform diagnostics', platformHelp: 'Status of each platform step (prepare, run, score). A failed step includes the last part of the program output.',
   noDiagnostics: 'No platform diagnostics yet.',
   kinds: { prepare: 'Prepare', execute: 'Run', engine: 'Run (engine)', score: 'Score' } as Record<string, string>,
+  steps: { succeeded: 'Succeeded', failed: 'Failed', running: 'Running', queued: 'Queued', claimed: 'Running', cancelled: 'Cancelled' } as Record<string, string>,
 }, {
   title: '日志', loading: '正在读取日志…', failed: '日志读取失败', retry: '重试', close: '关闭',
   privacy: '只供本队与主办方查看。团队密钥变量的值和平台凭证已替换为 [REDACTED]。',
@@ -38,6 +39,7 @@ const w = computed(() => pick({
   platform: '平台诊断', platformHelp: '平台各步骤（准备、运行、评分）的状态；失败的步骤附带程序输出的最后部分。',
   noDiagnostics: '暂时没有平台诊断。',
   kinds: { prepare: '准备', execute: '运行', engine: '运行（评测引擎）', score: '评分' } as Record<string, string>,
+  steps: { succeeded: '成功', failed: '失败', running: '运行中', queued: '排队中', claimed: '运行中', cancelled: '已取消' } as Record<string, string>,
 }))
 
 async function load() {
@@ -85,7 +87,7 @@ onMounted(load)
       <p class="help">{{ w.platformHelp }}</p>
       <p v-if="!logs.diagnostics.length" class="help mt-2">{{ w.noDiagnostics }}</p>
       <article v-for="(entry, index) in logs.diagnostics" :key="index" class="mt-3" data-testid="project-diagnostics">
-        <p class="text-sm">{{ w.kinds[entry.kind] ?? entry.kind }} · {{ statuses[entry.status] ?? entry.status }}<template v-if="entry.code && entry.code !== entry.status"> · <span class="m">{{ entry.code }}</span></template></p>
+        <p class="text-sm">{{ w.kinds[entry.kind] ?? entry.kind }} · {{ w.steps[entry.status] ?? statuses[entry.status] ?? entry.status }}<template v-if="entry.code && entry.code !== entry.status && entry.code !== 'completed'"> · <span class="m">{{ entry.code }}</span></template></p>
         <pre v-if="entry.log">{{ entry.log }}</pre>
       </article>
     </template>
@@ -95,7 +97,8 @@ onMounted(load)
 <style scoped>
 .run-logs { flex-basis: 100%; width: 100%; min-width: 0; margin-top: .75rem; padding: .9rem 1rem; border: 1px solid #315efb; border-radius: 4px; background: #111; }
 .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
-.label { font-weight: 400; overflow-wrap: anywhere; }
+.label { font-weight: 400; overflow-wrap: anywhere; text-transform: none; }
+.run-logs h3, .run-logs .btn { text-transform: none; }
 h3 { font-weight: 600; } h4 { font-weight: 600; font-size: .95rem; }
 .meta { font-size: .8rem; color: #858585; }
 pre { max-height: 24rem; overflow: auto; padding: .75rem; margin-top: .5rem; background: #0b0b0b; font-size: .78rem; white-space: pre-wrap; overflow-wrap: anywhere; }
