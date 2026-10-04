@@ -1,13 +1,13 @@
 {
   "meta": {
     "title": "Agentic Observer Hackathon · GOSIM",
-    "description": "The GOSIM survey-agent hackathon: write an observing agent for a telescope that sees the published sky but not the real weather, and decides what to point at next every 15 minutes.",
+    "description": "The GOSIM survey-agent hackathon: write an observing agent for an observatory. Every 15 minutes it uses the public sky state and the weather bulletins to decide what to point at next.",
     "wordmark_note": "Agentic Observer",
     "brand": "Agentic Observer Hackathon",
     "pages": {
       "home": {
         "title": "Home",
-        "description": "The GOSIM survey-agent hackathon: write an observing agent for a telescope that sees the published sky but not the real weather, and decides what to point at next every 15 minutes."
+        "description": "The GOSIM survey-agent hackathon: write an observing agent for an observatory. Every 15 minutes it uses the public sky state and the weather bulletins to decide what to point at next."
       },
       "brief": {
         "title": "Full event brief",
@@ -153,7 +153,7 @@
       "Hackathon"
     ],
     "subtitle": "Intelligent Survey Operations",
-    "lede": "Write an agent that runs a survey telescope through the night: it reads the sky state, decides like a lead observer, and picks the next observation every 15 simulated minutes.",
+    "lede": "Write an agent that runs a survey telescope's night shift: it reads the sky state and picks the next observation every 15 simulated minutes.",
     "pipeline": [
       {
         "label": "Online Training",
@@ -210,24 +210,24 @@
       "legend_flexible": "Optional",
       "legend_completed": "Completed",
       "legend_interrupted": "Interrupted",
-      "explainer": "This is the whole observable sky. Every mark is a target waiting to be hit; a filled one means a fibre has already landed on it. Every 15 minutes the agent picks one pointing — where to aim the field, and which targets its 16 fibres land on — or waits for better weather.",
+      "explainer": "This is the whole observable sky. Each mark is a target, and it fills in once a fibre has observed it. Every 15 minutes the agent picks a pointing (where to aim the telescope and which targets its 16 fibres go to) or waits for better weather.",
       "tour_replay": "What am I looking at?",
       "tour_title": "Sky map walkthrough",
       "tour_next": "Next",
       "tour_done": "Start watching",
       "tour_skip": "Skip",
       "tour": {
-        "axes": "The horizontal axis is right ascension — the sky's longitude — cropped to the slice this catalogue's targets actually sit in. The vertical axis is declination, its latitude.",
-        "tiles": "Each mark is a target: ◇ must be finished (REQUIRED), □ is optional (FLEXIBLE). A ring means it is high enough to shoot right now; filled in means some pointing's fibre has already landed on it. While a pointing is live, thin lines join it to the targets its 16 fibres are hitting.",
-        "meridian": "The dashed blue line is where the telescope is pointing right now. It drifts to the right as the Earth turns, and moves quicker around dawn, where a whole daytime is skipped.",
-        "hud": "The row underneath is the current slot, the weather at that moment and the progress. The four weather figures are seeing, transparency, sky brightness and instrument efficiency — hover them for an explanation. The score climbs as targets light up, and that is the number competitors are trying to maximise."
+        "axes": "The horizontal axis is right ascension (roughly the sky's longitude), cropped to the range where this catalogue's targets sit. The vertical axis is declination (roughly latitude).",
+        "tiles": "◇ marks a required target (REQUIRED), □ an optional one (FLEXIBLE). A ring means it is high enough to observe now; a filled mark has already been observed by a fibre. During a pointing, thin lines connect it to the targets its 16 fibres are on.",
+        "meridian": "The dashed blue line is where the telescope is pointing now. It drifts right as the Earth turns, and moves faster around dawn because the replay skips the daytime.",
+        "hud": "The row below shows the current slot, the weather and progress. The four weather figures are seeing, transparency, sky brightness and instrument efficiency; hover them for details. The score goes up as targets are observed."
       },
       "weather_help": "Seeing: how blurred stars are, lower is sharper (arcseconds). Transparency: how clear the atmosphere is, higher is better. Sky: how bright the night sky itself is. Instrument: how much the equipment is delivering right now.",
       "seek": "Drag the replay position",
       "lst": "Where the telescope points right now · sky time {lst}",
       "tour_close": "Close walkthrough",
       "aria_3d": "3D replay: the dome of sky over the observatory, a beam for where the telescope points, and points of light for targets that brighten once observed",
-      "explainer_3d": "An AI agent runs an observatory's night shift: every 15 minutes it picks where the telescope points, and 16 fibres capture targets in that field at once. Observed targets light up and score; daylight, cloud and low sky block observing.",
+      "explainer_3d": "Here an agent is running an observatory's night shift. Every 15 minutes it decides where the telescope points, and 16 fibres observe targets in that field at once. Observed targets light up and score. Nothing can be observed in daylight, through cloud, or too low in the sky.",
       "speed": "Playback speed",
       "night_tick": "N{n}",
       "hud_time": "Night {n}/{nights} · time",
@@ -242,18 +242,18 @@
         "observe": "Pointing {k}: {n} of 16 fibres land on targets, +{score} points",
         "observe_required": "Pointing {k}: {n} targets hit, {r} of them must-do, +{score} points",
         "observe_blocked": "Cloud is too thick and the dome is shut: this pointing captures nothing, 0 points",
-        "dawn": "Dawn is coming — night {night} of observing is over",
+        "dawn": "Dawn is coming; night {night} of observing is over",
         "day": "Daytime: the Sun is up, so the telescope waits for dark (fast-forwarding)",
-        "dusk": "It's dark again — night {night} begins and the agent picks targets anew",
-        "closed": "Too cloudy, dome closed — waiting for the weather to clear…",
+        "dusk": "It is dark again. Night {night} begins and the agent picks new targets",
+        "closed": "Too cloudy, dome closed. Waiting for the weather to clear…",
         "wait": "Nothing worth observing right now; waiting for the next 15 minutes",
         "done": "{nights} nights done: {done} / {total} targets observed, final score {score}"
       },
       "tour3d": {
-        "dome": "This is the sky over an observatory in Chile: the glass-like dome is the sky, and nothing below the horizon can be seen. Each point of light is a target — orange must be done, blue is optional; dim ones are still waiting, bright ones have been observed.",
-        "beam": "The blue beam is the telescope. Every 15 minutes the agent decides where to swing it. The circle at the bottom right zooms into the telescope's field: 16 fibres each reach for a target, so one pointing captures many at once.",
-        "limits": "The sky turns: targets rise in the east and set in the west. Too low (below the dashed orange line), daytime, or too cloudy (dome closed) means no observing — the agent has to wait or pick another patch of sky.",
-        "score": "Underneath are the time, the weather and the results. Every target observed adds points — the agents competitors write are trying to score as high as possible over these 7 nights."
+        "dome": "This is the sky above an observatory in Chile. The dome is the sky; nothing below the horizon is visible. Each point is a target: orange is required, blue is optional. Dim ones haven't been observed yet, bright ones have.",
+        "beam": "The blue beam is the telescope's pointing, and the agent decides every 15 minutes where to move it. The circle at the bottom right is a zoom of the field of view: each of the 16 fibres goes to one target, so one pointing can observe several.",
+        "limits": "Targets rise in the east and set in the west. Nothing can be observed when a target is too low (below the dashed orange line), in daytime, or when it's too cloudy (dome closed). The agent then waits or moves to another part of the sky.",
+        "score": "Below are the current time, weather and score. Each observed target adds points; the agent tries to score as much as it can over these 7 nights."
       },
       "sky3d": {
         "north": "N",
@@ -282,32 +282,32 @@
     "vision": {
       "kicker": "01 / Vision",
       "title": "Build an open benchmark for intelligent survey operations",
-      "lede": "There are far more tiles than observing time, so every pointing has to be chosen.",
+      "lede": "There are far more tiles than observing time, so every pointing is a trade-off.",
       "paragraphs": [
-        "Every night a survey telescope faces thousands of observable tiles. Weather changes, target visibility changes, and science priorities change. Every decision a human observer makes shapes the quality of the final cosmic sample.",
-        "We are building an open benchmark: an agent reads the state of the night sky, reasons like a seasoned observer, and decides the next observation every 900 seconds. Every participant receives the same survey plan, weather replay, inserted requests, simulator, and scoring rule, so teams differ only in strategy."
+        "A survey telescope has thousands of tiles it could observe each night, while the weather, target visibility and science priorities keep changing. Each choice the observer makes affects the quality of the final sample.",
+        "We want this to be an open benchmark: an agent reads the state of the night sky and decides the next observation every 900 seconds. All teams get the same survey plan, weather replay, observation requests, simulator and scoring rule, so the only difference is strategy."
       ],
       "link": "Read the full event brief"
     },
     "mission": {
       "kicker": "02 / Mission",
       "title": "Where should the telescope look next",
-      "lede": "Your agent takes over the core decisions of a human lead observer.",
+      "lede": "Your agent makes the decisions a lead observer makes on shift.",
       "cards": [
         {
           "title": "Read the state",
-          "desc": "Weather, forecast, survey progress, and the tiles that are legal right now, packed into one compact state dictionary."
+          "desc": "At each decision the agent receives the weather, forecast, survey progress and the tiles it can observe right now."
         },
         {
           "title": "Weigh the trade-offs",
-          "desc": "Spend the good dark time on faint targets, or finish the tile that is one exposure from done? The forecast improves later — is another slot worth the wait?"
+          "desc": "With good dark time, do you go after faint targets or finish the tile that needs one more exposure? If the forecast says it will clear later, is it worth waiting another slot?"
         },
         {
           "title": "Make the call",
-          "desc": "Observe a tile, or wait. One action per slot, and the reason for it."
+          "desc": "One action per slot: observe a tile or wait, with a reason."
         }
       ],
-      "closing": "You don't need an astronomy background. Online trainings on October 2 and 3 (times to be announced) introduce the astronomy task and the competition with agents. You can also submit a complete project on Practice to rehearse with the same evaluation flow as the competition.",
+      "closing": "You don't need an astronomy background. There are two online trainings on October 2 and 3 (times to be announced): one on the astronomy survey task, one on the competition and agents. Practice also takes complete projects and uses the same evaluation flow as the competition, so you can try things out there first.",
       "cardKicker": "How the challenge arrives",
       "cardTitle": "One Survey Mission Card",
       "cardLede": "Every round of the challenge starts from a mission card. Everything that round holds you to is written on it:",
@@ -349,7 +349,7 @@
     },
     "participate": {
       "kicker": "03 / How to participate",
-      "title": "Three steps to compete",
+      "title": "Three steps",
       "lede": "Registration, teams, submissions and scores all live on this site.",
       "steps": [
         {
@@ -360,7 +360,7 @@
         {
           "n": "02",
           "title": "Build your agent",
-          "desc": "Build your agent following the docs and iterate on the public development scenarios — deterministic code, an LLM through your own .env, or both."
+          "desc": "Build your agent following the docs and iterate on the public practice cards. Deterministic code, an LLM called with your own key, or both."
         },
         {
           "n": "03",
@@ -416,8 +416,8 @@
     },
     "evaluation": {
       "kicker": "05 / Evaluation",
-      "title": "Objective, public scoring rules",
-      "lede": "The scoring program is published and frozen before the competition starts and never changes afterwards. What one observation earns depends on the weather and moonlight at that moment; scheduling the right program on the right night and completing temporary observation requests on time earn extra credit, while rule violations cost points.",
+      "title": "Scoring rules",
+      "lede": "The scoring program is published and frozen before the competition starts and does not change afterwards. What an observation earns depends on the weather and moonlight at the time. Choosing the program that fits the conditions and finishing temporary observation requests on time earn extra points; rule violations cost points.",
       "formula": "total = base_science + program_bonus + request_reward\n      − unsafe_observation − invalid_action − avoidable_wait\n      − required_miss − flexible_shortfall − request_miss\nbase  = Σ_segments V_tile · (dt / t_nominal) · combined\ncombined = min(eff · transp · sky / (seeing · airmass), 3) · lunar",
       "criteria": [
         {
@@ -438,7 +438,7 @@
         },
         {
           "term": "Coverage",
-          "desc": "1000 per REQUIRED tile left unfinished, 100 per FLEXIBLE tile below the quota of four per region — applied at the end of every run, even truncated ones."
+          "desc": "1000 per REQUIRED tile left unfinished; 100 per FLEXIBLE tile short of the quota of four per region. Applied at the end of every run, including runs that stop early."
         },
         {
           "term": "Generalisation",
@@ -453,7 +453,7 @@
       "items": [
         {
           "title": "Projects",
-          "desc": "Practice accepts a complete project (40 per team per day, separate board). The formal competition accepts complete projects only — a public repository URL or a private ZIP, evaluated round by round in the cloud."
+          "desc": "Practice accepts a complete project (40 per team per day, separate board). The formal competition accepts complete projects only: a public repository URL or a private ZIP, evaluated round by round in the cloud."
         },
         {
           "title": "Limits",
@@ -479,7 +479,7 @@
       ],
       "committee": {
         "kicker": "Scientific committee",
-        "intro": "Seven scientists from astronomy and physics research institutions form the Survey Telescope Scientific Committee, standing behind the mission design, the scenarios and the scoring.",
+        "intro": "The Scientific Committee is seven scientists from astronomy and physics research institutions. They review the challenge design, the task cards and the scoring.",
         "members": [
           {
             "photo": "zhongxu-zhai",
@@ -545,7 +545,7 @@
     "participants": {
       "kicker": "Participants · LIVE",
       "title": "Registered participants",
-      "lede": "Every registered participant shows here: astronomy tier, AI tier, and team-up intent.",
+      "lede": "Participants who choose to show their card appear here, with their astronomy tier, AI tier and whether they're looking for a team.",
       "stat_total": "Registered",
       "stat_teams": "Teams",
       "stat_looking": "Seeking teammates",
@@ -568,19 +568,19 @@
       "levels": [
         {
           "title": "Register",
-          "desc": "Enter your name, e-mail and password, select your astronomy and AI tiers, and complete registration.",
+          "desc": "Enter your name, email and password and pick your astronomy and AI tiers.",
           "time": "~2 min",
           "to": "/register"
         },
         {
           "title": "Create a team",
-          "desc": "Scores are recorded per team; individual entrants create a team as well. Find collaborators by tier on the Teammates page.",
+          "desc": "Scores are recorded per team, so solo entrants create a team too. You can look for teammates by tier on the Teammates page.",
           "time": "~1 min",
           "to": "/team"
         },
         {
-          "title": "Run the baseline, make your changes",
-          "desc": "Read the docs, build an agent and submit it to the Debug board.",
+          "title": "Run the example, then make it yours",
+          "desc": "Read the docs, build an agent and submit it to the Practice board.",
           "time": "~20 min",
           "to": "/start"
         },
@@ -1319,8 +1319,8 @@
     }
   },
   "cta": {
-    "title": "The next observation, decided by you and your agent",
-    "tagline": "Same survey plan, weather replay, inserted requests, simulator, and scoring rule. The only variable is strategy.",
+    "title": "Come build an observing agent",
+    "tagline": "Every team gets the same survey plan, weather replay, observation requests, simulator and scoring rule. What differs is the strategy.",
     "location": "Online development and evaluation · October 17 at GOSIM Shenzhen",
     "button": "Register now",
     "tag": "2026 / GOSIM / AGENTIC OBSERVER"
@@ -2055,9 +2055,9 @@
     "docs": "Documentation",
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
     "flow_examples": "Example projects",
-    "flow_examples_hint": "Complete example agent projects -- pick a language to start from and adapt the strategy to your own.",
+    "flow_examples_hint": "Complete example agent projects. Pick a language to start from and adapt the strategy to your own.",
     "flow_talks": "Talk recordings",
-    "flow_talks_hint": "Replays of the online hackathon talks, hosted on Bilibili. Press play to load a video.",
+    "flow_talks_hint": "Recordings of the online talks, hosted on Bilibili. Press play to watch.",
     "talk1_title": "Talk 1 · Astronomy topics behind the Agentic Observer hackathon",
     "talk1_speakers": "Dr. Yifei Luo · Lawrence Berkeley National Laboratory",
     "talk2_title": "Talk 2 · Hands-on topics for the Agentic Observer hackathon",
@@ -2071,7 +2071,7 @@
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
     "flow2": "Reference",
-    "flow2_hint": "These are the references for building and submitting your own agent."
+    "flow2_hint": "What you'll need for building and submitting your agent."
   },
   "faq": {
     "kicker": "FAQ",
@@ -2079,7 +2079,7 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Your agent is a long-running program: at every decision it reads one JSON message (decision_request) from standard input and writes one action to standard output — observe (pointing, fibre assignments, exposure time and program), wait, report or finish. The easiest start is to download an example project from the Resources page, run it on the local practice cards, and then change its strategy. See the Docs for the protocol and how to submit."
+        "a": "Your agent is a long-running program: at every decision it reads one JSON message (decision_request) from standard input and writes one action to standard output: observe (pointing, fibre assignments, exposure time and program), wait, report or finish. The easiest start is to download an example project from the Resources page, run it on the local practice cards, and then change its strategy. See the Docs for the protocol and how to submit."
       },
       {
         "q": "Do I need an astronomy background?",
@@ -2111,7 +2111,7 @@
       },
       {
         "q": "Is the leaderboard score the final result?",
-        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated 3 times on each of the hidden cards E–H (the 3 evaluations of a card run at the same time, so your model service must handle concurrent calls) and each card is averaged; only the mean over E–H decides the final ranking. We recommend making your agent behave consistently (for example with repeatable random number generation in your own program); you can check it with “Evaluate 3 times and average”; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams and expect to confirm the awards before October 10; winning teams' entries must be released as open source."
+        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated 3 times on each of the hidden cards E–H and each card is averaged; only the mean over E–H decides the final ranking. The 3 evaluations of a card run at the same time, so your model service must handle concurrent calls. We recommend making your agent behave consistently (for example with repeatable random number generation in your own program). You can check this with “Evaluate 3 times and average”. Exact ties are settled by the organizers and announced with the results. The organizers verify the top teams and expect to confirm the awards before October 10. Winning teams' entries must be released as open source."
       },
       {
         "q": "Do I have to attend in Shenzhen?",
@@ -2123,7 +2123,7 @@
       },
       {
         "q": "Must I open-source my agent?",
-        "a": "Award-winning entries must be released as open source, open to public scrutiny."
+        "a": "Award-winning entries must be released as open source."
       },
       {
         "q": "What happens if my agent crashes or times out?",
