@@ -1,6 +1,6 @@
 """Repeated evaluations (migration 20261004030000): the hidden final averages repeat_runs evaluations of
-each team's final version, teams can run the same 3-run average as a self-check, one team's evaluations
-run one after another, and the online board marks each team's final version."""
+each team's final version and starts each card's repeats together (20261004120000), teams can run the same
+3-run average as a self-check (run one after another), and the online board marks each team's final version."""
 import csv
 import sys
 import uuid
@@ -50,19 +50,61 @@ def two_teams(final):
     return s, o
 
 
-def test_the_hidden_final_runs_each_final_version_three_times_round_by_round(two_teams):
+def leased(s):
+    """Run ids the dispatcher hands out in one pass (cap 2 per pass here)."""
+    return [p['id'] for p in rpc(s['uri'], 'observer_pending_runs', 2)]
+
+
+def test_the_hidden_final_starts_each_cards_three_repeats_together(two_teams):
     s, o = two_teams; uri = s['uri']
     result = apply(s)
     assert (result['runs'], result['created']) == (3, 6)
     teams = {t['team_id']: t for t in result['teams']}
     assert {len(t['batch_ids']) for t in teams.values()} == {3}
-    order = [r[0] for r in query(uri, 'select team_id from public.observer_batches where phase_id=%s order by created_at,id', (s['hidden'],))]
-    assert order[:2] != [order[0]] * 2 and sorted(order[:2]) == sorted(order[2:4]) == sorted(order[4:])
-    # One evaluation per team at a time: only every team's first evaluation is handed out.
-    firsts = {uuid.UUID(t['batch_ids'][0]) for t in teams.values()}
-    assert pending_batches(s, (s['team'], o['team'])) == firsts
+    # Team by team; each card's three repeats adjacent in creation order.
+    rows = query(uri, """select b.team_id, r.scenario_id from public.observer_runs r join public.observer_batches b on b.id=r.batch_id
+        where b.phase_id=%s order by r.created_at, r.id""", (s['hidden'],))
+    groups = [rows[i:i + 3] for i in range(0, len(rows), 3)]
+    assert len(groups) == 8 and all(len({tuple(x) for x in g}) == 1 for g in groups)
+    # A pass never splits a card's repeats, even past its cap: the first pass leases one whole card (3 runs).
+    first = leased(s)
+    assert len(first) == 3
+    cards = query(uri, 'select distinct b.team_id, r.scenario_id from public.observer_runs r join public.observer_batches b'
+                  ' on b.id=r.batch_id where r.id=any(%s::uuid[])', (first,))
+    assert len(cards) == 1
+    # Not serialized: every repeat of both teams is handed out without waiting for an earlier one.
+    rest = []
+    for _ in range(20):
+        got = leased(s)
+        if not got: break
+        rest += got
+    assert len(first) + len(rest) == 24
     # Creating again adds nothing.
     assert apply(s)['created'] == 0
+
+
+def test_repeats_that_did_not_overlap_are_flagged_and_replaced_as_a_whole(two_teams, monkeypatch, capsys):
+    s, o = two_teams; uri = s['uri']
+    mine = {t['team_id']: t for t in apply(s, s['team'])['teams']}[str(s['team'])]['batch_ids']
+    # Card E: repeat 3 starts only after repeat 1 finished (as if it had been rerun later).
+    for i, batch in enumerate(mine):
+        for card in 'efgh': score(s, batch, card, 50)
+    t0 = '2026-10-08 00:00:00+00'
+    query(uri, "update public.observer_runs set started_at=%s::timestamptz, finished_at=%s::timestamptz+interval '10 minutes'"
+               " where batch_id=any(%s::uuid[])", (t0, t0, mine))
+    assert query(uri, 'select private.observer_final_set_concurrent(%s,%s)', (s['team'], s['hidden'])) == [(True,)]
+    query(uri, "update public.observer_runs set started_at=%s::timestamptz+interval '11 minutes' where id=%s", (t0, run_id(s, mine[2], 'e')))
+    assert query(uri, 'select private.observer_final_set_concurrent(%s,%s)', (s['team'], s['hidden'])) == [(False,)]
+    source, target = (query(uri, 'select slug from public.phases where id=%s', (p,))[0][0] for p in (s['phase'], s['hidden']))
+    monkeypatch.setattr(sys, 'argv', ['run-hidden-final.py', '--source', source, '--target', target, '--results'])
+    script(s, monkeypatch).main()
+    out = capsys.readouterr().out
+    assert 'not_concurrent' in out and 'ranked=0' in out
+    skipped = apply(s, s['team'])['teams'][0]
+    assert (skipped['reason'], skipped['failure']) == ('failed_not_concurrent', 'not_concurrent')
+    replaced = apply(s, s['team'], platform=True)['teams'][0]
+    assert (replaced['action'], len(replaced['batch_ids'])) == ('created', 3)
+    assert query(uri, 'select count(*) from public.observer_batches where id=any(%s::uuid[]) and superseded_at is not null', (mine,)) == [(3,)]
 
 
 def test_the_board_and_the_organizer_results_average_three_evaluations(two_teams, monkeypatch, capsys, tmp_path):
@@ -117,7 +159,7 @@ def test_the_board_and_the_organizer_results_average_three_evaluations(two_teams
         '2', pytest.approx(47.5), pytest.approx(30), slug['g'], '3')
 
 
-def test_a_platform_failure_is_replaced_never_averaged_as_zero(two_teams):
+def test_a_platform_failure_replaces_all_three_repeats_never_averaged_as_zero(two_teams):
     s, o = two_teams; uri = s['uri']
     mine = {t['team_id']: t for t in apply(s)['teams']}[str(s['team'])]['batch_ids']
     for card in 'efgh': score(s, mine[0], card, 50)
@@ -126,14 +168,19 @@ def test_a_platform_failure_is_replaced_never_averaged_as_zero(two_teams):
     query(uri, 'select private.observer_finalize_batch(%s)', (mine[1],))
     skipped = apply(s, s['team'])['teams'][0]
     assert (skipped['reason'], skipped['failure'], skipped['evaluations']) == ('failed_platform', 'platform', 2)
+    # The whole set is replaced: no repeat runs after another repeat of its card finished.
     retried = apply(s, s['team'], platform=True)['teams'][0]
-    assert (retried['action'], retried['new_evaluations'], len(retried['batch_ids'])) == ('created', 1, 1)
+    assert (retried['action'], retried['new_evaluations'], len(retried['batch_ids'])) == ('created', 3, 3)
     assert query(uri, 'select status from public.observer_runs where id=%s', (run_id(s, mine[1], 'f'),)) == [('cancelled',)]
-    for batch in (mine[2], retried['batch_ids'][0]):
+    assert query(uri, 'select count(*) from public.observer_batches where id=any(%s::uuid[]) and superseded_at is not null',
+                 (mine,)) == [(3,)]
+    # Replaced evaluations (even the scored one) never count; they stay stored.
+    for card in 'efgh': score(s, mine[2], card, 99)
+    for batch in retried['batch_ids']:
         for card in 'efgh': score(s, batch, card, 80)
     query(uri, "update public.phases set leaderboard_mode='published' where id=%s", (s['hidden'],))
-    row = rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')['rows'][0]
-    assert (row['averaged_runs'], row['total_score']) == (3, pytest.approx(70))  # (50 + 80 + 80) / 3, the failure not counted
+    row = next(r for r in rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')['rows'] if r['team_id'] == str(s['team']))
+    assert (row['averaged_runs'], row['total_score']) == (3, pytest.approx(80))
     assert apply(s, s['team'], platform=True)['teams'][0]['reason'] == 'already_evaluated'
 
 

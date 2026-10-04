@@ -2111,7 +2111,7 @@
       },
       {
         "q": "Is the leaderboard score the final result?",
-        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated 3 times on each of the hidden cards E–H and each card is averaged; only the mean over E–H decides the final ranking. We recommend making your agent behave consistently (for example with repeatable random number generation in your own program); you can check it with “Evaluate 3 times and average”; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams and expect to confirm the awards before October 10; winning teams' entries must be released as open source."
+        "a": "No. The online board (October 5–7) is live feedback only. After the online phase, each team's final version is evaluated 3 times on each of the hidden cards E–H (the 3 evaluations of a card run at the same time, so your model service must handle concurrent calls) and each card is averaged; only the mean over E–H decides the final ranking. We recommend making your agent behave consistently (for example with repeatable random number generation in your own program); you can check it with “Evaluate 3 times and average”; exact ties are settled by the organizers and announced with the results. Organizers verify the top teams and expect to confirm the awards before October 10; winning teams' entries must be released as open source."
       },
       {
         "q": "Do I have to attend in Shenzhen?",
