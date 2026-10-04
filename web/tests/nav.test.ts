@@ -15,3 +15,7 @@ test('every former header page stays reachable under More', () => {
     assert.ok(all.has(path), `${path} must stay reachable from the header`)
   }
 })
+
+test('below 1280px the wide main links still have a place under More', () => {
+  assert.deepEqual(mainNavItems.filter(item => item.wide).map(item => item.to), ['/teammates', '/about'])
+})

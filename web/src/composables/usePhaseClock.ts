@@ -33,10 +33,16 @@ function fetchPhases(): Promise<void> {
     // `loaded` (which gates the "no further phase" copy) only flips once real data lands,
     // never on the timeout itself; otherwise a slow first answer reads as a confirmed empty
     // schedule for however long the real fetch takes, instead of a quiet loading state.
+    // A failed request is not an empty schedule: it keeps the loading state and is retried
+    // shortly, instead of telling visitors that no further stage is planned.
+    let failed = false
     const attempt: Promise<[Phase[], ScheduledPhase[]]> = isSupabaseConfigured
-      ? Promise.all([loadPhases().catch(() => []), loadUpcoming().catch(() => [])])
+      ? Promise.all([loadPhases().catch(() => { failed = true; return [] }), loadUpcoming().catch(() => { failed = true; return [] })])
       : Promise.resolve([[], []])
-    const apply = ([current, later]: [Phase[], ScheduledPhase[]]) => { shared.value = current; upcoming.value = later; loaded.value = true; fetchedAt = Date.now() }
+    const apply = ([current, later]: [Phase[], ScheduledPhase[]]) => {
+      if (failed) { window.setTimeout(() => { void fetchPhases() }, 15_000); return }
+      shared.value = current; upcoming.value = later; loaded.value = true; fetchedAt = Date.now()
+    }
     const result = await Promise.race([attempt, new Promise<null>(resolve => window.setTimeout(() => resolve(null), 4000))])
     if (result) apply(result)
     else void attempt.then(apply)

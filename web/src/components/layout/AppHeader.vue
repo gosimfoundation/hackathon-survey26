@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { unreadTeamNotifications, refreshTeamNotifications } from '../../stores/teamNotifications'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
@@ -37,6 +37,32 @@ const { nextLine } = usePhaseClock()
 
 const items = mainNavItems
 const more = moreNavItems
+const wideItems = mainNavItems.filter(item => item.wide)
+// When the desktop header row does not fit (narrow screens, long labels, the extra links of a
+// signed-in user), the `wide` main links move under More instead of pushing the page sideways.
+const row = ref<HTMLElement | null>(null)
+const compact = ref(false)
+async function fitRow() {
+  compact.value = false
+  await nextTick()
+  const el = row.value
+  compact.value = !!el && el.scrollWidth > el.clientWidth + 1
+}
+let rowObserver: ResizeObserver | undefined
+onMounted(() => {
+  void fitRow()
+  void document.fonts?.ready.then(() => fitRow())
+  if (row.value && typeof ResizeObserver !== 'undefined') {
+    let width = 0
+    rowObserver = new ResizeObserver(([entry]) => {
+      const next = Math.round(entry?.contentRect.width ?? 0)
+      if (next !== width) { width = next; void fitRow() }
+    })
+    rowObserver.observe(row.value)
+  }
+})
+onUnmounted(() => rowObserver?.disconnect())
+watch([locale, isLoggedIn, isAdmin], () => { void fitRow() })
 const moreOpen = ref(false)
 const seriesOpen = ref(false)
 type SeriesItem = { n: string; name: string; sub: string; href: string; current: boolean }
@@ -55,8 +81,8 @@ async function logout() {
 </script>
 
 <template>
-  <header class="cosmos-header sticky top-0 z-50 border-b border-border backdrop-blur">
-    <div class="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-6 sm:px-5 md:px-10 xl:px-14">
+  <header class="cosmos-header sticky top-0 z-50 border-b border-border backdrop-blur" :class="{ 'nav-compact': compact }">
+    <div ref="row" class="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-6 sm:px-5 md:px-10 lg:gap-4 xl:gap-6 xl:px-14">
       <div class="flex items-center gap-3">
         <router-link to="/" :aria-label="`${t('meta.brand')} · ${t('meta.pages.home.title')}`" class="flex items-center gap-3">
           <span class="cosmos-wordmark shrink-0 whitespace-nowrap text-lg text-[#f5f5f5]">GOSIM <span class="hidden sm:inline text-[#315efb]">Create</span></span>
@@ -82,19 +108,20 @@ async function logout() {
         </div>
       </div>
 
-      <nav class="hidden items-center gap-5 lg:flex">
+      <nav class="hidden items-center gap-3 lg:flex xl:gap-5">
         <router-link
           v-for="item in items"
           :key="item.to"
           :to="item.to"
-          class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]"
-          :class="isActive(item.to) ? 'text-[#78a6ff]' : 'text-white/50'"
+          class="main-link inline-flex h-10 items-center whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]"
+          :class="[isActive(item.to) ? 'text-[#78a6ff]' : 'text-white/50', { 'nav-wide': item.wide }]"
         >{{ t(item.key) }}</router-link>
         <div class="nav-drop relative" @mouseenter="moreOpen = true" @mouseleave="moreOpen = false">
-          <button type="button" class="inline-flex h-10 items-center gap-1 font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="moreActive() ? 'text-[#78a6ff]' : 'text-white/50'" :aria-expanded="moreOpen" data-testid="nav-more" @click="moreOpen = !moreOpen">
+          <button type="button" class="main-link inline-flex h-10 items-center gap-1 whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="moreActive() ? 'text-[#78a6ff]' : 'text-white/50'" :aria-expanded="moreOpen" data-testid="nav-more" @click="moreOpen = !moreOpen">
             {{ t('nav.more') }} <span aria-hidden="true" class="text-[.6rem]">▾</span>
           </button>
           <div v-show="moreOpen" class="nav-drop-panel">
+            <router-link v-for="item in wideItems" :key="item.to" :to="item.to" class="nav-drop-item nav-narrow" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
             <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
           </div>
         </div>
@@ -103,18 +130,18 @@ async function logout() {
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
-        <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
+        <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
         <router-link v-if="isLoggedIn" to="/notifications" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80" :aria-label="pick('Team notifications','组队通知')" data-testid="team-notifications">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
           <span v-if="unreadTeamNotifications" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ unreadTeamNotifications > 99 ? '99+' : unreadTeamNotifications }}</span>
         </router-link>
         <span v-if="fullMoon" class="moon-chip hidden md:inline-flex" :title="pick('Full moon tonight.', '今晚满月。')">🌕</span>
-        <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
+        <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center whitespace-nowrap border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
           {{ nextLocaleLabel }}
         </button>
-        <button v-if="isLoggedIn" data-testid="nav-logout" type="button" @click="logout" class="ml-1 hidden h-10 items-center border border-white/35 px-4 font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5] transition-colors hover:border-[#315efb] hover:text-[#78a6ff] md:inline-flex">{{ t('nav.logout') }}</button>
-        <router-link v-else-if="registrationOpen" data-testid="nav-register" to="/register" class="cosmos-register-link ml-1 hidden h-10 items-center border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.register') }}</router-link>
-        <router-link v-else data-testid="nav-register" to="/register?mode=login" class="cosmos-register-link ml-1 hidden h-10 items-center border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.login') }}</router-link>
+        <button v-if="isLoggedIn" data-testid="nav-logout" type="button" @click="logout" class="ml-1 hidden h-10 items-center whitespace-nowrap border border-white/35 px-4 font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5] transition-colors hover:border-[#315efb] hover:text-[#78a6ff] md:inline-flex">{{ t('nav.logout') }}</button>
+        <router-link v-else-if="registrationOpen" data-testid="nav-register" to="/register" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.register') }}</router-link>
+        <router-link v-else data-testid="nav-register" to="/register?mode=login" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.login') }}</router-link>
         <button class="ml-1 lg:hidden" type="button" @click="mobileOpen = !mobileOpen" :aria-label="t('nav.menu')" :aria-expanded="mobileOpen">
           <svg class="h-6 w-6 text-text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
@@ -141,3 +168,11 @@ async function logout() {
     </div>
   </header>
 </template>
+
+<style scoped>
+/* See fitRow(): links marked `wide` sit under More whenever the header row would overflow. */
+.nav-compact .nav-wide { display: none !important; }
+.nav-narrow { display: none; }
+.nav-compact .nav-narrow { display: block; }
+@media (max-width: 1279px) { .main-link { letter-spacing: .02em; } }
+</style>

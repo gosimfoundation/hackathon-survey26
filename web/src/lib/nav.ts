@@ -1,12 +1,13 @@
 /** Header navigation: the main destinations (ending with About), everything else under "More". */
-export interface NavItem { key: string; to: string }
+/** `wide`: in the header row only from 1280px; narrower desktop headers list it under More instead. */
+export interface NavItem { key: string; to: string; wide?: boolean }
 
 export const mainNavItems: NavItem[] = [
   { key: 'nav.start', to: '/start' },
   { key: 'nav.rules', to: '/rules' },
   { key: 'nav.leaderboard', to: '/leaderboard' },
-  { key: 'nav.teammates', to: '/teammates' },
-  { key: 'nav.about', to: '/about' },
+  { key: 'nav.teammates', to: '/teammates', wide: true },
+  { key: 'nav.about', to: '/about', wide: true },
 ]
 
 /** The fourth main item: the prominent Participate button in the header. */
