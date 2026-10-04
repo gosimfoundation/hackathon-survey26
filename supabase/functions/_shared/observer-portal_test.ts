@@ -209,8 +209,10 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
   // Another team's run is invisible before any service storage read.
   await assertRejects(() => download(false), ProxyError, "result_not_ready");
   assertEquals(signed, []);
-  // No stored log (local session, older run): the original result is unchanged.
-  assertEquals(await download(), { url: "https://codeload.github.com/result.zip" });
+  // No stored log (local session, older run): the original result, unchanged, but served
+  // from storage so the browser may read it cross-origin (codeload.github.com refuses CORS).
+  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
+  assertEquals(objects.get("agent-logs/" + run + "/observer-result.zip"), result);
   objects.set(
     "agent-logs/" + run + "/agent-log.zip",
     await singleFileZip("agent.log", encode("[platform] project stderr\nhello\n")),
@@ -221,7 +223,8 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
   assertEquals(new TextDecoder().decode((await readZipEntry(combined, "decisions.csv", 1000))!), "night,action\n");
   // A damaged stored log never blocks the trusted result.
   objects.set("agent-logs/" + run + "/agent-log.zip", encode("damaged"));
-  assertEquals(await download(), { url: "https://codeload.github.com/result.zip" });
+  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
+  assertEquals(objects.get("agent-logs/" + run + "/observer-result.zip"), result);
 });
 
 Deno.test("the final version is set or cleared through the caller's team RPC", async () => {

@@ -35,6 +35,8 @@ const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref(
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
 /** Per batch id, progress of a "download all results" bundle in flight; absent once it is not running. */
 const zipProgress = ref<Record<string, { done: number; total: number }>>({})
+/** Per batch id, the outcome of the last bundle, shown beside its button (the page-level notice is often scrolled out of view). */
+const zipOutcome = ref<Record<string, { text: string; failed: boolean }>>({})
 // Formal model calls use the team's choice: a key saved encrypted on the server
 // (default, deleted automatically after the results are verified) or the relay
 // to this open page, where nothing is stored.
@@ -92,9 +94,9 @@ const words = computed(() => pick({
   close: 'Close review', done: 'Saved.', prepared: 'Project queued for preparation. When it is ready, open the review in step 2 below.', confirmed: 'Version confirmed. Start it in step 3 below.',
   queued: 'Evaluation queued.', failed: 'This request could not be completed. Refresh and try again.', working: 'Working…',
   team: 'Join or create a team first.', phaseUnavailable: 'No evaluation phase is open.',
-  final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version once on a hidden scenario. Only that hidden score decides the final ranking; the online board does not.',
+  final: 'Final version', finalIntro: 'After the online phase ends, the organizers evaluate your team’s final version once on the hidden cards E–H (900 s per card). Only the mean over E–H decides the final ranking; the online board does not.',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
-  finalLocked: 'The choice is locked. This version will be evaluated on the hidden scenario.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
+  finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
   finalBadge: 'Final version', finalScore: 'score',
@@ -139,14 +141,14 @@ const words = computed(() => pick({
   saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。准备好后请到下方第2步点“检查接口”。',
   confirmed: '已确认版本。请到下方第3步开始评测。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
   team: '请先加入或创建队伍。', phaseUnavailable: '当前没有开放的评测赛程。',
-  final: '最终版本', finalIntro: '线上赛结束后，主办方会在一个隐藏场景上对每队的最终版本评测一次。最终排名只看这个隐藏场景的成绩，线上榜不决定最终排名。',
+  final: '最终版本', finalIntro: '线上赛结束后，主办方会在隐藏任务卡 E–H 上对每队的最终版本评测一次（每张卡 900 秒）。最终排名只看 E–H 四张卡的平均分，线上榜不决定最终排名。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
-  finalLocked: '选择已锁定，将用这个版本参加隐藏场景评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
+  finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
   finalBadge: '最终版本', finalScore: '分数',
-  finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则最终隐藏场景评测时模型调用会失败。',
-  apiFinalNote: '最终隐藏场景评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
+  finalRelay: '如果你的程序会调用大模型，请在比赛结束前把模型 API 改为『加密保存』，否则隐藏任务卡 E–H 评测时模型调用会失败。',
+  apiFinalNote: '隐藏任务卡 E–H 评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.phase_id===competition.phaseId||p.phase_id===competition.betaPhaseId||p.phase_id===competition.projectPhaseId) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
@@ -342,7 +344,8 @@ function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
 async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
   const runs = batch.observer_runs.filter(r => r.result_path)
   if (!runs.length || zipProgress.value[batch.id]) return
-  error.value = ''; notice.value = ''
+  const outcome = (text: string, failed: boolean) => { zipOutcome.value = { ...zipOutcome.value, [batch.id]: { text, failed } } }
+  const cleared = { ...zipOutcome.value }; delete cleared[batch.id]; zipOutcome.value = cleared
   zipProgress.value = { ...zipProgress.value, [batch.id]: { done: 0, total: runs.length } }
   try {
     const { unzipSync, zipSync, strToU8 } = await import('fflate')
@@ -363,12 +366,14 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
         zipProgress.value = { ...zipProgress.value, [batch.id]: { done: (prev?.done ?? 0) + 1, total: runs.length } }
       }
     }
-    if (!Object.keys(files).length) { error.value = words.value.downloadAllFailed; return }
+    if (!Object.keys(files).length) { outcome(words.value.downloadAllFailed, true); return }
     if (errors.length) files['errors.txt'] = strToU8(errors.join('\n') + '\n')
     const blob = new Blob([zipSync(files, { level: 6 })], { type: 'application/zip' })
     const date = new Date().toISOString().slice(0, 10)
     triggerDownload(blob, `gosim-observer-${batch.id.slice(0, 8)}-${date}.zip`)
-    notice.value = errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone
+    outcome(errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone, errors.length > 0)
+  } catch {
+    outcome(words.value.downloadAllFailed, true)
   } finally {
     const rest = { ...zipProgress.value }; delete rest[batch.id]; zipProgress.value = rest
   }
@@ -571,6 +576,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
+            <span v-if="zipOutcome[b.id]" :class="zipOutcome[b.id]!.failed ? 'errors' : ''" role="status" data-testid="download-all-outcome">{{ zipOutcome[b.id]!.text }}</span>
           </p>
           <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
             <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>

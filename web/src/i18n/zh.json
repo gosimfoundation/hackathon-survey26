@@ -2095,6 +2095,10 @@
       {
         "q": "平台提供 API 额度吗？",
         "a": "平台不提供模型额度。云端评测完整项目时，使用你在「参赛」页设置的自己的 API 密钥。跑通练习赛（至少获得一次成功评分）的前一百支队伍可获得 Kimi 福利（每队一个 Kimi Coding Plan 兑换码），先到先得；组委会发放后由队长在控制台领取。"
+      },
+      {
+        "q": "Python 智能体可以使用 numpy 等第三方库吗？",
+        "a": "可以。请在项目根目录的 requirements.txt 中列出依赖，并在 observer.project.json 的 build 中写明安装命令，平台在评测开始前的构建步骤中执行（构建时可以联网，耗时不计入每张卡的 900 秒）。评测容器的系统目录只读，请把依赖安装到项目目录内，例如 \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]]，并在 \"environment\" 中设置 \"PYTHONPATH\": \"/workspace/.deps\"；直接执行 pip install -r requirements.txt 会因目录只读而失败。只放 requirements.txt 而不写 build，依赖不会被自动安装。智能体运行期间除模型 API 外无法访问网络，运行时下载或安装依赖不会成功。其他语言同理，例如 npm ci、cargo build。建议先在「练习赛」中提交一次，确认构建和运行正常。"
       }
     ]
   },

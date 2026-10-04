@@ -9,7 +9,7 @@ On top of the weather, part of your recent data can be lost once.
 | Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |
 | Survey | 2026-10-09 to 2026-11-15, 38 nights. You observe when the sun is below −18°. |
 | Targets | 9,900 targets on 1,980 deg² of sky, in 3 regions. 495 are required. |
-| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |
+| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. The fibre count and layout are those sent in `initialize`. |
 | Time limit | 900 s of wall-clock time for the whole survey. |
 | Weather | Not public. During a run the agent receives a briefing every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). Possibly one `state_resync` message. It means part of your recent data was lost. It lists the targets that still count and their best scores. Rebuild your list of finished targets from it. The time already spent is not returned. |
@@ -41,7 +41,7 @@ One action per decision:
 
 | Action | Meaning |
 |---|---|
-| `observe` | Point the telescope, put up to 16 targets on fibres, expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
+| `observe` | Point the telescope, assign targets to this card's fibres (at most one per fibre; the fibre count is in `initialize`), expose for 60–3600 s, and declare a program (DARK, BRIGHT or BACKUP). |
 | `wait` | Let time pass: a number of seconds, or until a given time (for example the next night). |
 | `report` | Say that the instrument is faulty now. Right: +100. After each correct report, wrong reports are free up to the card's configured allowance, then −150 each; consecutive report actions have a separate cap. |
 | `finish` | End the survey now. |
