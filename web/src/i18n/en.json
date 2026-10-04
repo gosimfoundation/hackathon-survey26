@@ -93,6 +93,10 @@
         "title": "Command-line tool",
         "kicker": "survey26",
         "description": "Install the survey26 command-line tool, create a personal API token, and do everything the website offers from a terminal or a coding agent."
+      },
+      "about": {
+        "title": "About",
+        "description": "The organizer, sponsor and scientific committee of the Agentic Observer Hackathon."
       }
     }
   },
@@ -148,7 +152,8 @@
         }
       ]
     },
-    "register_float": "Register"
+    "register_float": "Register",
+    "about": "About"
   },
   "hero": {
     "eyebrow": "GOSIM Hackathon · Intelligent Survey Operations",
@@ -624,6 +629,12 @@
     "film": {
       "kicker": "Event film",
       "play": "Play"
+    },
+    "credits": {
+      "aria": "Organizer, sponsor and scientific committee",
+      "committee_names": "{names} and {more} more",
+      "name_sep": ", ",
+      "all": "See all"
     }
   },
   "vision": {
@@ -1654,7 +1665,8 @@
     "popup_title": "Your team can claim a Kimi Coding Plan code",
     "popup_captain": "Your team has run through the practice round and qualifies for one Kimi Coding Plan code. As captain, claim it on your dashboard; every member will then see it there.",
     "popup_member": "Your team has run through the practice round and qualifies for one Kimi Coding Plan code. Ask your captain to claim it on the dashboard; it will then show up there for everyone.",
-    "popup_go": "Claim on the dashboard"
+    "popup_go": "Claim on the dashboard",
+    "sponsor": "Sponsored by KIMI"
   },
   "profile": {
     "title": "Profile",
@@ -2684,5 +2696,8 @@
       "help_rules": "Rules",
       "help_suffix": "."
     }
+  },
+  "about_page": {
+    "kicker": "Organizer · Sponsor · Committee"
   }
 }

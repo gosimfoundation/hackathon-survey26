@@ -7,6 +7,10 @@
       "start": {
         "title": "Démarrer en 3 étapes",
         "description": "Lisez la documentation, construisez votre agent et soumettez — trois étapes pour un premier score."
+      },
+      "about": {
+        "title": "À propos",
+        "description": "L'organisateur, le mécène et le comité scientifique du hackathon Agentic Observer."
       }
     },
     "wordmark_note": "Agentic Observer"
@@ -115,7 +119,8 @@
         }
       ]
     },
-    "register_float": "S'inscrire"
+    "register_float": "S'inscrire",
+    "about": "À propos"
   },
   "phase_clock": {
     "now": "En cours",
@@ -625,6 +630,12 @@
       "title": "Exemple officiel : replay de l'agent de référence sur un scénario d'entraînement public",
       "facts": "Scénario {scenario} · graine {seed} · {nights} nuits · {rounds} décisions · score final {score}",
       "note": "Sortie réelle du scoreur et du moteur de replay de la plateforme pour un agent de référence. Lecture à 8× ; faites glisser le ciel pour changer de vue."
+    },
+    "credits": {
+      "aria": "Organisateur, mécène et comité scientifique",
+      "committee_names": "{names} et {more} autres",
+      "name_sep": ", ",
+      "all": "Tout voir"
     }
   },
   "teammates": {
@@ -957,5 +968,8 @@
       "help_rules": "Règlement",
       "help_suffix": "."
     }
+  },
+  "about_page": {
+    "kicker": "Organisation · Mécène · Comité"
   }
 }

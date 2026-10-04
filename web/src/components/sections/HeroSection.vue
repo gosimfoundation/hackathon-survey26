@@ -7,6 +7,7 @@ import { fmtUtc } from '../../lib/format'
 import { meteorShower } from '../../lib/eggs'
 import SkyConsole from './SkyConsole.vue'
 import HeroGalaxy from './HeroGalaxy.vue'
+import HeroCredits from './HeroCredits.vue'
 import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
@@ -90,6 +91,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
               {{ t('nav.leaderboard') }} <span>→</span>
             </router-link>
           </div>
+          <HeroCredits class="mt-6 reveal reveal-delay-4" />
 
           <div class="phase-strip phase-strip-live mt-9 reveal reveal-delay-5" data-testid="phase-strip">
             <div class="phase-strip-next" data-testid="phase-next">
