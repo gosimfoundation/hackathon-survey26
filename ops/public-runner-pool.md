@@ -228,7 +228,7 @@ private `observer-control` repositories (`ops/github-installations.json`), after
 the sealed result PUT and signed downloads ride out network/429/5xx for about a minute; run
 b9285236 had failed on a Storage 520) approved on all 13 public repositories (`33315a6`, previous
 `aa0faa6`) and all 13 private `observer-control` repositories (`ops/github-installations.json`),
-after a canary on runner-1 (private and public) whose public engine and score jobs succeeded.
+after a canary on runner-1 (private and public): its public engine and score jobs succeeded (no private job ran in the canary window; same files).
 Queued public jobs were moved to the new commit in the same transaction.
 
 ## Updating the runtime
