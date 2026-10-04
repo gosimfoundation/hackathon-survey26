@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -193,7 +193,7 @@ def exit_code_for(code: str) -> int:
         return EXIT_NOT_FOUND
     if code in UNAVAILABLE_CODES:
         return EXIT_UNAVAILABLE
-    if code in ("confirmation_required", "usage", "ambiguous_id", "file_not_found"):
+    if code in ("confirmation_required", "usage", "ambiguous_id", "file_not_found", "variables_exist"):
         return EXIT_USAGE
     if code == "wait_timeout":
         return EXIT_TIMEOUT
@@ -1039,6 +1039,62 @@ def cmd_env_unset(api: Api, args, out: Out):
     return env
 
 
+# Presets of the website's "Add a model service" form (web/src/lib/modelProviders.json; tests keep them equal).
+MODEL_PROVIDERS = [
+    {"cli": "kimi", "label": "Kimi Coding Plan", "protocol": "openai", "base_url": "https://api.kimi.com/coding/v1", "model": "kimi-for-coding"},
+    {"cli": "moonshot", "label": "Moonshot (Kimi API)", "protocol": "openai", "base_url": "https://api.moonshot.cn/v1", "model": "kimi-k3"},
+    {"cli": "deepseek", "label": "DeepSeek", "protocol": "openai", "base_url": "https://api.deepseek.com", "model": "deepseek-flash"},
+    {"cli": "openai", "label": "OpenAI", "protocol": "openai", "base_url": "https://api.openai.com/v1", "model": ""},
+    {"cli": "anthropic", "label": "Anthropic", "protocol": "anthropic", "base_url": "https://api.anthropic.com", "model": ""},
+    {"cli": "zhipu", "label": "Zhipu GLM", "protocol": "openai", "base_url": "https://open.bigmodel.cn/api/paas/v4", "model": "glm-5.3"},
+    {"cli": "custom", "label": "Custom", "protocol": "openai", "base_url": "", "model": ""},
+]
+
+
+def _normalize_prefix(raw: str) -> str:
+    """Same as the website: upper case, separators to _, no leading non-letters or trailing _; at most 40."""
+    value = re.sub(r"[^A-Z0-9_]+", "_", raw.strip().upper())
+    value = re.sub(r"^[^A-Z]+", "", value)
+    return re.sub(r"_+$", "", value)[:40]
+
+
+def cmd_env_model(api: Api, args, out: Out):
+    preset = next(p for p in MODEL_PROVIDERS if p["cli"] == args.provider)
+    prefix = _normalize_prefix(args.prefix or "")
+    if args.prefix is not None and not prefix:
+        raise CliError("usage", "--prefix needs a letter, e.g. KIMI", EXIT_USAGE)
+    base = prefix or ("ANTHROPIC" if preset["protocol"] == "anthropic" else "OPENAI")
+    names = {"key": base + "_API_KEY", "base_url": base + "_BASE_URL", "model": base + "_MODEL"}
+    key = (sys.stdin.read() if args.key == "-" else args.key).strip()
+    if not key:
+        raise CliError("usage", "give the API key with --key KEY, or --key - to read it from standard input", EXIT_USAGE)
+    base_url = (args.base_url if args.base_url is not None else preset["base_url"]).strip()
+    if not re.match(r"^https://\S+$", base_url):
+        raise CliError("usage", "--base-url must be an https:// address" + ("" if preset["base_url"] else " (required for --provider custom)"), EXIT_USAGE)
+    model = (args.model if args.model is not None else preset["model"]).strip()
+    env = (api.portal("team_environment") or {}).get("team_environment") or {}
+    existing = [v.get("name") for v in env.get("variables") or []]
+    writes = [(names["key"], key, True), (names["base_url"], base_url, False)] + ([(names["model"], model, False)] if model else [])
+    deletes = [names["model"]] if not model and names["model"] in existing else []
+    taken = [n for n, _, _ in writes if n in existing] + deletes
+    if taken and not args.replace:
+        raise CliError("variables_exist", out.t("Already set: %s. Pass --replace to overwrite them, or --prefix NAME to add another service.",
+                                                "已存在：%s。如需覆盖请加 --replace，或用 --prefix 名称 添加另一个服务。") % ", ".join(taken))
+    limit = (env.get("limits") or {}).get("variables")
+    added = len([n for n, _, _ in writes if n not in existing])
+    if limit is not None and len(existing) + added > limit:
+        raise CliError("team_variable_limit")
+    for name, value, secret in writes:
+        env = api.portal("save_team_variable", write=True, name=name, value=value, secret=secret) or {}
+    for name in deletes:
+        env = api.portal("delete_team_variable", write=True, name=name) or {}
+    out.line(out.t("Saved model service %s: %s (secret), %s%s.", "已保存模型服务 %s：%s（密文）、%s%s。")
+             % (preset["label"], names["key"], names["base_url"], (out.t(", ", "、") + names["model"]) if model else ""))
+    return {"provider": preset["cli"], "label": preset["label"], "protocol": preset["protocol"], "variables": names,
+            "base_url": base_url, "model": model or None, "saved": [n for n, _, _ in writes], "deleted": deletes,
+            "team_environment": _env_view(env.get("team_environment") or {})}
+
+
 def cmd_env_domains(api: Api, args, out: Out):
     if args.domains_cmd in (None, "list"):
         env = _env_view((api.portal("team_environment") or {}).get("team_environment") or {})
@@ -1726,6 +1782,13 @@ def build_parser() -> argparse.ArgumentParser:
     es.add_argument("--from-env", metavar="VAR", help="take the value from this environment variable")
     es.add_argument("--plain", action="store_true", help="not secret: the value stays readable")
     add(env, "unset", cmd_env_unset, "delete a variable").add_argument("name")
+    em = add(env, "model", cmd_env_model, "add a model service like the website's quick form: key (secret), base URL and model")
+    em.add_argument("--provider", required=True, choices=[p["cli"] for p in MODEL_PROVIDERS])
+    em.add_argument("--key", required=True, help="the API key ('-' reads it from standard input; recommended)")
+    em.add_argument("--base-url", help="https:// address (default: the provider's; required for custom)")
+    em.add_argument("--model", help="model name (default: the provider's, if any)")
+    em.add_argument("--prefix", help="variable prefix, e.g. KIMI gives KIMI_API_KEY (default: OPENAI_*, ANTHROPIC_* for Anthropic)")
+    em.add_argument("--replace", action="store_true", help="overwrite variables that already exist")
     dom = add(env, "domains", cmd_env_domains, "allowed domains (not used while the platform allows any public address)")
     dsub = dom.add_subparsers(dest="domains_cmd", metavar="ACTION")
     add(dsub, "list", cmd_env_domains, "list domains")

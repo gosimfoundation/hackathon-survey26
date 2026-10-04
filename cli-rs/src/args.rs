@@ -329,6 +329,12 @@ pub fn parse(spec: &Value, argv: &[String]) -> Result<Args, Exit> {
         }
     }
     extra.extend(pending);
+    // Required options are reported before the positionals, as argparse does.
+    let mut required: Vec<String> = entry["options"].as_array().unwrap().iter()
+        .filter(|o| o["required"] == true && !args.values.contains_key(o["dest"].as_str().unwrap()))
+        .map(|o| o["flags"].as_array().unwrap().iter().map(|f| f.as_str().unwrap()).collect::<Vec<_>>().join("/")).collect();
+    required.extend(missing);
+    let missing = required;
     if !missing.is_empty() && children(spec, &args.command).is_empty() {
         return Err(fail(&args.command, &format!("the following arguments are required: {}", missing.join(", "))));
     }
