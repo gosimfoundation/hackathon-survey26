@@ -12,6 +12,7 @@ import TierBadge from '../components/TierBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import ApiTokensPanel from '../components/dashboard/ApiTokensPanel.vue'
 import FriendsPanel from '../components/dashboard/FriendsPanel.vue'
+import WechatQrPanel from '../components/wechat/WechatQrPanel.vue'
 
 const { t, locale, setLocale } = useI18n()
 const i18n = useI18n()
@@ -179,6 +180,7 @@ async function changePassword() {
           </form>
         </div>
         <FriendsPanel />
+        <WechatQrPanel />
         <ApiTokensPanel />
       </div>
     </div>
