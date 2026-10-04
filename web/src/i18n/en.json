@@ -2162,6 +2162,7 @@
     "example_python_pro_desc": "A strong reference agent (Python standard library only): a carefully built observation planner plus a few LLM calls at key points.",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
+    "example_typescript_pro_desc": "The Python Pro agent ported to TypeScript (Node.js 22+, built-ins only): the same planner and LLM stages, decision-for-decision identical, about 6x less CPU.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_rust_pro_desc": "python-pro ported to Rust: the same planner, fault handling and LLM stages, at about 1/30 of the CPU time per decision.",
     "flow2": "Reference",

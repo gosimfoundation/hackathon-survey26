@@ -24,6 +24,7 @@ const exampleProjects = [
   { lang: 'python', name: 'Python', descKey: 'resources.example_python_desc', available: true },
   { lang: 'python-pro', name: 'Python Pro', descKey: 'resources.example_python_pro_desc', available: true },
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
+  { lang: 'typescript-pro', name: 'TypeScript Pro', descKey: 'resources.example_typescript_pro_desc', available: true },
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
   { lang: 'rust-pro', name: 'Rust Pro', descKey: 'resources.example_rust_pro_desc', available: true },
 ] as const
