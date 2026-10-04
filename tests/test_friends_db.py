@@ -175,3 +175,34 @@ def test_badge_counts_requests_waiting_for_an_answer(database):
     assert count(a) == 0
     with pytest.raises(psycopg.Error, match="permission denied"):
         query(uri, "select public.friend_request_count()", role="anon")
+
+
+def test_find_by_uid_shows_only_wall_fields_and_is_uniform(database):
+    uri = database
+    me, other, banned, captain = person(uri), person(uri, team=True), person(uri), person(uri, team=True)
+    query(uri, "update public.profiles set email='x@private.test', name='Real Name', nickname='Nick', city='Hidden City', contact='wx:secret' where id=%s", (other["id"],))
+    query(uri, "update public.profiles set is_banned=true where id=%s", (banned["id"],))
+    card = call(uri, me, "find_by_uid", other["uid"])
+    assert card["name"] == "Nick" and card["uid"] == other["uid"] and card["in_team"] is True and card["self"] is False
+    assert card["city"] is None and card["contact"] is None and "email" not in card and "Real Name" not in str(card)
+    # On the wall, the wall fields appear (as they already do publicly there).
+    query(uri, "update public.profiles set show_on_wall=true where id=%s", (other["id"],))
+    assert call(uri, me, "find_by_uid", other["uid"])["city"] == "Hidden City"
+    # Unknown, banned and out-of-range UIDs look the same.
+    assert call(uri, me, "find_by_uid", 999999990) == {"error": "not_found"}
+    assert call(uri, me, "find_by_uid", banned["uid"]) == {"error": "not_found"}
+    assert call(uri, me, "find_by_uid", 42) == {"error": "not_found"}
+    assert call(uri, me, "find_by_uid", me["uid"])["self"] is True
+    with pytest.raises(psycopg.Error, match="permission denied"):
+        query(uri, "select public.find_by_uid(100000001)", role="anon")
+
+
+def test_every_lookup_counts_towards_its_daily_limit(database):
+    uri = database
+    me, other = person(uri), person(uri)
+    for _ in range(19):
+        call(uri, me, "find_by_uid", 999999991)
+    assert call(uri, me, "find_by_uid", other["uid"])["id"] == str(other["id"])   # the 20th
+    assert call(uri, me, "find_by_uid", other["uid"]) == {"error": "daily_limit"}
+    # Friend requests have their own allowance.
+    assert call(uri, me, "send_friend_request", other["uid"])["status"] == "sent"

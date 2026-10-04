@@ -32,3 +32,12 @@ export function normalizeFriends(raw: unknown): FriendsData {
   return { uid: typeof r.uid === 'number' ? r.uid : null, daily_limit: Number(r.daily_limit) || 20,
     friends: list<Friend>(r.friends), incoming: list<IncomingRequest>(r.incoming), outgoing: list<OutgoingRequest>(r.outgoing), blocked: list<BlockedUser>(r.blocked) }
 }
+
+/** A 「按 UID 找人」 answer: the card plus what the viewer may do, or a thrown neutral error code. */
+export interface FoundExtra { uid: number; self: boolean; is_friend: boolean; in_team: boolean }
+export function foundExtra(raw: unknown): FoundExtra {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  if (typeof r.error === 'string' && r.error) throw new Error(r.error)
+  if (typeof r.id !== 'string' || typeof r.uid !== 'number') throw new Error('not_found')
+  return { uid: r.uid, self: r.self === true, is_friend: r.is_friend === true, in_team: r.in_team === true }
+}

@@ -12,6 +12,7 @@ import TeamDirectory from '../components/TeamDirectory.vue'
 import WechatGroup from '../components/WechatGroup.vue'
 import { teamAction } from '../stores/teamNotifications'
 import WechatQrButton from '../components/wechat/WechatQrButton.vue'
+import FindByUid from '../components/FindByUid.vue'
 import { visibleWechatQrs } from '../lib/wechatQrApi'
 
 const { t, tf } = useI18n()
@@ -134,6 +135,7 @@ const tierNames = (kind: 'astro' | 'ai') => t(`tiers.${kind}`) as string[]
       <span class="poster-kicker kicker-amber">{{ t('teammates.kicker') }}</span>
       <h1 class="section-title distressed-type mt-6">{{ t('teammates.title') }}</h1>
       <p class="lede mt-6 max-w-3xl">{{ t('teammates.lede') }}</p>
+      <FindByUid class="mt-8" />
 
       <div class="panel mt-8" data-testid="team-actions">
         <div class="hd"><h2>{{ t('team.title') }}</h2></div>
