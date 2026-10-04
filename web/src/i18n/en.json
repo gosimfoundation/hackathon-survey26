@@ -2855,5 +2855,47 @@
   },
   "cards": {
     "card_not_available": "This card is not available (the request or invitation may have been answered or withdrawn)."
+  },
+  "dm": {
+    "fab_label": "Friends and messages",
+    "fab_label_count": "Friends and messages, {n} waiting",
+    "title": "Friends",
+    "all_friends": "Friends page",
+    "close": "Close",
+    "back": "Back",
+    "add_label": "Add a friend by UID",
+    "add_button": "Find",
+    "friends": "Friends & messages",
+    "empty": "No friends yet. Type someone's 9-digit UID above to add them.",
+    "no_messages": "No messages yet. Say hi!",
+    "you": "You: ",
+    "deleted": "This message was removed by the organizers",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "cant_send": "You are not friends right now, so you can't send messages.",
+    "report": "Report",
+    "report_prompt": "Report this message? You can add a short reason (optional); the organizers will take a look.",
+    "reported": "Reported. The organizers will take a look.",
+    "blocked": "Blocked.",
+    "hint": "Only friends can message each other. Plain text, up to 1000 characters.",
+    "load_failed": "Couldn't load right now. Please try again in a moment.",
+    "unread_n": "{n} unread",
+    "errors": {
+      "not_friends": "You are not friends right now, so the message wasn't sent.",
+      "empty": "The message is empty.",
+      "too_long": "Messages can be up to 1000 characters.",
+      "rate_minute": "That's a bit fast. Please wait a minute.",
+      "rate_day": "You've reached today's limit (200 messages). Talk tomorrow!",
+      "message_not_found": "This message isn't available.",
+      "user_not_found": "This user isn't available."
+    },
+    "admin_title": "Reported messages",
+    "admin_from": "From",
+    "admin_to": "To",
+    "admin_count": "Reports",
+    "admin_delete": "Delete message",
+    "admin_dismiss": "Dismiss",
+    "admin_delete_confirm": "Delete this message? Both people will see \"removed by the organizers\"."
   }
 }

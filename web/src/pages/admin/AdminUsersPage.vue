@@ -6,6 +6,7 @@ import { useAdmin } from '../../composables/useAdmin'
 import DashShell from '../../components/layout/DashShell.vue'
 import SkeletonRows from '../../components/layout/SkeletonRows.vue'
 import AdminWechatQrReports from '../../components/wechat/AdminWechatQrReports.vue'
+import AdminDmReports from '../../components/dm/AdminDmReports.vue'
 
 const { t, busy, rpc, run } = useAdmin()
 const rows = ref<any[]>([])
@@ -39,6 +40,7 @@ onMounted(async () => { try { await load() } finally { loading.value = false } }
 <template>
   <DashShell admin :kicker="t('admin.kicker')" :title="t('admin.nav.users')">
     <AdminWechatQrReports />
+    <AdminDmReports />
     <form class="actions-inline mb-6" @submit.prevent="load">
       <input v-model="q" type="text" class="input w-64" :placeholder="t('admin.users.placeholder')">
       <button class="btn sm" type="submit">{{ t('common.search') }}</button>

@@ -2855,5 +2855,47 @@
   },
   "cards": {
     "card_not_available": "无法查看这张名片（申请或邀请可能已处理或撤回）。"
+  },
+  "dm": {
+    "fab_label": "好友和私信",
+    "fab_label_count": "好友和私信，{n} 条待处理",
+    "title": "好友",
+    "all_friends": "好友页",
+    "close": "关闭",
+    "back": "返回",
+    "add_label": "按 UID 加好友",
+    "add_button": "查找",
+    "friends": "好友和私信",
+    "empty": "还没有好友。在上面输入对方的 9 位 UID 加好友吧。",
+    "no_messages": "还没有消息，打个招呼吧。",
+    "you": "我：",
+    "deleted": "此消息已被组织者删除",
+    "placeholder": "输入消息…",
+    "send": "发送",
+    "sending": "发送中…",
+    "cant_send": "你们现在不是好友，不能发消息。",
+    "report": "举报",
+    "report_prompt": "举报这条消息？可以写一句原因（选填），组织者会查看。",
+    "reported": "已举报，组织者会尽快查看。",
+    "blocked": "已屏蔽。",
+    "hint": "只有好友之间可以私信。纯文字，每条最多 1000 字。",
+    "load_failed": "暂时无法加载，请稍后再试。",
+    "unread_n": "{n} 条未读",
+    "errors": {
+      "not_friends": "你们现在不是好友，消息没有发出。",
+      "empty": "消息不能为空。",
+      "too_long": "消息最多 1000 字。",
+      "rate_minute": "发得太快了，请稍等一分钟再发。",
+      "rate_day": "今天的私信已达上限（200 条），明天再聊吧。",
+      "message_not_found": "这条消息不可用。",
+      "user_not_found": "此用户不可用。"
+    },
+    "admin_title": "被举报的私信",
+    "admin_from": "发送者",
+    "admin_to": "接收者",
+    "admin_count": "举报次数",
+    "admin_delete": "删除消息",
+    "admin_dismiss": "忽略",
+    "admin_delete_confirm": "确定删除这条消息？双方都会看到「此消息已被组织者删除」。"
   }
 }
