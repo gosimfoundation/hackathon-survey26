@@ -1867,6 +1867,7 @@
       "domain_not_public": "这个域名目前无法解析，或解析到了非公网地址，不能添加。",
       "svc": {
         "title": "添加模型服务",
+        "title_more": "添加或修改模型服务",
         "intro": "选一个服务商，填入 API 密钥就可以了。接口地址和模型名已经预先填好，可以修改。密钥加密保存，之后只显示末尾 4 位；接口地址和模型名作为普通变量保存。",
         "examples": "官方示例程序读取 OPENAI_API_KEY、OPENAI_BASE_URL、OPENAI_MODEL 这三个变量。不填前缀时，就保存为这三个变量（Anthropic 保存为 ANTHROPIC_API_KEY、ANTHROPIC_BASE_URL、ANTHROPIC_MODEL，需要程序自己读取）。",
         "provider": "服务商",

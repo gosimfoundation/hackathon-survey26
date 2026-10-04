@@ -27,7 +27,9 @@ const replaceOk = ref<string | null>(null)
 const preset = computed(() => presetById(svc.value.provider))
 const target = computed(() => serviceNames(preset.value.protocol, svc.value.prefix))
 const targetPrefix = computed(() => target.value.key.replace(/_API_KEY$/, ''))
-const clash = computed(() => services.value.find(s => s.names.key === target.value.key && s.prefix !== editing.value) ?? null)
+// Asked only once a key is being entered (or a service edited), not as a warning on an untouched form.
+const clash = computed(() => (svc.value.key.trim() || editing.value)
+  ? services.value.find(s => s.names.key === target.value.key && s.prefix !== editing.value) ?? null : null)
 const suggestedPrefix = computed(() => {
   for (let n = 1; n < 20; n++) {
     const p = n === 1 ? preset.value.prefix : `${preset.value.prefix}${n}`
@@ -105,7 +107,7 @@ function addDomain() {
     <p class="help" data-testid="team-env-final-note">{{ t('submit.team_env.final_note') }}</p>
 
     <section class="svc-panel mt-4" data-testid="model-service">
-      <h3>{{ t('submit.team_env.svc.title') }}</h3>
+      <h3>{{ services.length ? t('submit.team_env.svc.title_more') : t('submit.team_env.svc.title') }}</h3>
       <p class="help">{{ t('submit.team_env.svc.intro') }}</p>
       <p class="help" data-testid="model-service-examples">{{ t('submit.team_env.svc.examples') }}</p>
 
@@ -208,7 +210,7 @@ function addDomain() {
 .svc-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .75rem; border: 1px solid rgba(158,173,255,.22); }
 .svc-card.editing { border-color: #78a6ff; }
 .svc-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-.svc-note { color: #f3d58a; }
+.svc-note { color: #f3d58a; margin: -.6rem 0 1rem; }
 .svc-clash { border: 1px solid #b88a2a; padding: .6rem .75rem; margin-bottom: 1rem; }
 .svc-advanced > summary { cursor: pointer; }
 </style>
