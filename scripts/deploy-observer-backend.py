@@ -4,11 +4,20 @@
 Reads the already-authorized management credential from process environment.
 Never writes credentials. Existing public data is compared inside one repeatable
 read transaction; any accidental change rolls back the entire deployment.
+
+Guard against re-running a migration that was applied by hand but never recorded
+(re-running it can revert later live changes): a pending migration whose tables,
+columns, indexes, triggers or policies already exist, or one of whose functions
+already has exactly that body in the database, is refused (nothing is applied)
+unless --force-existing is given. To record such a migration without running it,
+verify it and insert its version and digest into private.observer_migrations
+(scripts/check-migration-registry.py lists the evidence).
 """
 import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import urllib.error
 import urllib.request
@@ -27,6 +36,48 @@ def quote(value):
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def created_objects(text):
+    """Objects a migration creates, by kind; functions as (name, body) pairs."""
+    text = re.sub(r'--[^\n]*', '', text)
+    qualify = lambda name: name.replace('"', '') if '.' in name else 'public.' + name.replace('"', '')
+    functions = [(qualify(m.group(1)), m.group(3)) for m in re.finditer(
+        r'create\s+(?:or\s+replace\s+)?function\s+([\w."]+)\s*\(.*?\bas\s+(\$\w*\$)(.*?)\2', text, re.I | re.S)]
+    bodies_removed = re.sub(r'\$(\w*)\$.*?\$\1\$', ' ', text, flags=re.S)
+    return {
+        'table': {qualify(m) for m in re.findall(r'create\s+table\s+(?:if\s+not\s+exists\s+)?([\w."]+)', bodies_removed, re.I)},
+        'column': {qualify(t) + '.' + c for t, c in re.findall(
+            r'alter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?([\w."]+)\s+add\s+column\s+(?:if\s+not\s+exists\s+)?(\w+)',
+            bodies_removed, re.I)},
+        'index': set(re.findall(r'create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?(\w+)', bodies_removed, re.I)),
+        'trigger': set(re.findall(r'create\s+trigger\s+(\w+)', bodies_removed, re.I)),
+        'policy': set(re.findall(r'create\s+policy\s+"?(\w+)"?', bodies_removed, re.I)),
+        'function': functions,
+    }
+
+
+EXISTS = {
+    'table': "select 1 from information_schema.tables where table_schema||'.'||table_name={}",
+    'column': "select 1 from information_schema.columns where table_schema||'.'||table_name||'.'||column_name={}",
+    'index': "select 1 from pg_indexes where indexname={}",
+    'trigger': "select 1 from pg_trigger where not tgisinternal and tgname={}",
+    'policy': "select 1 from pg_policies where policyname={}",
+}
+
+
+def already_present(text):
+    """What of this migration is already in the database (evidence that it was applied by hand)."""
+    found = []
+    objects = created_objects(text)
+    for kind, sql in EXISTS.items():
+        for name in sorted(objects[kind]):
+            if query(sql.format(quote(name)) + ' limit 1'): found.append(f'{kind} {name}')
+    for name, body in objects['function']:
+        if query("select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname||'.'||p.proname="
+                 + quote(name) + ' and p.prosrc=' + quote(body) + ' limit 1'):
+            found.append(f'function {name} (identical body)')
+    return found
+
+
 def query(sql):
     ref = os.environ['SUPABASE_PROJECT_REF']
     request = urllib.request.Request('https://api.supabase.com/v1/projects/'+ref+'/database/query',
@@ -43,6 +94,8 @@ def query(sql):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--apply',action='store_true',help='Apply the reviewed, pending additive migrations')
+    parser.add_argument('--force-existing',action='store_true',
+                        help='Apply even pending migrations whose objects already exist in the database')
     args=parser.parse_args()
     files=observer_migrations(ROOT)
     exists=query("select to_regclass('private.observer_migrations') is not null as present")[0]['present']
@@ -54,8 +107,13 @@ def main():
             if applied[path.stem]!=digest:
                 raise RuntimeError('An applied migration changed: '+path.name+'. Add a new migration instead.')
         else: pending.append((path,digest))
-    print(json.dumps({'pending':[p.name for p,_ in pending],'apply':args.apply}),flush=True)
+    present={p.name:found for p,_ in pending if (found:=already_present(p.read_text()))}
+    print(json.dumps({'pending':[p.name for p,_ in pending],'apply':args.apply,
+                      **({'already_present':present} if present else {})}),flush=True)
     if not args.apply or not pending: return
+    if present and not args.force_existing:
+        raise SystemExit('Refused: pending migrations look already applied (see already_present). Verify them and record'
+                         ' them in private.observer_migrations instead of re-running, or pass --force-existing.')
     before="""
 begin isolation level repeatable read;
 select pg_advisory_xact_lock(hashtext('observer-platform-migrations'));
