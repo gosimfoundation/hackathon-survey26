@@ -127,7 +127,13 @@ def test_playground_project_board_is_offered_only_in_practice_mode(database):
     # In competition mode only the formal phase counts.
     query(uri,"update private.observer_site_mode set mode='competition',phase_id=null")
     try:
-        assert rpc(uri,'current_competition',role='anon').get('project_phase_id') is None
+        answer=rpc(uri,'current_competition',role='anon')
+        assert answer.get('project_phase_id') is None
+        # Practice stays usable next to the competition, under its own key.
+        assert answer['practice_phase_id']==str(board)
+        query(uri,"update public.phases set ends_at=now()-interval '1 minute' where id=%s",(board,))
+        assert 'practice_phase_id' not in rpc(uri,'current_competition',role='anon')
+        query(uri,"update public.phases set ends_at=null where id=%s",(board,))
     finally:
         query(uri,"update private.observer_site_mode set mode='practice',phase_id=null")
     query(uri,'delete from public.observer_phase_settings where phase_id=%s',(board,))
@@ -161,3 +167,26 @@ def test_formal_scenarios_stay_unnamed_until_the_competition_opens(database):
     assert 'hidden-eval' in visible('authenticated',user)
     query(uri,"update public.phases set starts_at=now()-interval '1 minute' where id=%s",(online,))
     assert 'hidden-eval' in visible()
+
+
+def test_practice_board_keeps_taking_evaluations_during_the_competition(database):
+    uri=database;user,team=identity(uri)
+    board,scenario=uuid.uuid4(),uuid.uuid4()
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice-projects','Practice projects','练习赛·完整项目')",(board,))
+    query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,daily_batches,max_active_evaluations) values(%s,true,true,5,10)',(board,))
+    query(uri,"insert into public.scenarios(id,slug,name) values(%s,%s,'Practice')",(scenario,str(scenario)))
+    query(uri,'insert into public.phase_scenarios values(%s,%s)',(board,scenario))
+    query(uri,"update private.observer_site_mode set mode='competition',phase_id=null")
+    try:
+        assert rpc(uri,'current_competition',role='anon')['practice_phase_id']==str(board)
+        batch=rpc(uri,'observer_create_batch',board,None,role='authenticated',user=user)
+        assert query(uri,'select phase_id from public.observer_batches where id=%s',(batch,))==[(board,)]
+        quota={r['phase_id']:r for r in rpc(uri,'observer_evaluation_quota',role='authenticated',user=user)}
+        assert quota[str(board)]['remaining']==4
+    finally:
+        query(uri,"update private.observer_site_mode set mode='practice',phase_id=null")
+        query(uri,'delete from public.observer_runs where batch_id in (select id from public.observer_batches where phase_id=%s)',(board,))
+        query(uri,'delete from public.observer_batches where phase_id=%s',(board,))
+        query(uri,'delete from public.phase_scenarios where phase_id=%s',(board,))
+        query(uri,'delete from public.observer_phase_settings where phase_id=%s',(board,))
+        query(uri,'delete from public.phases where id=%s',(board,))
