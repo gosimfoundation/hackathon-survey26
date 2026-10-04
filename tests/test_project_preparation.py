@@ -273,3 +273,20 @@ def test_v4_public_test_accepts_an_agent_finish(preparation, contract, reason, a
     rpc(uri,'observer_reconcile_preparations')
     assert query(uri,'select status,public_test->>\'passed\' from public.observer_revisions where id=%s',(s['revision'],))==[
         ('reviewable','true') if passed else ('failed','false')]
+
+
+def test_a_second_prepare_job_can_be_enqueued_after_the_first_platform_failure_requeues(preparation):
+    # private.observer_jobs has unique(revision_id,kind): before the fix, a revision whose
+    # first prepare job failed for a platform reason (requeued, not failed) could never get a
+    # second job -- observer_enqueue_job's plain insert hit that old row's unique constraint on
+    # every later attempt, so the revision retried for the full budget and parked forever
+    # without ever creating another job. This is the actual root cause of revisions reported
+    # stuck "queued"/"preparing" indefinitely.
+    s=preparation;uri=s['uri'];started=start(s);j=started['job']
+    rpc(uri,'observer_claim_job',j['id'],j['nonce'],'404','1','303','101','a'*40)
+    rpc(uri,'observer_finish_job',j['id'],'404','1',{'diagnostics':{'stage':'prepare','code':'project_operation_failed'}},'prepare_job_failed')
+    assert query(uri,'select status from public.observer_revisions where id=%s',(s['revision'],))==[('queued',)]
+    assert query(uri,'select count(*) from private.observer_jobs where revision_id=%s',(s['revision'],))==[(1,)]
+    second=start(s)
+    assert query(uri,'select count(*) from private.observer_jobs where revision_id=%s',(s['revision'],))==[(1,)]
+    assert query(uri,'select id from private.observer_jobs where revision_id=%s',(s['revision'],))==[(uuid.UUID(second['job']['id']),)]
