@@ -35,6 +35,8 @@ const phaseId = ref(''), confirmed = ref(false), notes = ref(''), codeUrl = ref(
 const diagnostics = ref<{ kind: string; status: string; code: string; log: string }[] | null>(null)
 /** Per batch id, progress of a "download all results" bundle in flight; absent once it is not running. */
 const zipProgress = ref<Record<string, { done: number; total: number }>>({})
+/** Per batch id, the outcome of the last bundle, shown beside its button (the page-level notice is often scrolled out of view). */
+const zipOutcome = ref<Record<string, { text: string; failed: boolean }>>({})
 // Formal model calls use the team's choice: a key saved encrypted on the server
 // (default, deleted automatically after the results are verified) or the relay
 // to this open page, where nothing is stored.
@@ -342,7 +344,8 @@ function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
 async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
   const runs = batch.observer_runs.filter(r => r.result_path)
   if (!runs.length || zipProgress.value[batch.id]) return
-  error.value = ''; notice.value = ''
+  const outcome = (text: string, failed: boolean) => { zipOutcome.value = { ...zipOutcome.value, [batch.id]: { text, failed } } }
+  const cleared = { ...zipOutcome.value }; delete cleared[batch.id]; zipOutcome.value = cleared
   zipProgress.value = { ...zipProgress.value, [batch.id]: { done: 0, total: runs.length } }
   try {
     const { unzipSync, zipSync, strToU8 } = await import('fflate')
@@ -363,12 +366,14 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
         zipProgress.value = { ...zipProgress.value, [batch.id]: { done: (prev?.done ?? 0) + 1, total: runs.length } }
       }
     }
-    if (!Object.keys(files).length) { error.value = words.value.downloadAllFailed; return }
+    if (!Object.keys(files).length) { outcome(words.value.downloadAllFailed, true); return }
     if (errors.length) files['errors.txt'] = strToU8(errors.join('\n') + '\n')
     const blob = new Blob([zipSync(files, { level: 6 })], { type: 'application/zip' })
     const date = new Date().toISOString().slice(0, 10)
     triggerDownload(blob, `gosim-observer-${batch.id.slice(0, 8)}-${date}.zip`)
-    notice.value = errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone
+    outcome(errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone, errors.length > 0)
+  } catch {
+    outcome(words.value.downloadAllFailed, true)
   } finally {
     const rest = { ...zipProgress.value }; delete rest[batch.id]; zipProgress.value = rest
   }
@@ -571,6 +576,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
+            <span v-if="zipOutcome[b.id]" :class="zipOutcome[b.id]!.failed ? 'errors' : ''" role="status" data-testid="download-all-outcome">{{ zipOutcome[b.id]!.text }}</span>
           </p>
           <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
             <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
