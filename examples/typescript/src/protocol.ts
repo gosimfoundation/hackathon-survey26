@@ -204,13 +204,25 @@ export type LastResult =
   | { action: "observe"; observe_index: number; assigned_count: number; hit_count: number; hits: ObserveHit[] }
   | { action: "report"; correct: boolean; repaired: boolean; score_delta: number };
 
+/** The fair clock (see clock.ts). Fields other than the first two are absent on older local runners. */
+export interface Wallclock {
+  elapsed_seconds: number;
+  remaining_seconds: number; // budget left, normalized CPU seconds
+  remaining_real_cpu_seconds?: number; // the same budget in real CPU seconds of this machine
+  wall_remaining_seconds?: number; // real time left before the 30-minute cap
+  speed_factor?: number;
+  cpu_seconds?: number;
+  wait_seconds?: number;
+  clock_mode?: string;
+}
+
 export interface DecisionRequestPayload {
   schema_version: string;
   now_utc: string;
   survey_end_utc: string;
   observe_action_index: number;
   running_total: number;
-  wallclock: { elapsed_seconds: number; remaining_seconds: number };
+  wallclock: Wallclock;
   latest_bulletin: BulletinMessage | null;
   latest_forecast: ForecastMessage | null;
   active_requests: ActiveObservationRequest[];

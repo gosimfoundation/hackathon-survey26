@@ -57,9 +57,7 @@ pub fn decide(
     llm: &LlmClient,
 ) -> DecisionResponse {
     run.decisions_seen += 1;
-    if snapshot.wallclock.remaining_seconds > 0.0 {
-        run.wallclock_remaining = snapshot.wallclock.remaining_seconds;
-    }
+    run.clock.update(&snapshot.wallclock);
     if run.decisions_seen == 1 || run.decisions_seen % 20 == 0 {
         log_progress(snapshot, run);
     }
@@ -74,9 +72,10 @@ pub fn decide(
     memory.on_result(config, snapshot.last_result.as_ref(), hours);
     memory.current_action_index = Some(snapshot.observe_action_index);
     let request_thresholds = request_thresholds(config, memory, &snapshot.active_requests);
+    pace(config, run, now_unix);
 
     if run.is_near_deadline() {
-        return DecisionResponse::new(sequence, "finish").with_reason("wall-clock budget nearly exhausted");
+        return DecisionResponse::new(sequence, "finish").with_reason("time budget nearly exhausted");
     }
 
     // Daytime / between-nights: sleep in one hop to the next night instead of
@@ -121,7 +120,7 @@ pub fn decide(
     }
     memory.consecutive_reports = 0;
 
-    let response = match plan_observation(now_unix, night_end, night_index, hours, config, memory, &request_thresholds) {
+    let response = match plan_observation(now_unix, night_end, night_index, hours, config, memory, &request_thresholds, run.pace_level) {
         Some(plan) => {
             run.observe_actions_sent += 1;
             let reason = format!("{} fibres, program {}", plan.assignments.len(), plan.program);
@@ -139,6 +138,31 @@ pub fn decide(
         }
     };
     validate_or_fallback(response, sequence, config)
+}
+
+/// Does less work per decision when the compute budget is short for the
+/// nights still to come. Budget and own cost are both real CPU seconds of this
+/// machine (see `clock.rs`), so the pace does not depend on how fast the
+/// machine is.
+fn pace(config: &Config, run: &mut RunState, now_unix: f64) {
+    let night_seconds: f64 = config.nights.iter().filter(|n| n.end_unix > now_unix).map(|n| n.end_unix - n.start_unix.max(now_unix)).sum();
+    let decisions_left = (night_seconds / 700.0).max(1.0);
+    let per_decision = run.clock.compute_left() / decisions_left;
+    let mut level = if per_decision > 0.12 { 0 } else if per_decision > 0.04 { 1 } else { 2 };
+    // Safety net from our own measurement: if recent decisions cost more CPU
+    // than we can afford per decision, never go back to a slower level.
+    if run.clock.avg_cost > per_decision {
+        run.min_pace_level = (level + 1).max(run.min_pace_level).min(2);
+    }
+    level = level.max(run.min_pace_level);
+    if level != run.pace_level {
+        log(&format!(
+            "planner: pace level {level} ({:.0} ms CPU per decision left, recent cost {:.1} ms)",
+            per_decision * 1000.0,
+            run.clock.avg_cost * 1000.0
+        ));
+        run.pace_level = level;
+    }
 }
 
 fn validate_or_fallback(response: DecisionResponse, sequence: i64, config: &Config) -> DecisionResponse {
@@ -361,6 +385,7 @@ struct BestField {
     chosen: BTreeMap<i64, (f64, usize, f64)>, // fiber -> (score, target index, margin)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn plan_observation(
     now_unix: f64,
     night_end: f64,
@@ -369,7 +394,11 @@ fn plan_observation(
     config: &Config,
     memory: &mut Memory,
     request_thresholds: &std::collections::HashMap<usize, f64>,
+    pace_level: usize,
 ) -> Option<PlannedObserve> {
+    // Less search when the compute budget is short (see `pace`).
+    let anchors_wanted = if pace_level == 0 { ANCHORS } else { 1 };
+    let anchor_pool = if pace_level < 2 { ANCHOR_POOL } else { 30 };
     let lst = scoring::local_sidereal_deg(now_unix, config.longitude_deg);
     let horizon = night_end.min(config.survey_end_unix);
     let seconds_left = horizon - now_unix;
@@ -407,7 +436,7 @@ fn plan_observation(
 
     let mut anchors: Vec<(f64, usize)> = Vec::new();
     for (checked, &(priority, i)) in candidates.iter().enumerate() {
-        if checked >= ANCHOR_POOL && anchors.len() >= 3 * ANCHORS {
+        if checked >= anchor_pool && anchors.len() >= 3 * anchors_wanted {
             break;
         }
         let a = achievable(config, memory, &moon, lst, flux0t0, seconds_left, i);
@@ -423,10 +452,10 @@ fn plan_observation(
 
     let mut best: Option<BestField> = None;
     for (tried, &(_, anchor)) in anchors.iter().enumerate() {
-        if tried >= ANCHORS && best.is_some() {
+        if tried >= anchors_wanted && best.is_some() {
             break;
         }
-        if tried >= ANCHORS + 8 {
+        if tried >= anchors_wanted + 8 {
             break;
         }
         let anchor_target = &config.targets[anchor];

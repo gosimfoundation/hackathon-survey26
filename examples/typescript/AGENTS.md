@@ -23,6 +23,7 @@ src/
   planner.ts      decision logic: pick a pointing, fill fibres, choose exposure/program
   memory.ts       rolling run history + compact context for the LLM client
   llmClient.ts    OpenAI-compatible chat client (built-in fetch), defaults to Kimi
+  clock.ts        fair-clock budget: pace on remaining_real_cpu_seconds + process CPU time
   validate.ts     action validation against public limits + deterministic fallback
   index.ts        entry point: reads stdin, dispatches initialize/decision_request/finish
 observer.project.json   platform manifest (see README.md "Submitting")
@@ -51,8 +52,9 @@ Copy `.env.example` to `.env` and set:
 
 `node dist/index.js` does not read `.env` automatically -- export the variables in
 your shell, or `source .env`, before running a local test harness. On the platform,
-`OPENAI_BASE_URL` / `OPENAI_API_KEY` are injected automatically for every run (the
-platform's own model proxy and a temporary credential); `.env` is never uploaded
+the variables your team saves under "Keys and network" (e.g. `OPENAI_API_KEY`,
+`OPENAI_BASE_URL`, `OPENAI_MODEL`) are the program's environment, and it calls the
+provider directly; `.env` is never uploaded
 and is rejected if it is included in a submission ZIP.
 
 ## Packing and uploading as a complete project

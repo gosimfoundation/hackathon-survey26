@@ -61,7 +61,8 @@ Needs a chat-completions API key to start: see "LLM usage".
 | `src/state.rs` | One-time config snapshot from `initialize`: catalogue, night calendar, visibility windows, spatial index. |
 | `src/memory.rs` | What the agent has learned from its own feedback (progress, learned scale, weather notices), and the stderr logger. |
 | `src/planner.rs` | Turns one `decision_request` into one `decision_response`: the anchor search and duration/program choice. |
-| `src/llm.rs` | OpenAI-compatible chat client (default: Kimi Coding Plan), with retries and a run-wide budget. |
+| `src/llm.rs` | OpenAI-compatible chat client (default: Kimi Coding Plan), with backoff retries, bounded by real time. |
+| `src/clock.rs` | Fair-clock budget: remaining CPU (`remaining_real_cpu_seconds`) and own CPU cost per decision. |
 | `src/scoring.rs` | Public sky geometry + scoring formulas (no scenario data). |
 | `src/validate.rs` | Protocol-rule validation and the deterministic safe fallback. |
 
@@ -138,18 +139,45 @@ avoided compass directions, average of the duration scale):
 Both calls only ever *nudge* the plan's exposure duration and which
 directions it discounts; neither chooses the pointing, fibre assignments, or
 the declared program. A call that fails (connect/timeout error, non-JSON
-reply, a reply that doesn't parse as the expected object) is retried up to 3
-times; if every attempt fails, that night's plan uses its own default numbers
+reply, a reply that doesn't parse as the expected object) is retried up to 4
+times (HTTP 429/5xx and transport errors with exponential backoff plus
+jitter, honouring `Retry-After`; other HTTP errors are not retried); if every attempt fails, that night's plan uses its own default numbers
 for that one step, and the next night's calls run again as normal.
 
 Caps, all overridable via `.env`:
 
-- `LLM_TIMEOUT_SECONDS` (default 12) per attempt.
-- `LLM_BUDGET_SECONDS` (default 300) of real call time across the whole run.
-- `LLM_MAX_CALLS` (default 100) calls across the whole run.
-- The planner also stops attempting LLM calls once less than 30s of the
-  run's wall-clock budget remains, and proactively sends `finish` once less
-  than 10s remains, rather than risk being force-killed mid-decision.
+- `LLM_TIMEOUT_SECONDS` (default 20) per attempt; at most 60 s per question.
+- `LLM_MAX_CALLS` (default 100) requests across the whole run.
+- No new call in the last 5 minutes before the real-time cap, and the agent
+  sends `finish` once less than 10 s of budget remains, rather than risk
+  being stopped mid-decision.
+
+## Time budget (fair clock)
+
+Each card has a budget of 900 **normalized CPU seconds**: only the CPU time this program uses
+during its own turns is charged, divided by the machine's `speed_factor`. Waiting (model API,
+network, idle) and the engine's time are free; a 30-minute real-time cap ends hung runs. Every
+`decision_request` carries `payload.wallclock`; the fields this agent uses (`src/clock.rs`):
+
+- `remaining_real_cpu_seconds` -- the budget left, in real CPU seconds of *this* machine;
+- `wall_remaining_seconds` -- real time left before the 30-minute cap;
+- `remaining_seconds` -- the budget left in normalized seconds (fallback for older local runners).
+
+The agent measures its own cost per decision with process CPU time (`getrusage` (the `libc` crate)) and compares it
+with `remaining_real_cpu_seconds` -- the same unit. Do not time yourself with a wall clock against
+`remaining_seconds`: on the platform's measurements such agents lost about 11% on a 2x slower
+machine, against about 3.6% when pacing this way. When the budget per remaining decision gets
+short, the planner searches less. As a sanity guard it never plans to use more than 80% of the
+real time left, since a slow machine could otherwise fill the 30-minute cap with CPU alone.
+
+Model calls only wait, so they cost real time, not budget. They are bounded by real time instead:
+a timeout per attempt (20 s), 60 s per question including retries, no new call in the last
+5 minutes before the cap, and at most 100 requests per run. HTTP 429 and 5xx, timeouts and network
+errors are retried with exponential backoff plus random jitter, honouring `Retry-After`. In the
+hidden final a card's 3 repeats run at the same time on your team's key, so rate limits are
+likely; when a question still fails, that step uses the rule-based answer.
+
+stdout carries protocol messages only; every log line goes to stderr.
 
 ## On the platform: keys and network
 

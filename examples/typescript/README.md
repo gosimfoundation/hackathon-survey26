@@ -21,6 +21,7 @@ src/
   planner.ts      decision logic: pick a pointing, fill fibres, choose exposure length and program
   memory.ts       rolling run history: progress logs (stderr) + compact context for the LLM client
   llmClient.ts    OpenAI-compatible chat client (built-in fetch; also works with Kimi/Moonshot)
+  clock.ts        fair-clock budget: remaining CPU, own CPU cost per decision
   validate.ts     action validation against public limits + deterministic fallback actions
   index.ts        entry point: reads stdin, dispatches initialize/decision_request/finish
 observer.project.json   platform manifest (see "Submitting" below)
@@ -45,7 +46,7 @@ this folder. The agent speaks `participant-agent-protocol-v4` on stdin/stdout an
 only, exactly like the Python example.
 
 Verified locally against the platform's own engine adapter on a 10,000-target, 38-night practice
-card: it finishes in a few seconds of wall-clock time (the budget is 900 s), with no protocol
+card: it finishes in a few seconds of wall-clock time (the budget is 900 normalized CPU seconds), with no protocol
 errors, a positive total score, and about 96% of required targets completed.
 
 ## What each module does
@@ -77,8 +78,8 @@ errors, a positive total score, and about 96% of required targets completed.
   progress lines and to build small, public-data-only prompts for the LLM client.
 - **llmClient.ts**: a thin OpenAI-compatible chat client using Node's built-in `fetch` (Node >= 18),
   so it works unmodified against OpenAI or Kimi/Moonshot (any
-  `/chat/completions`-compatible endpoint). Every call has a short timeout and the whole run has a
-  small total time budget; a missing key, a slow model, or a malformed reply all fall back to `null`
+  `/chat/completions`-compatible endpoint). Every attempt has a timeout, rate limits (429) and
+  5xx answers are retried with backoff (see "Time budget" below); a missing key, a slow model, or a malformed reply all fall back to `null`
   and never raise.
 - **validate.ts**: checks every action (ours or the LLM's) against the public limits -- alt/az
   range, duration bounds, fibre/target duplicates, the consecutive-report cap -- before it is sent.
@@ -106,9 +107,37 @@ errors, a positive total score, and about 96% of required targets completed.
    asked to confirm or veto filing an instrument-fault `report` (reports are capped at twice a run;
    a wrong one costs points). This one is conditional -- it only fires when that pattern shows up.
 
-Calls are capped (12 s per call, 300 s total budget, 100 calls max by default); a call that fails
-or times out is retried a few times, and if it still doesn't come back that single decision uses
-the rule-based path instead.
+Calls are capped (20 s per attempt, 60 s per question, 100 requests per run, none in the last
+5 minutes before the real-time cap); 429/5xx answers, timeouts and network errors are retried with
+exponential backoff plus jitter (honouring `Retry-After`), and if a question still gets no answer
+that single decision uses the rule-based path instead.
+
+## Time budget (fair clock)
+
+Each card has a budget of 900 **normalized CPU seconds**: only the CPU time this program uses
+during its own turns is charged, divided by the machine's `speed_factor`. Waiting (model API,
+network, idle) and the engine's time are free; a 30-minute real-time cap ends hung runs. Every
+`decision_request` carries `payload.wallclock`; the fields this agent uses (`src/clock.ts`):
+
+- `remaining_real_cpu_seconds` -- the budget left, in real CPU seconds of *this* machine;
+- `wall_remaining_seconds` -- real time left before the 30-minute cap;
+- `remaining_seconds` -- the budget left in normalized seconds (fallback for older local runners).
+
+The agent measures its own cost per decision with process CPU time (`process.cpuUsage()`) and compares it
+with `remaining_real_cpu_seconds` -- the same unit. Do not time yourself with a wall clock against
+`remaining_seconds`: on the platform's measurements such agents lost about 11% on a 2x slower
+machine, against about 3.6% when pacing this way. When the budget per remaining decision gets
+short, the planner searches less. As a sanity guard it never plans to use more than 80% of the
+real time left, since a slow machine could otherwise fill the 30-minute cap with CPU alone.
+
+Model calls only wait, so they cost real time, not budget. They are bounded by real time instead:
+a timeout per attempt (20 s), 60 s per question including retries, no new call in the last
+5 minutes before the cap, and at most 100 requests per run. HTTP 429 and 5xx, timeouts and network
+errors are retried with exponential backoff plus random jitter, honouring `Retry-After`. In the
+hidden final a card's 3 repeats run at the same time on your team's key, so rate limits are
+likely; when a question still fails, that step uses the rule-based answer.
+
+stdout carries protocol messages only; every log line goes to stderr.
 
 ## LLM configuration
 
