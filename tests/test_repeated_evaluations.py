@@ -1,0 +1,190 @@
+"""Repeated evaluations (migration 20261004030000): the hidden final averages repeat_runs evaluations of
+each team's final version, teams can run the same 3-run average as a self-check, one team's evaluations
+run one after another, and the online board marks each team's final version."""
+import csv
+import sys
+import uuid
+
+import psycopg
+import pytest
+
+from test_project_database import database, identity, query, rpc, setup  # noqa: F401
+from test_project_eval_ux import revision
+from test_hidden_final import choose, hidden, materialize, online, scored_batch  # noqa: F401
+from test_hidden_final_zero import final, participant_fail, run_id, score, script  # noqa: F401
+
+
+def apply(s, team=None, **flags):
+    return query(s['uri'], 'select private.observer_run_hidden_final(%s,%s,%s,true,false,%s,false)',
+                 (s['phase'], s['hidden'], team, flags.get('platform', False)))[0][0]
+
+
+def pending_batches(s, teams):
+    """The batches of these teams whose runs the dispatcher hands out now (it leases what it returns)."""
+    ids = []
+    for _ in range(100):
+        got = [p['id'] for p in rpc(s['uri'], 'observer_pending_runs', 10)]
+        if not got: break
+        ids += got
+    if not ids: return set()
+    return {r[0] for r in query(s['uri'], 'select distinct r.batch_id from public.observer_runs r join public.observer_batches b'
+                                ' on b.id=r.batch_id where r.id=any(%s::uuid[]) and b.team_id=any(%s::uuid[])', (ids, list(teams)))}
+
+
+def release(s, batch):
+    """The dispatcher's lease on the batch's runs is dropped, as if the runs were started elsewhere."""
+    query(s['uri'], 'delete from private.observer_run_leases where run_id in (select id from public.observer_runs where batch_id=%s)', (batch,))
+
+
+@pytest.fixture
+def two_teams(final):
+    """The hidden final with repeat_runs=3 and a second team with a final version."""
+    s = final; uri = s['uri']
+    query(uri, 'update public.observer_phase_settings set repeat_runs=3 where phase_id=%s', (s['hidden'],))
+    other, other_team = identity(uri)
+    o = {**s, 'user': other, 'team': other_team}
+    query(uri, "update public.phases set ends_at=now()+interval '1 day' where id=%s", (s['phase'],))
+    rev = revision(o); materialize(o, rev, other); choose(o, rev)
+    query(uri, "update public.phases set ends_at=now()-interval '1 second' where id=%s", (s['phase'],))
+    query(uri, 'update public.teams set is_hidden=false')
+    return s, o
+
+
+def test_the_hidden_final_runs_each_final_version_three_times_round_by_round(two_teams):
+    s, o = two_teams; uri = s['uri']
+    result = apply(s)
+    assert (result['runs'], result['created']) == (3, 6)
+    teams = {t['team_id']: t for t in result['teams']}
+    assert {len(t['batch_ids']) for t in teams.values()} == {3}
+    order = [r[0] for r in query(uri, 'select team_id from public.observer_batches where phase_id=%s order by created_at,id', (s['hidden'],))]
+    assert order[:2] != [order[0]] * 2 and sorted(order[:2]) == sorted(order[2:4]) == sorted(order[4:])
+    # One evaluation per team at a time: only every team's first evaluation is handed out.
+    firsts = {uuid.UUID(t['batch_ids'][0]) for t in teams.values()}
+    assert pending_batches(s, (s['team'], o['team'])) == firsts
+    # Creating again adds nothing.
+    assert apply(s)['created'] == 0
+
+
+def test_the_board_and_the_organizer_results_average_three_evaluations(two_teams, monkeypatch, capsys, tmp_path):
+    s, o = two_teams; uri = s['uri']
+    teams = {t['team_id']: t['batch_ids'] for t in apply(s)['teams']}
+    mine, theirs = teams[str(s['team'])], teams[str(o['team'])]
+    # Mine: E scores 90, 60, 60 (mean 70); F 50 each; G fails in the first evaluation (0), 30, 60 (mean 30); H 40.
+    for i, batch in enumerate(mine):
+        score(s, batch, 'e', [90, 60, 60][i]); score(s, batch, 'f', 50); score(s, batch, 'h', 40)
+        if i == 0: participant_fail(s, batch, 'g')
+        else: score(s, batch, 'g', [None, 30, 60][i])
+    # Theirs: 50 on every card in two evaluations; the third is still running.
+    for batch in theirs[:2]:
+        for card in 'efgh': score(o, batch, card, 50)
+    query(uri, "update public.phases set leaderboard_mode='published' where id=%s", (s['hidden'],))
+    overall = rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')
+    slug = {c['name'][-1].lower(): c['slug'] for c in overall['cards']}
+    assert [r['team_id'] for r in overall['rows']] == [str(s['team'])]  # incomplete teams are not listed yet
+    row = overall['rows'][0]
+    assert row['averaged_runs'] == 3 and row['total_score'] == pytest.approx(47.5)  # (70 + 50 + 30 + 40) / 4
+    assert {c: pytest.approx(v) for c, v in row['card_scores'].items()} == {slug['e']: 70, slug['f']: 50, slug['g']: 30, slug['h']: 40}
+    assert row['unfinished_cards'] == [slug['g']] and row['observer_batch_id'] == mine[0]
+    card_g = rpc(uri, 'observer_card_board', s['hidden'], slug['g'], 100, role='anon')['rows'][0]
+    assert (card_g['total_score'], card_g['unfinished'], card_g['termination_reason']) == (pytest.approx(30), True, None)
+    # Every evaluation stays stored.
+    assert query(uri, "select count(*) from public.observer_batches where phase_id=%s and status='scored'", (s['hidden'],)) == [(5,)]
+
+    for card in 'efgh': score(o, theirs[2], card, 80)  # mean 60 > 47.5
+    rows = rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')['rows']
+    assert [(r['team_id'], r['rank']) for r in rows] == [(str(o['team']), 1), (str(s['team']), 2)]
+
+    source, target = (query(uri, 'select slug from public.phases where id=%s', (p,))[0][0] for p in (s['phase'], s['hidden']))
+    path = tmp_path / 'ranking.csv'
+    monkeypatch.setattr(sys, 'argv', ['run-hidden-final.py', '--source', source, '--target', target, '--results', '--csv', str(path)])
+    script(s, monkeypatch).main()
+    out = capsys.readouterr().out
+    assert 'ranked=2' in out and '3/3' in out and '50.00-80.00' in out
+    row = next(r for r in csv.DictReader(path.open(encoding='utf-8')) if r['team_id'] == str(s['team']))
+    assert (row['rank'], float(row['mean']), float(row[slug['g']]), row['unfinished_cards'], row['evaluations']) == (
+        '2', pytest.approx(47.5), pytest.approx(30), slug['g'], '3')
+
+
+def test_a_platform_failure_is_replaced_never_averaged_as_zero(two_teams):
+    s, o = two_teams; uri = s['uri']
+    mine = {t['team_id']: t for t in apply(s)['teams']}[str(s['team'])]['batch_ids']
+    for card in 'efgh': score(s, mine[0], card, 50)
+    query(uri, "update public.observer_runs set status='failed',error='evaluation_schedule_failed',finished_at=now() where id=%s",
+          (run_id(s, mine[1], 'e'),))
+    query(uri, 'select private.observer_finalize_batch(%s)', (mine[1],))
+    skipped = apply(s, s['team'])['teams'][0]
+    assert (skipped['reason'], skipped['failure'], skipped['evaluations']) == ('failed_platform', 'platform', 2)
+    retried = apply(s, s['team'], platform=True)['teams'][0]
+    assert (retried['action'], retried['new_evaluations'], len(retried['batch_ids'])) == ('created', 1, 1)
+    assert query(uri, 'select status from public.observer_runs where id=%s', (run_id(s, mine[1], 'f'),)) == [('cancelled',)]
+    for batch in (mine[2], retried['batch_ids'][0]):
+        for card in 'efgh': score(s, batch, card, 80)
+    query(uri, "update public.phases set leaderboard_mode='published' where id=%s", (s['hidden'],))
+    row = rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')['rows'][0]
+    assert (row['averaged_runs'], row['total_score']) == (3, pytest.approx(70))  # (50 + 80 + 80) / 3, the failure not counted
+    assert apply(s, s['team'], platform=True)['teams'][0]['reason'] == 'already_evaluated'
+
+
+def self_check(s, rev, confirm=False, user=None):
+    return query(s['uri'], 'select public.observer_create_repeat_batches(%s,%s,%s)', (s['phase'], rev, confirm),
+                 role='authenticated', user=user or s['user'])[0][0]
+
+
+def test_self_check_uses_three_evaluations_runs_them_in_turn_and_the_board_keeps_the_best(online):
+    s = online; uri = s['uri']
+    query(uri, 'update public.observer_phase_settings set daily_batches=7 where phase_id=%s', (s['phase'],))
+    rev = revision(s); materialize(s, rev)
+    query(uri, "insert into private.observer_scenario_bundles values(%s,'public/test.zip',%s)", (s['scenario'], 'f'*64))
+    started = self_check(s, rev)
+    batches = [uuid.UUID(b) for b in started['batch_ids']]
+    assert len(batches) == 3
+    rows = query(uri, 'select repeat_group,repeat_runs,purpose,status from public.observer_batches where id=any(%s) order by created_at', (batches,))
+    assert {r[0] for r in rows} == {uuid.UUID(started['repeat_group'])} and {r[1:] for r in rows} == {(3, 'formal', 'queued')}
+    assert query(uri, 'select id from public.observer_batches where id=any(%s) order by created_at,id', (batches,)) == [(b,) for b in batches]
+    assert next(q for q in rpc(uri, 'observer_evaluation_quota', role='authenticated', user=s['user'])
+                if q['phase_id'] == str(s['phase']))['remaining'] == 4
+    # One set (or evaluation) at a time; its evaluations run one after another.
+    with pytest.raises(psycopg.Error, match='batch_already_active'):
+        self_check(s, rev, True)
+    assert pending_batches(s, (s['team'],)) == {batches[0]}
+    for value, batch in zip((30, 50, 40), batches):
+        release(s, batch)
+        query(uri, "update public.observer_runs set status='scored',score=%s,finished_at=now() where batch_id=%s", (value, batch))
+        query(uri, 'select private.observer_finalize_batch(%s)', (batch,))
+        nxt = batches[batches.index(batch) + 1:batches.index(batch) + 2]
+        assert pending_batches(s, (s['team'],)) == set(nxt)
+    # Fewer than three left today: refused, nothing created.
+    query(uri, 'update public.observer_phase_settings set daily_batches=5 where phase_id=%s', (s['phase'],))
+    with pytest.raises(psycopg.Error, match='repeat_daily_limit'):
+        self_check(s, rev, True)
+    assert query(uri, 'select count(*) from public.observer_batches where team_id=%s', (s['team'],)) == [(3,)]
+    # Each evaluation is an ordinary one: the board keeps the best single one.
+    query(uri, "update public.phases set leaderboard_mode='live' where id=%s", (s['phase'],))
+    query(uri, "update public.observer_phase_settings set board_layout='cards_overall' where phase_id=%s", (s['phase'],))
+    query(uri, 'update public.teams set is_hidden=false where id=%s', (s['team'],))
+    row = rpc(uri, 'observer_card_board', s['phase'], None, 100, role='anon')['rows'][0]
+    assert (row['total_score'], row['averaged_runs'], row['submission_count']) == (50, None, 3)
+    with pytest.raises(psycopg.Error, match='permission denied'):
+        query(uri, 'select public.observer_create_repeat_batches(%s,%s,false)', (s['phase'], rev), role='anon')
+
+
+def test_the_online_board_marks_each_teams_final_version(online):
+    s = online; uri = s['uri']
+    query(uri, "update public.observer_phase_settings set board_layout='cards_overall' where phase_id=%s", (s['phase'],))
+    query(uri, "update public.phases set leaderboard_mode='live' where id=%s", (s['phase'],))
+    query(uri, 'update public.teams set is_hidden=false')
+    first, second = revision(s), revision(s)
+    scored_batch(s, first, 30)
+    scored_batch(s, second, 70)
+    scored_batch(s, first, 40)
+    row = lambda slug=None: rpc(uri, 'observer_card_board', s['phase'], slug, 100, role='anon')['rows'][0]
+    assert (row()['total_score'], row()['final_version']) == (70, {'chosen': False, 'score': None})
+    choose(s, first)
+    assert row()['final_version'] == {'chosen': True, 'score': 40}
+    slug = query(uri, 'select slug from public.scenarios where id=%s', (s['scenario'],))[0][0]
+    assert row(slug)['final_version'] == {'chosen': True, 'score': 40}
+    choose(s, revision(s))  # chosen, never evaluated
+    assert row()['final_version'] == {'chosen': True, 'score': None}
+    # Not in practice phases.
+    query(uri, 'update public.phases set counts_for_final=false where id=%s', (s['phase'],))
+    assert row()['final_version'] is None

@@ -69,6 +69,10 @@ export interface LeaderboardEntry {
   /** Hidden final only: cards the team itself failed, shown as 0 (overall tab: their slugs; card tab: this card). */
   unfinished_cards?: string[]; unfinished?: boolean
   targets_observed?: number | null; components?: Record<string, number> | null
+  /** Phases that average repeated evaluations (the hidden final): how many evaluations the row averages. */
+  averaged_runs?: number | null
+  /** The formal phase where teams choose a final version: whether this team chose one, and that version's score on this tab. */
+  final_version?: { chosen: boolean; score: number | null } | null
 }
 
 export interface PhaseCopy {

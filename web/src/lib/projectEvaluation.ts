@@ -62,3 +62,50 @@ export function canChooseFinal(final: FinalVersion | null, revisionId: string, n
 export function canClearFinal(final: FinalVersion | null, now = Date.now()): boolean {
   return !!final && !final.locked && !(final.deadline && Date.parse(final.deadline) <= now) && final.chosen_revision_id != null
 }
+
+/** Evaluations in one self-check ("evaluate 3 times and average", observer_create_repeat_batches); the hidden final averages as many. */
+export const SELF_CHECK_RUNS = 3
+
+type RepeatBatch = { id: string; status: string; score: number | null; repeat_group?: string | null; repeat_runs?: number | null
+  observer_runs: { scenario_id: string; status: string; score: number | null }[] }
+type Spread = { mean: number; min: number; max: number }
+export type RepeatSummary = {
+  group: string; runs: number; scored: number; active: number
+  /** Per card over the scored evaluations, in the order the cards first appear. */
+  cards: ({ scenario_id: string } & Spread)[]
+  /** Over the scored evaluations' combined scores. */
+  overall: Spread | null
+}
+
+const spread = (values: number[]): Spread | null => values.length
+  ? { mean: values.reduce((a, b) => a + b, 0) / values.length, min: Math.min(...values), max: Math.max(...values) } : null
+
+/**
+ * The evaluations of each self-check, by repeat group: per card and overall the mean and the range (lowest–highest)
+ * over its scored evaluations, the same averaging as the hidden final. Failed evaluations are not averaged.
+ */
+export function repeatSummaries(batches: RepeatBatch[] | null | undefined): Map<string, RepeatSummary> {
+  const groups = new Map<string, RepeatBatch[]>()
+  for (const b of batches ?? []) if (b.repeat_group) groups.set(b.repeat_group, [...(groups.get(b.repeat_group) ?? []), b])
+  const out = new Map<string, RepeatSummary>()
+  for (const [group, own] of groups) {
+    const scored = own.filter(b => b.status === 'scored')
+    const cards: string[] = []
+    for (const b of scored) for (const r of b.observer_runs) if (!cards.includes(r.scenario_id)) cards.push(r.scenario_id)
+    out.set(group, {
+      group, runs: own[0]!.repeat_runs ?? SELF_CHECK_RUNS, scored: scored.length,
+      active: own.filter(b => ['queued', 'running'].includes(b.status)).length,
+      cards: cards.flatMap(id => {
+        const s = spread(scored.flatMap(b => b.observer_runs.filter(r => r.scenario_id === id && r.score != null).map(r => r.score!)))
+        return s ? [{ scenario_id: id, ...s }] : []
+      }),
+      overall: spread(scored.filter(b => b.score != null).map(b => b.score!)),
+    })
+  }
+  return out
+}
+
+/** A self-check needs SELF_CHECK_RUNS of today's evaluations. */
+export function canSelfCheck(quota: EvaluationQuota | null | undefined): boolean {
+  return quota == null || quota.remaining >= SELF_CHECK_RUNS
+}

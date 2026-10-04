@@ -948,7 +948,7 @@
       "s3_points": [
         "4 évaluations par équipe et par jour ; chacune exécute votre agent sur les cartes de tâche A–D, 900 s par carte, et le classement affiche la moyenne sur A–D.",
         "Choisissez votre version finale avant la fin.",
-        "Le classement final repose uniquement sur une évaluation de cette version sur les cartes cachées E–H (moyenne sur E–H)."
+        "Le classement final repose uniquement sur le score de cette version sur les cartes cachées E–H (3 évaluations par carte, moyennées, puis moyenne sur E–H)."
       ],
       "s3_cta": "Aller à Participer",
       "help_prefix": "Des questions ? Voir la",

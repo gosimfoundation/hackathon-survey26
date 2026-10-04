@@ -1,34 +1,37 @@
 #!/usr/bin/env python3
-"""Evaluate every team's final version once on the hidden final phase.
+"""Evaluate every team's final version repeat_runs times (default 3) on the hidden final phase.
 
 Run after the formal phase ('online') has ended. For each team with a
 final version in that phase (its choice, else the version of its best scored
-evaluation) this creates one formal evaluation in the sealed hidden phase
-('final-hidden'), outside the daily limit: one run per card linked to that phase
-(the v4 cards E-H). The normal dispatcher then runs it.
+evaluation) this creates observer_phase_settings.repeat_runs formal evaluations of
+it in the sealed hidden phase ('final-hidden'), outside the daily limit: each with
+one run per card linked to that phase (the v4 cards E-H). The normal dispatcher
+then runs them, round by round (every team's first evaluation before anyone's
+second) and one team's evaluations one after another.
 Results stay invisible to participants until the hidden phase's
 leaderboard_mode is set to 'published'. Operating procedure: docs/hidden-final-runbook.md.
 
 Dry run by default: prints what would be created, the run settings of the target
 phase and an estimate of runner minutes and duration. --apply creates the
 evaluations in one transaction (private.observer_run_hidden_final, migrations
-20260927000800, 20261001000200 and 20261001000900). A team that already has an
-evaluation there on the current card set is skipped. A card the team itself fails
-(build, crash or protocol failure of its project, or a rejected trace) scores 0
-and the other cards still run; the evaluation completes with the mean over all four cards.
-A failure caused by the platform fails the evaluation, which is recreated with
---retry-failed. Recreating an evaluation for any other reason is an organizer
+20260927000800, 20261001000200, 20261001000900 and 20261004030000). A team that
+already has repeat_runs evaluations there (scored or still running) on the current
+card set is skipped. A card the team itself fails (build, crash or protocol failure
+of its project, or a rejected trace) scores 0 in that evaluation and the other
+cards still run. A failure caused by the platform fails that evaluation, which
+--retry-failed replaces. Recreating an evaluation for any other reason is an organizer
 decision (--retry-participant-failures, only for an evaluation that failed without
 a platform cause). --team limits the run to one team (slug, name or id); --before-freeze allows that single-team test before
-the public phase has ended. --limit N creates at most N evaluations per call (a
+the public phase has ended. --limit N creates the evaluations of at most N teams per call (a
 canary first, then the rest with a second --apply); the dispatcher schedules
 queued runs in creation order anyway, so no further batching is needed. v4 task
 cards run only colocated, so the target phase needs colocated=true.
 
 --status prints the progress of the hidden evaluations (batches, runs, runner
-minutes so far). --results prints the organizer ranking: per team the score on
-every card and their mean, ranked over complete evaluations of teams that are not
-hidden; a card the team itself failed shows 0, marked *, and counts in the mean.
+minutes so far). --results prints the organizer ranking: per team the mean score on
+every card over its first repeat_runs scored evaluations and the mean over the cards,
+with the range of the evaluations' scores, ranked over teams that are not hidden
+and have all evaluations scored; a card the team itself failed counts as 0, marked *.
 --csv PATH also writes it to a local file. Neither prints card contents,
 and neither changes anything. After the runs, scripts/verify-v4-run.py replays any
 v4 result against its bundle.
@@ -75,7 +78,8 @@ def plan_sql(source, target, team, apply, before_freeze, retry_failed, retry_par
 def summarize(result):
     teams = result['teams']
     lines = [f"{'APPLIED' if result['apply'] else 'DRY RUN'}: {result['source_phase']} -> {result['target_phase']}"
-             f" (source ends {result['source_ends_at']}, frozen={result['frozen']})"]
+             f" (source ends {result['source_ends_at']}, frozen={result['frozen']},"
+             f" {result.get('runs', 1)} evaluation(s) per team)"]
     for t in teams:
         note = t['reason'] or ''
         if t['action'] == 'deferred':
@@ -87,6 +91,8 @@ def summarize(result):
             note = 'stored model mode without a saved key: model calls will fail'
         if t.get('failure') and t['action'] in ('created', 'would_create'):
             note = f"retry after {t['failure']} failure" + ('; ' + note if note else '')
+        if t['action'] in ('created', 'would_create', 'deferred') and t.get('new_evaluations') not in (None, result.get('runs', 1)):
+            note += f"{'; ' if note else ''}{t['new_evaluations']} more evaluation(s), {t['evaluations']} already scored or running"
         if t.get('stale_batches'):
             note += f"{'; ' if note else ''}{t['stale_batches']} batch(es) on an earlier card set ignored"
         lines.append(f"  {t['action']:<12} {t['team_name'][:40]:<40} version={t['revision_id']} ({t['source']})"
@@ -134,7 +140,7 @@ def runner_capacity(user_ids):
 
 
 def estimate(users, scenarios, runtime_seconds, capacity):
-    """Runner minutes and wall-clock time for new batches run by the given users (one batch each)."""
+    """Runner minutes and wall-clock time for new batches run by the given users (one entry per batch)."""
     runs = len(users) * int(scenarios or 0)
     if not runs: return '  estimate: nothing to run'
     per_run = (runtime_seconds or 0) / 60 + OVERHEAD_MINUTES
@@ -170,18 +176,27 @@ FAILURE = """case when exists(select 1 from public.observer_runs r where r.batch
     and r.status in ('failed','cancelled') and not private.observer_participant_failure(r.id))
   then 'participant' else 'platform' end"""
 
+# Every evaluation on the phase's current card set, oldest first.
 CURRENT_BATCHES = """
 with cur as (
-  select distinct on (b.team_id) b.* from public.observer_batches b
-  where b.phase_id={target}::uuid and b.purpose='formal' and private.observer_batch_covers_phase(b.id,b.phase_id)
-  order by b.team_id, b.created_at desc, b.id desc)
+  select b.* from public.observer_batches b
+  where b.phase_id={target}::uuid and b.purpose='formal' and private.observer_batch_covers_phase(b.id,b.phase_id))
 """
 
 
+def repeat_runs(target):
+    """How many evaluations per team the hidden final averages (observer_phase_settings.repeat_runs)."""
+    rows = deploy.query('select greatest(1,coalesce(repeat_runs,1)) as n from public.observer_phase_settings'
+                        ' where phase_id=' + q(target) + '::uuid')
+    return int(rows[0]['n']) if rows else 1
+
+
 def status(target):
-    """Progress of the current hidden evaluations; no scores."""
+    """Progress of the hidden evaluations; no scores."""
     cte = CURRENT_BATCHES.format(target=q(target))
     batches = deploy.query(cte + 'select status, count(*) as n from cur group by status order by status')
+    teams = deploy.query(cte + "select count(*) filter (where scored>=" + str(repeat_runs(target)) + ") as complete, count(*) as n"
+                         " from (select team_id, count(*) filter (where status='scored') as scored from cur group by team_id) x")
     runs = deploy.query(cte + 'select r.status, count(*) as n from public.observer_runs r join cur on cur.id=r.batch_id'
                         ' group by r.status order by r.status')
     jobs = one(deploy.query(cte + """select count(*) filter (where j.status in ('queued','dispatched','claimed')) as active,
@@ -196,35 +211,73 @@ def status(target):
     # Runs still queued in a failed batch are never scheduled; count only live batches.
     waiting = one(deploy.query(cte + "select count(*) as n from public.observer_runs r join cur on cur.id=r.batch_id"
                                " where r.status='queued' and cur.status in ('queued','running')"), 'queued runs')['n']
+    t = teams[0] if teams else {'complete': 0, 'n': 0}
     return '\n'.join([
         f'STATUS: batches {fmt(batches)}',
+        f"  teams with all {repeat_runs(target)} evaluations scored: {t['complete']} of {t['n']}",
         f'  runs: {fmt(runs)}',
-        f'  failed batches: {fmt(failures)} (rerun platform failures with --apply --retry-failed)',
+        f'  failed batches: {fmt(failures)} (replace platform failures with --apply --retry-failed)',
         f"  engine jobs: {jobs['active']} active, {jobs['finished']} finished, {jobs['minutes']:.0f} runner minutes so far"
         f" (avg {jobs['avg_minutes']:.1f} min per run)",
         f'  queued runs: {waiting}, about {waiting / SCHEDULED_RUNS_PER_MINUTE:.0f} min until all are scheduled',
     ])
 
 
+def mean(values):
+    return sum(values) / len(values) if values else None
+
+
 def results(target):
-    """Organizer ranking: one row per team with its current hidden evaluation."""
+    """Organizer ranking: one row per team, the mean of its first repeat_runs scored evaluations.
+
+    Per card the mean over those evaluations (a card the team itself failed is 0 in its evaluation),
+    overall the mean over the cards (equal to the mean of the evaluations' scores), as on the board.
+    """
     cte = CURRENT_BATCHES.format(target=q(target))
-    rows = deploy.query(cte + """select t.id as team_id, t.name as team_name, t.is_hidden, cur.id as batch_id,
+    batches = deploy.query(cte + """select t.id as team_id, t.name as team_name, t.is_hidden, cur.id as batch_id,
         cur.status, cur.score, cur.revision_id, cur.finished_at,
         case when cur.status in ('failed','cancelled') then """ + FAILURE.format(batch='cur.id') + """ end as failure,
         (select jsonb_object_agg(s.slug, jsonb_build_object('status',r.status,'score',r.score,'error',nullif(r.error,''),
             'participant_failure',private.observer_participant_failure(r.id)))
           from public.observer_runs r join public.scenarios s on s.id=r.scenario_id where r.batch_id=cur.id) as runs
-      from cur join public.teams t on t.id=cur.team_id""")
+      from cur join public.teams t on t.id=cur.team_id order by t.id, cur.created_at, cur.id""")
     cards = sorted(r['slug'] for r in deploy.query(
         'select s.slug from public.phase_scenarios ps join public.scenarios s on s.id=ps.scenario_id'
         ' where ps.phase_id='+q(target)+'::uuid'))
     mode = one(deploy.query('select leaderboard_mode from public.phases where id='+q(target)+'::uuid'), 'phase')['leaderboard_mode']
-    for r in rows:
-        r['runs'] = jsonish(r['runs']) or {}
-        r['score'] = None if r['score'] is None else float(r['score'])
-        # A card the team itself failed scores 0 and still counts in the mean (the batch score already does).
-        r['unfinished'] = sorted(c for c, run in r['runs'].items() if run.get('participant_failure')) if r['status'] == 'scored' else []
+    need = repeat_runs(target)
+    teams = {}
+    for b in batches:
+        b['runs'] = jsonish(b['runs']) or {}
+        b['score'] = None if b['score'] is None else float(b['score'])
+        teams.setdefault(b['team_id'], []).append(b)
+    rows = []
+    for team_id, own in teams.items():
+        scored = [b for b in own if b['status'] == 'scored'][:need]
+        active = [b for b in own if b['status'] in ('queued', 'running')]
+        last = own[-1]
+        r = {'team_id': team_id, 'team_name': last['team_name'], 'is_hidden': last['is_hidden'],
+             'revision_id': last['revision_id'], 'batch_id': scored[0]['batch_id'] if scored else last['batch_id'],
+             'batch_ids': [b['batch_id'] for b in scored], 'evaluations': len(scored), 'repeat_runs': need,
+             'finished_at': max((b['finished_at'] for b in scored), default=None), 'failure': None}
+        if len(scored) >= need:
+            r['status'] = 'scored'
+        elif active:
+            r['status'] = 'running'
+        else:
+            r['status'] = last['status'] if last['status'] != 'scored' else 'incomplete'
+            r['failure'] = last['failure']
+        # A card the team itself failed scores 0 in that evaluation and counts in the mean.
+        r['unfinished'] = sorted({c for b in scored for c, run in b['runs'].items() if run.get('participant_failure')}) \
+            if r['status'] == 'scored' else []
+        r['runs'] = {c: {'score': mean([0.0 if b['runs'].get(c, {}).get('participant_failure')
+                                        else float(b['runs'][c]['score']) for b in scored
+                                        if b['runs'].get(c, {}).get('participant_failure') or b['runs'].get(c, {}).get('score') is not None])}
+                     for c in cards} if r['status'] == 'scored' else {}
+        totals = [b['score'] for b in scored if b['score'] is not None]
+        r['score'] = mean(totals) if r['status'] == 'scored' else None
+        r['min'], r['max'] = (min(totals), max(totals)) if r['status'] == 'scored' and totals else (None, None)
+        rows.append(r)
     ranked = sorted((r for r in rows if r['status'] == 'scored' and not r['is_hidden']),
                     key=lambda r: (-r['score'], r['team_name'], str(r['team_id'])))
     rank, previous = 0, None
@@ -236,21 +289,23 @@ def results(target):
 
 
 def card_score(r, card):
-    """The score of one card: 0 for a card the team itself failed."""
-    return 0.0 if card in r['unfinished'] else r['runs'].get(card, {}).get('score')
+    """The mean score of one card over the team's evaluations (a card the team itself failed is 0 there)."""
+    return r['runs'].get(card, {}).get('score')
 
 
 def format_results(rows, cards, mode):
     lines = [f'RESULTS (leaderboard_mode={mode}; participants see nothing until it is published)',
-             '  ' + ' '.join(['rank', f"{'team':<40}", *(f'{c:>9}' for c in cards), f"{'mean':>9}", ' status'])]
+             '  ' + ' '.join(['rank', f"{'team':<40}", *(f'{c:>9}' for c in cards), f"{'mean':>9}", f"{'range':>17}", ' evals  status'])]
     for r in rows:
         cell = lambda v, mark='': (f'{v:8.2f}' if v is not None else f"{'-':>8}") + (mark or ' ')
         note = r['status'] + (f" ({r['failure']})" if r['failure'] else '') + (' hidden-team' if r['is_hidden'] else '')
+        spread = f"{r['min']:.2f}-{r['max']:.2f}" if r['min'] is not None else '-'
         lines.append(f"  {str(r.get('rank', '-')):>4} {r['team_name'][:40]:<40} "
                      + ' '.join(cell(card_score(r, c), '*' if c in r['unfinished'] else '') for c in cards)
-                     + f" {cell(r['score'])}  {note}")
+                     + f" {cell(r['score'])} {spread:>17}  {r['evaluations']}/{r['repeat_runs']}  {note}")
     ranked = sum(1 for r in rows if 'rank' in r)
     lines.append(f'  ranked={ranked}, not ranked={len(rows) - ranked} (incomplete, failed or hidden teams)')
+    lines.append('  each card and the mean average the first evaluations of each team; range: lowest-highest evaluation mean')
     if any(r['unfinished'] for r in rows):
         lines.append("  * failed because of the team's project (build, crash, protocol) or a rejected trace: 0, counted in the mean")
     return '\n'.join(lines)
@@ -260,11 +315,13 @@ def write_csv(path, rows, cards):
     with open(path, 'w', newline='', encoding='utf-8') as handle:
         out = csv.writer(handle)
         out.writerow(['rank', 'team_id', 'team_name', 'hidden_team', 'revision_id', 'batch_id', 'status', 'failure',
-                      *cards, 'mean', 'unfinished_cards'])
+                      *cards, 'mean', 'unfinished_cards', 'evaluations', 'min', 'max', 'batch_ids'])
         for r in rows:
             out.writerow([r.get('rank', ''), r['team_id'], r['team_name'], r['is_hidden'], r['revision_id'], r['batch_id'],
                           r['status'], r['failure'] or '', *('' if (v := card_score(r, c)) is None else v for c in cards),
-                          '' if r['score'] is None else r['score'], ' '.join(r['unfinished'])])
+                          '' if r['score'] is None else r['score'], ' '.join(r['unfinished']), r['evaluations'],
+                          '' if r['min'] is None else r['min'], '' if r['max'] is None else r['max'],
+                          ' '.join(str(b) for b in r['batch_ids'])])
 
 
 def main():
@@ -311,7 +368,9 @@ def main():
                                                args.retry_participant_failures, args.limit)), 'result')['result'])
     if args.json: print(json.dumps(result, ensure_ascii=False, indent=1)); return
     line, settings = target_settings(target)
-    users = [t['user_id'] for t in result['teams'] if t['action'] in ('would_create', 'created')]
+    # One entry per evaluation to create: each is one batch of the team's member.
+    users = [t['user_id'] for t in result['teams'] if t['action'] in ('would_create', 'created')
+             for _ in range(t.get('new_evaluations') or 1)]
     print(summarize(result) + '\n' + line + '\n'
           + estimate(users, settings['scenarios'], settings['runtime_seconds'], runner_capacity(users)))
 

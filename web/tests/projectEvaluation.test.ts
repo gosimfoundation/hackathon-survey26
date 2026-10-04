@@ -65,3 +65,21 @@ test('the final version: chosen or default, changeable until the deadline', () =
   assert.ok(canClearFinal(chosen, before) && !canClearFinal(defaulted, before) && !canClearFinal(chosen, after))
   assert.ok(!canChooseFinal(null, 'r1', before) && !canClearFinal(null, before))
 })
+
+test('a self-check shows the mean and range per card and overall over its scored evaluations', async () => {
+  const { repeatSummaries, canSelfCheck } = await import('../src/lib/projectEvaluation.ts')
+  const run = (scenario_id: string, score: number | null, status = 'scored') => ({ scenario_id, status, score })
+  const summaries = repeatSummaries([
+    { id: '1', status: 'scored', score: 20, repeat_group: 'g', repeat_runs: 3, observer_runs: [run('a', 10), run('b', 30)] },
+    { id: '2', status: 'scored', score: 40, repeat_group: 'g', repeat_runs: 3, observer_runs: [run('a', 30), run('b', 50)] },
+    { id: '3', status: 'running', score: null, repeat_group: 'g', repeat_runs: 3, observer_runs: [run('a', null, 'running'), run('b', 99)] },
+    { id: '4', status: 'scored', score: 70, observer_runs: [run('a', 70)] },
+  ])
+  assert.equal(summaries.size, 1)
+  const g = summaries.get('g')!
+  assert.deepEqual([g.runs, g.scored, g.active], [3, 2, 1])
+  assert.deepEqual(g.cards, [{ scenario_id: 'a', mean: 20, min: 10, max: 30 }, { scenario_id: 'b', mean: 40, min: 30, max: 50 }])
+  assert.deepEqual(g.overall, { mean: 30, min: 20, max: 40 })
+  assert.ok(canSelfCheck({ phase_id: 'p', daily_batches: 4, used: 1, remaining: 3 }))
+  assert.ok(!canSelfCheck({ phase_id: 'p', daily_batches: 4, used: 2, remaining: 2 }))
+})
