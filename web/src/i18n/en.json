@@ -1864,7 +1864,40 @@
       "invalid_variable": "Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
       "variable_limit": "The variable limit has been reached; delete a variable you no longer use first.",
       "invalid_domain": "Invalid domain: enter the name only (e.g. api.kimi.com), without https://, a port or a path, and not an IP address or internal name; at most 10.",
-      "domain_not_public": "This domain does not resolve right now, or resolves to a non-public address, so it cannot be added."
+      "domain_not_public": "This domain does not resolve right now, or resolves to a non-public address, so it cannot be added.",
+      "svc": {
+        "title": "Add a model service",
+        "intro": "Pick a provider and paste your API key. The base URL and model are filled in for you and can be changed. The key is stored encrypted and only its last 4 characters are shown afterwards; the base URL and model are saved as plain variables.",
+        "examples": "The official examples read three variables: OPENAI_API_KEY, OPENAI_BASE_URL and OPENAI_MODEL. Without a prefix the service is saved under exactly these names (Anthropic is saved as ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, ANTHROPIC_MODEL, which your program reads itself).",
+        "provider": "Provider",
+        "custom": "Custom (OpenAI-compatible)",
+        "key": "API key",
+        "key_keep": "Leave empty to keep the saved key",
+        "base_url": "Base URL",
+        "model": "Model",
+        "model_empty": "With no model, no _MODEL variable is saved and your program decides; see the provider's docs for model names.",
+        "prefix": "Name prefix (optional)",
+        "prefix_help": "Use it to set up several providers at once, e.g. KIMI saves KIMI_API_KEY, KIMI_BASE_URL and KIMI_MODEL without touching OPENAI_*. Your program has to read prefixed variables itself.",
+        "saves_as": "Saved as:",
+        "clash": "Your team already has {prefix}_* ({current}). Replace it, or save under another prefix?",
+        "replace": "Replace {prefix}_*",
+        "use_prefix": "Save as {prefix}_*",
+        "save": "Save model service",
+        "cancel": "Cancel editing",
+        "edit": "Edit",
+        "editing": "Editing {prefix}_*. Leave the key empty to keep the saved key.",
+        "saved": "Model service saved.",
+        "deleted": "Model service deleted.",
+        "delete_confirm": "Delete these variables? {names}",
+        "over_limit": "Saving would exceed the limit of {n} variables. Delete variables you no longer use first.",
+        "key_ending": "key …{hint}",
+        "no_model": "no model set",
+        "advanced": "Advanced: custom variables",
+        "notes": {
+          "kimi": "Kimi Coding Plan: use the model kimi-for-coding or k3. These models only accept the default temperature, so do not send temperature. Accounts outside mainland China should change the base URL to https://api.kimi.ai/coding/v1.",
+          "anthropic": "Anthropic uses the Messages API and is saved as ANTHROPIC_* variables. The official examples only read OPENAI_*, so your program reads these with the Anthropic SDK."
+        }
+      }
     },
     "model_api": {
       "title": "Model API (optional)",
