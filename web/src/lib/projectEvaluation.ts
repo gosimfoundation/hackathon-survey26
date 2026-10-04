@@ -1,5 +1,16 @@
 /** Complete-project evaluation rules shown on the project and records pages. The database enforces them. */
-export type EvaluationQuota = { phase_id: string; daily_batches: number; used: number; remaining: number; resets_at?: string }
+export type EvaluationQuota = { phase_id: string; daily_batches: number; used: number; remaining: number; resets_at?: string
+  /** Team-wide daily project preparations (same on every row; follows the evaluation quota, migration 20261004220000). */
+  preparations_daily?: number; preparations_used?: number; preparations_remaining?: number }
+export type PreparationQuota = { daily: number; used: number; remaining: number; resets_at?: string }
+
+/** The team's daily project preparations, or null when the backend does not report them. */
+export function preparationQuota(rows: EvaluationQuota[] | null | undefined): PreparationQuota | null {
+  const row = (rows ?? []).find(q => Number.isFinite(Number(q.preparations_daily)) && q.preparations_daily != null)
+  if (!row) return null
+  const daily = Number(row.preparations_daily), used = Number(row.preparations_used ?? 0)
+  return { daily, used, remaining: Number(row.preparations_remaining ?? Math.max(0, daily - used)), resets_at: row.resets_at }
+}
 type Batch = { revision_id?: string | null; phase_id?: string; status: string; quota_refunded?: boolean }
 type Revision = { id: string; status: string; archived_at?: string | null; source_kind?: string; source_location?: string; created_at?: string }
 type Project = { title: string; observer_revisions: Revision[] }

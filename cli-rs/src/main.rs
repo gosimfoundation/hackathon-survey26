@@ -1291,8 +1291,8 @@ fn recent_duplicate(data: &Value, title: &str, url: Option<&str>) -> bool {
     })
 }
 
-const DUPLICATE_EN: &str = "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.";
-const DUPLICATE_ZH: &str = "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。";
+const DUPLICATE_EN: &str = "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s project preparations.";
+const DUPLICATE_ZH: &str = "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次项目准备机会。";
 
 fn queued_line(out: &Out, result: &Value) {
     let rid = py_none_str(&g(result, "revision_id"));
@@ -1481,7 +1481,7 @@ fn cmd_project_confirm(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
 fn cmd_project_withdraw(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
     let r = find_revision(&data, &a.str("revision").unwrap_or_default())?;
-    confirm(a, out, "Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.",
+    confirm(a, out, "Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s project preparations.",
         "撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。")?;
     api.portal("withdraw", true, json!({"revision_id": r["id"]}))?;
     out.line(out.t("Version withdrawn.", "已撤回。"));
@@ -1919,7 +1919,8 @@ fn cmd_quota(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
         with(q, "phase", slug)
     }).collect();
     out.table(&rows, &[(out.t("Phase", "赛程"), "phase"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
-        (out.t("Left", "剩余"), "remaining"), (out.t("Resets", "重置时间"), "resets_at")]);
+        (out.t("Left", "剩余"), "remaining"), (out.t("Preparations/day", "每天可准备"), "preparations_daily"),
+        (out.t("Preparations left", "剩余准备"), "preparations_remaining"), (out.t("Resets", "重置时间"), "resets_at")]);
     Ok(Value::Array(rows))
 }
 

@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -87,7 +87,8 @@ MESSAGES = {
     "stale_approval": ("The version changed. Reopen the review before confirming.", "版本已变化，请重新打开并检查。"),
     "batch_already_active": ("Your team already has an active evaluation.", "本队已有正在进行的评测。"),
     "preparation_limit": ("Your team already has three projects being prepared.", "本队已有三个项目正在准备，请等待完成。"),
-    "preparation_daily_limit": ("Your team has used today’s ten project preparations.", "本队今天的十次项目准备机会已用完。"),
+    "preparation_daily_limit": ("Your team has used today’s project preparations (the daily number follows the evaluation quota; see survey26 quota). The count resets at 00:00 UTC (08:00 Beijing time).",
+                                "本队今天的项目准备次数已用完（每天的次数与评测次数相同，可用 survey26 quota 查看），每天北京时间 8 点（UTC 0 点）重置。"),
     "daily_limit": ("The daily evaluation limit has been reached.", "今天的评测次数已用完。"),
     "repeat_daily_limit": ("Evaluate 3 times and average needs 3 of today’s evaluations.", "「评测 3 次取平均」需要今天剩余至少 3 次评测。"),
     "revision_already_evaluated": ("This version has already been evaluated. Pass --yes to evaluate it again (uses one more of today’s evaluations).",
@@ -1079,8 +1080,8 @@ def cmd_project_submit_repo(api: Api, args, out: Out):
         url = url[:-4]
     title = (args.title or url.rsplit("/", 1)[-1]).strip()
     if _recent_duplicate(portal_list(api), title, url):
-        confirm(args, out, "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.",
-                "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。")
+        confirm(args, out, "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s project preparations.",
+                "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次项目准备机会。")
     result = api.portal("submit_repository", write=True, title=title, url=url) or {}
     out.line(out.t("Project queued for preparation: version %s. Wait with: survey26 project wait %s",
                    "项目已排队，等待准备：版本 %s。可用 survey26 project wait %s 等待。") % (result.get("revision_id"), str(result.get("revision_id"))[:8]))
@@ -1100,8 +1101,8 @@ def cmd_project_upload(api: Api, args, out: Out):
         raise CliError("wrong_file_type", "not a ZIP archive")
     title = (args.title or path.stem).strip()
     if _recent_duplicate(portal_list(api), title, None):
-        confirm(args, out, "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.",
-                "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。")
+        confirm(args, out, "You submitted the same project a few minutes ago. Submit it again? This uses one of today’s project preparations.",
+                "几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次项目准备机会。")
     slot = api.portal("upload", write=True, purpose="source") or {}
     out.line(out.t("Uploading %s (%d bytes)…", "正在上传 %s（%d 字节）…") % (path.name, size))
     boundary = "----survey26" + os.urandom(8).hex()
@@ -1211,7 +1212,7 @@ def cmd_project_confirm(api: Api, args, out: Out):
 def cmd_project_withdraw(api: Api, args, out: Out):
     data = portal_list(api)
     r = find_revision(data, args.revision)
-    confirm(args, out, "Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.",
+    confirm(args, out, "Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s project preparations.",
             "撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。")
     api.portal("withdraw", write=True, revision_id=r["id"])
     out.line(out.t("Version withdrawn.", "已撤回。"))
@@ -1519,7 +1520,8 @@ def cmd_quota(api: Api, args, out: Out):
     phases = {p["phase_id"]: (p.get("phases") or {}).get("slug") for p in data.get("phases") or []}
     rows = [dict(q, phase=phases.get(q.get("phase_id"))) for q in data.get("quota") or []]
     out.table(rows, [(out.t("Phase", "赛程"), "phase"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
-                     (out.t("Left", "剩余"), "remaining"), (out.t("Resets", "重置时间"), "resets_at")])
+                     (out.t("Left", "剩余"), "remaining"), (out.t("Preparations/day", "每天可准备"), "preparations_daily"),
+                     (out.t("Preparations left", "剩余准备"), "preparations_remaining"), (out.t("Resets", "重置时间"), "resets_at")])
     return rows
 
 
@@ -1777,7 +1779,7 @@ def build_parser() -> argparse.ArgumentParser:
     add(fin, "set", cmd_final_set, "choose a confirmed version as final").add_argument("revision")
     yes(add(fin, "clear", cmd_final_clear, "clear the choice (the best evaluation's version applies)"))
 
-    add(sub, "quota", cmd_quota, "evaluations left today per phase")
+    add(sub, "quota", cmd_quota, "evaluations and project preparations left today")
     add(sub, "competition", cmd_competition, "current competition mode and phases")
     lb = add(sub, "leaderboard", cmd_leaderboard, "leaderboard (online, practice-projects, practice)")
     lb.add_argument("--phase", help="online | practice-projects | practice (default: the current board)")

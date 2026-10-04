@@ -154,3 +154,38 @@ def test_contestants_see_the_latest_recent_reset_of_their_phases(quota):
     # Older than 24 hours: nothing to tell.
     query(uri, "update private.observer_quota_resets set reset_at=now()-interval '25 hours'")
     assert notice() is None
+
+
+def test_project_preparations_follow_the_evaluation_quota_and_its_resets(quota):
+    """Migration 20261004220000: the daily preparation limit is the largest daily evaluation quota of the team's
+    contestant phases (no separate number to keep in sync) and an organizer reset restarts its count too."""
+    s = quota; uri = s['uri']
+    assert query(uri, 'select coalesce(max(daily_batches),0) from public.observer_phase_settings')[0][0] < 98
+    query(uri, 'update public.observer_phase_settings set daily_batches=98, access_team_id=%s where phase_id=%s', (s['team'], s['phase']))
+
+    def prep():
+        rows = rpc(uri, 'observer_evaluation_quota', role='authenticated', user=s['user'])
+        row = {r['phase_id']: r for r in rows}[str(s['phase'])]
+        return row['preparations_daily'], row['preparations_used'], row['preparations_remaining']
+
+    def create():
+        return rpc(uri, 'observer_create_project', 'p', 'repository', 'https://github.com/example/project', role='authenticated', user=s['user'])
+
+    first = create()
+    query(uri, """insert into public.observer_revisions(project_id,source_kind,source_location,status)
+        select project_id,source_kind,source_location,'failed' from public.observer_revisions, generate_series(1,%s)
+        where id=%s""", (98 - prep()[1], first))
+    assert prep() == (98, 98, 0)
+    with pytest.raises(psycopg.Error, match='preparation_daily_limit'):
+        create()
+    query(uri, 'update public.observer_phase_settings set daily_batches=99 where phase_id=%s', (s['phase'],))
+    assert prep() == (99, 98, 1)
+    reset(s)
+    assert prep() == (99, 0, 99)
+    create()
+    assert prep()[1] == 1
+    # Another team's private phase never raises this team's limit; a sealed phase does not count either.
+    query(uri, 'update public.observer_phase_settings set sealed=true where phase_id=%s', (s['phase'],))
+    rows = rpc(uri, 'observer_evaluation_quota', role='authenticated', user=s['user'])
+    assert rows == [] or all(r['preparations_daily'] < 98 for r in rows)
+    query(uri, 'update public.observer_phase_settings set sealed=false, access_team_id=null where phase_id=%s', (s['phase'],))

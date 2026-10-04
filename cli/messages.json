@@ -92,8 +92,8 @@
   "zh": "本队已有三个项目正在准备，请等待完成。"
  },
  "preparation_daily_limit": {
-  "en": "Your team has used today’s ten project preparations.",
-  "zh": "本队今天的十次项目准备机会已用完。"
+  "en": "Your team has used today’s project preparations (the daily number follows the evaluation quota; see survey26 quota). The count resets at 00:00 UTC (08:00 Beijing time).",
+  "zh": "本队今天的项目准备次数已用完（每天的次数与评测次数相同，可用 survey26 quota 查看），每天北京时间 8 点（UTC 0 点）重置。"
  },
  "daily_limit": {
   "en": "The daily evaluation limit has been reached.",
