@@ -31,6 +31,8 @@ const knownErrors: Record<string, [number, string]> = {
   request_id_conflict: [409, "request_id_conflict"],
   team_model_not_configured: [403, "team_model_not_configured"],
   personal_api_required: [403, "team_model_not_configured"],
+  // Teams on team egress call their own provider directly (20261004080000).
+  model_proxy_retired: [410, "model_proxy_retired"],
 };
 
 Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async (request) => {

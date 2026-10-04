@@ -18,6 +18,7 @@ from .executor import execute
 from .manifest import MANIFEST_NAME, ProjectError, ProjectManifest
 from .preparation import resolve_image
 from .session import SessionClient
+from .team_egress import valid_variable_name
 from .transport import ExecutionError, JsonlTransport
 
 
@@ -47,15 +48,56 @@ class NativeWorkspace:
             if result.returncode:
                 raise ExecutionError('Local build failed. Check the build command in your project manifest.')
 
-    def start(self, environment):
+    def start(self, environment, *, team=None):
+        own = dict(team['environment']) if team else {}
         secrets = tuple(value for key, value in environment.items() if key.endswith(('TOKEN', 'KEY')))
+        secrets += tuple(own[name] for name in (team or {}).get('secrets', ()) if len(own[name]) >= 4)
         self.transport = JsonlTransport(list(self.manifest.run), cwd=self.cwd,
-            environment={**self.environment, **environment}, redactions=secrets)
+            environment={**self.environment, **own, **environment}, redactions=secrets)
         return self.transport
 
     def close(self):
         if self.transport:
             self.transport.close(force=True)
+
+
+# Direct model access (the default): the project calls its own provider with the
+# participant's own variables, exactly as in a cloud evaluation with team variables.
+# These names are taken from the shell; --env-file adds any NAME=value lines.
+MODEL_VARIABLES = ('OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL',
+                   'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'ANTHROPIC_MODEL')
+_SECRET_SUFFIXES = ('KEY', 'TOKEN', 'SECRET', 'PASSWORD')
+
+
+def own_environment(env_file: Path | None = None, environ=None) -> dict:
+    """{"environment", "secrets"}: the participant's own model variables for a local run."""
+    environ = os.environ if environ is None else environ
+    variables = {name: environ[name] for name in MODEL_VARIABLES if environ.get(name)}
+    if env_file is not None:
+        for number, line in enumerate(env_file.read_text(encoding='utf-8').splitlines(), 1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            name, separator, value = line.removeprefix('export ').partition('=')
+            name, value = name.strip(), value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in '"\'':
+                value = value[1:-1]
+            if not separator or not valid_variable_name(name) or name.startswith('OBSERVER_') or '\x00' in value:
+                raise ProjectError(f'Line {number} of the environment file is not a valid NAME=value variable.')
+            variables[name] = value
+    return {'environment': variables, 'secrets': sorted(n for n in variables if n.endswith(_SECRET_SUFFIXES))}
+
+
+class _OwnEnvironment:
+    """Gives the runtime the participant's own variables next to the run identity."""
+    def __init__(self, runtime, team):
+        self.runtime, self.team = runtime, team
+
+    def __getattr__(self, name):
+        return getattr(self.runtime, name)
+
+    def start(self, environment):
+        return self.runtime.start(environment, team=self.team)
 
 
 def export_decisions(client: SessionClient, destination: Path) -> str:
@@ -78,7 +120,8 @@ def export_decisions(client: SessionClient, destination: Path) -> str:
     return digest
 
 
-def run_local(project: Path, session_url: str, credential: str, model_base: str, output: Path, *, native: bool = False):
+def run_local(project: Path, session_url: str, credential: str, model_base: str | None, output: Path, *,
+              native: bool = False, env_file: Path | None = None):
     match = re.fullmatch(r'obs_([0-9a-f-]{36})\.[A-Za-z0-9_-]{40,100}', credential)
     if not match:
         raise ProjectError('Paste the temporary run credential from the project page.')
@@ -92,10 +135,16 @@ def run_local(project: Path, session_url: str, credential: str, model_base: str,
         from dataclasses import replace
         manifest = replace(manifest, image=resolve_image(manifest.image))
         runtime = DockerWorkspace(project, manifest, manifest.image)
+    identity = {'OBSERVER_API_URL': session_url, 'OBSERVER_RUN_ID': match[1], 'OBSERVER_RUN_TOKEN': credential}
+    if model_base:
+        # Legacy: the platform model proxy (refused for teams on team egress once it is retired).
+        environment = {**identity, 'OPENAI_BASE_URL': model_base, 'OPENAI_API_KEY': credential,
+                       'ANTHROPIC_BASE_URL': anthropic_base(model_base), 'ANTHROPIC_API_KEY': credential}
+    else:
+        environment = identity
+        runtime = _OwnEnvironment(runtime, own_environment(env_file))
     try:
-        execute(runtime, client, {'OBSERVER_API_URL': session_url, 'OBSERVER_RUN_ID': match[1],
-            'OBSERVER_RUN_TOKEN': credential, 'OPENAI_BASE_URL': model_base, 'OPENAI_API_KEY': credential,
-            'ANTHROPIC_BASE_URL': anthropic_base(model_base), 'ANTHROPIC_API_KEY': credential})
+        execute(runtime, client, environment)
     except (Exception, KeyboardInterrupt):
         try: client.call('abort')
         except Exception: pass
@@ -106,7 +155,9 @@ def run_local(project: Path, session_url: str, credential: str, model_base: str,
 def main():
     parser = argparse.ArgumentParser(description='Run your complete project with the official step-by-step session.')
     parser.add_argument('--session-url', required=True)
-    parser.add_argument('--model-base-url', required=True)
+    parser.add_argument('--model-base-url', help='Legacy: the platform model proxy. Leave it out to use your own '
+                        'OPENAI_* / ANTHROPIC_* variables (as in cloud evaluations).')
+    parser.add_argument('--env-file', type=Path, help='NAME=value lines given to your project as its environment.')
     parser.add_argument('--project', type=Path, default=Path('.'))
     parser.add_argument('--output', type=Path, default=Path('decisions.csv'))
     parser.add_argument('--native', action='store_true', help='Run your own trusted project directly on this computer, without Docker.')
@@ -117,7 +168,8 @@ def main():
         if args.export_only:
             digest = export_decisions(SessionClient(args.session_url, credential), args.output)
         else:
-            digest = run_local(args.project, args.session_url, credential, args.model_base_url, args.output, native=args.native)
+            digest = run_local(args.project, args.session_url, credential, args.model_base_url, args.output,
+                                   native=args.native, env_file=args.env_file)
         print(f'CSV saved to {args.output}; verified SHA256 {digest}')
         print('Upload this CSV to the matching run on the project page.')
         return 0

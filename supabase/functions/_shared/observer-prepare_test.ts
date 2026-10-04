@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { decryptCredential } from "./observer-model.ts";
+import { decryptCredential, encryptCredential } from "./observer-model.ts";
 import { placement } from "./observer-github.ts";
 
 // Recorded placement from public.observer_placement; runner-9 is one of the added organizations.
@@ -73,6 +73,8 @@ for (const source_kind of ["repository", "zip"]) {
               gameplay: source_kind === "zip" ? "v4" : "v3",
             }]);
           }
+          // Direct model access switched off: the model proxy as before.
+          if (name === "observer_preparation_team_egress") return Promise.resolve({ enabled: false });
           assertEquals(name, "observer_schedule_preparation");
           scheduled = args;
           return Promise.resolve(null);
@@ -126,4 +128,50 @@ Deno.test("an unavailable source does not open a model session or expose backend
   });
   assertEquals(output, [{ id: revision, scheduled: false, error: "preparation_unavailable" }]);
   assertEquals(calls.includes("observer_schedule_preparation"), false);
+});
+
+Deno.test("direct model access gives the adaptation the team's variables instead of the model proxy", async () => {
+  const { organization, privateRepository } = await placement(user, locate);
+  const privateRepo = { id: 42, full_name: organization + "/" + privateRepository, private: true, fork: false, default_branch: "main" };
+  const variable = "00000000-0000-4000-8000-000000000009";
+  let scheduled: Record<string, any> = {};
+  const output = await schedulePreparations({
+    masterKey: key,
+    apiBase: "https://platform.test",
+    app: {
+      privateParticipantRepository: () => Promise.resolve(privateRepo),
+      forkPublicSource: () => {
+        throw new Error("must not fork");
+      },
+    },
+    rpc: async (name, args) => {
+      if (name === "observer_placement") return "AGENTIC-OBSERVER26-runner-9";
+      if (name === "observer_runner_configuration") return [{ organization }];
+      if (name === "observer_pending_preparations") {
+        return [{ id: revision, owner_id: user, lease, source_kind: "zip", source_location: user + "/" + revision + "/source.zip", model_run_id: modelRun }];
+      }
+      if (name === "observer_preparation_team_egress") {
+        assertEquals(args, { p_revision: revision });
+        return {
+          enabled: true,
+          variables: [
+            { id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: await encryptCredential("sk-team", variable, key) },
+            { id: "x", name: "OPENAI_MODEL", secret: false, plain_value: "team-model" },
+          ],
+          domains: ["api.example.com"],
+        };
+      }
+      assertEquals(name, "observer_schedule_preparation");
+      scheduled = args;
+      return null;
+    },
+  });
+  assertEquals(output, [{ id: revision, scheduled: true }]);
+  const input = JSON.parse(await decryptCredential(scheduled.p_job.encrypted_input, scheduled.p_job.id, key));
+  assertEquals(input.team_egress, {
+    environment: { OPENAI_API_KEY: "sk-team", OPENAI_MODEL: "team-model" },
+    secrets: ["OPENAI_API_KEY"],
+    domains: ["api.example.com"],
+  });
+  assertEquals([input.model, input.model_base_url, input.run_credential], [undefined, undefined, undefined]);
 });

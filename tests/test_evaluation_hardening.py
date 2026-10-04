@@ -104,18 +104,24 @@ def receipt(run, digest, total):
     return {"run_id": str(run), "decisions_digest": digest, "score": {"total": total, "sum_best_scores": total}}
 
 
+# Model proxy retirement switches (20261004080000), off by default.
+OFF = {"prepare_direct_model": False, "model_proxy_retired": False}
+
+
 def test_switches_default_on_and_are_service_role_only(formal):
     s = formal
-    assert rpc(s["uri"], "observer_hardening") == {"restricted_egress": True, "rescore": True, "team_egress": False}
+    assert rpc(s["uri"], "observer_hardening") == {"restricted_egress": True, "rescore": True, "team_egress": False,
+                                                **OFF}
     for role in ("authenticated", "anon"):
         for statement in ("select public.observer_hardening()", "select public.observer_set_hardening(false,false)",
                           "select public.observer_pending_score_runs(5)"):
             with pytest.raises(psycopg.Error, match="permission denied"):
                 query(s["uri"], statement, role=role, user=s["user"])
-    assert rpc(s["uri"], "observer_set_hardening", False, None) == {"restricted_egress": False, "rescore": True, "team_egress": False}
-    assert rpc(s["uri"], "observer_set_hardening", None, False) == {"restricted_egress": False, "rescore": False, "team_egress": False}
+    assert rpc(s["uri"], "observer_set_hardening", False, None) == {"restricted_egress": False, "rescore": True, "team_egress": False,
+                                                **OFF}
+    assert rpc(s["uri"], "observer_set_hardening", None, False) == {"restricted_egress": False, "rescore": False, "team_egress": False, **OFF}
     assert query(s["uri"], "select detail from public.audit_log where action='observer.hardening' "
-                           "order by created_at desc limit 1")[0][0] == {"restricted_egress": False, "rescore": False, "team_egress": False}
+                           "order by created_at desc limit 1")[0][0] == {"restricted_egress": False, "rescore": False, "team_egress": False, **OFF}
 
 
 def test_a_finished_formal_run_is_scored_at_once_and_queued_for_its_rescore(formal):
