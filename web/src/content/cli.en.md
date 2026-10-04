@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is a single Python file. It requires Python 3.9 or later and no other packages.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.1.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -14,6 +14,23 @@ pip install "git+https://github.com/gosimfoundation/hackathon-survey26#subdirect
 curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
+
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/SHA256SUMS).
+
+| System | Download |
+| --- | --- |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-windows-x86_64.exe) |
+
+```bash
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.1.0
+```
+
+On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
 
 `survey26 --help` lists all commands; `survey26 <command> --help` describes each one. The usage guide for coding agents can be downloaded as [survey26-AGENTS.md](__BASE_URL__survey26-AGENTS.md); place it in your project so that your coding agent reads it.
 

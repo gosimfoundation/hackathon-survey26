@@ -6,7 +6,7 @@
 
 ## 1. Installation
 
-The tool is a single Python file. It requires Python 3.9 or later and no other packages.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.1.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -16,6 +16,23 @@ pip install "git+https://github.com/gosimfoundation/hackathon-survey26#subdirect
 curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
+
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/SHA256SUMS).
+
+| System | Download |
+| --- | --- |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-windows-x86_64.exe) |
+
+```bash
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.1.0
+```
+
+On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
 
 `survey26 --help` lists all commands; `survey26 <command> --help` describes each one. The usage guide for coding agents can be downloaded as [survey26-AGENTS.md](https://create.gosim.org/survey26/platform/survey26-AGENTS.md); place it in your project so that your coding agent reads it.
 
@@ -121,7 +138,7 @@ Actions that the website confirms with a dialog (evaluating a version again, the
 
 ## 1. 安装
 
-工具是一个 Python 单文件，需要 Python 3.9 或更高版本，不依赖其他软件包。
+工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.1.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
 
 ```bash
 # 方式 A：安装 survey26 命令
@@ -131,6 +148,23 @@ pip install "git+https://github.com/gosimfoundation/hackathon-survey26#subdirect
 curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
+
+**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/SHA256SUMS)。
+
+| 系统 | 下载 |
+| --- | --- |
+| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-arm64) |
+| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-x86_64) |
+| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64) |
+| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-windows-x86_64.exe) |
+
+```bash
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.1.0
+```
+
+在 macOS 上，用浏览器下载的程序需先解除隔离：`xattr -d com.apple.quarantine survey26`。在 Windows 上，请在 PowerShell 或命令提示符中运行 `survey26-windows-x86_64.exe`。
 
 `survey26 --help` 列出全部命令，`survey26 <命令> --help` 说明每条命令的用法。面向编程智能体的使用说明可下载为 [survey26-AGENTS.md](https://create.gosim.org/survey26/platform/survey26-AGENTS.md)，放入项目目录后，编程智能体即可读取。
 

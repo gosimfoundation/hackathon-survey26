@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -182,6 +182,11 @@ class CliError(Exception):
         self.status = status
 
 
+def _sleep(seconds: float) -> None:
+    """Every pause of the tool; SURVEY26_SLEEP_SCALE (tests) scales them."""
+    time.sleep(seconds * float(os.environ.get("SURVEY26_SLEEP_SCALE") or 1))
+
+
 def language() -> str:
     lang = os.environ.get("SURVEY26_LANG") or os.environ.get("LC_ALL") or os.environ.get("LANG") or ""
     return "zh" if lang.lower().startswith("zh") else "en"
@@ -267,7 +272,7 @@ class Api:
                 # Timed out, reset or cut short after sending: a write may have been applied, so it is not repeated.
                 if attempt >= self.retries or write:
                     raise CliError("network_error", str(error))
-            time.sleep(min(2 ** attempt, 8))
+            _sleep(min(2 ** attempt, 8))
 
     def rpc(self, name: str, write: bool = False, **args):
         return self.call("rpc", write=write, name=name, args=args)
@@ -285,7 +290,7 @@ def http_get(url: str, timeout: float = 120.0, retries: int = 3) -> bytes:
         except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as error:
             if attempt == retries:
                 raise CliError("download_failed", str(getattr(error, "reason", error)))
-            time.sleep(attempt * 2)
+            _sleep(attempt * 2)
     raise CliError("download_failed")
 
 
@@ -426,7 +431,7 @@ def polled_list(api: Api, deadline: float) -> dict:
         except CliError as error:
             if error.exit_code not in (EXIT_RATE, EXIT_UNAVAILABLE) or time.time() >= deadline:
                 raise
-            time.sleep(60 if error.exit_code == EXIT_RATE else 20)
+            _sleep(60 if error.exit_code == EXIT_RATE else 20)
 
 
 def all_revisions(data: dict) -> list:
@@ -1018,7 +1023,7 @@ def cmd_project_upload(api: Api, args, out: Out):
         except CliError as error:
             if error.code != "upload_not_finished" or attempt == 4:
                 raise
-            time.sleep(2 + attempt * 2)
+            _sleep(2 + attempt * 2)
     result = result or {}
     out.line(out.t("Project queued for preparation: version %s. Wait with: survey26 project wait %s",
                    "项目已排队，等待准备：版本 %s。可用 survey26 project wait %s 等待。") % (result.get("revision_id"), str(result.get("revision_id"))[:8]))
@@ -1072,7 +1077,7 @@ def cmd_project_wait(api: Api, args, out: Out):
             return view
         if time.time() >= deadline:
             raise CliError("wait_timeout")
-        time.sleep(max(5, args.interval))
+        _sleep(max(5, args.interval))
 
 
 def cmd_project_logs(api: Api, args, out: Out):
@@ -1266,7 +1271,7 @@ def cmd_eval_wait(api: Api, args, out: Out):
             return summary
         if time.time() >= deadline:
             raise CliError("wait_timeout")
-        time.sleep(max(5, args.interval))
+        _sleep(max(5, args.interval))
 
 
 def cmd_results_log(api: Api, args, out: Out):
