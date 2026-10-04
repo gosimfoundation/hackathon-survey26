@@ -2,7 +2,7 @@
 
 # survey26 command-line tool
 
-`survey26` is the official command-line tool of the GOSIM 2026 Agentic Observer Hackathon. It performs, from a terminal or from a coding agent, every action that the website offers to a contestant: profile, team, team variables and allowed domains, project versions, evaluations, results, the final version, the leaderboard and the Kimi Coding Plan code. It acts with your account and is subject to exactly the same permissions, daily limits and quotas as the website.
+`survey26` is the official command-line tool of the GOSIM 2026 Agentic Observer Hackathon. It performs, from a terminal or from a coding agent, every action that the website offers to a contestant: profile, team, team variables, project versions, evaluations, results, the final version, the leaderboard and the Kimi Coding Plan code. It acts with your account and is subject to exactly the same permissions, daily limits and quotas as the website.
 
 ## 1. Installation
 
@@ -57,7 +57,6 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 
 ```bash
 survey26 env set OPENAI_API_KEY --value-stdin < key.txt     # secret, shown only as its last 4 characters
-survey26 env domains set api.kimi.com
 survey26 project upload agent.zip --title "my agent"        # uses 1 of the 10 daily uploads
 survey26 project wait 1a2b3c4d                              # preparation and public test; exit 9 if it failed
 survey26 project logs 1a2b3c4d                              # build log and agent.log of the public test
@@ -173,7 +172,6 @@ survey26 whoami
 
 ```bash
 survey26 env set OPENAI_API_KEY --value-stdin < key.txt     # 密文保存，只显示末 4 位
-survey26 env domains set api.kimi.com
 survey26 project upload agent.zip --title "my agent"        # 占用每天 10 次上传中的 1 次
 survey26 project wait 1a2b3c4d                              # 等待准备和公开场景测试；失败时退出码为 9
 survey26 project logs 1a2b3c4d                              # 构建日志与公开测试的 agent.log

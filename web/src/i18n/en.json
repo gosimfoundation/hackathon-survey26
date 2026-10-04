@@ -2383,7 +2383,7 @@
       "hidden": "hidden",
       "locked": "locked",
       "final_title": "Final versions",
-      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run; it uses the variables and domains each team saved under Keys and network.",
+      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run; it uses the variables each team saved under Keys and network.",
       "final_phase": "Phase",
       "final_version": "Version",
       "final_source": "Source",
