@@ -21,7 +21,8 @@ export interface KimiPlanStatus {
  * - claimable: captain of an eligible team, codes in the pool
  * - wait_captain: eligible team, codes in the pool, but only the captain can claim
  * - coming_soon: no codes imported yet (eligibility still shown)
- * - sold_out: codes were imported and all are taken
+ * - sold_out: codes were imported and all are taken (first 100 teams, first come, first served); no popup, no
+ *   claim button, just a calm notice, whatever the team's eligibility
  * - not_eligible: the team still needs one successful practice score (or is a hidden/test team)
  */
 export type KimiPlanState = 'no_team' | 'claimed' | 'claimable' | 'wait_captain' | 'coming_soon' | 'sold_out' | 'not_eligible'
@@ -47,7 +48,21 @@ export function kimiPlanState(s: KimiPlanStatus): KimiPlanState {
   if (!s.has_team) return 'no_team'
   if (s.code) return 'claimed'
   if (!s.imported) return 'coming_soon'
-  if (!s.eligible) return 'not_eligible'
   if (s.available <= 0) return 'sold_out'
+  if (!s.eligible) return 'not_eligible'
   return s.is_captain ? 'claimable' : 'wait_captain'
+}
+
+/** Who the "your team can claim" popup speaks to, or null when it must not show (claimed, sold out, not eligible...). */
+export function kimiPlanPopupRole(s: KimiPlanStatus): 'captain' | 'member' | null {
+  const state = kimiPlanState(s)
+  return state === 'claimable' ? 'captain' : state === 'wait_captain' ? 'member' : null
+}
+
+/**
+ * The pool can run out between loading the status and pressing claim. The backend then raises `no_codes_left`;
+ * the panel switches to the sold-out notice instead of showing an error. Returns null for any other error.
+ */
+export function kimiPlanSoldOutAfterClaim(s: KimiPlanStatus, message: string): KimiPlanStatus | null {
+  return message.trim() === 'no_codes_left' ? { ...s, imported: true, available: 0 } : null
 }

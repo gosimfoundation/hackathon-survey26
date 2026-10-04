@@ -1623,6 +1623,7 @@
     "redeem": "Redeem on Kimi",
     "lede": "The first 100 teams that run through Practice (at least one successful practice score) each get one Kimi Coding Plan code, first come, first served. The captain claims it; every member can see it here.",
     "coming_soon": "Kimi Coding Plan codes are coming soon. Captains of teams that have run through the practice round can claim theirs here.",
+    "sold_out": "All Kimi Coding Plan codes have been given out (first 100 teams, first come, first served).",
     "eligible": "Your team qualifies.",
     "not_eligible": "Your team still needs one successful score in the practice round.",
     "hidden": "Hidden/test teams do not receive a code.",
@@ -1634,7 +1635,7 @@
     "errors": {
       "captain_only": "Only the team captain can claim the Kimi Coding Plan code.",
       "not_eligible": "Your team needs one successful score in the practice round first.",
-      "no_codes_left": "No Kimi Coding Plan codes are available right now.",
+      "no_codes_left": "All Kimi Coding Plan codes have been given out (first 100 teams, first come, first served).",
       "need_team": "Create or join a team first."
     },
     "popup_title": "Your team can claim a Kimi Coding Plan code",

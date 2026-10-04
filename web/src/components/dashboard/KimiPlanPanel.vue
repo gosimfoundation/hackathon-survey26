@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { supabase } from '../../lib/supabase'
-import { describeError } from '../../lib/errors'
+import { describeError, extractMessage } from '../../lib/errors'
 import { loadKimiPlanStatus } from '../../lib/data'
-import { kimiPlanState, normalizeKimiPlanStatus, type KimiPlanStatus } from '../../lib/kimiPlan'
+import { kimiPlanSoldOutAfterClaim, kimiPlanState, normalizeKimiPlanStatus, type KimiPlanStatus } from '../../lib/kimiPlan'
 import { fmtUtc } from '../../lib/format'
 import { useAuth } from '../../stores/auth'
 import { useFlash } from '../../stores/flash'
@@ -39,7 +39,12 @@ async function claim() {
     flash.success(t((data as { already?: boolean } | null)?.already ? 'kimi_plan.already' : 'kimi_plan.claimed'))
     status.value = await loadKimiPlanStatus()
     revealed.value = true
-  } catch (e) { flash.error(describeError(e, i18n, ERROR_NS)) }
+  } catch (e) {
+    // Pool ran out since the status loaded: show the calm sold-out notice, not an error.
+    const soldOut = kimiPlanSoldOutAfterClaim(status.value, extractMessage(e))
+    if (soldOut) status.value = soldOut
+    else flash.error(describeError(e, i18n, ERROR_NS))
+  }
   finally { busy.value = false }
 }
 
@@ -58,7 +63,8 @@ onMounted(load)
     <p v-if="loading" class="text3 mt-3 text-sm">{{ t('common.loading') }}</p>
     <template v-else>
       <p v-if="state === 'coming_soon'" class="text2 mt-3 text-sm" data-testid="kimi-plan-coming">{{ t('kimi_plan.coming_soon') }}</p>
-      <p v-if="state !== 'claimed'" class="mt-2 text-sm" :class="status.eligible ? 'accent-l' : 'text3'" data-testid="kimi-plan-eligibility">
+      <p v-if="state === 'sold_out'" class="text2 mt-3 text-sm" data-testid="kimi-plan-sold-out">{{ t('kimi_plan.sold_out') }}</p>
+      <p v-if="state !== 'claimed' && state !== 'sold_out'" class="mt-2 text-sm" :class="status.eligible ? 'accent-l' : 'text3'" data-testid="kimi-plan-eligibility">
         {{ status.eligible ? t('kimi_plan.eligible') : status.qualified && status.hidden ? t('kimi_plan.hidden') : t('kimi_plan.not_eligible') }}
       </p>
       <p v-if="state === 'wait_captain'" class="text2 mt-2 text-sm">{{ t('kimi_plan.wait_captain') }}</p>
