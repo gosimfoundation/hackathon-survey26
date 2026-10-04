@@ -12,6 +12,7 @@ import BrowserNotice from './components/layout/BrowserNotice.vue'
 import MidAutumnEgg from './components/layout/MidAutumnEgg.vue'
 import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
 import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
+import QuotaResetDialog from './components/layout/QuotaResetDialog.vue'
 
 const { t } = provideI18n()
 provideTheme()
@@ -39,4 +40,5 @@ provideTheme()
   <MidAutumnEgg />
   <PinnedAnnouncementDialog />
   <KimiPlanDialog />
+  <QuotaResetDialog />
 </template>

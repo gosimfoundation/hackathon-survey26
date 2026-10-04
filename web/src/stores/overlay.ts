@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 
-// First-visit overlays (the pinned-announcement popup, the Kimi plan popup, the sky-map walkthrough)
+// First-visit overlays (the pinned-announcement popup, the Kimi plan popup, the quota-reset notice, the sky-map walkthrough)
 // take turns: one at a time, in the order they asked; the next one opens once the current one is
 // released. The sky-map walkthrough is a non-modal page overlay (can be ignored by scrolling past it
 // without ever closing it, holding its slot for the rest of the visit); a real modal popup always
