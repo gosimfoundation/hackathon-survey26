@@ -771,6 +771,7 @@ Deno.test("the workspace list shows https model bases and the team's own provide
   const query = () => {
     const chain: Record<string, unknown> = {};
     for (const step of ["select", "order", "limit", "eq"]) chain[step] = () => chain;
+    chain.maybeSingle = () => Promise.resolve({ data: { team_id: "t1" }, error: null });
     chain.then = (resolve: (v: unknown) => void) => resolve({ data: [], error: null });
     return chain;
   };
@@ -799,4 +800,26 @@ Deno.test("the workspace list shows https model bases and the team's own provide
   assertEquals(data.model_bases, ["https://api.example.test/v1"]);
   assertEquals(data.providers.map((p) => p.id), ["b"]);
   assert(!JSON.stringify(data).includes("relay.organizer.test"));
+});
+
+Deno.test("the workspace list shows the caller's own team only, also for an organizer account", async () => {
+  const filters: Record<string, [string, unknown][]> = {};
+  const query = (table: string) => {
+    const chain: Record<string, unknown> = {};
+    filters[table] = [];
+    for (const step of ["select", "order", "limit"]) chain[step] = () => chain;
+    chain.eq = (column: string, value: unknown) => (filters[table].push([column, value]), chain);
+    chain.maybeSingle = () => Promise.resolve({ data: { team_id: "own-team" }, error: null });
+    chain.then = (resolve: (v: unknown) => void) => resolve({ data: [], error: null });
+    return chain;
+  };
+  const rpc = () => Promise.resolve({ data: null, error: null });
+  const client = { from: query, rpc, storage: { from: () => ({}) } } as unknown as SupabaseClient;
+  await portalRequest(
+    new Request("https://portal.test", { method: "POST", body: JSON.stringify({ action: "list" }) }),
+    { user: client, service: client, userId: user, masterKey: master, modelBases: [], httpBases: [] },
+  );
+  assertEquals(filters.profiles, [["id", user]]);
+  assertEquals(filters.observer_projects, [["team_id", "own-team"]]);
+  assertEquals(filters.observer_batches, [["team_id", "own-team"], ["purpose", "formal"]]);
 });
