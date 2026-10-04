@@ -92,3 +92,11 @@ test('a self-check set counts once toward the evaluations in flight', async () =
   ]), 3)
   assert.equal(activeEvaluations(null), 0)
 })
+
+test('daily project preparations come from the quota rows, never a fixed number', async () => {
+  const { preparationQuota } = await import('../src/lib/projectEvaluation.ts')
+  assert.equal(preparationQuota(null), null)
+  assert.equal(preparationQuota([{ phase_id: 'a', daily_batches: 40, used: 0, remaining: 40 }]), null)
+  assert.deepEqual(preparationQuota([{ phase_id: 'a', daily_batches: 40, used: 0, remaining: 40, resets_at: 'r',
+    preparations_daily: 40, preparations_used: 3, preparations_remaining: 37 }]), { daily: 40, used: 3, remaining: 37, resets_at: 'r' })
+})

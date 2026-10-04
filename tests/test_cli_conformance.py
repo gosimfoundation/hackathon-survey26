@@ -84,7 +84,8 @@ def listing(batch_status="scored", evaluated=False, recent=False, repeat=False):
             {"id": "3333aaaa-3333-3333-3333-333333333333", "status": "failed", "source_kind": "zip", "error": "build failed",
              "created_at": "2026-09-29T00:00:00Z", "archived_at": "2026-09-30T00:00:00Z"}]}],
         "batches": batches,
-        "quota": [{"phase_id": PHASE, "daily_batches": 40, "used": 1, "remaining": 39, "resets_at": "2026-10-05T00:00:00+00:00"}],
+        "quota": [{"phase_id": PHASE, "daily_batches": 40, "used": 1, "remaining": 39, "resets_at": "2026-10-05T00:00:00+00:00",
+                   "preparations_daily": 40, "preparations_used": 2, "preparations_remaining": 38}],
         "final_versions": [{"phase_id": PHASE, "revision_id": REV2, "source": "best", "deadline": "2026-10-07T15:59:00+00:00", "locked": False}],
     }
 
@@ -439,6 +440,8 @@ SCENARIOS = [
     ("final-clear-needs-yes", ["--json", "final", "clear"], {"exit": 2}),
     ("final-clear", ["--json", "final", "clear", "--yes"], {"exit": 0}),
     ("quota", ["--json", "quota"], {"exit": 0}),
+    ("quota-human", ["quota"], {"exit": 0, "human": True}),
+    ("quota-human-zh", ["--lang", "zh", "quota"], {"exit": 0, "human": True}),
     ("competition", ["--json", "competition"], {"exit": 0}),
     ("leaderboard", ["--json", "leaderboard"], {"exit": 0}),
     ("leaderboard-mine", ["--json", "leaderboard", "--phase", "practice-projects", "--mine", "--card", "v4-a"], {"exit": 0}),

@@ -11,7 +11,7 @@ import RunLogs from './RunLogs.vue'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
-import { activeEvaluations, canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
@@ -65,17 +65,17 @@ const words = computed(() => pick({
   localCommand: 'Extract the runner, replace the project path, and run this command. Paste the credential at its hidden prompt.',
   expires: 'Credential expires', localSecret: 'This credential is only for this run. Do not commit it to a repository.',
   closed: 'Project evaluation is not open for the current competition.',
-  step1: 'Step 1 · Upload a project', step1Note: 'Up to 10 uploads per day. Uploading does not use evaluations.',
+  step1: 'Step 1 · Upload a project', step1Note: 'Uploading does not use evaluations.', prepPerDay: 'Uploads per day', prepLeft: 'left today',
   step2: 'Step 2 · Review and confirm a version', step2Note: 'Does not use evaluations. When preparation finishes, open the review, check the execution settings and adapter code, and confirm the version.',
   step3: 'Step 3 · Start an evaluation', step3Note: 'Each click uses one of today’s evaluations. One evaluation runs every scenario of this phase once; its score is the average of those scenarios. The leaderboard keeps your team’s best evaluation. Evaluations that fail because of the platform are not counted.',
   left: 'Evaluations left today', perDay: 'per day', dailyLimit: 'Daily evaluation limit', active: 'Your team can run up to {n} evaluations at a time. Start the next one when one of them finishes.',
   noneLeft: 'No evaluations left today.', noApproved: 'Confirm a version in step 2 first.', evaluated: 'Evaluated', times: '×', confirmedAt: 'Confirmed',
   evaluateAgain: 'Evaluate again', repeat: 'This version has already been evaluated. Evaluating it again uses one more of today’s evaluations', repeatLeft: 'left today', proceed: 'Continue?',
-  withdraw: 'Withdraw', withdrawConfirm: 'Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.',
+  withdraw: 'Withdraw', withdrawConfirm: 'Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s uploads.',
   withdrawn: 'Version withdrawn.', withdrawnPill: 'Withdrawn', showWithdrawn: 'Show withdrawn versions', hideWithdrawn: 'Hide withdrawn versions',
-  duplicate: 'You submitted the same project a few minutes ago. Submit it again? This uses one of today’s 10 uploads.',
+  duplicate: 'You submitted the same project a few minutes ago. Submit it again? This uses one of today’s uploads.',
   logs: 'View logs', refunded: 'Not counted toward the daily limit', noBatches: 'No evaluations yet.',
-  prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from its current default branch? This uses one of today’s 10 uploads.',
+  prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from its current default branch? This uses one of today’s uploads.',
   reuploadZip: 'Fix the project and upload the ZIP again (the uploaded ZIP is not kept for another attempt).',
   csv: 'Existing CSV submission', newProject: 'Submit a project', name: 'Project name', repository: 'Public GitHub repository',
   zip: 'Private ZIP upload', privacy: 'Public repositories remain public after forking. ZIP projects and detailed results are private to your team and the organizers.',
@@ -117,7 +117,7 @@ const words = computed(() => pick({
   localInfo: '本地运行信息', runner: '下载本地运行器', credential: '本次临时凭证', copy: '复制凭证',
   localCommand: '解压运行器后，替换项目路径并运行下面的命令，按提示粘贴凭证；凭证输入不会显示。',
   expires: '凭证到期时间', localSecret: '凭证只用于这次运行，请勿提交到仓库。',
-  step1: '第1步 · 上传项目', step1Note: '每天最多 10 次，不占评测次数。',
+  step1: '第1步 · 上传项目', step1Note: '上传不占评测次数。', prepPerDay: '每天可上传', prepLeft: '今天还剩',
   step2: '第2步 · 检查并确认版本', step2Note: '不占评测次数。准备完成后点“检查接口”，核对运行设置和适配代码，再确认版本。',
   step3: '第3步 · 开始评测', step3Note: '每点一次占当天 1 次；一次评测会把本赛程全部场景各跑一遍，分数是这些场景的平均分；排行榜取本队最高的一次；因平台原因失败的不计次数。',
   left: '今天还剩', perDay: '每天', dailyLimit: '每日评测上限', active: '本队最多可同时进行 {n} 个评测，请等其中一个结束后再开始。',
@@ -125,9 +125,9 @@ const words = computed(() => pick({
   evaluateAgain: '再评测一次', repeat: '这个版本已经评测过。再评测一次会再占用今天 1 次评测', repeatLeft: '今天还剩', proceed: '确定继续吗？',
   withdraw: '撤回', withdrawConfirm: '撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。',
   withdrawn: '已撤回。', withdrawnPill: '已撤回', showWithdrawn: '显示已撤回的版本', hideWithdrawn: '隐藏已撤回的版本',
-  duplicate: '几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天 10 次上传中的 1 次。',
+  duplicate: '几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次上传机会。',
   logs: '查看日志', refunded: '未计入次数', noBatches: '还没有评测记录。',
-  prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库当前的默认分支重新准备？这会占用今天 10 次上传中的 1 次。',
+  prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库当前的默认分支重新准备？这会占用今天的 1 次上传机会。',
   reuploadZip: '请修正后重新上传 ZIP（已上传的 ZIP 不会保留用于重试）。',
   closed: '当前比赛尚未开放项目评测。', csv: '原有 CSV 提交', newProject: '提交项目',
   name: '项目名称', repository: '公开 GitHub 仓库', zip: '私有 ZIP 上传',
@@ -170,6 +170,8 @@ const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enab
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
+// Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
+const prep = computed(() => preparationQuota(data.value?.quota))
 // Shown even before the quota RPC answers: the phase setting is the same number the database enforces.
 const dailyLimit = computed(() => quota.value?.daily_batches ?? selectedPhase.value?.daily_batches ?? null)
 // Up to max_active_evaluations of the team's evaluations may run at once (a self-check set counts once).
@@ -209,7 +211,9 @@ function errorMessage(e: unknown) {
     batch_already_active: pick(`Your team can run up to ${activeLimit.value} evaluations at a time.`, `本队最多可同时进行 ${activeLimit.value} 个评测。`),
     repeat_already_active: pick('An “Evaluate 3 times and average” set is already running. Start another when it finishes.', '已有一组「评测 3 次取平均」正在进行，请等它结束后再开始。'),
     preparation_limit: pick('Your team already has three projects being prepared.', '本队已有三个项目正在准备，请等待完成。'),
-    preparation_daily_limit: pick('Your team has used today’s 40 project preparations. The count resets at 00:00 UTC (08:00 Beijing time).', '本队今天的 40 次项目准备机会已用完，每天北京时间 8 点（UTC 0 点）重置。'),
+    preparation_daily_limit: prep.value
+      ? pick(`Your team has used today’s ${prep.value.daily} project uploads. ${formatDailyReset(prep.value.resets_at, 'en')}.`, `本队今天的 ${prep.value.daily} 次上传机会已用完，${formatDailyReset(prep.value.resets_at, 'zh')}。`)
+      : pick('Your team has used today’s project uploads. The count resets at 00:00 UTC (08:00 Beijing time).', '本队今天的上传机会已用完，每天北京时间 8 点（UTC 0 点）重置。'),
     local_session_not_ready: pick('The local engine is not ready yet, or the run has ended. Refresh its status.', '本地会话尚未启动或已经结束，请刷新查看状态。'),
     daily_limit: pick('The daily evaluation limit has been reached.', '今天的评测次数已用完。'),
     repeat_daily_limit: pick('Evaluate 3 times and average needs 3 of today’s evaluations.', '「评测 3 次取平均」需要今天剩余至少 3 次评测。'),
@@ -532,7 +536,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </details>
       <p class="mb-5"><button type="button" class="btn sm" :disabled="busy" @click="action(reload)">{{ words.refresh }}</button></p>
       <form v-if="projectsOpen" class="panel mb-6" @submit.prevent="submit">
-        <h2 id="prepare">{{ words.step1 }}</h2><p class="help mb-4">{{ words.step1Note }}</p>
+        <h2 id="prepare">{{ words.step1 }}</h2>
+        <p class="help mb-4" data-testid="preparation-quota"><template v-if="prep"><strong>{{ pick(`${words.prepPerDay}: ${prep.daily}`, `${words.prepPerDay} ${prep.daily} 次`) }}</strong>
+          · <strong data-testid="preparation-remaining">{{ pick(`${prep.remaining} ${words.prepLeft}`, `${words.prepLeft} ${prep.remaining} 次`) }}</strong>
+          ({{ formatDailyReset(prep.resets_at, locale) }}) · </template>{{ words.step1Note }}</p>
         <label class="field"><span>{{ words.name }}</span><input v-model="form.title" type="text" name="project-title" required maxlength="100" :placeholder="pick('e.g. my-agent v1','例如：my-agent v1')" autocomplete="off" data-testid="project-title"></label>
         <label class="check"><input v-model="form.kind" type="radio" value="repository">{{ words.repository }}</label>
         <label class="check"><input v-model="form.kind" type="radio" value="zip">{{ words.zip }}</label>
@@ -545,7 +552,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </p>
         <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
         <p class="help mb-4">{{ words.privacy }}</p>
-        <button class="btn primary" :disabled="busy || locked.has('submit')" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+        <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
       </form>
       <section class="panel mb-6" data-testid="project-versions">
         <h2 id="review">{{ words.step2 }}</h2><p class="help">{{ words.step2Note }}</p>
