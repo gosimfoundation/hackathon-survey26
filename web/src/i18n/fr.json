@@ -325,7 +325,7 @@
         "label": "monde entier · solo ou équipe"
       }
     ],
-    "side_note": "Site 31,96° N / une décision toutes les 15 minutes / un budget-temps pour toute la partie",
+    "side_note": "Site 31,96° N / une décision toutes les 15 minutes / 900 s de CPU par carte",
     "console": {
       "title": "Rejeu de l’exemple officiel",
       "replay_note": "Terrain d'entraînement public · {nights} nuits · {actions} décisions",
@@ -497,8 +497,8 @@
     },
     "evaluation": {
       "kicker": "05 / Évaluation",
-      "title": "Un barème objectif et public",
-      "lede": "Le programme de notation est publié et figé avant la compétition, puis ne change plus. Les points d'une observation dépendent de la météo et du clair de lune du moment ; programmer la bonne observation la bonne nuit et honorer à temps les requêtes rapporte des bonus, les infractions coûtent des points."
+      "title": "Règles de notation",
+      "lede": "Chaque carte est notée par le scoreur publié ; ses paramètres de notation arrivent en entier dans le message initialize. Voici l'essentiel ; la section 5 du règlement donne les règles et les formules complètes."
     },
     "submission": {
       "kicker": "06 / Soumettre",
@@ -506,11 +506,11 @@
       "items": [
         {
           "title": "Projets",
-          "desc": "L'entraînement accepte un projet complet sur un classement séparé (8 par équipe et par jour). La compétition accepte uniquement un projet complet, par dépôt public ou ZIP privé."
+          "desc": "L'entraînement accepte un projet complet (40 par équipe et par jour, classement séparé). La compétition accepte uniquement des projets complets : un dépôt public ou un ZIP privé, évalué tour par tour dans le cloud."
         },
         {
           "title": "Limites",
-          "desc": "Tout langage est accepté ; les modèles sont facultatifs. ZIP : 50 Mo. Chaque scénario a une durée commune. Compétition : 10 évaluations complètes de tous les scénarios par équipe et par jour."
+          "desc": "Tout langage est accepté ; les appels à un modèle sont facultatifs. ZIP de projet : 50 Mo maximum. Compétition : 40 évaluations par équipe et par jour, chacune sur les cartes A–D, avec un budget de 900 s de temps CPU normalisé et une limite de 30 minutes en temps réel par carte."
         }
       ],
       "link": "Documentation des soumissions"
