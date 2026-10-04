@@ -2,6 +2,7 @@ import { assert, assertEquals, assertRejects } from "@std/assert";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { decryptCredential, ProxyError } from "./observer-model.ts";
 import { keyHint, portalRequest } from "./observer-portal.ts";
+import { filesZip, readZipFiles } from "./observer-zip.ts";
 
 const master = btoa("m".repeat(32));
 const user = "20000000-0000-4000-8000-000000000001";
@@ -474,7 +475,7 @@ Deno.test("agent_log shows the run's own agent.log: stored, or read from the res
 
 function snapshotClients(enabled: boolean, uploadError: unknown = null) {
   const calls: Call[] = [];
-  const uploads: { bucket: string; path: string; size: number }[] = [];
+  const uploads: { bucket: string; path: string; size: number; bytes: Uint8Array }[] = [];
   const client = (label: string) =>
     ({
       rpc: (name: string, args: Record<string, unknown> = {}) => {
@@ -489,7 +490,7 @@ function snapshotClients(enabled: boolean, uploadError: unknown = null) {
       storage: {
         from: (bucket: string) => ({
           upload: (path: string, bytes: Uint8Array) => {
-            uploads.push({ bucket, path, size: bytes.length });
+            uploads.push({ bucket, path, size: bytes.length, bytes });
             return Promise.resolve({ error: uploadError });
           },
         }),
@@ -497,15 +498,22 @@ function snapshotClients(enabled: boolean, uploadError: unknown = null) {
     }) as unknown as SupabaseClient;
   return { calls, uploads, user: client("user"), service: client("service") };
 }
+type Resolved = { commit: string; archiveUrl: string; ref?: string | null; subdir?: string | null };
 function submitRepository(
   c: ReturnType<typeof snapshotClients>,
-  resolveSource?: (url: string) => Promise<{ commit: string; archiveUrl: string }>,
+  resolveSource?: (url: string, options: { ref?: unknown; subdir?: unknown }) => Promise<Resolved>,
   body: Uint8Array<ArrayBuffer> = new Uint8Array([80, 75, 3, 4, 1, 2, 3]),
+  fields: Record<string, unknown> = {},
 ) {
   return portalRequest(
     new Request("https://portal.test", {
       method: "POST",
-      body: JSON.stringify({ action: "submit_repository", title: "Agent", url: "https://github.com/example/agent" }),
+      body: JSON.stringify({
+        action: "submit_repository",
+        title: "Agent",
+        url: "https://github.com/example/agent",
+        ...fields,
+      }),
     }),
     {
       user: c.user,
@@ -554,7 +562,7 @@ Deno.test("with snapshots off a repository submission is URL-only as before", as
 });
 
 Deno.test("no revision is created when the source cannot be preserved", async () => {
-  const cases: [ReturnType<typeof snapshotClients>, () => Promise<{ commit: string; archiveUrl: string }>, string][] = [
+  const cases: [ReturnType<typeof snapshotClients>, () => Promise<Resolved>, string][] = [
     [
       snapshotClients(true),
       () => Promise.reject(Object.assign(new Error("x"), { code: "private_source_requires_zip" })),
@@ -571,5 +579,72 @@ Deno.test("no revision is created when the source cannot be preserved", async ()
     const error = await assertRejects(() => submitRepository(c, resolve), ProxyError);
     assertEquals(error.code, code);
     assert(!c.calls.some((x) => x.name === "observer_create_project"));
+  }
+});
+
+const wrapped = (files: Record<string, string>) =>
+  filesZip(
+    Object.entries(files).map(([path, data]) => ({
+      path: "example-agent-aaaaaaa/" + path,
+      data: new TextEncoder().encode(data),
+      executable: path.endsWith(".sh"),
+    })),
+  ) as Promise<Uint8Array<ArrayBuffer>>;
+
+Deno.test("a branch and folder submission stores only that folder of the resolved commit", async () => {
+  const c = snapshotClients(true);
+  const archive = await wrapped({ "README.md": "root", "apps/agent/main.py": "print(1)", "apps/agent/run.sh": "x" });
+  const result = await submitRepository(
+    c,
+    (url, options) => {
+      assertEquals(url, "https://github.com/example/agent/tree/dev");
+      assertEquals(options, { ref: null, subdir: "apps/agent" });
+      return Promise.resolve({ commit, archiveUrl: "https://codeload.github.com/x", ref: "dev", subdir: "apps/agent" });
+    },
+    archive,
+    { url: "https://github.com/example/agent/tree/dev", subdir: "/apps/agent/" },
+  );
+  assertEquals(result, {
+    revision_id: "30000000-0000-4000-8000-000000000003",
+    source_commit: commit,
+    source_ref: "dev",
+    source_subdir: "apps/agent",
+  });
+  // The revision keeps the plain repository URL; ref and folder go with the snapshot.
+  assertEquals(c.calls[1].args.p_source_location, "https://github.com/example/agent");
+  assertEquals([c.calls[2].args.p_ref, c.calls[2].args.p_subdir], ["dev", "apps/agent"]);
+  const stored = c.uploads[0].bytes;
+  const files = await readZipFiles(stored, 1 << 20);
+  assertEquals(files.map((f) => [f.path, f.executable]), [
+    ["example-agent-aaaaaaa/main.py", false],
+    ["example-agent-aaaaaaa/run.sh", true],
+  ]);
+  assertEquals(c.calls[2].args.p_bytes, stored.length);
+});
+
+Deno.test("repository source options fail with clear errors and create nothing", async () => {
+  const archive = await wrapped({ "README.md": "root" });
+  const ok = () =>
+    Promise.resolve({ commit, archiveUrl: "https://codeload.github.com/x", ref: null, subdir: "missing" });
+  const fail = (code: string) => () => Promise.reject(Object.assign(new Error(code), { code }));
+  const cases: [boolean, (() => Promise<Resolved>) | undefined, Record<string, unknown>, string][] = [
+    [true, ok, { subdir: "missing" }, "source_subdir_not_found"],
+    [true, fail("source_ref_not_found"), { branch: "nope" }, "source_ref_not_found"],
+    [true, fail("source_options_conflict"), { branch: "x" }, "source_options_conflict"],
+    [true, fail("github_not_found"), {}, "repository_not_found"],
+    [true, ok, { branch: "a b" }, "invalid_source_ref"],
+    [true, ok, { subdir: "../x" }, "invalid_source_subdir"],
+    [true, ok, { url: "https://github.com/example/agent/blob/main/x.py" }, "invalid_repository_url"],
+    // Without snapshots (rollback switch) only the plain repository link is accepted.
+    [false, undefined, { url: "https://github.com/example/agent/tree/dev" }, "source_options_unavailable"],
+    [false, undefined, { subdir: "apps" }, "source_options_unavailable"],
+  ];
+  for (const [enabled, resolve, fields, code] of cases) {
+    const c = snapshotClients(enabled);
+    const error = await assertRejects(() => submitRepository(c, resolve, archive, fields), ProxyError);
+    assertEquals(error.code, code);
+    assertEquals(error.status, 400);
+    assert(!c.calls.some((x) => x.name === "observer_create_project"));
+    assertEquals(c.uploads.length, 0);
   }
 });

@@ -27,7 +27,7 @@ const loading = ref(true), busy = ref(false), error = ref(''), notice = ref('')
 const locked = ref(new Set<string>()), showWithdrawn = ref(false), targetBatch = ref('')
 // The action a click started, until its request and the refreshed list are back: its button reads "Working…".
 const pending = ref('')
-const form = ref({ title: '', kind: 'repository', url: '' })
+const form = ref({ title: '', kind: 'repository', url: '', branch: '', subdir: '' })
 const selectedFile = ref<File | null>(null), review = ref<ProjectRevision | null>(null)
 /** 0–100 while a ZIP is uploading; null the rest of the time. */
 const uploadPercent = ref<number | null>(null)
@@ -75,9 +75,11 @@ const words = computed(() => pick({
   withdrawn: 'Version withdrawn.', withdrawnPill: 'Withdrawn', showWithdrawn: 'Show withdrawn versions', hideWithdrawn: 'Hide withdrawn versions',
   duplicate: 'You submitted the same project a few minutes ago. Submit it again? This uses one of today’s uploads.',
   logs: 'View logs', refunded: 'Not counted toward the daily limit', noBatches: 'No evaluations yet.',
-  prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from its current default branch? This uses one of today’s uploads.',
+  prepareAgain: 'Prepare again', prepareAgainConfirm: 'Prepare this repository again from the latest commit of the same branch (default branch if none was named) and folder? This uses one of today’s uploads.',
   reuploadZip: 'Fix the project and upload the ZIP again (the uploaded ZIP is not kept for another attempt).',
   csv: 'Existing CSV submission', newProject: 'Submit a project', name: 'Project name', repository: 'Public GitHub repository',
+  branch: 'Branch, tag or commit (optional, default branch if empty)', subdir: 'Project folder in the repository (optional, repository root if empty)',
+  repositoryHint: 'Links to a branch or folder also work, e.g. https://github.com/owner/project/tree/dev/agent. The exact commit is saved when you submit.',
   zip: 'Private ZIP upload', privacy: 'Public repositories remain public after forking. ZIP projects and detailed results are private to your team and the organizers.',
   file: 'Complete project ZIP · up to 50 MB', submit: 'Upload and prepare', projects: 'Your projects', empty: 'No projects yet.',
   refresh: 'Refresh', review: 'Review interface', explain: 'Adapter explanation', original: 'Original source fingerprint',
@@ -127,10 +129,12 @@ const words = computed(() => pick({
   withdrawn: '已撤回。', withdrawnPill: '已撤回', showWithdrawn: '显示已撤回的版本', hideWithdrawn: '隐藏已撤回的版本',
   duplicate: '几分钟前刚提交过相同的项目。确定再提交一次吗？这会占用今天的 1 次上传机会。',
   logs: '查看日志', refunded: '未计入次数', noBatches: '还没有评测记录。',
-  prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库当前的默认分支重新准备？这会占用今天的 1 次上传机会。',
+  prepareAgain: '重新准备', prepareAgainConfirm: '用这个仓库同一分支（未指定则为默认分支）和子目录的最新 commit 重新准备？这会占用今天的 1 次上传机会。',
   reuploadZip: '请修正后重新上传 ZIP（已上传的 ZIP 不会保留用于重试）。',
   closed: '当前比赛尚未开放项目评测。', csv: '原有 CSV 提交', newProject: '提交项目',
   name: '项目名称', repository: '公开 GitHub 仓库', zip: '私有 ZIP 上传',
+  branch: '分支、标签或 commit（选填，留空用默认分支）', subdir: '项目所在子目录（选填，留空为仓库根目录）',
+  repositoryHint: '也可以直接粘贴分支或子目录的链接，例如 https://github.com/owner/project/tree/dev/agent。提交时会记录当时的具体 commit。',
   privacy: '公开仓库 Fork 后仍然公开；ZIP 项目和详细结果只供本队与主办方查看。', file: '完整项目 ZIP · 最大 50 MB',
   submit: '上传并准备', projects: '我的项目', empty: '还没有项目。', refresh: '刷新', review: '检查接口', explain: '适配说明',
   original: '原始代码指纹', manifest: '运行设置', changes: '新增的适配文件', unchanged: '项目自带接口，没有新增适配文件。',
@@ -222,7 +226,15 @@ function errorMessage(e: unknown) {
     revision_not_withdrawable: pick('Only versions that are not being prepared and were never evaluated can be withdrawn.', '只能撤回未在准备中、也从未评测过的版本。'),
     wrong_file_type: pick('Choose a file with the required extension.', '请选择要求的文件类型。'),
     file_too_large: pick('The file is empty or exceeds the size limit.', '文件为空或超过大小限制。'),
-    invalid_repository_url: pick('Enter a public https://github.com/owner/repository URL.', '请输入公开 GitHub 仓库的完整地址。'),
+    invalid_repository_url: pick('Enter a public GitHub link: https://github.com/owner/repository, optionally with /tree/<branch>/<folder> or /commit/<sha>.', '请输入公开 GitHub 仓库链接：https://github.com/owner/repository，可带 /tree/分支/子目录 或 /commit/提交号。'),
+    repository_not_found: pick('This GitHub repository was not found. Check the owner and name, and that it is public.', '找不到这个 GitHub 仓库，请检查用户名、仓库名，并确认仓库是公开的。'),
+    source_ref_not_found: pick('This branch, tag or commit does not exist in the repository.', '仓库里没有这个分支、标签或 commit。'),
+    source_subdir_not_found: pick('This folder does not exist at that branch or commit (folder names are case-sensitive).', '在这个分支或 commit 中找不到该子目录（区分大小写）。'),
+    source_options_conflict: pick('The branch or folder in the link differs from the one entered below. Keep only one of them.', '链接里的分支或子目录与下面填写的不一致，请只保留一处。'),
+    invalid_source_ref: pick('The branch, tag or commit name is not valid.', '分支、标签或 commit 名称格式不正确。'),
+    invalid_source_subdir: pick('Enter the folder as a relative path such as agent or apps/agent.', '子目录请填写相对路径，例如 agent 或 apps/agent。'),
+    source_options_unavailable: pick('Branch and folder choices are temporarily unavailable. Submit the plain repository link, or upload a ZIP.', '暂时不支持指定分支或子目录，请提交仓库主页链接，或上传 ZIP。'),
+    invalid_source_archive: pick('This folder contains links or files that cannot be packaged. Upload the project as a ZIP instead.', '该目录包含符号链接或无法打包的文件，请改为上传 ZIP。'),
     private_source_requires_zip: pick('This repository is private. Make it public, or upload the project as a ZIP.', '这个仓库是私有的。请把它设为公开，或改为上传 ZIP。'),
     source_too_large: pick('The repository archive is larger than 100 MB. Upload a smaller ZIP of the project instead.', '仓库压缩包超过 100 MB，请改为上传精简后的项目 ZIP。'),
     source_snapshot_unavailable: pick('Could not save a copy of this repository version right now. Please try again in a minute.', '暂时无法保存该仓库版本的副本，请稍后再试。'),
@@ -279,7 +291,7 @@ function submit() {
   if (recentDuplicate(data.value?.projects, form.value.title, url) && !window.confirm(words.value.duplicate)) return
   const onRetry = () => { retryStatus.value = words.value.retrying }
   void action(async () => {
-    if (url !== null) await portal('submit_repository', { title: form.value.title, url }, onRetry)
+    if (url !== null) await portal('submit_repository', { title: form.value.title, url, branch: form.value.branch, subdir: form.value.subdir }, onRetry)
     else {
       if (!selectedFile.value) throw new Error('wrong_file_type')
       uploadPercent.value = 0
@@ -288,7 +300,7 @@ function submit() {
       finally { uploadPercent.value = null }
       await portal('submit_zip', { title: form.value.title, upload_id }, onRetry)
     }
-    form.value = { title: '', kind: form.value.kind, url: '' }; selectedFile.value = null
+    form.value = { title: '', kind: form.value.kind, url: '', branch: '', subdir: '' }; selectedFile.value = null
     const file = document.querySelector<HTMLInputElement>('[data-testid="project-zip"]'); if (file) file.value = ''
   }, words.value.prepared, 'submit').then(() => {
     // Point at step 2 after a successful upload; on failure the error banner stays in view instead.
@@ -298,7 +310,7 @@ function submit() {
 // Resubmits the same public repository through the ordinary upload action (a new revision).
 function prepareAgain(title: string, r: ProjectRevision) {
   if (!window.confirm(words.value.prepareAgainConfirm)) return
-  void action(async () => { await portal('submit_repository', { title, url: r.source_location }) }, words.value.prepared, 'again:' + r.id)
+  void action(async () => { await portal('submit_repository', { title, url: r.source_location, branch: r.source_ref ?? '', subdir: r.source_subdir ?? '' }) }, words.value.prepared, 'again:' + r.id)
 }
 function openReview(r: ProjectRevision) {
   review.value = r; confirmed.value = false; notes.value = r.observer_evidence?.notes ?? ''; codeUrl.value = r.observer_evidence?.code_url ?? ''
@@ -544,6 +556,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <label class="check"><input v-model="form.kind" type="radio" value="repository">{{ words.repository }}</label>
         <label class="check"><input v-model="form.kind" type="radio" value="zip">{{ words.zip }}</label>
         <label v-if="form.kind === 'repository'" class="field"><span>{{ words.repository }}</span><input v-model="form.url" type="url" required placeholder="https://github.com/owner/project" data-testid="project-url"></label>
+        <template v-if="form.kind === 'repository'">
+          <p class="help mb-3">{{ words.repositoryHint }}</p>
+          <label class="field"><span>{{ words.branch }}</span><input v-model="form.branch" type="text" maxlength="200" placeholder="main" autocomplete="off" data-testid="project-branch"></label>
+          <label class="field"><span>{{ words.subdir }}</span><input v-model="form.subdir" type="text" maxlength="300" placeholder="agent" autocomplete="off" data-testid="project-subdir"></label>
+        </template>
         <label v-else class="field border border-dashed border-border-subtle p-5"><span>{{ words.file }}</span><input type="file" accept=".zip,application/zip" required data-testid="project-zip" @change="selectedFile = ($event.target as HTMLInputElement).files?.[0] ?? null"></label>
         <p v-if="form.kind === 'zip' && selectedFile" class="help mt-2" data-testid="project-zip-selected">{{ words.fileSelected }}: {{ selectedFile.name }} · {{ bytes(selectedFile.size) }}</p>
         <p v-if="uploadPercent != null" class="help mt-2" role="status" data-testid="project-upload-progress">
@@ -563,6 +580,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span class="pill">{{ r.archived_at ? words.withdrawnPill : statuses[r.status] ?? r.status }}</span>
             <span v-if="finalRole(finalVersion, r.id)" class="pill ok" data-testid="final-version-badge">{{ words.finalBadge }}</span>
             <span class="meta">{{ when(r.created_at) }}</span>
+            <span v-if="r.source_ref || r.source_subdir" class="meta break-all" data-testid="revision-source">{{ [r.source_ref, r.source_subdir].filter(Boolean).join(' · ') }}</span>
             <span v-if="r.error && !r.archived_at" class="errors" role="status" data-testid="revision-error">{{ revisionErrorText(r.error, locale) }}<template v-if="r.status === 'failed' && r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></span>
             <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>

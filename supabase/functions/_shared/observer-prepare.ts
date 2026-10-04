@@ -27,7 +27,15 @@ export async function schedulePreparations(deps: {
       const repository = await deps.app.privateParticipantRepository(revision.owner_id);
       if (repository.full_name !== organization + "/" + privateRepository) throw new GitHubError("invalid_repository");
       let source: Record<string, unknown>;
-      if (revision.source_kind === "repository") {
+      // A repository submission stored at submission time (the pinned commit, or only
+      // its chosen folder) is prepared from exactly that snapshot; older revisions
+      // without one fork the public repository as before.
+      const snapshot = revision.source_kind === "repository"
+        ? await deps.rpc("observer_preparation_source", { p_revision: revision.id })
+        : null;
+      if (typeof snapshot === "string" && snapshot) {
+        source = { archive_storage_ref: { bucket: "observer-sources", path: snapshot } };
+      } else if (revision.source_kind === "repository") {
         const fork = await deps.app.forkPublicSource(
           revision.owner_id,
           revision.source_location,

@@ -3,7 +3,8 @@ import { sendModelBroadcast } from "./observer-model-broadcast.ts";
 import { boundedJson, decryptCredential, encryptCredential, ProxyError } from "./observer-model.ts";
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { sourceRepository } from "./observer-github.ts";
+import { GitHubError, parseSourceUrl, sourceRef, sourceSubdir } from "./observer-github.ts";
+import { filesZip, readZipFiles, ZipError, zipNames } from "./observer-zip.ts";
 import {
   agentLogView,
   fetchArchive,
@@ -28,8 +29,14 @@ type Dependencies = {
   artifactDownload?: (reference: string) => Promise<string>;
   /** Fetches signed result archives; tests replace it. */
   fetchArchive?: typeof fetch;
-  /** Resolves a public repository's current commit and its zipball URL (GitHub App). */
-  resolveSource?: (url: string) => Promise<{ commit: string; archiveUrl: string }>;
+  /**
+   * Resolves a public repository URL (and the optional branch/tag/commit and folder)
+   * to its exact commit and that commit's zipball URL (GitHub App).
+   */
+  resolveSource?: (
+    url: string,
+    options: { ref?: unknown; subdir?: unknown },
+  ) => Promise<{ commit: string; archiveUrl: string; ref?: string | null; subdir?: string | null }>;
 };
 // A repository submission is preserved as the zipball of its exact commit (bucket
 // observer-sources; nothing deletes from it). Larger sources must be uploaded as ZIP.
@@ -58,6 +65,32 @@ async function boundedDownload(url: string, fetcher: typeof fetch, limit: number
     at += chunk.length;
   }
   return out;
+}
+/**
+ * The named folder of a GitHub zipball as its own archive. The archive's single top
+ * folder is kept, so preparation (which drops exactly one such folder) sees the
+ * chosen folder as the project root.
+ */
+export async function folderSnapshot(zip: Uint8Array<ArrayBuffer>, folder: string): Promise<Uint8Array<ArrayBuffer>> {
+  try {
+    const names = zipNames(zip);
+    const top = names[0]?.includes("/") ? names[0].slice(0, names[0].indexOf("/") + 1) : "";
+    if (!top || !names.every((n) => n.startsWith(top))) throw new ZipError("invalid_zip");
+    const prefix = top + folder + "/";
+    if (!names.some((n) => n.startsWith(prefix) && !n.endsWith("/"))) {
+      throw new ProxyError(400, "source_subdir_not_found");
+    }
+    const files = await readZipFiles(zip, SOURCE_SNAPSHOT_LIMIT, 10000, (n) => n.startsWith(prefix));
+    return await filesZip(files.map((f) => ({ ...f, path: top + f.path.slice(prefix.length) }))) as Uint8Array<
+      ArrayBuffer
+    >;
+  } catch (error) {
+    if (error instanceof ProxyError) throw error;
+    if (error instanceof ZipError && error.message === "zip_entry_too_large") {
+      throw new ProxyError(400, "source_too_large");
+    }
+    throw new ProxyError(400, "invalid_source_archive");
+  }
 }
 const known = new Set([
   "team_required",
@@ -252,27 +285,49 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       return { id, path, token: data!.token };
     }
     case "submit_repository": {
-      let repository: string;
+      // Accepted: https://github.com/OWNER/REPO, .../tree/<branch, tag or commit>[/<folder>],
+      // .../commit/<sha>, plus the optional fields "branch" and "subdir".
+      let url: string, parsed: ReturnType<typeof parseSourceUrl>, ref: string | null, subdir: string | null;
       try {
-        repository = sourceRepository(text(body.url, 1024));
-      } catch {
-        throw new ProxyError(400, "invalid_repository_url");
+        url = text(body.url, 1024);
+        parsed = parseSourceUrl(url);
+        ref = sourceRef(body.branch);
+        subdir = sourceSubdir(body.subdir);
+      } catch (error) {
+        const code = error instanceof GitHubError ? error.code : "";
+        throw new ProxyError(
+          400,
+          ["invalid_source_ref", "invalid_source_subdir"].includes(code) ? code : "invalid_repository_url",
+        );
       }
-      const location = "https://github.com/" + repository;
+      const location = "https://github.com/" + parsed.repository;
       const title = text(body.title, 100);
       // Every submitted version is pinned and preserved before anything else happens:
-      // the exact commit is resolved now and its zipball stored, whether or not the
+      // the exact commit is resolved now and its zipball stored (only the chosen folder,
+      // under the archive's top folder, when one was named), whether or not the
       // preparation later succeeds and whatever the team does to the repository.
-      let snapshot: { commit: string; path: string; bytes: number; sha256: string } | null = null;
+      // Preparation then works on exactly this stored snapshot.
+      let snapshot:
+        | { commit: string; path: string; bytes: number; sha256: string; ref: string | null; subdir: string | null }
+        | null = null;
       if (await serviceRpc("observer_source_snapshots_enabled", {})) {
         if (!d.resolveSource) throw new ProxyError(503, "source_snapshot_unavailable");
-        let resolved: { commit: string; archiveUrl: string };
+        let resolved: { commit: string; archiveUrl: string; ref?: string | null; subdir?: string | null };
         try {
-          resolved = await d.resolveSource(location);
+          resolved = await d.resolveSource(url, { ref, subdir });
         } catch (error) {
-          if ((error as { code?: string })?.code === "private_source_requires_zip") {
-            throw new ProxyError(400, "private_source_requires_zip");
-          }
+          const code = (error as { code?: string })?.code ?? "";
+          if (code === "github_not_found") throw new ProxyError(400, "repository_not_found");
+          if (
+            [
+              "private_source_requires_zip",
+              "source_ref_not_found",
+              "source_options_conflict",
+              "invalid_source_ref",
+              "invalid_source_subdir",
+              "invalid_repository_url",
+            ].includes(code)
+          ) throw new ProxyError(400, code);
           throw new ProxyError(503, "source_snapshot_unavailable");
         }
         if (!/^[0-9a-f]{40}$/.test(resolved.commit)) throw new ProxyError(503, "source_snapshot_unavailable");
@@ -282,13 +337,25 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         } catch (error) {
           throw error instanceof ProxyError ? error : new ProxyError(503, "source_snapshot_unavailable");
         }
+        const folder = resolved.subdir ?? null;
+        if (folder) bytes = await folderSnapshot(bytes, folder);
         const path = d.userId + "/" + resolved.commit + "-" + crypto.randomUUID() + ".zip";
         const { error } = await d.service.storage.from("observer-sources").upload(path, bytes, {
           contentType: "application/zip",
           upsert: false,
         });
         if (error) throw new ProxyError(503, "source_snapshot_unavailable");
-        snapshot = { commit: resolved.commit, path, bytes: bytes.length, sha256: await sha256Hex(bytes) };
+        snapshot = {
+          commit: resolved.commit,
+          path,
+          bytes: bytes.length,
+          sha256: await sha256Hex(bytes),
+          ref: resolved.ref ?? null,
+          subdir: folder,
+        };
+      } else if (parsed.tree || parsed.commit || ref || subdir) {
+        // A branch, commit or folder can only be honoured with a stored snapshot.
+        throw new ProxyError(400, "source_options_unavailable");
       }
       const revision = await userRpc("observer_create_project", {
         p_title: title,
@@ -302,9 +369,17 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
           p_path: snapshot.path,
           p_bytes: snapshot.bytes,
           p_sha256: snapshot.sha256,
+          ...(snapshot.ref || snapshot.subdir ? { p_ref: snapshot.ref, p_subdir: snapshot.subdir } : {}),
         });
       }
-      return snapshot ? { revision_id: revision, source_commit: snapshot.commit } : { revision_id: revision };
+      return snapshot
+        ? {
+          revision_id: revision,
+          source_commit: snapshot.commit,
+          ...(snapshot.ref ? { source_ref: snapshot.ref } : {}),
+          ...(snapshot.subdir ? { source_subdir: snapshot.subdir } : {}),
+        }
+        : { revision_id: revision };
     }
     case "submit_zip": {
       const id = uuid(body.upload_id);

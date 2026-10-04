@@ -1,5 +1,5 @@
 {
- "version": "1.2.1",
+ "version": "1.3.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1128,7 +1128,7 @@
     {
      "name": "url",
      "nargs": 1,
-     "help": ""
+     "help": "https://github.com/OWNER/REPO, or a branch/folder link .../tree/BRANCH/FOLDER"
     }
    ],
    "options": [
@@ -1149,6 +1149,24 @@
      "kind": "value",
      "type": "str",
      "help": ""
+    },
+    {
+     "flags": [
+      "--branch"
+     ],
+     "dest": "branch",
+     "kind": "value",
+     "type": "str",
+     "help": "branch, tag or commit (default: the default branch)"
+    },
+    {
+     "flags": [
+      "--subdir"
+     ],
+     "dest": "subdir",
+     "kind": "value",
+     "type": "str",
+     "help": "project folder inside the repository (default: the repository root)"
     }
    ]
   },

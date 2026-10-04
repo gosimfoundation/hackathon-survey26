@@ -6,6 +6,8 @@ import type { EvaluationQuota, FinalVersion } from './projectEvaluation'
 
 export type ProjectRevision = {
   id: string; status: string; source_kind: string; source_location: string; source_digest: string | null
+  /** Repository submissions: the branch, tag or commit and the project folder named at submission. */
+  source_ref?: string | null; source_subdir?: string | null
   approval_digest: string | null; manifest: Record<string, unknown> | null; adapter_files: Record<string, string>
   explanation: string; error: string; public_test: { passed?: boolean; summary?: string; run_id?: string; status?: string }
   observer_evidence: { notes: string; code_url: string } | null

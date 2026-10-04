@@ -6,7 +6,13 @@ The legacy worker continues to own existing submission kinds.
 
 ## New path
 
-1. Authenticated participants submit a repository URL or a complete ZIP.
+1. Authenticated participants submit a repository URL or a complete ZIP. A
+   repository URL may name a branch, tag, commit or project folder
+   (`…/tree/<ref>/<folder>`, `…/commit/<sha>`, or the `branch`/`subdir` fields of
+   the portal and both CLIs). At submission the ref is resolved to its exact commit
+   and that commit's zipball (only the chosen folder, under the archive's top folder)
+   is stored in `observer-sources`; preparation reads exactly that snapshot, so the
+   folder becomes the project root (migration `20261004230000_repository_source_options`).
 2. A GitHub App assigns a stable organization and repository to each participant
    (with team authorization recorded by the platform), snapshots the exact source
    revision, and stores private results separately from public forks.

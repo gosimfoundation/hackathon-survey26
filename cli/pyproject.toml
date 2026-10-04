@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "survey26"
-version = "1.2.1"
+version = "1.3.0"
 description = "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon"
 readme = "AGENTS.md"
 requires-python = ">=3.9"

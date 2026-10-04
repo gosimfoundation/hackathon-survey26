@@ -41,7 +41,8 @@ const LIMIT_CODES: &[&str] = &["daily_limit", "repeat_daily_limit", "preparation
     "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"];
 const NOT_FOUND_CODES: &[&str] = &["revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
     "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
-    "uid_unavailable", "request_not_found", "user_not_found"];
+    "uid_unavailable", "request_not_found", "user_not_found", "repository_not_found",
+    "source_ref_not_found", "source_subdir_not_found"];
 const UNAVAILABLE_CODES: &[&str] = &["network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
     "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"];
 
@@ -1310,7 +1311,22 @@ fn cmd_project_submit_repo(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     if recent_duplicate(&portal_list(api)?, &title, Some(&url)) {
         confirm(a, out, DUPLICATE_EN, DUPLICATE_ZH)?;
     }
-    let result = or_empty(api.portal("submit_repository", true, json!({"title": title, "url": url}))?);
+    // A branch/tag/commit or folder may also be part of the link (.../tree/<branch>/<folder>).
+    let mut fields = json!({"title": title, "url": url});
+    for key in ["branch", "subdir"] {
+        let v = py_strip(&a.str(key).unwrap_or_default());
+        if !v.is_empty() {
+            fields[key] = Value::String(v);
+        }
+    }
+    let result = or_empty(api.portal("submit_repository", true, fields)?);
+    let commit = py_none_str(&g(&result, "source_commit"));
+    if truthy(&g(&result, "source_commit")) {
+        let extra: String = ["source_ref", "source_subdir"].iter().filter(|k| truthy(&g(&result, k)))
+            .map(|k| format!(" · {}", py_none_str(&g(&result, k)))).collect();
+        out.line(&out.t("Saved commit {0}{1}.", "已记录 commit {0}{1}。")
+            .replace("{0}", &commit.chars().take(12).collect::<String>()).replace("{1}", &extra));
+    }
     queued_line(out, &result);
     Ok(result)
 }

@@ -79,7 +79,7 @@ function localHeader(e: Entry) {
   return h;
 }
 
-function centralHeader(e: Entry, offset: number) {
+function centralHeader(e: Entry, offset: number, mode = 0o100644) {
   const h = new Uint8Array(46 + e.name.length), v = new DataView(h.buffer);
   v.setUint32(0, 0x02014b50, true);
   v.setUint16(4, (3 << 8) | 20, true); // Unix, so the mode below is honoured
@@ -92,7 +92,7 @@ function centralHeader(e: Entry, offset: number) {
   v.setUint32(20, e.data.length, true);
   v.setUint32(24, e.size, true);
   v.setUint16(28, e.name.length, true);
-  v.setUint32(38, (0o100644 << 16) >>> 0, true);
+  v.setUint32(38, (mode << 16) >>> 0, true);
   v.setUint32(42, offset, true);
   h.set(e.name, 46);
   return h;
@@ -178,6 +178,28 @@ export async function singleFileZip(name: string, content: Uint8Array): Promise<
   return concat([local, e.data, central, end(1, central.length, local.length + e.data.length)]);
 }
 
+/** Several files in one archive (stored in this order, executable bits kept). */
+export async function filesZip(files: { path: string; data: Uint8Array; executable: boolean }[]): Promise<Uint8Array> {
+  if (!files.length || files.length >= 0xffff) throw new ZipError("unsupported_zip");
+  const locals: Uint8Array[] = [], centrals: Uint8Array[] = [];
+  let offset = 0;
+  for (const file of files) {
+    const e = await entry(file.path, file.data);
+    const local = localHeader(e);
+    centrals.push(centralHeader(e, offset, file.executable ? 0o100755 : 0o100644));
+    locals.push(local, e.data);
+    offset += local.length + e.data.length;
+  }
+  const size = centrals.reduce((n, c) => n + c.length, 0);
+  if (offset + size >= 0xffffffff) throw new ZipError("unsupported_zip");
+  return concat([...locals, ...centrals, end(files.length, size, offset)]);
+}
+
+/** Every entry name of an archive (directories end with "/"). */
+export function zipNames(zip: Uint8Array): string[] {
+  return names(zip, directory(zip)).map((e) => e.name);
+}
+
 /** Read one named entry; bounded, CRC-checked, stored or deflated only. */
 export async function readZipEntry(
   zip: Uint8Array,
@@ -194,8 +216,13 @@ export async function readZipEntry(
  * Every regular file of a trusted job archive (project_platform.artifacts.pack_files):
  * plain relative paths, no links, special files, encryption or duplicates.
  */
-export async function readZipFiles(zip: Uint8Array, limit: number, maxFiles = 10000) {
-  const entries = names(zip, directory(zip));
+export async function readZipFiles(
+  zip: Uint8Array,
+  limit: number,
+  maxFiles = 10000,
+  include: (name: string) => boolean = () => true,
+) {
+  const entries = names(zip, directory(zip)).filter((e) => include(e.name));
   if (!entries.length || entries.length > maxFiles) throw new ZipError("invalid_zip");
   const files: { path: string; data: Uint8Array; executable: boolean }[] = [];
   const seen = new Set<string>();

@@ -24,7 +24,7 @@ export type JobDependencies = {
   repositoryCredentials?: (user: string, kind: "prepare" | "engine") => Promise<{ full_name: string; token: string }>;
   archiveDownload?: (reference: string, privateOnly: boolean) => Promise<string>;
   scenarioDownload?: (path: string) => Promise<string>;
-  sourceDownload?: (path: string) => Promise<string>;
+  sourceDownload?: (path: string, bucket?: "observer-staging" | "observer-sources") => Promise<string>;
   /** Stores the scrubbed participant log beside the run's private result. */
   storeAgentLog?: (run: string, log: Uint8Array) => Promise<void>;
   /** Public runner pool only (ops/public-runner-pool.md). */
@@ -508,12 +508,14 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         if (
           parsed.kind !== "prepare" || parsed.archive_url !== undefined || parsed.archive_ref !== undefined ||
           !deps.sourceDownload || !ref || typeof ref !== "object" || Array.isArray(ref) ||
-          Object.keys(ref).sort().join(",") !== "bucket,path" || ref.bucket !== "observer-staging" ||
-          typeof ref.path !== "string" || !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/source[.]zip$/.test(ref.path)
+          Object.keys(ref).sort().join(",") !== "bucket,path" || typeof ref.path !== "string" ||
+          !(ref.bucket === "observer-staging" && /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/source[.]zip$/.test(ref.path) ||
+            // A repository snapshot stored at submission (observer_record_source_snapshot).
+            ref.bucket === "observer-sources" && /^[0-9a-f-]{36}\/[0-9a-f]{40}-[0-9a-f-]{36}[.]zip$/.test(ref.path))
         ) {
           throw new ProxyError(503, "invalid_job_payload");
         }
-        parsed.archive_url = await deps.sourceDownload(ref.path);
+        parsed.archive_url = await deps.sourceDownload(ref.path, ref.bucket);
         delete parsed.archive_storage_ref;
       }
       if (parsed.scenario_ref !== undefined) {
