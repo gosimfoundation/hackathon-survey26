@@ -1,3 +1,4 @@
+import { parseCompeteUi, type CompeteUiSetting } from './competeUi'
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { normalizeQuotaResetNotice, type QuotaResetNotice } from './quotaReset'
@@ -342,4 +343,12 @@ export async function loadQuotaResetNotice(): Promise<QuotaResetNotice | null> {
   const { data, error } = await supabase.rpc('observer_quota_reset_notice')
   if (error) throw error
   return normalizeQuotaResetNotice(data)
+}
+
+/** The 参赛 layout switch (site_settings 'event'.compete_ui); classic when unset or unreadable. */
+export async function loadCompeteUiSetting(): Promise<CompeteUiSetting> {
+  try {
+    const { data } = await supabase.from('site_settings').select('value').eq('key', 'event').maybeSingle()
+    return parseCompeteUi(data?.value)
+  } catch { return parseCompeteUi(null) }
 }

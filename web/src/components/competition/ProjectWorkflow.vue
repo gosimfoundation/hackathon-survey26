@@ -7,6 +7,8 @@ import { portal, uploadProjectFile, type PortalData, type ProjectRevision } from
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
+import KimiPlanPanel from '../dashboard/KimiPlanPanel.vue'
+import ApiTokensPanel from '../dashboard/ApiTokensPanel.vue'
 import RunLogs from './RunLogs.vue'
 import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
@@ -16,6 +18,8 @@ import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type E
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
+/** 'v2' shows the simplified layout (see below); anything else the classic one. */
+const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
@@ -496,6 +500,133 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
     const rest = { ...zipProgress.value }; delete rest[batch.id]; zipProgress.value = rest
   }
 }
+// ─── Simplified layout ("v2", behind the switch read by CompetitionWorkspacePage) ───────────────
+// Same state and actions as the classic layout above; only the arrangement differs: things that need
+// you, my progress + one next step, all quotas in one bar, then tabs (versions / evaluations / settings).
+// It needs the team-variables model (team_environment.enabled); otherwise the classic layout is shown.
+const v2 = computed(() => props.layout === 'v2' && teamEgress.value)
+type V2Tab = 'progress' | 'history' | 'settings'
+const V2_TAB_KEY = 'compete-v2-tab'
+const v2Tab = ref<V2Tab>((() => {
+  if (location.hash.startsWith('#batch-')) return 'history'
+  try { const saved = localStorage.getItem(V2_TAB_KEY); return saved === 'history' || saved === 'settings' ? saved : 'progress' } catch { return 'progress' }
+})())
+watch(v2Tab, tab => { try { localStorage.setItem(V2_TAB_KEY, tab) } catch { /* storage blocked */ } })
+const uploadOpen = ref(false)
+/** Evaluations opened in the 评测记录 tab (collapsed by default; a #batch- link opens its own). */
+const openBatches = ref(new Set<string>(location.hash.startsWith('#batch-') ? [location.hash.slice(7)] : []))
+function toggleBatch(id: string) { const next = new Set(openBatches.value); if (!next.delete(id)) next.add(id); openBatches.value = next }
+// A successful upload closes the form; the new version appears in the table.
+watch(notice, text => { if (text === words.value.prepared) uploadOpen.value = false })
+const w2 = computed(() => pick({
+  todo: 'Needs your attention', progress: 'My progress', autoRefresh: 'Refreshes every 15 s', refreshNow: 'Refresh now', nextStep: 'Next step',
+  s1: 'Upload', s2: 'Review and confirm', s3: 'Evaluate', s4: 'Results',
+  s1None: 'Nothing uploaded yet', s1Some: '{n} versions · latest {when}',
+  s2Some: '{a} confirmed · {r} to review · {p} preparing', s3Some: 'Running {a}/{l} · {q} left today', s4None: 'No score yet', s4Best: 'Best {score} · {title}',
+  qEval: 'Evaluations today', qRunning: 'Running at once', qPrep: 'Uploads today', qReset: 'Resets', left: 'left', limit: 'limit',
+  qRunningHelp: 'Your team can run up to {n} evaluations at once; an “Evaluate 3 times and average” set counts as one, and only one set runs at a time.',
+  qNote: 'Uploading and confirming do not use evaluations; evaluations that fail because of the platform are not counted.',
+  tabProgress: 'Versions', tabHistory: 'Evaluations', tabSettings: 'Settings',
+  versions: 'My versions', versionsHelp: 'Each upload is a version. Confirm a version before evaluating it.', upload: 'Upload a new version', collapse: 'Hide',
+  colVersion: 'Version', colStatus: 'Status', colEvals: 'Evaluations', colBest: 'Best', colActions: 'Actions',
+  uploaded: 'Uploaded', more: 'More', reviewConfirm: 'Review and confirm', evidenceItem: 'Design award evidence', lastFailed: 'last failed', lastCardFailed: 'a card failed',
+  latest: 'Latest evaluation', allEvaluations: 'All evaluations', expandHint: 'Newest first; click a row for the cards, downloads and logs.',
+  keys: 'Keys and network', keysNote: 'Evaluations and the hidden final use these variables; no page needs to stay open.',
+  tokens: 'Personal API tokens (command line)', classic: 'Classic layout',
+  nClosed: 'Project evaluation is not open for the current competition.', nFirst: 'Upload your first project to get started.',
+  nFailed: 'The latest evaluation failed ({what}).', nFixUpload: 'Upload a fixed version',
+  nReview: '“{title}” is ready. Review the settings and adapter code, then confirm it.', nPreparing: '“{title}” is being prepared (usually 1–3 minutes).',
+  nRunning: '{n} evaluations running. Results appear in Evaluations.', nEvaluate: '“{title}” is confirmed and has not been evaluated yet.',
+  nBest: 'Best score {score} ({title}). Improve and upload a new version, or check stability with “Evaluate 3 times and average”.',
+  nUpload: 'Upload a new version.', viewLogs: 'View logs', viewEvaluations: 'View evaluations',
+}, {
+  todo: '待处理事项', progress: '我的进度', autoRefresh: '每 15 秒自动刷新', refreshNow: '立即刷新', nextStep: '下一步',
+  s1: '上传', s2: '检查并确认', s3: '评测', s4: '结果',
+  s1None: '还没有上传', s1Some: '{n} 个版本 · 最近 {when}',
+  s2Some: '已确认 {a} · 待确认 {r} · 准备中 {p}', s3Some: '运行中 {a}/{l} · 今天还剩 {q} 次', s4None: '还没有成绩', s4Best: '最佳 {score} · {title}',
+  qEval: '今天的评测', qRunning: '同时进行的评测', qPrep: '今天的上传', qReset: '重置时间', left: '剩余', limit: '上限',
+  qRunningHelp: '本队最多同时进行 {n} 个评测；「评测 3 次取平均」算 1 个，且同一时间只能有 1 组。',
+  qNote: '上传和确认都不占评测次数；因平台原因失败的评测不计次数。',
+  tabProgress: '进度与版本', tabHistory: '评测记录', tabSettings: '设置',
+  versions: '我的版本', versionsHelp: '每次上传是一个版本；确认后才能评测。', upload: '上传新版本', collapse: '收起',
+  colVersion: '版本', colStatus: '状态', colEvals: '评测', colBest: '最佳分', colActions: '操作',
+  uploaded: '上传于', more: '更多', reviewConfirm: '检查并确认', evidenceItem: '设计奖材料', lastFailed: '最近失败', lastCardFailed: '有卡片失败',
+  latest: '最近一次评测', allEvaluations: '全部评测记录', expandHint: '最新在上；点一行展开各卡分数、下载与日志。',
+  keys: '密钥与网络', keysNote: '评测和隐藏决赛都使用这里的变量，无需开着页面。',
+  tokens: '个人 API 令牌（命令行）', classic: '旧版布局',
+  nClosed: '当前比赛尚未开放项目评测。', nFirst: '上传你的第一个项目，开始参赛。',
+  nFailed: '最近一次评测失败（{what}）。', nFixUpload: '上传修正版',
+  nReview: '「{title}」已准备好：核对运行设置和适配代码后确认版本。', nPreparing: '「{title}」正在准备（通常 1–3 分钟）。',
+  nRunning: '{n} 个评测进行中，结果会出现在「评测记录」。', nEvaluate: '「{title}」已确认，还没有评测。',
+  nBest: '最佳 {score}（{title}）。改进后上传新版本，或用「评测 3 次取平均」检查稳定性。',
+  nUpload: '上传新版本。', viewLogs: '查看日志', viewEvaluations: '查看评测记录',
+}))
+const fill = (text: string, values: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (_, k: string) => String(values[k] ?? ''))
+type VersionRow = { title: string; r: ProjectRevision; evaluations: number; best: number | null; lastFailed: boolean; lastCardFailed: boolean }
+/** One row per version, newest first, with its counted evaluations and best combined score. */
+const versionRows = computed<VersionRow[]>(() => shownProjects.value.flatMap(p => p.observer_revisions.map(r => {
+  const own = (data.value?.batches ?? []).filter(b => b.revision_id === r.id).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const scores = own.map(b => b.score).filter((s): s is number => s != null)
+  const last = own[0]
+  return { title: p.title, r, evaluations: countedEvaluations(data.value?.batches, r.id, phaseId.value),
+    best: scores.length ? Math.max(...scores) : null, lastFailed: last?.status === 'failed',
+    lastCardFailed: !!last && last.status !== 'failed' && last.observer_runs.some(run => run.status === 'failed') }
+})).sort((a, b) => b.r.created_at.localeCompare(a.r.created_at)))
+const live = computed(() => versionRows.value.filter(v => !v.r.archived_at))
+const reviewable = computed(() => live.value.filter(v => v.r.status === 'reviewable'))
+const preparing = computed(() => live.value.filter(v => ['queued', 'preparing'].includes(v.r.status)))
+const best = computed(() => {
+  const scored = (data.value?.batches ?? []).filter(b => b.score != null)
+  const top = scored.reduce<(typeof scored)[number] | null>((m, b) => !m || b.score! > m.score! ? b : m, null)
+  return top ? { score: top.score!, title: (top.revision_id && titles.value.get(top.revision_id)) || '' } : null
+})
+const newestBatch = computed(() => [...(data.value?.batches ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null)
+const currentStep = computed(() => runningNow.value ? 3 : reviewable.value.length ? 2 : !live.value.length ? 1 : !approvedVersions.value.length ? 2 : !best.value ? 3 : 4)
+const steps = computed(() => {
+  const w = w2.value, newest = live.value[0]
+  return [
+    { n: 1, title: w.s1, done: live.value.length > 0, text: newest ? fill(w.s1Some, { n: live.value.length, when: when(newest.r.created_at) }) : w.s1None },
+    { n: 2, title: w.s2, done: approvedVersions.value.length > 0 && !reviewable.value.length, text: fill(w.s2Some, { a: approvedVersions.value.length, r: reviewable.value.length, p: preparing.value.length }) },
+    { n: 3, title: w.s3, done: (data.value?.batches ?? []).some(b => b.score != null) && !runningNow.value,
+      text: fill(w.s3Some, { a: runningNow.value, l: activeLimit.value, q: quota.value?.remaining ?? '—' }) },
+    { n: 4, title: w.s4, done: !!best.value, text: best.value ? fill(w.s4Best, { score: best.value.score.toFixed(2), title: best.value.title }) : w.s4None },
+  ]
+})
+type NextStep = { kind: string; text: string; label?: string; run?: () => void; label2?: string; run2?: () => void }
+function showUpload() {
+  v2Tab.value = 'progress'; uploadOpen.value = true
+  void nextTick(() => document.querySelector('[data-testid="project-upload-form"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
+function openFailure2() { v2Tab.value = 'progress'; openFailure() }
+function openReview2(r: ProjectRevision) {
+  openReview(r)
+  void nextTick(() => document.querySelector('[data-testid="project-review"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+}
+const nextStep = computed<NextStep>(() => {
+  const w = w2.value
+  if (!projectsOpen.value) return { kind: 'closed', text: w.nClosed }
+  const f = failure.value
+  if (f && f.batch.id === newestBatch.value?.id) {
+    const what = [when(f.batch.created_at), f.batch.revision_id ? titles.value.get(f.batch.revision_id) : ''].filter(Boolean).join(' · ')
+    return { kind: 'failed', text: fill(w.nFailed, { what }), label: words.value.openFailLog, run: openFailure2, label2: w.nFixUpload, run2: showUpload }
+  }
+  const ready = reviewable.value[0]
+  if (ready) return { kind: 'review', text: fill(w.nReview, { title: ready.title }), label: w.reviewConfirm, run: () => openReview2(ready.r) }
+  if (runningNow.value) return { kind: 'running', text: fill(w.nRunning, { n: runningNow.value }), label: w.viewEvaluations, run: () => { v2Tab.value = 'history' } }
+  const prep1 = preparing.value[0]
+  if (prep1) return { kind: 'preparing', text: fill(w.nPreparing, { title: prep1.title }), label: w.viewLogs, run: () => { v2Tab.value = 'progress'; openLogs.value = 'rev:' + prep1.r.id } }
+  if (!live.value.length) return { kind: 'first', text: w.nFirst, label: w.upload, run: showUpload }
+  const fresh = live.value.find(v => v.r.status === 'approved' && !v.evaluations && !v.best)
+  if (fresh && !evalBlocked.value) return { kind: 'evaluate', text: fill(w.nEvaluate, { title: fresh.title }), label: words.value.evaluate, run: () => evaluate(fresh.r.id) }
+  if (best.value) return { kind: 'best', text: fill(w.nBest, { score: best.value.score.toFixed(2), title: best.value.title }), label: w.upload, run: showUpload }
+  return { kind: 'upload', text: w.nUpload, label: w.upload, run: showUpload }
+})
+/** Closes the ⋯ menu a choice was made in. */
+function closeMenu(event: Event) { (event.target as HTMLElement).closest('details')?.removeAttribute('open') }
+function saveEvidence() {
+  const r = review.value
+  if (r) void action(async () => { await portal('evidence', { revision_id: r.id, notes: notes.value, code_url: codeUrl.value }) })
+}
 onMounted(async () => {
   await refreshMeCached()
   try { if (team.value) await reload() } catch (e) { error.value = errorMessage(e) }
@@ -512,9 +643,263 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <template>
   <section data-testid="project-workflow">
-    <p class="text2 mb-5">{{ words.intro }}</p>
+    <p v-if="!v2" class="text2 mb-5">{{ words.intro }}</p>
     <p v-if="loading" role="status">{{ t('common.loading') }}</p>
     <p v-else-if="!team" class="panel">{{ words.team }} <router-link to="/team">{{ t('nav.team') }}</router-link></p>
+    <template v-else-if="v2">
+      <div class="cw-alerts" data-testid="compete-todo">
+        <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
+        <p v-if="notice" role="status" class="cw-notice">{{ notice }}</p>
+        <p v-if="data?.team_environment?.relay_key_missing" class="errors" role="alert" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }}</p>
+      </div>
+
+      <section class="cw-progress" data-testid="progress-panel" aria-labelledby="cw-progress-title">
+        <div class="cw-progress-head">
+          <h2 id="cw-progress-title">{{ w2.progress }}</h2>
+          <span v-if="selectedPhase" class="pill info">{{ pick(selectedPhase.phases.name_en, selectedPhase.phases.name_zh) }}</span>
+          <span class="meta cw-grow-left">{{ w2.autoRefresh }} · <button type="button" class="cw-link" :disabled="busy" data-testid="compete-refresh" @click="action(reload)">{{ w2.refreshNow }}</button></span>
+        </div>
+        <ol class="cw-steps">
+          <li v-for="s in steps" :key="s.n" class="cw-step" :class="{ done: s.done, current: s.n === currentStep }" :aria-current="s.n === currentStep ? 'step' : undefined" :data-testid="'progress-step-' + s.n">
+            <span class="cw-step-n">{{ s.n }}<template v-if="s.done"> ✓</template></span>
+            <strong class="cw-step-t">{{ s.title }}</strong>
+            <span class="cw-step-s">{{ s.text }}</span>
+          </li>
+        </ol>
+        <div class="cw-next" data-testid="next-step" :data-kind="nextStep.kind">
+          <span class="cw-next-label">{{ w2.nextStep }}</span>
+          <span class="cw-next-text">{{ nextStep.text }}<span v-if="nextStep.kind === 'failed' && failure?.batch.quota_refunded" class="pill info ml-2">{{ words.notCounted }}</span></span>
+          <span class="cw-next-actions">
+            <button v-if="nextStep.label" type="button" class="btn primary sm" :disabled="busy && nextStep.kind === 'evaluate'" data-testid="next-step-action" @click="nextStep.run?.()">{{ nextStep.label }}</button>
+            <button v-if="nextStep.label2" type="button" class="btn sm" @click="nextStep.run2?.()">{{ nextStep.label2 }}</button>
+          </span>
+        </div>
+      </section>
+
+      <div class="cw-quota" data-testid="quota-bar">
+        <div class="cw-q" data-testid="quota-evaluations"><span class="cw-q-k">{{ w2.qEval }}</span>
+          <span class="cw-q-v">{{ quota?.remaining ?? '—' }} <small>/ {{ dailyLimit ?? '—' }} {{ w2.left }}</small></span>
+          <span class="cw-bar"><i :style="{ width: (quota && dailyLimit ? Math.round(100 * quota.remaining / dailyLimit) : 0) + '%' }"></i></span></div>
+        <div class="cw-q" data-testid="evaluation-active-count"><span class="cw-q-k" :title="fill(w2.qRunningHelp, { n: activeLimit })">{{ w2.qRunning }} ⓘ</span>
+          <span class="cw-q-v">{{ runningNow }} <small>/ {{ activeLimit }} {{ w2.limit }}</small></span>
+          <span class="cw-bar"><i :style="{ width: Math.min(100, Math.round(100 * runningNow / activeLimit)) + '%' }"></i></span></div>
+        <div class="cw-q" data-testid="preparation-quota"><span class="cw-q-k">{{ w2.qPrep }}</span>
+          <span class="cw-q-v"><span data-testid="preparation-remaining">{{ prep?.remaining ?? '—' }}</span> <small>/ {{ prep?.daily ?? '—' }} {{ w2.left }}</small></span>
+          <span class="cw-bar"><i :style="{ width: (prep && prep.daily ? Math.round(100 * prep.remaining / prep.daily) : 0) + '%' }"></i></span></div>
+        <div class="cw-q" data-testid="evaluation-reset"><span class="cw-q-k">{{ w2.qReset }}</span>
+          <span class="cw-q-reset">{{ formatDailyReset(quota?.resets_at ?? prep?.resets_at, locale) }}</span></div>
+      </div>
+      <p class="help mt-2">{{ w2.qNote }} <span class="sr-only">{{ fill(w2.qRunningHelp, { n: activeLimit }) }}</span></p>
+
+      <div class="cw-tabs" role="tablist" data-testid="compete-tabs">
+        <button v-for="tab in (['progress', 'history', 'settings'] as const)" :key="tab" type="button" role="tab" class="cw-tab" :class="{ on: v2Tab === tab }"
+          :aria-selected="v2Tab === tab" :data-testid="'compete-tab-' + tab" @click="v2Tab = tab">
+          {{ tab === 'progress' ? w2.tabProgress : tab === 'history' ? w2.tabHistory : w2.tabSettings }}<span v-if="tab === 'history' && data?.batches.length" class="meta ml-2">{{ data.batches.length }}</span>
+        </button>
+      </div>
+
+      <!-- 进度与版本 -->
+      <div v-if="v2Tab === 'progress'" role="tabpanel">
+        <section class="panel mt-4" data-testid="project-versions">
+          <div class="cw-row-head">
+            <h2 id="review">{{ w2.versions }}</h2><span class="help">{{ w2.versionsHelp }}</span>
+            <button v-if="projectsOpen && !(uploadOpen || !live.length)" type="button" class="btn primary sm cw-grow-left" data-testid="project-upload-open" @click="showUpload">＋ {{ w2.upload }}</button>
+          </div>
+          <form v-if="projectsOpen && (uploadOpen || !live.length)" class="cw-upload" data-testid="project-upload-form" @submit.prevent="submit">
+            <div class="cw-row-head"><h3 id="prepare">{{ w2.upload }}</h3>
+              <span class="help"><template v-if="prep">{{ pick(`${prep.remaining} ${words.prepLeft}`, `${words.prepLeft} ${prep.remaining} 次`) }} · </template>{{ words.step1Note }}</span>
+              <button v-if="live.length" type="button" class="cw-link cw-grow-left" @click="uploadOpen = false">{{ w2.collapse }}</button></div>
+            <label class="field"><span>{{ words.name }}</span><input v-model="form.title" type="text" name="project-title" required maxlength="100" :placeholder="pick('e.g. my-agent v1','例如：my-agent v1')" autocomplete="off" data-testid="project-title"></label>
+            <label class="check"><input v-model="form.kind" type="radio" value="repository">{{ words.repository }}</label>
+            <label class="check"><input v-model="form.kind" type="radio" value="zip">{{ words.zip }}</label>
+            <label v-if="form.kind === 'repository'" class="field"><span>{{ words.repository }}</span><input v-model="form.url" type="url" required placeholder="https://github.com/owner/project" data-testid="project-url"></label>
+            <template v-if="form.kind === 'repository'">
+              <p class="help mb-3">{{ words.repositoryHint }}</p>
+              <label class="field"><span>{{ words.branch }}</span><input v-model="form.branch" type="text" maxlength="200" placeholder="main" autocomplete="off" data-testid="project-branch"></label>
+              <label class="field"><span>{{ words.subdir }}</span><input v-model="form.subdir" type="text" maxlength="300" placeholder="agent" autocomplete="off" data-testid="project-subdir"></label>
+            </template>
+            <label v-else class="field border border-dashed border-border-subtle p-5"><span>{{ words.file }}</span><input type="file" accept=".zip,application/zip" required data-testid="project-zip" @change="selectedFile = ($event.target as HTMLInputElement).files?.[0] ?? null"></label>
+            <p v-if="form.kind === 'zip' && selectedFile" class="help mt-2" data-testid="project-zip-selected">{{ words.fileSelected }}: {{ selectedFile.name }} · {{ bytes(selectedFile.size) }}</p>
+            <p v-if="uploadPercent != null" class="help mt-2" role="status" data-testid="project-upload-progress">
+              {{ words.uploading.replace('{n}', String(uploadPercent)) }}
+              <progress class="upload-progress" :value="uploadPercent" max="100"></progress>
+            </p>
+            <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
+            <p class="help mb-4">{{ words.privacy }}</p>
+            <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+            <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
+          </form>
+          <p v-if="!projectsOpen" class="help mt-3">{{ words.closed }}</p>
+
+          <div v-if="versionRows.length" class="cw-table" role="table">
+            <div class="cw-tr cw-th" role="row"><span role="columnheader">{{ w2.colVersion }}</span><span role="columnheader">{{ w2.colStatus }}</span><span role="columnheader">{{ w2.colEvals }}</span><span role="columnheader">{{ w2.colBest }}</span><span role="columnheader" class="cw-right">{{ w2.colActions }}</span></div>
+            <template v-for="v in versionRows" :key="v.r.id">
+              <div class="cw-tr" role="row" :data-revision-id="v.r.id" data-testid="version-row">
+                <span class="cw-td-name" role="cell"><strong>{{ v.title }}</strong>
+                  <span v-if="finalRole(finalVersion, v.r.id)" class="pill ok ml-2" data-testid="final-version-badge">{{ words.finalBadge }}</span>
+                  <span class="meta cw-block">{{ w2.uploaded }} {{ when(v.r.created_at) }}<template v-if="v.r.approved_at"> · {{ words.confirmedAt }} {{ when(v.r.approved_at) }}</template></span>
+                  <span v-if="v.r.source_ref || v.r.source_subdir" class="meta cw-block break-all" data-testid="revision-source">{{ [v.r.source_ref, v.r.source_subdir].filter(Boolean).join(' · ') }}</span></span>
+                <span role="cell"><span class="pill" :class="{ ok: v.r.status === 'approved' && !v.r.archived_at, failed: v.r.status === 'failed' && !v.r.archived_at, running: ['queued','preparing'].includes(v.r.status), info: v.r.status === 'reviewable' }">{{ v.r.archived_at ? words.withdrawnPill : statuses[v.r.status] ?? v.r.status }}</span></span>
+                <span role="cell" class="cw-evals"><template v-if="v.evaluations">{{ pick(`${v.evaluations}×`, `${v.evaluations} 次`) }}</template><template v-else>—</template>
+                  <span v-if="v.lastFailed" class="pill failed ml-2">{{ w2.lastFailed }}</span><span v-else-if="v.lastCardFailed" class="pill failed ml-2">{{ w2.lastCardFailed }}</span></span>
+                <span role="cell" class="cw-score" :class="{ best: best && v.best === best.score }">{{ v.best != null ? v.best.toFixed(2) : '—' }}</span>
+                <span role="cell" class="cw-actions">
+                  <template v-if="!v.r.archived_at && v.r.status === 'approved'">
+                    <button type="button" class="btn sm" :class="{ primary: !v.evaluations }" :disabled="busy || locked.has('evaluate:'+v.r.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" :title="blockText(evalBlocked)" data-testid="project-evaluate-button" :aria-busy="pending === 'evaluate:'+v.r.id" @click="evaluate(v.r.id)">{{ pending === 'evaluate:'+v.r.id ? words.working : v.evaluations ? words.evaluateAgain : words.evaluate }}</button>
+                    <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.r.id) || !selectedPhase?.projects_enabled || activeBatch || selfCheckActive || !canSelfCheck(quota)" :title="selfCheckBlocked ? blockText(selfCheckBlocked) : words.selfCheckNote" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.r.id" @click="selfCheck(v.r.id)">{{ pending === 'selfcheck:'+v.r.id ? words.working : words.selfCheck }}</button>
+                  </template>
+                  <button v-else-if="!v.r.archived_at && v.r.status === 'reviewable'" type="button" class="btn primary sm" data-testid="project-review-open" @click="openReview2(v.r)">{{ w2.reviewConfirm }}</button>
+                  <button v-if="canPrepareAgain(v.r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+v.r.id)" data-testid="project-prepare-again" @click="prepareAgain(v.title, v.r)">{{ words.prepareAgain }}</button>
+                  <button type="button" class="btn sm" :aria-expanded="openLogs === 'rev:'+v.r.id" data-testid="revision-logs" @click="toggleLogs('rev:'+v.r.id)">{{ words.logs }}</button>
+                  <details class="cw-menu" data-testid="version-menu">
+                    <summary class="btn sm" :aria-label="w2.more">⋯</summary>
+                    <div class="cw-menu-list" @click="closeMenu">
+                      <button v-if="!v.r.archived_at && (['reviewable','approved'].includes(v.r.status) || (v.r.status === 'failed' && v.r.manifest))" type="button" @click="openReview2(v.r)">{{ words.review }}</button>
+                      <button type="button" :disabled="busy" @click="downloadProject(v.r.id)">{{ words.projectDownload }}</button>
+                      <button v-if="v.r.public_test?.passed && v.r.public_test.run_id" type="button" :disabled="busy" @click="download(v.r.public_test.run_id!)">{{ words.testResult }}</button>
+                      <button v-if="finalVersion && v.r.status === 'approved' && !v.r.archived_at && canChooseFinal(finalVersion, v.r.id)" type="button" :disabled="busy || locked.has('final:'+v.r.id)" data-testid="final-version-set" @click="setFinal(v.r.id)">{{ words.finalSet }}</button>
+                      <button v-if="!v.r.archived_at && ['reviewable','approved'].includes(v.r.status)" type="button" @click="openReview2(v.r)">{{ w2.evidenceItem }}</button>
+                      <button v-if="canWithdraw(v.r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === v.r.id)" type="button" class="cw-danger" :disabled="busy || locked.has('withdraw:'+v.r.id)" data-testid="project-withdraw" @click="withdraw(v.r.id)">{{ words.withdraw }}</button>
+                    </div>
+                  </details>
+                </span>
+              </div>
+              <p v-if="v.r.error && !v.r.archived_at" class="errors cw-sub" role="status" data-testid="revision-error">{{ revisionErrorText(v.r.error, locale) }}<template v-if="v.r.status === 'failed' && v.r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></p>
+              <div v-if="openLogs === 'rev:'+v.r.id" class="cw-sub"><RunLogs :target="{ revision_id: v.r.id, test_run_id: v.r.public_test?.run_id }" :label="v.title + ' · ' + when(v.r.created_at)" :file-stem="'public-test-' + v.title" :statuses="statuses" @close="openLogs = ''" /></div>
+              <section v-if="review?.id === v.r.id" tabindex="-1" class="cw-sub cw-review" data-testid="project-review" aria-live="polite">
+                <div class="cw-row-head"><h3>{{ words.review }}</h3><p v-if="review.public_test.passed" class="pill ok">{{ words.testPassed }}</p>
+                  <button type="button" class="cw-link cw-grow-left" @click="review = null">{{ words.close }}</button></div>
+                <p v-if="!review.public_test.passed && review.error" class="errors mt-3">{{ revisionErrorText(review.error, locale) }}</p>
+                <p class="mt-3">{{ words.explain }}: {{ review.explanation }}</p>
+                <p class="help break-all">{{ words.original }}: {{ review.source_digest }}</p>
+                <h4 class="mt-4">{{ words.manifest }}</h4><pre>{{ JSON.stringify(manifestForDisplay(review.manifest), null, 2) }}</pre>
+                <h4 class="mt-4">{{ words.changes }}</h4><p v-if="!Object.keys(review.adapter_files).length" class="help">{{ words.unchanged }}</p>
+                <div v-for="(code, path) in review.adapter_files" :key="path"><h4 class="break-all">{{ path }}</h4><pre>{{ code }}</pre></div>
+                <template v-if="review.status === 'reviewable' && !review.archived_at"><label class="check mt-4"><input v-model="confirmed" type="checkbox" data-testid="project-confirm">{{ words.check }}</label>
+                  <p v-if="!confirmed" class="help mt-2" data-testid="project-approve-hint">{{ words.approveHint }}</p>
+                  <button class="btn primary mt-3" :disabled="busy || !confirmed || !review.public_test.passed || locked.has('approve:'+review.id)" data-testid="project-approve" @click="approve">{{ words.approve }}</button>
+                  <p v-if="!review.public_test.passed" class="help mt-2" data-testid="project-approve-blocked">{{ words.approveNeedsTest }}</p></template>
+                <form class="mt-5" data-testid="project-evidence" @submit.prevent="saveEvidence">
+                  <h4>{{ words.evidence }}</h4><p class="help">{{ words.evidenceHelp }}</p>
+                  <label class="field"><span>{{ words.notes }}</span><textarea v-model="notes" maxlength="8000" rows="5"></textarea></label>
+                  <label class="field"><span>{{ words.codeUrl }}</span><input v-model="codeUrl" type="url" maxlength="1000"></label>
+                  <button class="btn sm" :disabled="busy">{{ words.saveEvidence }}</button>
+                </form>
+              </section>
+            </template>
+          </div>
+          <p v-if="approvedVersions.length && (evalBlocked || selfCheckBlocked) && evalBlocked !== 'busy'" class="help mt-3" role="status" data-testid="evaluation-disabled-reason">
+            {{ words.blocked }}{{ pick(': ', '：') }}{{ blockText(evalBlocked ?? selfCheckBlocked) }}<template v-if="!evalBlocked && selfCheckBlocked"> ({{ words.selfCheck }})</template></p>
+          <p v-if="approvedVersions.length" class="help mt-2">{{ words.selfCheckNote }}</p>
+          <button v-if="hiddenCount" type="button" class="log-link mt-4" @click="showWithdrawn = !showWithdrawn">{{ showWithdrawn ? words.hideWithdrawn : words.showWithdrawn + ' (' + hiddenCount + ')' }}</button>
+        </section>
+
+        <section v-if="newestBatch" class="panel mt-4" data-testid="latest-evaluation">
+          <div class="cw-row-head"><h2>{{ w2.latest }}</h2>
+            <button type="button" class="cw-link cw-grow-left" @click="v2Tab = 'history'">{{ w2.allEvaluations }} →</button></div>
+          <template v-for="b in [newestBatch]" :key="b.id">
+            <article :id="'batch-'+b.id" class="cw-batch" :class="{ 'latest-failed': failure?.batch.id === b.id }">
+              <p class="cw-batch-line">{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
+                <span class="pill ml-2" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
+                <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
+                <span v-if="b.score != null" class="cw-score ml-2">{{ words.average }}: {{ b.score.toFixed(2) }}</span></p>
+              <div class="cw-cards">
+                <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
+                  <span class="meta">{{ scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : '—' }}</span>
+                  <strong class="cw-card-score">{{ run.score != null ? run.score.toFixed(2) : statuses[run.status] ?? run.status }}</strong>
+                  <span class="cw-card-links">
+                    <button v-if="run.result_path" type="button" class="cw-link" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
+                    <button type="button" class="cw-link" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button></span>
+                </div>
+              </div>
+              <template v-for="run in b.observer_runs" :key="'log'+run.id">
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+              </template>
+            </article>
+          </template>
+        </section>
+      </div>
+
+      <!-- 评测记录 -->
+      <section v-else-if="v2Tab === 'history'" role="tabpanel" class="panel mt-4" data-testid="evaluation-history">
+        <div class="cw-row-head"><h2 id="results">{{ words.batches }}</h2><span class="help">{{ w2.expandHint }}</span></div>
+        <p v-if="!data?.batches.length" class="text3 mt-3">{{ words.noBatches }}</p>
+        <template v-for="b in data?.batches" :key="b.id">
+          <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="cw-batch repeat-summary" data-testid="self-check-summary">
+            <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
+              · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
+              <span class="pill info ml-2">{{ words.selfCheckOff }}</span></p>
+            <p v-if="repeats.get(b.repeat_group!)!.overall" class="mt-2" data-testid="self-check-overall">{{ words.selfCheckOverall }}: <strong>{{ fmt2(repeats.get(b.repeat_group!)!.overall!.mean) }}</strong>
+              <span class="meta">({{ fmt2(repeats.get(b.repeat_group!)!.overall!.min) }}–{{ fmt2(repeats.get(b.repeat_group!)!.overall!.max) }})</span></p>
+            <template v-if="repeats.get(b.repeat_group!)!.cards.length"><p class="meta mt-2">{{ words.selfCheckCards }}</p>
+            <div class="repeat-cards"><span v-for="c in repeats.get(b.repeat_group!)!.cards" :key="c.scenario_id" class="repeat-card" data-testid="self-check-card">
+              <span class="m text-sm">{{ scenarioNames[c.scenario_id] ? scenarioLabel(scenarioNames[c.scenario_id]!.slug, scenarioNames[c.scenario_id]!.name, locale) : '—' }}</span>
+              <strong>{{ fmt2(c.mean) }}</strong> <span class="meta">({{ fmt2(c.min) }}–{{ fmt2(c.max) }})</span></span></div></template>
+          </article>
+          <article :id="'batch-'+b.id" class="cw-batch" :class="{ target: b.id === targetBatch, 'repeat-member': !!b.repeat_group, 'latest-failed': failure?.batch.id === b.id }">
+            <button type="button" class="cw-batch-toggle" :aria-expanded="openBatches.has(b.id)" data-testid="batch-toggle" @click="toggleBatch(b.id)">
+              <span class="cw-caret">{{ openBatches.has(b.id) ? '▾' : '▸' }}</span>
+              <span class="meta">{{ when(b.created_at) }}</span>
+              <span class="cw-batch-title">{{ (b.revision_id && titles.get(b.revision_id)) || '—' }}<template v-if="phaseName(b.phase_id)"><span class="meta"> · {{ phaseName(b.phase_id) }}</span></template></span>
+              <span class="cw-batch-pills"><span class="pill" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
+                <span v-if="failure?.batch.id === b.id" class="pill failed" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
+                <span v-if="b.quota_refunded" class="pill info" data-testid="batch-refunded">{{ words.refunded }}</span>
+                <span v-if="b.repeat_group" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
+              <span class="cw-score" :class="{ best: best && b.score === best.score }">{{ b.score != null ? b.score.toFixed(2) : '—' }}</span>
+            </button>
+            <div v-if="openBatches.has(b.id)" class="cw-batch-body">
+              <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3">
+                <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
+                <span v-if="zipOutcome[b.id]" :class="zipOutcome[b.id]!.failed ? 'errors' : ''" role="status" data-testid="download-all-outcome">{{ zipOutcome[b.id]!.text }}</span>
+              </p>
+              <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
+                <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
+                <span class="pill" :class="run.status">{{ statuses[run.status] ?? run.status }}</span>
+                <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
+                <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
+                <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
+                <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+              </div>
+            </div>
+          </article>
+        </template>
+      </section>
+
+      <!-- 设置 -->
+      <div v-else role="tabpanel" class="cw-settings">
+        <section class="panel mt-4" data-testid="model-api-settings">
+          <div class="cw-row-head"><h2 id="model-api">{{ w2.keys }}</h2>
+            <span v-if="keysSummary" class="pill ok" data-testid="model-api-configured">{{ words.configured }}</span>
+            <span class="help">{{ w2.keysNote }}</span></div>
+          <TeamEnvironment :environment="data?.team_environment" :busy="busy" @act="(work, success) => action(work, success)" />
+        </section>
+        <section v-if="finalVersion" class="panel mt-4" data-testid="final-version">
+          <h2 id="final">{{ words.final }}</h2>
+          <p class="help">{{ words.finalIntro }}</p>
+          <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
+          <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+          <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
+          <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
+            <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
+            <span class="pill ok">{{ finalVersion.source === 'chosen' ? words.finalChosen : words.finalBest }}</span>
+            <span v-if="finalVersion.chosen_at && finalVersion.source === 'chosen'" class="meta">{{ when(finalVersion.chosen_at) }}</span>
+            <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
+            <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
+          </p>
+          <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
+            <span>{{ v.title }}</span>
+            <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
+            <span v-if="finalRole(finalVersion, v.revision.id)" class="pill ok">{{ words.finalBadge }}</span>
+            <button v-if="canChooseFinal(finalVersion, v.revision.id)" type="button" class="btn sm" :disabled="busy || locked.has('final:'+v.revision.id)" data-testid="final-version-set" @click="setFinal(v.revision.id)">{{ words.finalSet }}</button>
+          </div>
+        </section>
+        <KimiPlanPanel class="mt-4" />
+        <section class="panel mt-4"><ApiTokensPanel /></section>
+      </div>
+      <p class="help mt-6">{{ pick('Bring your own model API; organizer credits are not provided. Awards require LLM-driven agent techniques in at least two stages (see Rules). Never include a permanent key in your repository or ZIP.','请自备模型 API，平台不提供额度。评奖要求至少两个环节采用大模型驱动的智能体技术（见规则）。不要把永久密钥放进仓库或 ZIP。') }}
+        · <a href="?ui=v1" data-testid="compete-classic-link">{{ w2.classic }}</a></p>
+    </template>
     <template v-else>
       <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
       <p v-if="notice" role="status" class="mb-4">{{ notice }}</p>
@@ -780,4 +1165,94 @@ h2 { font-size: 1.2rem; font-weight: 600; } h3 { font-weight: 600; }
 .upload-progress { display: block; width: 100%; max-width: 24rem; height: .5rem; margin-top: .35rem; accent-color: #315efb; }
 .log-link:hover { color: #bdbdbd; } .log-link:disabled { opacity: .5; cursor: default; }
 pre { max-height: 24rem; overflow: auto; padding: 1rem; margin-top: .5rem; background: #0b0b0b; font-size: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* ─── Simplified layout (v2) ─── */
+.cw-alerts { display: grid; gap: .5rem; }
+.cw-alerts:empty { display: none; }
+.cw-notice { padding: .5rem .9rem; border: 1px solid #1f5a38; color: #bfe9cf; background: #0b1610; }
+.cw-progress { border: 1px solid #2a2f45; background: linear-gradient(180deg, #0f1324, #0b0d16); margin-top: 1rem; }
+.cw-progress-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; padding: .9rem 1.25rem; border-bottom: 1px solid #2a2f45; }
+.cw-grow-left { margin-left: auto; }
+.cw-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.cw-step { position: relative; display: flex; flex-direction: column; gap: .15rem; padding: .9rem 1.25rem; border-right: 1px solid #2a2f45; min-width: 0; }
+.cw-step:last-child { border-right: 0; }
+.cw-step.current { background: #121a3a; }
+.cw-step.current::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: #315efb; }
+.cw-step-n { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .72rem; color: #858585; }
+.cw-step.done .cw-step-n { color: #59d78d; }
+.cw-step-t { font-weight: 600; }
+.cw-step-s { font-size: .8rem; color: #a9adbd; overflow-wrap: anywhere; }
+.cw-next { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .9rem 1.25rem; border-top: 1px solid #2a2f45; background: #0c1020; }
+.cw-next[data-kind="failed"] { background: #1a0c0f; border-top-color: #7a2a2a; }
+.cw-next-label { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .7rem; letter-spacing: .1em; color: #78a6ff; text-transform: uppercase; }
+.cw-next-text { flex: 1 1 18rem; min-width: 0; }
+.cw-next-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.cw-quota { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #2a2f45; margin-top: 1rem; background: #0d0f17; }
+.cw-q { display: flex; flex-direction: column; gap: .2rem; padding: .75rem 1rem; border-right: 1px solid #2a2f45; min-width: 0; }
+.cw-q:last-child { border-right: 0; }
+.cw-q-k { font-size: .78rem; color: #858585; }
+.cw-q-v { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 1.25rem; font-weight: 600; }
+.cw-q-v small { font-size: .75rem; color: #858585; font-weight: 400; }
+.cw-q-reset { font-size: .85rem; color: #d0d3de; }
+.cw-bar { display: block; height: 3px; background: #1d2130; }
+.cw-bar i { display: block; height: 3px; background: #315efb; }
+.cw-tabs { display: flex; gap: .25rem; margin-top: 1.5rem; border-bottom: 1px solid #2a2f45; overflow-x: auto; }
+.cw-tab { padding: .55rem 1rem; color: #858585; background: none; border: 1px solid transparent; border-bottom: 0; white-space: nowrap; cursor: pointer; font-size: .95rem; }
+.cw-tab.on { color: #fff; background: #0d0f17; border-color: #2a2f45; margin-bottom: -1px; }
+.cw-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; }
+.cw-link { background: none; border: 0; padding: 0; color: #78a6ff; cursor: pointer; font: inherit; }
+.cw-link:disabled { opacity: .5; cursor: default; }
+.cw-upload { border: 1px dashed #2d3450; padding: 1rem 1.1rem; margin-top: 1rem; }
+.cw-table { margin-top: 1rem; font-size: .9rem; }
+.cw-tr { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, .7fr) minmax(0, 2.4fr); gap: .75rem; align-items: center; padding: .7rem .25rem; border-bottom: 1px solid #1b1f2c; }
+.cw-th { font-size: .75rem; color: #858585; padding-top: 0; }
+.cw-right { text-align: right; }
+.cw-block { display: block; }
+.cw-score { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.cw-score.best { color: #59d78d; }
+.cw-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; }
+.cw-menu { position: relative; }
+.cw-menu > summary { list-style: none; }
+.cw-menu > summary::-webkit-details-marker { display: none; }
+.cw-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; min-width: 12rem; display: flex; flex-direction: column; padding: .25rem 0; background: #121522; border: 1px solid #2a2f45; box-shadow: 0 8px 24px #0009; }
+.cw-menu-list button { text-align: left; padding: .45rem .9rem; background: none; border: 0; color: #e9ebf2; cursor: pointer; font-size: .85rem; }
+.cw-menu-list button:hover { background: #1a1f33; }
+.cw-menu-list button:disabled { color: #666; cursor: default; }
+.cw-menu-list .cw-danger { color: #ff8a8a; border-top: 1px solid #2a2f45; }
+.cw-sub { padding: .5rem .25rem 1rem; border-bottom: 1px solid #1b1f2c; }
+.cw-review { border-left: 2px solid #315efb; padding-left: 1rem; outline: none; }
+.cw-batch { padding: .25rem 0; border-bottom: 1px solid #1b1f2c; }
+.cw-batch.latest-failed { border-left: 3px solid #e5484d; padding-left: .6rem; }
+.cw-batch.target { outline: 1px solid #315efb; outline-offset: .25rem; }
+.cw-batch-line { margin-top: .5rem; }
+.cw-batch-toggle { width: 100%; display: grid; grid-template-columns: 1rem 9rem minmax(0, 1fr) auto 6rem; gap: .6rem; align-items: center; padding: .65rem .25rem; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.cw-batch-toggle:hover { background: #10131d; }
+.cw-batch-pills { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }
+.cw-batch-body { padding: 0 .25rem 1rem 1.75rem; }
+.cw-caret { color: #858585; }
+.cw-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; margin-top: .75rem; }
+.cw-card { display: flex; flex-direction: column; gap: .15rem; padding: .6rem .8rem; border: 1px solid #2a2f45; background: #121522; min-width: 0; }
+.cw-card.failed { border-color: #7a2a2a; }
+.cw-card.failed .cw-card-score { color: #ff6b6b; }
+.cw-card-score { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 1.05rem; }
+.cw-card-links { display: flex; gap: .8rem; font-size: .8rem; }
+@media (max-width: 720px) {
+  .cw-progress-head, .cw-next { padding: .75rem .9rem; }
+  .cw-step { padding: .6rem .4rem; text-align: center; align-items: center; }
+  .cw-step-s { display: none; }
+  .cw-step-t { font-size: .8rem; }
+  .cw-quota { grid-template-columns: 1fr 1fr; }
+  .cw-q:nth-child(2) { border-right: 0; }
+  .cw-q:nth-child(-n+2) { border-bottom: 1px solid #2a2f45; }
+  .cw-th { display: none; }
+  .cw-tr { grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .6rem; padding: .8rem .1rem; }
+  .cw-tr > .cw-td-name { grid-column: 1 / 2; }
+  .cw-tr > .cw-evals, .cw-tr > .cw-score { font-size: .8rem; color: #a9adbd; }
+  .cw-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .cw-batch-toggle { grid-template-columns: 1rem minmax(0, 1fr) auto; }
+  .cw-batch-toggle > .meta { grid-column: 2 / 4; order: -1; }
+  .cw-batch-pills { grid-column: 2 / 3; justify-content: flex-start; }
+  .cw-batch-body { padding-left: .5rem; }
+  .cw-cards { grid-template-columns: 1fr 1fr; }
+  .cw-menu-list { right: auto; left: 0; }
+}
 </style>
