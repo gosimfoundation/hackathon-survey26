@@ -95,8 +95,14 @@ def test_cleanup_preserves_unarchived_submissions_and_only_marks_expired_staging
     rpc(uri,'observer_upload_cleaned',pending)
     assert str(pending) not in ids()
     assert query(uri,'select count(*) from private.observer_uploads where id=%s',(pending,))==[(1,)]
-    query(uri,'insert into private.observer_materializations values(%s,%s,%s)',
+    # Materialized is necessary but not sufficient: still 'queued'/'preparing', and inside
+    # the 7-day grace period, so the source stays put either way.
+    query(uri,'insert into private.observer_materializations(revision_id,archive_ref,digest) values(%s,%s,%s)',
       (revision,'github:AGENTIC-OBSERVER26-runner-1/participant-'+s['user'].hex+'@'+'a'*40,'b'*64))
+    assert str(source) not in ids()
+    query(uri,"update private.observer_materializations set created_at=now()-interval '8 days' where revision_id=%s",(revision,))
+    assert str(source) not in ids()
+    query(uri,"update public.observer_revisions set status='failed' where id=%s",(revision,))
     assert str(source) in ids()
     with pytest.raises(psycopg.Error,match='permission denied'):
         rpc(uri,'observer_expired_uploads',role='authenticated',user=s['user'])
