@@ -22,3 +22,12 @@ test('the friends payload is normalized defensively', () => {
   assert.deepEqual(n.incoming, [])
   assert.equal(normalizeFriends(null).daily_limit, 20)
 })
+
+test('a find-by-UID answer gives the actions, or one neutral error', async () => {
+  const { foundExtra } = await import('../src/lib/friends.ts')
+  assert.deepEqual(foundExtra({ id: 'u', uid: 100000002, self: false, is_friend: true, in_team: false }),
+    { uid: 100000002, self: false, is_friend: true, in_team: false })
+  assert.throws(() => foundExtra({ error: 'not_found' }), /not_found/)
+  assert.throws(() => foundExtra({ error: 'daily_limit' }), /daily_limit/)
+  assert.throws(() => foundExtra(null), /not_found/)
+})

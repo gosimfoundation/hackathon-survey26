@@ -153,7 +153,8 @@
       ]
     },
     "register_float": "报名",
-    "about": "组委会"
+    "about": "组委会",
+    "find_uid": "按 UID 找人"
   },
   "hero": {
     "eyebrow": "GOSIM 黑客松 · 智能巡天",
@@ -2792,8 +2793,18 @@
       "locked": "你的队伍已锁定。",
       "full": "你的队伍已满。",
       "uid_not_found": "没有参赛者使用这个 UID。",
-      "recipient_in_team": "对方已经在一个队伍里了。"
-    }
+      "recipient_in_team": "对方已经在一个队伍里了。",
+      "not_found": "没有找到这个 UID"
+    },
+    "find_title": "按 UID 找人",
+    "find_lede": "输入对方的 9 位 UID（在对方个人资料页可见），查看名片、加好友或邀请入队。",
+    "find_button": "查找",
+    "find_login": "登录后可以按 UID 找人。",
+    "add_friend": "加好友",
+    "already": "已经是好友",
+    "request_sent_short": "已发送请求",
+    "invited_short": "已邀请",
+    "this_is_you": "这是你自己的 UID。"
   },
   "wechat_qr": {
     "title": "微信二维码",

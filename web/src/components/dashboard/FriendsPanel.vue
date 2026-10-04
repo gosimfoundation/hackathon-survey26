@@ -90,7 +90,7 @@ onMounted(async () => {
       </label>
       <button class="btn sm" type="submit" data-testid="friend-add" :disabled="busy || !uidInput.trim()">{{ t('friends.add') }}</button>
     </form>
-    <p class="help">{{ tf('friends.daily_note', { n: data.daily_limit }) }}</p>
+    <p class="help">{{ tf('friends.daily_note', { n: data.daily_limit }) }} <router-link to="/teammates#find-uid" class="accent-l underline underline-offset-2" data-testid="friends-find-uid">{{ t('friends.find_title') }} →</router-link></p>
 
     <template v-if="data.incoming.length">
       <h3 class="friends-h">{{ t('friends.incoming_title') }}</h3>

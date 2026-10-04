@@ -153,7 +153,8 @@
       ]
     },
     "register_float": "Register",
-    "about": "About"
+    "about": "About",
+    "find_uid": "Find by UID"
   },
   "hero": {
     "eyebrow": "GOSIM Hackathon · Intelligent Survey Operations",
@@ -2792,8 +2793,18 @@
       "locked": "Your team is locked.",
       "full": "Your team is full.",
       "uid_not_found": "No participant has this UID.",
-      "recipient_in_team": "This person is already on a team."
-    }
+      "recipient_in_team": "This person is already on a team.",
+      "not_found": "No one found with this UID."
+    },
+    "find_title": "Find by UID",
+    "find_lede": "Enter someone's 9-digit UID (shown on their profile page) to see their card, add them as a friend or invite them to your team.",
+    "find_button": "Find",
+    "find_login": "Log in to find people by UID.",
+    "add_friend": "Add friend",
+    "already": "Already friends",
+    "request_sent_short": "Request sent",
+    "invited_short": "Invited",
+    "this_is_you": "This is your own UID."
   },
   "wechat_qr": {
     "title": "WeChat QR code",
