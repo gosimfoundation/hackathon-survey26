@@ -79,6 +79,7 @@ export const ALLOWED_PORTAL = new Set([
   "team_environment",
   "save_team_variable",
   "delete_team_variable",
+  "set_team_variable_flags",
   "set_team_domains",
   "set_team_egress_route",
 ]);

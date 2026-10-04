@@ -27,6 +27,9 @@ fn main() {
         }
     };
     log(&format!("agent: LLM endpoint {} model {}", llm_client.base_url(), llm_client.model()));
+    if std::env::var("OBSERVER_MODEL_DISABLED").map(|v| v == "1").unwrap_or(false) {
+        log("agent: OBSERVER_MODEL_DISABLED=1, running rules only (no model calls)");
+    }
 
     let stdin = io::stdin();
     let mut reader = stdin.lock();

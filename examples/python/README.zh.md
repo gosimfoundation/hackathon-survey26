@@ -149,6 +149,8 @@ OPENAI_API_KEY=sk-...
 没配 API key(`OPENAI_API_KEY` 或 `KIMI_API_KEY`)时,进程会在启动时、读任何 stdin
 之前就检查这一点,然后把错误信息打到 stderr,以非零退出码退出。
 
+`OBSERVER_MODEL_DISABLED=1`（选择「本次不提供模型」或 `survey26 eval start --no-model` 的评测由平台设置）：此时不需要 key，智能体只用规则运行，便于对比有无大模型的表现。
+
 ## 在平台上：密钥与网络
 
 平台不会注入模型接口。请在「参赛」页的 **密钥与网络** 中保存本示例读取的变量（`OPENAI_API_KEY`，

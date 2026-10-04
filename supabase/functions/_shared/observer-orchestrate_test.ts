@@ -309,9 +309,10 @@ for (const restricted of [true, false]) {
   );
 }
 
-for (const colocated of [true, false]) {
+for (const [colocated, modelDisabled] of [[true, false], [false, false], [true, true], [false, true]]) {
   Deno.test(
-    "team egress puts the team's variables and domains into the " + (colocated ? "engine" : "execute") + " job",
+    "team egress puts the team's variables and domains into the " + (colocated ? "engine" : "execute") + " job" +
+      (modelDisabled ? " (evaluation without a model)" : ""),
     async () => {
       const organization = "AGENTIC-OBSERVER26-runner-9";
       const manifest = {
@@ -339,6 +340,7 @@ for (const colocated of [true, false]) {
             assertEquals(args.p_run, run);
             return Promise.resolve({
               enabled: true,
+              ...(modelDisabled ? { model_disabled: true } : {}),
               variables: [
                 { id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: cipher, plain_value: null },
                 {
@@ -381,10 +383,14 @@ for (const colocated of [true, false]) {
         secrets: ["OPENAI_API_KEY"],
         domains: ["api.kimi.com"],
       });
+      // Without a model: the flag goes where the participant container runs (the database has
+      // already left out the model variables), never anywhere else.
+      assertEquals(input.model_disabled, modelDisabled ? true : undefined);
       if (!colocated) {
         const engine = scheduled.p_jobs.find((j: { kind: string }) => j.kind === "engine");
         const engineInput = JSON.parse(await decryptCredential(engine.encrypted_input, engine.id, key));
         assertEquals(engineInput.team_egress, undefined);
+        assertEquals(engineInput.model_disabled, undefined);
       }
       delete input.scenario_ref;
       delete input.archive_ref;
@@ -410,6 +416,10 @@ for (const colocated of [true, false]) {
           { ...input.team_egress, extra: 1 },
         ]
       ) assertThrows(() => validateJobPayload({ ...input, team_egress: bad }, expected, job.id));
+      validateJobPayload({ ...input, model_disabled: true }, expected, job.id);
+      for (const bad of [false, 1, "1"]) {
+        assertThrows(() => validateJobPayload({ ...input, model_disabled: bad }, expected, job.id));
+      }
     },
   );
 }

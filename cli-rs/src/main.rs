@@ -653,6 +653,7 @@ fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str) -> Value
         ("quota_refunded", Value::Bool(truthy(&batch["quota_refunded"]))),
         ("repeat_group", g(batch, "repeat_group")),
         ("repeat_runs", g(batch, "repeat_runs")),
+        ("model_disabled", Value::Bool(truthy(&batch["model_disabled"]))),
         ("runs", Value::Array(runs)),
     ])
 }
@@ -1161,11 +1162,17 @@ fn print_env(out: &Out, env: &Value) {
             ("name", v["name"].clone()),
             ("kind", Value::String(if secret { out.t("secret", "密文") } else { out.t("plain", "明文") }.into())),
             ("value", if secret { g(v, "masked_value") } else { g(v, "value") }),
+            ("flags", Value::String({
+                let mut f: Vec<&str> = Vec::new();
+                if truthy(&v["model"]) { f.push(out.t("model", "模型")); }
+                if truthy(&v["disabled"]) { f.push(out.t("off", "已停用")); }
+                f.join(" ")
+            })),
             ("updated_at", g(v, "updated_at")),
         ])
     }).collect();
     out.table(&rows, &[(out.t("Name", "名称"), "name"), (out.t("Kind", "类型"), "kind"), (out.t("Value", "值"), "value"),
-        (out.t("Updated", "更新时间"), "updated_at")]);
+        (out.t("Flags", "标记"), "flags"), (out.t("Updated", "更新时间"), "updated_at")]);
     if truthy(&env["open"]) {
         out.line(out.t("Network: any public address over HTTPS (443) and HTTP (80); private and metadata addresses are unreachable; every destination is logged (no content). No domain list is needed.",
             "网络：可访问公网上的任何地址（HTTPS 443、HTTP 80 端口），内网和元数据地址不可访问；每个访问地址都会被记录（不含内容），无需登记域名。"));
@@ -1209,7 +1216,8 @@ fn env_view(env: Value) -> Value {
         let masked = if secret && truthy(&v["hint"]) { Value::String(format!("****{}", py_str(&v["hint"]))) }
             else if secret { Value::String("****".into()) } else { Value::Null };
         obj(vec![("name", g(v, "name")), ("secret", Value::Bool(secret)), ("masked_value", masked),
-            ("value", if secret { Value::Null } else { g(v, "value") }), ("updated_at", g(v, "updated_at"))])
+            ("value", if secret { Value::Null } else { g(v, "value") }), ("updated_at", g(v, "updated_at")),
+            ("model", Value::Bool(truthy(&v["model"]))), ("disabled", Value::Bool(truthy(&v["disabled"])))])
     }).collect();
     if let Value::Object(o) = &mut env {
         o.insert("variables".into(), Value::Array(vars));
@@ -1315,7 +1323,7 @@ fn cmd_env_model(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     }
     let mut last = json!({});
     for (name, value, secret) in &writes {
-        last = or_empty(api.portal("save_team_variable", true, json!({"name": name, "value": value, "secret": secret}))?);
+        last = or_empty(api.portal("save_team_variable", true, json!({"name": name, "value": value, "secret": secret, "model": true}))?);
     }
     for name in &deletes {
         last = or_empty(api.portal("delete_team_variable", true, json!({"name": name}))?);
@@ -1332,6 +1340,43 @@ fn cmd_env_model(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         ("deleted", Value::Array(deletes.iter().map(|d| json!(d)).collect())),
         ("team_environment", env_view(or_empty(g(&last, "team_environment")))),
     ]))
+}
+
+fn env_flags(api: &mut Api, name: &str, flags: Value) -> R<Value> {
+    let mut body = Map::new();
+    body.insert("name".into(), json!(name));
+    for (k, v) in flags.as_object().unwrap() {
+        body.insert(k.clone(), v.clone());
+    }
+    Ok(team_environment(api.portal("set_team_variable_flags", true, Value::Object(body))?))
+}
+
+fn cmd_env_disable(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let name = a.str("name").unwrap_or_default();
+    let env = env_flags(api, &name, json!({"disabled": true}))?;
+    out.line(&out.t("Switched off {0}: kept, but not given to your program in evaluations.", "已停用 {0}：保留，但评测时不提供给程序。").replace("{0}", &name));
+    Ok(env)
+}
+
+fn cmd_env_enable(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let name = a.str("name").unwrap_or_default();
+    let env = env_flags(api, &name, json!({"disabled": false}))?;
+    out.line(&out.t("Switched on {0}.", "已启用 {0}。").replace("{0}", &name));
+    Ok(env)
+}
+
+fn cmd_env_tag(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let name = a.str("name").unwrap_or_default();
+    let model = a.str("tag").as_deref() == Some("model");
+    let env = env_flags(api, &name, json!({"model": model}))?;
+    let text = if model {
+        out.t("{0} is model-related: left out of evaluations without a model (eval start --no-model).",
+            "{0} 标记为模型相关：在不提供模型的评测（eval start --no-model）中不提供。")
+    } else {
+        out.t("{0} is not model-related: given to every evaluation.", "{0} 不再标记为模型相关：所有评测都会提供。")
+    };
+    out.line(&text.replace("{0}", &name));
+    Ok(env)
 }
 
 fn cmd_env_unset(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
@@ -1668,6 +1713,10 @@ fn quota_for(data: &Value, phase_id: &Value) -> Option<Value> {
     arr(&data["quota"]).into_iter().find(|q| &g(q, "phase_id") == phase_id)
 }
 
+const NO_MODEL_NOTE: (&str, &str) = (
+    "Without a model: your program gets none of the team variables marked model-related, and OBSERVER_MODEL_DISABLED=1.",
+    "本次不提供模型：程序拿不到标记为模型相关的队伍变量，并会收到 OBSERVER_MODEL_DISABLED=1。");
+
 fn cmd_eval_start(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
     let r = find_revision(&data, &a.str("revision").unwrap_or_default())?;
@@ -1682,7 +1731,11 @@ fn cmd_eval_start(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         confirm(a, out, &format!("This version has already been evaluated. Evaluating it again uses one more of today’s evaluations{}. Continue?", left_en),
             &format!("这个版本已经评测过。再评测一次会再占用今天 1 次评测{}。确定继续吗？", left_zh))?;
     }
-    let fields = obj(vec![("phase_id", phase["phase_id"].clone()), ("revision_id", r["id"].clone())]);
+    let no_model = a.flag("no_model");
+    let mut fields = obj(vec![("phase_id", phase["phase_id"].clone()), ("revision_id", r["id"].clone())]);
+    if no_model {
+        fields = with(&fields, "no_model", Value::Bool(true));
+    }
     let first = if repeat { with(&fields, "confirm_repeat", Value::Bool(true)) } else { fields.clone() };
     let result = match api.portal("evaluate", true, first) {
         Ok(v) => v,
@@ -1703,8 +1756,11 @@ fn cmd_eval_start(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let bid = py_none_str(&batch_id);
     out.line(&out.t("Evaluation queued: {0} (phase {1}). Wait with: survey26 eval wait {2}", "已加入评测队列：{0}（赛程 {1}）。可用 survey26 eval wait {2} 等待。")
         .replace("{0}", &bid).replace("{1}", &py_none_str(&phase["slug"])).replace("{2}", &bid.chars().take(8).collect::<String>()));
+    if no_model {
+        out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
+    }
     Ok(obj(vec![("batch_id", batch_id), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()),
-        ("revision_id", r["id"].clone()), ("repeat", Value::Bool(repeat))]))
+        ("revision_id", r["id"].clone()), ("repeat", Value::Bool(repeat)), ("model_disabled", Value::Bool(no_model))]))
 }
 
 fn cmd_eval_selfcheck(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
@@ -1722,9 +1778,18 @@ fn cmd_eval_selfcheck(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let remaining = quota.as_ref().map(|q| py_none_str(&q["remaining"])).unwrap_or_else(|| "?".into());
     confirm(a, out, &format!("Evaluate this version 3 times in a row? This uses 3 of today’s evaluations ({} left today).", remaining),
         &format!("将对此版本连续评测 3 次，占用今天 3 次评测（今天还剩 {} 次）。确定继续吗？", remaining))?;
-    let result = api.rpc("observer_create_repeat_batches", true, json!({"p_phase": phase["phase_id"], "p_revision": r["id"], "p_confirm_repeat": true}))?;
+    let no_model = a.flag("no_model");
+    let mut params = json!({"p_phase": phase["phase_id"], "p_revision": r["id"], "p_confirm_repeat": true});
+    if no_model {
+        params = with(&params, "p_no_model", Value::Bool(true));
+    }
+    let result = api.rpc("observer_create_repeat_batches", true, params)?;
     out.line(out.t("Queued: the 3 evaluations run one after another.", "已加入评测队列，3 次评测将依次进行。"));
-    Ok(obj(vec![("result", result), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()), ("revision_id", r["id"].clone())]))
+    if no_model {
+        out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
+    }
+    Ok(obj(vec![("result", result), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()), ("revision_id", r["id"].clone()),
+        ("model_disabled", Value::Bool(no_model))]))
 }
 
 fn cmd_eval_list(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
@@ -1742,11 +1807,12 @@ fn cmd_eval_list(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         o.insert("project".into(), titles.get(&s_or(&b["revision_id"])).cloned().unwrap_or(Value::Null));
         o.insert("score_text".into(), Value::String(fmt_score(&b["score"])));
         o.insert("self_check".into(), Value::String(if truthy(&b["repeat_group"]) { "3x".into() } else { String::new() }));
+        o.insert("no_model".into(), Value::String(if truthy(&b["model_disabled"]) { out.t("no model", "无模型").into() } else { String::new() }));
         o.insert("counted".into(), Value::String(if truthy(&b["quota_refunded"]) { out.t("not counted", "未计次").into() } else { String::new() }));
         t
     }).collect();
     out.table(&table, &[("ID", "id"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
-        (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "counted"),
+        (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"), ("", "counted"),
         (out.t("Created", "创建时间"), "created_at")]);
     Ok(Value::Array(rows))
 }
@@ -1790,7 +1856,8 @@ fn repeat_summary(data: &Value, group: &Value) -> Value {
 fn show_batch(api: &Api, data: &Value, batch: &Value, out: &Out) -> R<Value> {
     let names = scenario_names(api, data)?;
     let mut summary = batch_summary(batch, &names, &out.lang);
-    out.line(&format!("{}  {}  {} {}", py_none_str(&summary["batch_id"]), py_none_str(&summary["status"]), out.t("score", "分数"), fmt_score(&summary["score"])));
+    out.line(&format!("{}  {}  {} {}{}", py_none_str(&summary["batch_id"]), py_none_str(&summary["status"]), out.t("score", "分数"), fmt_score(&summary["score"]),
+        if truthy(&summary["model_disabled"]) { out.t("  (no model)", "  （无模型）") } else { "" }));
     let rows: Vec<Value> = arr(&summary["runs"]).iter().map(|r| {
         let mut t = with(r, "score_text", Value::String(fmt_score(&r["score"])));
         t.as_object_mut().unwrap().insert("result".into(), Value::String(if truthy(&r["has_result"]) { out.t("yes", "有").into() } else { String::new() }));
@@ -1947,6 +2014,17 @@ fn read_zip(bytes: Vec<u8>) -> Option<Vec<(String, Vec<u8>)>> {
     Some(entries)
 }
 
+/// evaluation.json in a combined download (same fields as the website's).
+fn evaluation_metadata(batch: &Value, version: Value) -> Value {
+    let off = truthy(&batch["model_disabled"]);
+    let mut meta = obj(vec![("evaluation_id", g(batch, "id")), ("created_at", g(batch, "created_at")), ("phase_id", g(batch, "phase_id")),
+        ("revision_id", g(batch, "revision_id")), ("version", version), ("model_provided", Value::Bool(!off)), ("model_disabled", Value::Bool(off))]);
+    if truthy(&batch["repeat_group"]) {
+        meta = with(&meta, "self_check_group", batch["repeat_group"].clone());
+    }
+    meta
+}
+
 fn cmd_results_download_all(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
     let batch = find_batch(&data, &a.str("batch").unwrap_or_else(|| "latest".into()))?;
@@ -1987,7 +2065,12 @@ fn cmd_results_download_all(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     if !errors.is_empty() {
         files.push(("errors.txt".into(), format!("{}\n", errors.join("\n")).into_bytes()));
     }
-    let target = a.str("output").filter(|o| !o.is_empty()).unwrap_or_else(|| format!("results-{}.zip", s(&batch["id"]).chars().take(8).collect::<String>()));
+    let titles: Map<String, Value> = all_revisions(&data).iter().map(|r| (s(&r["id"]), g(r, "title"))).collect();
+    let version = titles.get(&s_or(&batch["revision_id"])).cloned().unwrap_or(Value::Null);
+    let meta = evaluation_metadata(&batch, version);
+    files.push(("evaluation.json".into(), format!("{}\n", serde_json::to_string_pretty(&meta).unwrap()).into_bytes()));
+    let suffix = if truthy(&batch["model_disabled"]) { "-no-model" } else { "" };
+    let target = a.str("output").filter(|o| !o.is_empty()).unwrap_or_else(|| format!("results-{}{}.zip", s(&batch["id"]).chars().take(8).collect::<String>(), suffix));
     let write = || -> zip::result::ZipResult<()> {
         let file = std::fs::File::create(&target)?;
         let mut z = zip::ZipWriter::new(file);
@@ -2203,6 +2286,9 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_env_show" => cmd_env_show,
         "cmd_env_set" => cmd_env_set,
         "cmd_env_unset" => cmd_env_unset,
+        "cmd_env_disable" => cmd_env_disable,
+        "cmd_env_enable" => cmd_env_enable,
+        "cmd_env_tag" => cmd_env_tag,
         "cmd_env_model" => cmd_env_model,
         "cmd_env_domains" => cmd_env_domains,
         "cmd_env_route" => cmd_env_route,

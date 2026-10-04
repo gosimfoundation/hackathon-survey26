@@ -17,7 +17,7 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
 import { competition, entryPhase } from '../../stores/competition'
 import { entryPhaseIds, offersPracticeSwitch } from '../../lib/entryPhase'
 import { tabFromQuery } from '../../lib/deepLink'
-import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
@@ -117,6 +117,9 @@ const words = computed(() => pick({
   selfCheckQueued: 'Queued: the 3 evaluations run one after another.', selfCheckTitle: 'Evaluate 3 times and average (self-check)',
   selfCheckDone: '{done} of {total} evaluations scored', selfCheckCards: 'Mean per card (lowest–highest)', selfCheckOverall: 'Combined mean (lowest–highest)',
   selfCheckOff: 'Not used for the leaderboard.', selfCheckOne: 'Evaluation {n} of {total} in a 3-evaluation self-check',
+  noModel: 'This evaluation without a model', noModelPill: 'No model',
+  noModelHelp: 'For comparing your agent with and without an LLM: the program gets none of the variables tagged “model” under Keys and network (API keys, base URLs, model names) and OBSERVER_MODEL_DISABLED=1. Everything else, network access included, is unchanged. Applies to the next “Evaluate” or “Evaluate 3 times and average” only; it counts as an ordinary evaluation. The hidden final always uses your normal configuration.',
+  noModelOn: 'The next evaluation runs without a model.',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
   finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
@@ -179,6 +182,9 @@ const words = computed(() => pick({
   selfCheckQueued: '已加入评测队列，3 次评测将依次进行。', selfCheckTitle: '评测 3 次取平均（自检）',
   selfCheckDone: '已完成 {done}/{total} 次', selfCheckCards: '各卡平均分（最低–最高）', selfCheckOverall: '综合平均分（最低–最高）',
   selfCheckOff: '不计入排行榜。', selfCheckOne: '自检第 {n}/{total} 次',
+  noModel: '本次不提供模型', noModelPill: '无模型',
+  noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入线上榜。隐藏卡决赛始终使用本队的正常配置。',
+  noModelOn: '接下来的评测将不提供模型。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
@@ -285,6 +291,8 @@ function errorMessage(e: unknown) {
     invalid_team_model: t('submit.model_api.invalid'),
     invalid_team_variable: t('submit.team_env.invalid_variable'),
     team_variable_limit: t('submit.team_env.variable_limit'),
+    team_variable_not_found: pick('This variable no longer exists. Refresh the page.', '这个变量已不存在，请刷新页面。'),
+    no_model_not_available: pick('“Without a model” is only available for project evaluations in the online competition and practice, not in the hidden final.', '「本次不提供模型」只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。'),
     invalid_team_domains: t('submit.team_env.invalid_domain'),
     team_domain_not_public: t('submit.team_env.domain_not_public'),
     invalid_egress_route: pick('Choose direct, China route or overseas route.', '请选择直连、回国代理或海外代理。'),
@@ -389,13 +397,14 @@ function evaluate(revision_id: string) {
   let repeat = countedEvaluations(data.value?.batches, revision_id, phase_id) > 0
   if (repeat && !window.confirm(repeatQuestion())) return
   void action(async () => {
-    try { await portal('evaluate', { phase_id, revision_id, ...(repeat ? { confirm_repeat: true } : {}) }) }
+    try { await portal('evaluate', { phase_id, revision_id, ...(repeat ? { confirm_repeat: true } : {}), ...noModelField() }) }
     catch (e) {
       if (repeat || !(e instanceof Error) || e.message !== 'revision_already_evaluated') throw e
       if (!window.confirm(repeatQuestion())) throw new Error('cancelled')
       repeat = true
-      await portal('evaluate', { phase_id, revision_id, confirm_repeat: true })
+      await portal('evaluate', { phase_id, revision_id, confirm_repeat: true, ...noModelField() })
     }
+    noModel.value = false
   }, words.value.queued, 'evaluate:' + revision_id)
 }
 // The self-check: SELF_CHECK_RUNS evaluations of one version, run one after another (observer_create_repeat_batches).
@@ -403,11 +412,16 @@ function selfCheck(revision_id: string) {
   const phase_id = phaseId.value
   if (!window.confirm(words.value.selfCheckConfirm.replace('{n}', String(quota.value?.remaining ?? '?')))) return
   void action(async () => {
-    const { error } = await supabase.rpc('observer_create_repeat_batches', { p_phase: phase_id, p_revision: revision_id, p_confirm_repeat: true })
+    const { error } = await supabase.rpc('observer_create_repeat_batches', { p_phase: phase_id, p_revision: revision_id, p_confirm_repeat: true,
+      ...(noModel.value ? { p_no_model: true } : {}) })
     if (error) throw new Error(error.message)
+    noModel.value = false
   }, words.value.selfCheckQueued, 'selfcheck:' + revision_id)
 }
 const repeats = computed(() => repeatSummaries(data.value?.batches))
+/** 本次不提供模型: applies to the next evaluation (or self-check set) only, then switches itself off. */
+const noModel = ref(false)
+const noModelField = () => noModel.value ? { no_model: true } : {}
 // What the collapsed keys panel shows: the configured model services, other variables, or the saved key.
 const keysSummary = computed(() => {
   if (teamEgress.value) {
@@ -491,7 +505,8 @@ function cardFolder(run: { id: string; scenario_id: string }): string {
 function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
   return [...runs].sort((a, b) => scenarioOrder(scenarioNames.value[a.scenario_id]?.slug ?? '') - scenarioOrder(scenarioNames.value[b.scenario_id]?.slug ?? ''))
 }
-async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
+async function downloadAllResults(batch: { id: string; created_at: string; phase_id: string; revision_id: string | null; model_disabled?: boolean
+  repeat_group?: string | null; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
   const runs = sortedRuns(batch.observer_runs.filter(r => r.result_path))
   if (!runs.length || zipProgress.value[batch.id]) return
   const outcome = (text: string, failed: boolean) => { zipOutcome.value = { ...zipOutcome.value, [batch.id]: { text, failed } } }
@@ -528,9 +543,10 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
     }
     if (!Object.keys(files).length) { outcome(words.value.downloadAllFailed, true); return }
     if (errors.length) files['errors.txt'] = strToU8(errors.join('\n') + '\n')
+    files['evaluation.json'] = strToU8(JSON.stringify(evaluationMetadata(batch, (batch.revision_id && titles.value.get(batch.revision_id)) || null), null, 2) + '\n')
     const blob = new Blob([zipSync(files, { level: 6 })], { type: 'application/zip' })
     const date = new Date().toISOString().slice(0, 10)
-    triggerDownload(blob, `gosim-observer-${batch.id.slice(0, 8)}-${date}.zip`)
+    triggerDownload(blob, evaluationZipName(batch, date))
     outcome(errors.length ? words.value.downloadAllPartial : words.value.downloadAllDone, errors.length > 0)
   } catch {
     outcome(words.value.downloadAllFailed, true)
@@ -771,6 +787,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </form>
           <p v-if="!projectsOpen" class="help mt-3">{{ words.closed }}</p>
 
+          <label v-if="approvedVersions.length" class="check no-model-option mt-3" :title="words.noModelHelp" data-testid="evaluation-no-model">
+            <input v-model="noModel" type="checkbox" name="observer-no-model" :disabled="busy" data-testid="evaluation-no-model-input">{{ words.noModel }}</label>
+          <p v-if="approvedVersions.length" class="help no-model-help" :class="{ on: noModel }" data-testid="evaluation-no-model-help">{{ noModel ? words.noModelOn + ' ' : '' }}{{ words.noModelHelp }}</p>
           <div v-if="versionRows.length" class="cw-table" role="table">
             <div class="cw-tr cw-th" role="row"><span role="columnheader">{{ w2.colVersion }}</span><span role="columnheader">{{ w2.colStatus }}</span><span role="columnheader">{{ w2.colEvals }}</span><span role="columnheader">{{ w2.colBest }}</span><span role="columnheader" class="cw-right">{{ w2.colActions }}</span></div>
             <template v-for="v in versionRows" :key="v.r.id">
@@ -842,6 +861,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               <p class="cw-batch-line">{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
                 <span class="pill ml-2" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
                 <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
+                <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
                 <span v-if="b.score != null" class="cw-score ml-2">{{ words.average }}: {{ b.score.toFixed(2) }}</span></p>
               <div class="cw-cards">
                 <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
@@ -868,7 +888,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="cw-batch repeat-summary" data-testid="self-check-summary">
             <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
               · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
-              <span class="pill info ml-2">{{ words.selfCheckOff }}</span></p>
+              <span class="pill info ml-2">{{ words.selfCheckOff }}</span>
+              <span v-if="isNoModel(b)" class="pill no-model ml-2" data-testid="self-check-no-model">{{ words.noModelPill }}</span></p>
             <p v-if="repeats.get(b.repeat_group!)!.overall" class="mt-2" data-testid="self-check-overall">{{ words.selfCheckOverall }}: <strong>{{ fmt2(repeats.get(b.repeat_group!)!.overall!.mean) }}</strong>
               <span class="meta">({{ fmt2(repeats.get(b.repeat_group!)!.overall!.min) }}–{{ fmt2(repeats.get(b.repeat_group!)!.overall!.max) }})</span></p>
             <template v-if="repeats.get(b.repeat_group!)!.cards.length"><p class="meta mt-2">{{ words.selfCheckCards }}</p>
@@ -884,6 +905,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               <span class="cw-batch-pills"><span class="pill" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
                 <span v-if="failure?.batch.id === b.id" class="pill failed" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
                 <span v-if="b.quota_refunded" class="pill info" data-testid="batch-refunded">{{ words.refunded }}</span>
+                <span v-if="isNoModel(b)" class="pill no-model" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
                 <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
               <span class="cw-score" :class="{ best: best && b.score === best.score }">{{ b.score != null ? b.score.toFixed(2) : '—' }}</span>
             </button>
@@ -1106,6 +1128,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p v-if="quota && quota.remaining <= 0" class="help">{{ words.noneLeft }}</p>
           <p v-else-if="activeBatch" class="help" data-testid="evaluation-active-limit">{{ words.active.replace('{n}', String(activeLimit)) }}</p>
           <p v-if="approvedVersions.length" class="help mt-3" data-testid="self-check-note">{{ words.selfCheckNote }}<template v-if="!canSelfCheck(quota)"> {{ words.selfCheckNeed }}</template></p>
+          <label v-if="approvedVersions.length" class="check no-model-option mt-3" :title="words.noModelHelp" data-testid="evaluation-no-model">
+            <input v-model="noModel" type="checkbox" name="observer-no-model" :disabled="busy" data-testid="evaluation-no-model-input">{{ words.noModel }}</label>
+          <p v-if="approvedVersions.length" class="help no-model-help" :class="{ on: noModel }" data-testid="evaluation-no-model-help">{{ noModel ? words.noModelOn + ' ' : '' }}{{ words.noModelHelp }}</p>
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
@@ -1146,7 +1171,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <article v-if="firstOfGroup(b) && repeats.get(b.repeat_group!)" class="project-row repeat-summary" data-testid="self-check-summary">
           <p><strong>{{ words.selfCheckTitle }}</strong><template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template>
             · {{ words.selfCheckDone.replace('{done}', String(repeats.get(b.repeat_group!)!.scored)).replace('{total}', String(repeats.get(b.repeat_group!)!.runs)) }}
-            <span class="pill info ml-2">{{ words.selfCheckOff }}</span></p>
+            <span class="pill info ml-2">{{ words.selfCheckOff }}</span>
+            <span v-if="isNoModel(b)" class="pill no-model ml-2" data-testid="self-check-no-model">{{ words.noModelPill }}</span></p>
           <p v-if="repeats.get(b.repeat_group!)!.overall" class="mt-2" data-testid="self-check-overall">{{ words.selfCheckOverall }}: <strong>{{ fmt2(repeats.get(b.repeat_group!)!.overall!.mean) }}</strong>
             <span class="meta">({{ fmt2(repeats.get(b.repeat_group!)!.overall!.min) }}–{{ fmt2(repeats.get(b.repeat_group!)!.overall!.max) }})</span></p>
           <template v-if="repeats.get(b.repeat_group!)!.cards.length"><p class="meta mt-2">{{ words.selfCheckCards }}</p>
@@ -1158,6 +1184,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p>{{ when(b.created_at) }}<template v-if="b.revision_id && titles.get(b.revision_id)"> · {{ titles.get(b.revision_id) }}</template><template v-if="phaseName(b.phase_id)"> · {{ phaseName(b.phase_id) }}</template> · {{ statuses[b.status] ?? b.status }}
             <span v-if="failure?.batch.id === b.id" class="pill failed ml-2" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
+            <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
             <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
@@ -1264,6 +1291,10 @@ pre { max-height: 24rem; overflow: auto; padding: 1rem; margin-top: .5rem; backg
 .cw-batch.latest-failed { border-left: 3px solid #e5484d; padding-left: .6rem; }
 .cw-batch.target { outline: 1px solid #315efb; outline-offset: .25rem; }
 .cw-batch-line { margin-top: .5rem; }
+.pill.no-model { border-color: #c9a227; color: #f3d58a; }
+.no-model-option { display: inline-flex; align-items: center; gap: .4rem; }
+.no-model-help { font-size: .8rem; margin-top: .25rem; }
+.no-model-help.on { color: #f3d58a; }
 .cw-batch-toggle { width: 100%; display: grid; grid-template-columns: 1rem 9rem minmax(0, 1fr) auto 6rem; gap: .6rem; align-items: center; padding: .65rem .25rem; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .cw-batch-toggle:hover { background: #10131d; }
 .cw-batch-pills { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }

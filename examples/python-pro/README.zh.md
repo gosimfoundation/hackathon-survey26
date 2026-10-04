@@ -60,7 +60,7 @@ OPENAI_BASE_URL=https://api.kimi.com/coding/v1   # 默认；中国大陆以外�
 OPENAI_MODEL=k3                                  # 默认
 ```
 
-没有 key 时，程序启动即退出并提示 `missing API key: set OPENAI_API_KEY`。在平台上，`OPENAI_BASE_URL` / `OPENAI_API_KEY` 会自动注入。`k3` 只接受默认温度，所以客户端不发送 temperature。
+没有 key 时，程序启动即退出并提示 `missing API key: set OPENAI_API_KEY`；`OBSERVER_MODEL_DISABLED=1`（选择「本次不提供模型」或 `survey26 eval start --no-model` 的评测由平台设置）：此时不需要 key，智能体只用规则运行，便于对比有无大模型的表现。在平台上，`OPENAI_BASE_URL` / `OPENAI_API_KEY` 会自动注入。`k3` 只接受默认温度，所以客户端不发送 temperature。
 
 ## 本地运行
 

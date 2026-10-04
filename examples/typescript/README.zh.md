@@ -127,6 +127,7 @@ stdout 只输出协议消息，所有日志都写到 stderr。
   `https://api.kimi.ai/coding/v1`）。
 - `OPENAI_API_KEY` —— 该服务的密钥（也接受 `KIMI_API_KEY`）。
 - `OPENAI_MODEL` —— 默认 `k3`。
+- `OBSERVER_MODEL_DISABLED=1`（选择「本次不提供模型」或 `survey26 eval start --no-model` 的评测由平台设置）：此时不需要 key，智能体只用规则运行，便于对比有无大模型的表现。
 
 本地试用方法：
 

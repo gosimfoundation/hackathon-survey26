@@ -1910,6 +1910,19 @@
           "kimi": "Kimi Coding Plan：模型可填 kimi-for-coding 或 k3。这些模型只接受默认 temperature，请求里不要设置 temperature。中国大陆以外的账号请把接口地址改为 https://api.kimi.ai/coding/v1。",
           "anthropic": "Anthropic 使用 Messages 协议，保存为 ANTHROPIC_* 变量；官方示例只读取 OPENAI_*，需要你的程序用 Anthropic SDK 读取这些变量。"
         }
+      },
+      "flags": {
+        "help": "每个变量可以单独停用：停用后保留（密钥仍加密保存），但评测时不提供给程序，重新启用即可恢复，无需删除后重新添加。勾选「模型相关」的变量在选择「本次不提供模型」的评测中不提供给程序；模型服务的变量和 OPENAI_*、ANTHROPIC_*、*_API_KEY、*_BASE_URL、*_MODEL 等名称会自动勾选，可以修改。",
+        "enabled_label": "启用",
+        "model_label": "模型相关",
+        "model_help": "选择「本次不提供模型」的评测中不提供这个变量。",
+        "off_pill": "已停用",
+        "disable": "停用",
+        "enable": "启用",
+        "service_help": "停用后保留密钥，但评测时不提供给程序；可随时重新启用。",
+        "disabled": "已停用，评测时不再提供给程序。",
+        "enabled": "已启用。",
+        "model_saved": "已更新。"
       }
     },
     "model_api": {

@@ -459,6 +459,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
           p_revision: body.revision_id ? uuid(body.revision_id) : null,
           // Another evaluation of an already evaluated version is an explicit choice.
           ...(body.confirm_repeat === true ? { p_confirm_repeat: true } : {}),
+          // 本次不提供模型: the run gets none of the team's model variables (OBSERVER_MODEL_DISABLED=1).
+          ...(body.no_model === true ? { p_no_model: true } : {}),
         }),
       };
     // The team's final version for an open formal phase; revision_id null clears
@@ -518,6 +520,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         p_encrypted: encrypted,
         p_plain: plain,
         p_hint: hint,
+        // The "model" tag (「添加模型服务」 sends true); absent: kept, or by name for a new variable.
+        ...(typeof body.model === "boolean" ? { p_model: body.model } : {}),
       });
       return { team_environment: await userRpc("observer_team_environment") };
     }
@@ -526,6 +530,23 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(name)) throw new ProxyError(400, "invalid_team_variable");
       await userRpc("observer_delete_team_variable", { p_name: name });
       return { team_environment: await userRpc("observer_team_environment") };
+    }
+    case "set_team_variable_flags": {
+      // Tag a variable as model-related, or switch it off/on without deleting it.
+      const name = typeof body.name === "string" ? body.name : "";
+      if (
+        !/^[A-Z][A-Z0-9_]{0,63}$/.test(name) ||
+        (body.model !== undefined && typeof body.model !== "boolean") ||
+        (body.disabled !== undefined && typeof body.disabled !== "boolean") ||
+        (body.model === undefined && body.disabled === undefined)
+      ) throw new ProxyError(400, "invalid_team_variable");
+      return {
+        team_environment: await userRpc("observer_set_team_variable_flags", {
+          p_name: name,
+          p_model: body.model ?? null,
+          p_disabled: body.disabled ?? null,
+        }),
+      };
     }
     case "set_team_domains": {
       if (!Array.isArray(body.domains) || body.domains.length > 10) throw new ProxyError(400, "invalid_team_domains");

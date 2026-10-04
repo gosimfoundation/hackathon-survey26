@@ -169,6 +169,8 @@ OpenAI-compatible `/chat/completions` endpoint works too (OpenAI itself, a local
 etc.) -- just point them there. `KIMI_API_KEY` is accepted as an alternate name for the
 key if you'd rather set that. `.env` is never packed into the ZIP.
 
+`OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): the agent needs no key and runs on its rules only, so you can compare with and without an LLM.
+
 Without an API key (`OPENAI_API_KEY` or `KIMI_API_KEY`) configured, the process checks
 at startup, before reading anything from stdin, and exits with a message on stderr and
 a non-zero exit code.

@@ -151,3 +151,21 @@ export function evaluateBlock(s: { busy: boolean; phaseEnabled: boolean; quota: 
   if (s.busy) return 'busy'
   return null
 }
+
+/** 本次不提供模型: the evaluation ran without the team's model variables (OBSERVER_MODEL_DISABLED=1). */
+export function isNoModel(batch: { model_disabled?: boolean | null }): boolean {
+  return batch.model_disabled === true
+}
+
+/** The evaluation's own facts for a result download (evaluation.json), including whether a model was provided. */
+export function evaluationMetadata(batch: { id: string; created_at: string; phase_id: string; revision_id: string | null
+  model_disabled?: boolean | null; repeat_group?: string | null }, version: string | null): Record<string, unknown> {
+  return { evaluation_id: batch.id, created_at: batch.created_at, phase_id: batch.phase_id,
+    revision_id: batch.revision_id, version, model_provided: !isNoModel(batch), model_disabled: isNoModel(batch),
+    ...(batch.repeat_group ? { self_check_group: batch.repeat_group } : {}) }
+}
+
+/** The combined download's file name; evaluations without a model are marked in it. */
+export function evaluationZipName(batch: { id: string; model_disabled?: boolean | null }, date: string): string {
+  return `gosim-observer-${batch.id.slice(0, 8)}${isNoModel(batch) ? '-no-model' : ''}-${date}.zip`
+}

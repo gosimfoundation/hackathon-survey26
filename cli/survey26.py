@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -115,6 +115,9 @@ MESSAGES = {
     "source_snapshot_unavailable": ("Could not save a copy of this repository version right now. Please try again in a minute.", "暂时无法保存该仓库版本的副本，请稍后再试。"),
     "invalid_team_variable": ("Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
                               "变量名或值不符合要求：变量名使用大写字母、数字和下划线，不能使用平台保留的名称；值不能为空且不超过 8 KB。"),
+    "no_model_not_available": ("\"Without a model\" (--no-model) is only for project evaluations in the online competition and practice, not the hidden final.",
+                               "「本次不提供模型」（--no-model）只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。"),
+    "team_variable_not_found": ("No team variable with this name. See survey26 env show.", "没有这个名称的队伍变量，可用 survey26 env show 查看。"),
     "team_variable_limit": ("The variable limit has been reached; delete a variable you no longer use first.", "变量数量已达上限，请先删除不再使用的变量。"),
     "invalid_egress_route": ("Choose an egress route: direct, cn or overseas.", "请选择出网线路：direct（直连）、cn（回国代理）或 overseas（海外代理）。"),
     "egress_route_unavailable": ("Egress routes are not offered right now; evaluations connect directly.",
@@ -584,7 +587,8 @@ def batch_summary(batch: dict, names: dict, lang: str) -> dict:
         "batch_id": batch["id"], "status": batch.get("status"), "score": batch.get("score"),
         "phase_id": batch.get("phase_id"), "revision_id": batch.get("revision_id"),
         "created_at": batch.get("created_at"), "quota_refunded": bool(batch.get("quota_refunded")),
-        "repeat_group": batch.get("repeat_group"), "repeat_runs": batch.get("repeat_runs"), "runs": runs,
+        "repeat_group": batch.get("repeat_group"), "repeat_runs": batch.get("repeat_runs"),
+        "model_disabled": bool(batch.get("model_disabled")), "runs": runs,
     }
 
 
@@ -988,9 +992,10 @@ def _print_env(out: Out, env: dict) -> None:
     out.line(out.t("Variables:", "变量："))
     out.table([{"name": v["name"], "kind": out.t("secret", "密文") if v.get("secret") else out.t("plain", "明文"),
                 "value": v.get("masked_value") if v.get("secret") else v.get("value"),
+                "flags": " ".join(([out.t("model", "模型")] if v.get("model") else []) + ([out.t("off", "已停用")] if v.get("disabled") else [])),
                 "updated_at": v.get("updated_at")} for v in env.get("variables") or []],
               [(out.t("Name", "名称"), "name"), (out.t("Kind", "类型"), "kind"), (out.t("Value", "值"), "value"),
-               (out.t("Updated", "更新时间"), "updated_at")])
+               (out.t("Flags", "标记"), "flags"), (out.t("Updated", "更新时间"), "updated_at")])
     if env.get("open"):
         out.line(out.t("Network: any public address over HTTPS (443) and HTTP (80); private and metadata addresses "
                        "are unreachable; every destination is logged (no content). No domain list is needed.",
@@ -1021,7 +1026,8 @@ def _env_view(env: dict) -> dict:
     env = dict(env or {})
     env["variables"] = [{"name": v.get("name"), "secret": bool(v.get("secret")),
                          "masked_value": ("****" + v["hint"]) if v.get("secret") and v.get("hint") else ("****" if v.get("secret") else None),
-                         "value": None if v.get("secret") else v.get("value"), "updated_at": v.get("updated_at")}
+                         "value": None if v.get("secret") else v.get("value"), "updated_at": v.get("updated_at"),
+                         "model": bool(v.get("model")), "disabled": bool(v.get("disabled"))}
                         for v in env.get("variables") or []]
     return env
 
@@ -1051,6 +1057,30 @@ def cmd_env_set(api: Api, args, out: Out):
     env = _env_view((api.portal("save_team_variable", write=True, name=args.name, value=value, secret=not args.plain)
                      or {}).get("team_environment") or {})
     out.line(out.t("Saved %s.", "已保存 %s。") % args.name)
+    return env
+
+
+def _env_flags(api: Api, out: Out, name: str, **flags) -> dict:
+    return _env_view((api.portal("set_team_variable_flags", write=True, name=name, **flags) or {}).get("team_environment") or {})
+
+
+def cmd_env_disable(api: Api, args, out: Out):
+    env = _env_flags(api, out, args.name, disabled=True)
+    out.line(out.t("Switched off %s: kept, but not given to your program in evaluations.", "已停用 %s：保留，但评测时不提供给程序。") % args.name)
+    return env
+
+
+def cmd_env_enable(api: Api, args, out: Out):
+    env = _env_flags(api, out, args.name, disabled=False)
+    out.line(out.t("Switched on %s.", "已启用 %s。") % args.name)
+    return env
+
+
+def cmd_env_tag(api: Api, args, out: Out):
+    env = _env_flags(api, out, args.name, model=args.tag == "model")
+    out.line((out.t("%s is model-related: left out of evaluations without a model (eval start --no-model).",
+                    "%s 标记为模型相关：在不提供模型的评测（eval start --no-model）中不提供。") if args.tag == "model" else
+              out.t("%s is not model-related: given to every evaluation.", "%s 不再标记为模型相关：所有评测都会提供。")) % args.name)
     return env
 
 
@@ -1106,7 +1136,7 @@ def cmd_env_model(api: Api, args, out: Out):
     if limit is not None and len(existing) + added > limit:
         raise CliError("team_variable_limit")
     for name, value, secret in writes:
-        env = api.portal("save_team_variable", write=True, name=name, value=value, secret=secret) or {}
+        env = api.portal("save_team_variable", write=True, name=name, value=value, secret=secret, model=True) or {}
     for name in deletes:
         env = api.portal("delete_team_variable", write=True, name=name) or {}
     out.line(out.t("Saved model service %s: %s (secret), %s%s.", "已保存模型服务 %s：%s（密文）、%s%s。")
@@ -1355,6 +1385,10 @@ def _quota_for(data: dict, phase_id: str):
     return None
 
 
+NO_MODEL_NOTE = ("Without a model: your program gets none of the team variables marked model-related, and OBSERVER_MODEL_DISABLED=1.",
+                 "本次不提供模型：程序拿不到标记为模型相关的队伍变量，并会收到 OBSERVER_MODEL_DISABLED=1。")
+
+
 def cmd_eval_start(api: Api, args, out: Out):
     data = portal_list(api)
     r = find_revision(data, args.revision)
@@ -1368,7 +1402,7 @@ def cmd_eval_start(api: Api, args, out: Out):
         left_en = (" (%s left today)" % quota["remaining"]) if quota else ""
         confirm(args, out, "This version has already been evaluated. Evaluating it again uses one more of today’s evaluations%s. Continue?" % left_en,
                 "这个版本已经评测过。再评测一次会再占用今天 1 次评测%s。确定继续吗？" % left)
-    fields = {"phase_id": phase["phase_id"], "revision_id": r["id"]}
+    fields = {"phase_id": phase["phase_id"], "revision_id": r["id"], **({"no_model": True} if args.no_model else {})}
     try:
         result = api.portal("evaluate", write=True, **dict(fields, confirm_repeat=True) if repeat else fields)
     except CliError as error:
@@ -1379,7 +1413,10 @@ def cmd_eval_start(api: Api, args, out: Out):
     batch_id = (result or {}).get("batch_id")
     out.line(out.t("Evaluation queued: %s (phase %s). Wait with: survey26 eval wait %s",
                    "已加入评测队列：%s（赛程 %s）。可用 survey26 eval wait %s 等待。") % (batch_id, phase["slug"], str(batch_id)[:8]))
-    return {"batch_id": batch_id, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"], "repeat": repeat}
+    if args.no_model:
+        out.line(NO_MODEL_NOTE[out.lang == "zh"])
+    return {"batch_id": batch_id, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"], "repeat": repeat,
+            "model_disabled": bool(args.no_model)}
 
 
 def cmd_eval_selfcheck(api: Api, args, out: Out):
@@ -1392,9 +1429,13 @@ def cmd_eval_selfcheck(api: Api, args, out: Out):
     remaining = quota.get("remaining") if quota else "?"
     confirm(args, out, "Evaluate this version 3 times in a row? This uses 3 of today’s evaluations (%s left today)." % remaining,
             "将对此版本连续评测 3 次，占用今天 3 次评测（今天还剩 %s 次）。确定继续吗？" % remaining)
-    result = api.rpc("observer_create_repeat_batches", write=True, p_phase=phase["phase_id"], p_revision=r["id"], p_confirm_repeat=True)
+    result = api.rpc("observer_create_repeat_batches", write=True, p_phase=phase["phase_id"], p_revision=r["id"], p_confirm_repeat=True,
+                     **({"p_no_model": True} if args.no_model else {}))
     out.line(out.t("Queued: the 3 evaluations run one after another.", "已加入评测队列，3 次评测将依次进行。"))
-    return {"result": result, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"]}
+    if args.no_model:
+        out.line(NO_MODEL_NOTE[out.lang == "zh"])
+    return {"result": result, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"],
+            "model_disabled": bool(args.no_model)}
 
 
 def cmd_eval_list(api: Api, args, out: Out):
@@ -1404,9 +1445,10 @@ def cmd_eval_list(api: Api, args, out: Out):
     titles = {r["id"]: r.get("title") for r in all_revisions(data)}
     out.table([dict(b, id=b["batch_id"][:8], version=(b["revision_id"] or "")[:8], project=titles.get(b["revision_id"]),
                     score_text=fmt_score(b["score"]), self_check="3x" if b["repeat_group"] else "",
+                    no_model=out.t("no model", "无模型") if b["model_disabled"] else "",
                     counted="" if not b["quota_refunded"] else out.t("not counted", "未计次")) for b in rows],
               [("ID", "id"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
-               (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"),
+               (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"),
                ("", "counted"), (out.t("Created", "创建时间"), "created_at")])
     return rows
 
@@ -1433,7 +1475,8 @@ def _repeat_summary(data: dict, group: str) -> dict | None:
 def _show_batch(api: Api, data: dict, batch: dict, out: Out) -> dict:
     names = scenario_names(api, data)
     summary = batch_summary(batch, names, out.lang)
-    out.line("%s  %s  %s %s" % (summary["batch_id"], summary["status"], out.t("score", "分数"), fmt_score(summary["score"])))
+    out.line("%s  %s  %s %s" % (summary["batch_id"], summary["status"], out.t("score", "分数"), fmt_score(summary["score"]))
+             + (out.t("  (no model)", "  （无模型）") if summary["model_disabled"] else ""))
     out.table([dict(r, score_text=fmt_score(r["score"]), result=out.t("yes", "有") if r["has_result"] else "") for r in summary["runs"]],
               [(out.t("Card", "任务卡"), "label"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
                (out.t("Run ID", "运行 ID"), "run_id"), (out.t("Result", "结果"), "result")])
@@ -1538,6 +1581,16 @@ def cmd_results_download(api: Api, args, out: Out):
     return {"run_id": run["id"], "card": slug or None, "path": str(target), "bytes": len(content)}
 
 
+def evaluation_metadata(batch: dict, version) -> dict:
+    """evaluation.json in a combined download (same fields as the website's)."""
+    off = bool(batch.get("model_disabled"))
+    meta = {"evaluation_id": batch.get("id"), "created_at": batch.get("created_at"), "phase_id": batch.get("phase_id"),
+            "revision_id": batch.get("revision_id"), "version": version, "model_provided": not off, "model_disabled": off}
+    if batch.get("repeat_group"):
+        meta["self_check_group"] = batch["repeat_group"]
+    return meta
+
+
 def cmd_results_download_all(api: Api, args, out: Out):
     data = portal_list(api)
     batch = find_batch(data, args.batch)
@@ -1565,7 +1618,11 @@ def cmd_results_download_all(api: Api, args, out: Out):
         raise CliError("download_failed", out.t("Could not download any card’s result.", "所有卡片的结果都下载失败。"))
     if errors:
         files["errors.txt"] = ("\n".join(errors) + "\n").encode("utf-8")
-    target = Path(args.output or ("results-%s.zip" % batch["id"][:8]))
+    titles = {r["id"]: r.get("title") for r in all_revisions(data)}
+    files["evaluation.json"] = (json.dumps(evaluation_metadata(batch, titles.get(batch.get("revision_id"))), indent=2, ensure_ascii=False)
+                                + "\n").encode("utf-8")
+    no_model = bool(batch.get("model_disabled"))
+    target = Path(args.output or ("results-%s%s.zip" % (batch["id"][:8], "-no-model" if no_model else "")))
     with zipfile.ZipFile(str(target), "w", zipfile.ZIP_DEFLATED) as z:
         for name, content in files.items():
             z.writestr(name, content)
@@ -1817,6 +1874,11 @@ def build_parser() -> argparse.ArgumentParser:
     es.add_argument("--from-env", metavar="VAR", help="take the value from this environment variable")
     es.add_argument("--plain", action="store_true", help="not secret: the value stays readable")
     add(env, "unset", cmd_env_unset, "delete a variable").add_argument("name")
+    add(env, "disable", cmd_env_disable, "switch a variable off: kept (secrets stay encrypted) but not given to evaluations").add_argument("name")
+    add(env, "enable", cmd_env_enable, "switch a variable on again").add_argument("name")
+    et = add(env, "tag", cmd_env_tag, "mark a variable model-related or not (model-related ones are left out of eval start --no-model)")
+    et.add_argument("name")
+    et.add_argument("tag", choices=["model", "none"])
     em = add(env, "model", cmd_env_model, "add a model service like the website's quick form: key (secret), base URL and model")
     em.add_argument("--provider", required=True, choices=[p["cli"] for p in MODEL_PROVIDERS])
     em.add_argument("--key", required=True, help="the API key ('-' reads it from standard input; recommended)")
@@ -1871,9 +1933,12 @@ def build_parser() -> argparse.ArgumentParser:
     st = yes(add(ev, "start", cmd_eval_start, "evaluate a confirmed version once (uses 1 of today's evaluations)"))
     st.add_argument("revision")
     st.add_argument("--phase", help="phase slug (default: the one the website uses)")
+    st.add_argument("--no-model", action="store_true", help="this evaluation without a model: no model-related team variables, "
+                    "OBSERVER_MODEL_DISABLED=1 (to compare with and without an LLM)")
     sc = yes(add(ev, "selfcheck", cmd_eval_selfcheck, "evaluate 3 times and average (uses 3 of today's evaluations)"))
     sc.add_argument("revision")
     sc.add_argument("--phase")
+    sc.add_argument("--no-model", action="store_true", help="all 3 evaluations without a model (see eval start --no-model)")
     add(ev, "list", cmd_eval_list, "evaluation records (newest first)").add_argument("--limit", type=int, default=20)
     add(ev, "show", cmd_eval_show, "one evaluation: status and score per card ('latest' = newest)").add_argument("batch")
     ew = add(ev, "wait", cmd_eval_wait, "wait until an evaluation ends; prints the scores (exit 9 unless scored)")

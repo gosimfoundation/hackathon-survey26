@@ -45,12 +45,17 @@ function readConfig(): LLMConfig {
   const baseUrl = (process.env.OPENAI_BASE_URL ?? DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
   const apiKey = (process.env.OPENAI_API_KEY ?? process.env.KIMI_API_KEY ?? "").trim();
   const model = (process.env.OPENAI_MODEL ?? "").trim() || DEFAULT_MODEL;
-  return { enabled: Boolean(baseUrl && apiKey), baseUrl, apiKey, model };
+  return { enabled: Boolean(baseUrl && apiKey) && !modelDisabled(), baseUrl, apiKey, model };
 }
 
-/** Short, user-facing config error, or null when a key is configured. */
+/** The platform sets OBSERVER_MODEL_DISABLED=1 for an evaluation without a model: rules only, no key needed. */
+export function modelDisabled(): boolean {
+  return process.env.OBSERVER_MODEL_DISABLED === "1";
+}
+
+/** Short, user-facing config error, or null when a key is configured (or the model is disabled). */
 export function configError(): string | null {
-  return readConfig().apiKey ? null : "missing API key: set OPENAI_API_KEY";
+  return readConfig().apiKey || modelDisabled() ? null : "missing API key: set OPENAI_API_KEY";
 }
 
 export class LLMAdvisor {

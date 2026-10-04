@@ -10,6 +10,27 @@ a per-run cap on proxied bytes and the path of every destination in the egress l
 Node settings exist only as the Supabase secret `OBSERVER_EGRESS_ROUTES` and in the
 claim payload; see `ops/egress-routes.md`.
 
+## Evaluations without a model and switched-off variables
+
+Migration `20261005071000_no_model_evaluations`.
+
+* **本次不提供模型 / This evaluation without a model** (website checkbox next to 评测 / 评测 3 次取平均;
+  `survey26 eval start|selfcheck --no-model`; portal `evaluate` with `no_model: true`,
+  `observer_create_batch(..., p_no_model)`, `observer_create_repeat_batches(..., p_no_model)`): the batch gets
+  `model_disabled = true`. For its runs `observer_run_team_egress` leaves out every variable tagged `model`, so
+  those values never leave the database for that run, and returns `model_disabled: true`; the scheduler puts
+  `model_disabled: true` into the engine (colocated) or execute job input and the runtime sets
+  `OBSERVER_MODEL_DISABLED=1` (and drops the model-proxy settings). The network policy is unchanged. The retired
+  model proxy refuses such runs (`observer_model_route`: `model_disabled`). Only project evaluations in
+  non-sealed phases; the hidden final (`observer_run_hidden_final`) never sets it. The flag is shown as 「无模型」
+  in the evaluation records and in `evaluation.json` of the combined result download.
+* **The `model` tag**: set automatically for `OPENAI_*`, `ANTHROPIC_*`, `*_API_KEY`, `*_BASE_URL`, `*_MODEL`,
+  `*_MODEL_NAME`, `*_PROTOCOL` and `*LLM_*` names and for variables saved by 「添加模型服务」; teams change it
+  in 「密钥与网络」 or with `survey26 env tag NAME model|none` (`observer_set_team_variable_flags`).
+* **Switched-off variables** (`disabled`, 「停用」, `survey26 env disable|enable NAME`): kept (secrets stay
+  encrypted) but given to no run and no preparation job.
+* Statistics: `private.stats_llm_usage_daily.model_disabled` (part of the key) for paired comparisons.
+
 ## Open egress and the egress log (current)
 
 With `observer_hardening.open_egress` on (or the team in `open_egress_teams`;

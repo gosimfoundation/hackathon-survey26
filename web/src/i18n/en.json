@@ -1910,6 +1910,19 @@
           "kimi": "Kimi Coding Plan: use the model kimi-for-coding or k3. These models only accept the default temperature, so do not send temperature. Accounts outside mainland China should change the base URL to https://api.kimi.ai/coding/v1.",
           "anthropic": "Anthropic uses the Messages API and is saved as ANTHROPIC_* variables. The official examples only read OPENAI_*, so your program reads these with the Anthropic SDK."
         }
+      },
+      "flags": {
+        "help": "Each variable can be switched off: it is kept (secrets stay encrypted) but not given to your program in evaluations; switch it on again instead of deleting and re-adding it. Variables marked “Model” are left out of evaluations started with “This evaluation without a model”; model-service variables and names such as OPENAI_*, ANTHROPIC_*, *_API_KEY, *_BASE_URL and *_MODEL are marked automatically, and you can change the mark.",
+        "enabled_label": "On",
+        "model_label": "Model",
+        "model_help": "Left out of evaluations started with “This evaluation without a model”.",
+        "off_pill": "Off",
+        "disable": "Switch off",
+        "enable": "Switch on",
+        "service_help": "Switched off: the key is kept but not given to your program in evaluations; switch it on again at any time.",
+        "disabled": "Switched off: not given to your program in evaluations.",
+        "enabled": "Switched on.",
+        "model_saved": "Updated."
       }
     },
     "model_api": {

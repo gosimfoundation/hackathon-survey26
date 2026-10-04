@@ -54,7 +54,19 @@ def _team(payload: dict) -> dict | None:
 
 def _team_environment(environment: dict[str, str]) -> dict[str, str]:
     """Run identity only: no model-proxy settings next to the team's own variables."""
-    return {key: environment[key] for key in ("OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID")}
+    return {key: environment[key] for key in ("OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID",
+                                              "OBSERVER_MODEL_DISABLED") if key in environment}
+
+
+_PROXY_MODEL_ENV = ("OPENAI_BASE_URL", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_KEY")
+
+
+def _without_model(payload: dict, environment: dict[str, str]) -> dict[str, str]:
+    """An evaluation without a model (本次不提供模型): the platform has already left out the team's
+    model variables; the project also gets no model-proxy settings and OBSERVER_MODEL_DISABLED=1."""
+    if payload.get("model_disabled") is not True:
+        return environment
+    return {**{k: v for k, v in environment.items() if k not in _PROXY_MODEL_ENV}, "OBSERVER_MODEL_DISABLED": "1"}
 
 
 def _team_egress(team: dict, client_env: dict[str, str]) -> TeamEgress:
@@ -101,6 +113,7 @@ def execute_job(payload: dict, root: Path, http: Http) -> dict:
         "OPENAI_BASE_URL": payload["model_base_url"], "OPENAI_API_KEY": payload["run_credential"],
         "ANTHROPIC_BASE_URL": anthropic_base(payload["model_base_url"]), "ANTHROPIC_API_KEY": payload["run_credential"],
     }
+    environment = _without_model(payload, environment)
     runtime= DockerWorkspace(workspace, manifest, manifest.image)
     team = _team(payload)
     secrets = (payload['run_credential'], *_team_secrets(team))
@@ -218,6 +231,7 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
         if payload.get("instance") is not None:
             raise JobError("colocated_private_instance")
         runtime, environment = _participant_runtime(payload, participant, root, http, sealed)
+        environment = _without_model(payload, environment)
         team = _team(payload)
         secrets = (payload["run_credential"], participant["run_credential"], *_team_secrets(team))
         # Team egress: the team's variables and allowed domains, nothing else.
@@ -249,8 +263,9 @@ def engine_job(payload: dict, root: Path, http: Http, *, repository_credentials=
                 if egress:
                     egress.start()
                     runtime.network = egress.network
-                    environment = {**environment, "OPENAI_BASE_URL": egress.base_url,
-                                   "ANTHROPIC_BASE_URL": egress.anthropic_base_url}
+                    if "OPENAI_API_KEY" in environment:
+                        environment = {**environment, "OPENAI_BASE_URL": egress.base_url,
+                                       "ANTHROPIC_BASE_URL": egress.anthropic_base_url}
                 transport = runtime.start(environment)
             provider = ColocatedProvider(transport, client, SessionClient(payload["session_url"], participant["run_credential"]))
             result, digest = run_session(scenario, output, client, wallclock_seconds=payload["runtime_seconds"],

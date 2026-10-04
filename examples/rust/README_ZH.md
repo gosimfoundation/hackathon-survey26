@@ -105,6 +105,7 @@ key），就能在没有真实服务商参与的情况下对着公开练习任�
 - **Key**：`OPENAI_API_KEY`；如果只有 Kimi 的 key，也可以用 `KIMI_API_KEY`
   这个名字。两个都没设置时，智能体会打印
   `missing API key: set OPENAI_API_KEY` 并退出，不会去读 stdin 上的任何内容。
+- `OBSERVER_MODEL_DISABLED=1`（选择「本次不提供模型」或 `survey26 eval start --no-model` 的评测由平台设置）：此时不需要 key，智能体只用规则运行，便于对比有无大模型的表现。
 - **端点/模型**：默认是 Kimi Coding Plan
   （https://www.kimi.com/code/docs/en/），一个 OpenAI 兼容的 chat-completions
   接口：base URL 为 `https://api.kimi.com/coding/v1`，模型为 `k3`。设置
