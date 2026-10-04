@@ -20,14 +20,15 @@ What happens (same engine the platform uses):
   * your agent starts as its own process, speaking participant-agent-protocol-v4 (one JSON
     object per line on stdin/stdout; stderr goes to <out>/agent.log);
   * it gets one `initialize`, then `decision_request` after `decision_request`, and answers each one;
-  * one time budget (default: the card's own limit, capped at 900) starts at the first request. As on the
-    platform it is a FAIR CLOCK (challenge/fair_clock.py): it counts only your agent's own time (from each
-    decision_request until your response, plus anything it computes in the background), never the engine's;
-    computing seconds are divided by this machine's speed factor (measured with a fixed calibration
-    workload; 1.0 = the median GitHub evaluation runner), waiting seconds (e.g. a model call) count 1:1.
-    On a fast laptop the factor is below 1, so you get FEWER real seconds than 900 -- e.g. factor 0.4
-    means about 360 real seconds of computing. Each request's `wallclock.remaining_seconds` already says
-    how many real seconds of computing you have left on this machine; rely on it;
+  * one time budget (default: the card's own limit, capped at 900) starts at the first request, with the
+    platform's timing rule (challenge/fair_clock.py): it is counted only during your agent's turns (from
+    each decision_request until your response; the engine's time is free). Within a turn, your process's
+    CPU time is divided by this machine's speed factor (a fixed calibration workload; 1.0 = the median
+    GitHub evaluation runner) and the rest of the turn (waiting, e.g. on a model) counts at real time.
+    A fast laptop has a factor below 1, so the same 900 buys LESS real CPU time than on the platform's
+    median machine -- e.g. factor 0.4 means about 360 s of CPU. Each request's
+    `wallclock.remaining_seconds` is the budget left under this rule; rely on it. CPU is metered on
+    Linux and macOS (main process only on macOS); elsewhere a whole turn counts as CPU;
   * at the end it gets one `finish` message, stdin is closed, and it has 30 grace seconds to exit.
 
 --agent takes a full shell command (quoted), not just a Python script, so any language works:
@@ -166,8 +167,8 @@ def main(argv=None) -> int:
     scratch.mkdir(exist_ok=True)
     env, dotenv_keys = agent_environment(agent_cwd, scratch, card, budget, args.inherit_env)
     say = (lambda text: None) if args.quiet else (lambda text: print(text, file=sys.stderr, flush=True))
-    say(f"[run_local] card={card['card_id']} agent={args.agent!r} cwd={agent_cwd} budget={budget:g} normalized s "
-        f"(fair clock; speed factor measured at start) dotenv_keys={dotenv_keys}")
+    say(f"[run_local] card={card['card_id']} agent={args.agent!r} cwd={agent_cwd} budget={budget:g} s "
+        f"(counted only in your turns; CPU divided by the speed factor) dotenv_keys={dotenv_keys}")
 
     transport = JsonlTransport(command, cwd=agent_cwd, environment=env, initialization_seconds=args.init_timeout)
     transport.protocol_version = PROTOCOL_VERSION  # same line project_platform.trusted_engine.run_v4_session runs

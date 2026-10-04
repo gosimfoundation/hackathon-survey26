@@ -58,6 +58,8 @@ q = deploy.quote
 SCHEDULED_RUNS_PER_MINUTE = 5
 # Runner time on top of the card's runtime: job start, project image, scoring, upload.
 OVERHEAD_MINUTES = 3
+# Slowest GitHub-hosted runner measured for the fair clock (docs/fair-clock.md): factor about 1.2.
+SLOWEST_RUNNER_FACTOR = 1.25
 
 
 def one(rows, what):
@@ -171,7 +173,9 @@ def estimate(users, scenarios, runtime_seconds, capacity, pool=None):
     """Runner minutes and wall-clock time for new batches run by the given users (one entry per batch)."""
     runs = len(users) * int(scenarios or 0)
     if not runs: return '  estimate: nothing to run'
-    per_run = (runtime_seconds or 0) / 60 + OVERHEAD_MINUTES
+    # Fair clock (challenge/fair_clock.py): the budget is normalized agent time, so a full run
+    # takes up to SLOWEST_RUNNER_FACTOR x the budget in real time (plus a little engine time).
+    per_run = (runtime_seconds or 0) * SLOWEST_RUNNER_FACTOR / 60 + OVERHEAD_MINUTES
     minutes = math.ceil(runs * per_run)
     hours = (runs / SCHEDULED_RUNS_PER_MINUTE + per_run) / 60
     lines = [f'  estimate: {runs} runs, up to ~{minutes} runner minutes ({per_run:.0f} min per run at most),'

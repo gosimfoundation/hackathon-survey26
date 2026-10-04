@@ -273,7 +273,9 @@ $$
 - `footprint`：以各天区的 `component_id` 和赤经、赤纬顶点 `vertices` 描述观测范围。
 - `targets`：用 `columns` 声明目标表的列名，`rows` 中每行的值按相同顺序排列。
 - `limits`：给出智能体运行和响应的限制。
-    - `global_wallclock_seconds`：整张任务卡的实际运行时间上限，示例中为 900 秒。
+    - `global_wallclock_seconds`：整张任务卡的时间预算，按计时规则计算（见下文「时间限制」），示例中为 900 秒。
+    - `clock`：计时规则，目前为 `fair-clock-v1`。
+    - `speed_factor`：运行开始前测得的本机速度系数（1.0 为评测机器的中位速度，越大越慢）。
     - `max_consecutive_reports`：连续提交 `report` 的次数上限，与 `scoring.reporting.max_consecutive_reports` 相同。达到上限后再次提交 `report` 会导致终止该任务卡。该次超限动作不再结算。提交 `wait` 或 `observe` 后计数归零；正确举报仍算一次 `report`。
     - `response_max_bytes`：每次智能体提交的整条 `decision_response` JSON 行的大小上限，包括协议字段和动作参数；按 UTF-8 编码后的字节数计算，不含末尾换行符。示例中的 524288 字节即 512 KiB。
     - `decision_timeout`：决策时限规则。当前只有上述全局运行时间限制，没有单次决策的独立时限。
@@ -293,7 +295,7 @@ $$
     "survey_end_utc": "2026-10-08T08:45:00Z",
     "observe_action_index": 0,
     "running_total": 0.0,
-    "wallclock": {"elapsed_seconds": 0.047, "remaining_seconds": 899.953},
+    "wallclock": {"elapsed_seconds": 0.047, "remaining_seconds": 899.953, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002},
     "latest_bulletin": {
       "record_type": "bulletin",
       "slot_id": "N20261001-S001",
@@ -340,7 +342,7 @@ $$
 - `now_utc` 和 `survey_end_utc`：当前模拟时间和观测周期结束时间，均使用 UTC。示例中进行了一周观测（10月1日至8日）。
 - `observe_action_index`：截至当前已执行的观测动作数。
 - `running_total`：截至当前各目标最佳得分之和；它不包含 `required` 罚分、均匀度罚分、限时观测请求奖励或 `report` 奖惩，因此不等于此刻停止时的最终总分。
-- `wallclock`：智能体实际运行时间的已用量和剩余量。
+- `wallclock`：按计时规则（见下文「时间限制」）计算的智能体时间预算。`elapsed_seconds`、`remaining_seconds` 是已用和剩余的预算；`speed_factor` 是当前速度系数；`cpu_seconds`、`wait_seconds` 是到目前为止在智能体回合内测得的实际 CPU 秒数和等待秒数。自行测得的 CPU 时间除以 `speed_factor` 即为预算秒数，等待时间一比一计入。
 - `latest_bulletin` 和 `latest_forecast`：截至当前时刻最新发布的一条公告以及天气和时间预报。
 - `active_requests`：当前已经发布、尚未到期的限时观测请求及其实时进度；没有活动请求时为空数组。
 - `new_messages`：自上次决策请求以来新送达的完整消息对象，包括公告、天气和事件预报、限时观测请求，以及适用时的请求结算、举报结果或状态更正。一次动作若跨过多个发布时间，这些消息会在下次请求中一起送达。
@@ -569,7 +571,7 @@ $$
 
 这些字段的含义如下：
 
-- `now_utc`：当前模拟时刻。举报不推进模拟时间，因此与提交 `report` 时相同；处理动作仍会消耗实际运行时间。
+- `now_utc`：当前模拟时刻。举报不推进模拟时间，因此与提交 `report` 时相同；后端处理该动作的时间不计入智能体的时间。
 - `latest_bulletin`：最近一次按 slot 发布的公告。举报结果不会改写这条公告，也不会追加到下一条天气公告中；常规公告会在下一个 slot 起点继续发布。
 - `new_messages`：本次新增一条举报结果通知。通知中的各个 key 为：
     - `record_type: "report_result"`：表明这是一条举报结果通知。
@@ -741,7 +743,7 @@ $$
 
 动作只能包含其规定字段。无法解析的 JSON、超过 `response_max_bytes` 的响应、错误的协议版本或 `decision_sequence`、未知或多余字段、超范围或非有限数值、非整数秒数、未知目标、重复光纤或目标，以及超过连续举报上限后继续 `report`，都会以 `agent_error` 终止任务卡；超限或非法动作本身不结算，但此前已完成的有效观测和举报奖惩仍参与最终得分。光纤编号按整数解释，因此字符串键 `"5"` 和 `"05"` 会被视为同一根光纤。
 
-全局实际运行时间从第一条 `decision_request` 开始计算，包含智能体思考和后端处理所消耗的时间，没有独立的单轮决策时限。时间耗尽时任务以 `global_wallclock_expired` 结束。正常结束后，后端会发送一条无需回复的最终 `finish` 消息，然后关闭输入：
+**时间限制。** 预算只在智能体的回合内计时：从每条 `decision_request` 发出到收到回复为止；回合之外后端模拟与处理的时间不计入。回合内计入 `cpu / speed_factor + (回合时长 − cpu)`：`cpu` 是回合内智能体全部进程和线程的 CPU 时间，由后端从容器的 cgroup 记账读取（不采用自报）；回合的其余时间（等待模型接口、网络或磁盘）按实际秒数计入。`speed_factor` 由后端在同一台机器上运行固定的校准程序测得，运行开始前测一次、运行中约每 60 秒复测，测量时暂停智能体（1.0 为评测机器的中位速度，越大越慢）。每条请求的 `wallclock.remaining_seconds` 是按此规则剩余的预算，请以它为准。为防止程序卡死，另有预算 3 倍（900 秒对应 2700 秒）的实际时间上限。没有独立的单轮决策时限。预算耗尽时任务以 `global_wallclock_expired` 结束，此后到达的回复不予处理。
 
 ```json
 {
@@ -855,7 +857,7 @@ $$
     - `observation_requests.completion_factor_threshold`：限时观测请求中单个目标的公开完成因子门槛。
     - `observation_requests.miss_penalty`：未完成请求的罚分；当前固定为 0。
 - `limits`
-    - `global_wallclock_seconds`：整张任务卡的实际运行时间预算。
+    - `global_wallclock_seconds`：整张任务卡的时间预算，按计时规则计算。
     - `max_consecutive_reports`：协议层重复给出的连续举报上限，与评分配置中的同名含义一致。
     - `response_max_bytes`：单条 `decision_response` 的 UTF-8 字节上限。
     - `decision_timeout`：决策时限模式；当前为只有全局时限。

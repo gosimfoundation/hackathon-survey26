@@ -1,4 +1,4 @@
-"""Fair clock (challenge/fair_clock.py): normalized think time, engine time free, hard cap."""
+"""Fair clock (challenge/fair_clock.py): charged turn time, engine time free, hard cap."""
 from __future__ import annotations
 
 import os
@@ -50,47 +50,29 @@ def test_gauge_is_a_robust_median_of_recent_samples():
     assert fair_clock.REFERENCE_UNIT_SECONDS > 0 and 0.01 < fair_clock.time_unit() < 30
 
 
-def test_turn_charges_computing_by_speed_and_waiting_one_to_one():
+def test_turn_charges_cpu_by_speed_and_waiting_at_real_time():
     fake = Fake()
     clock = FairClock(900, gauge=fixed(2.0), clock=fake.clock, cpu=fake.cpu)
     clock.calibrate()
-    clock.agent_started()
     clock.begin_turn()
-    fake.now += 10; fake.used += 10                 # 10 s computing on a machine 2x slower
+    fake.now += 10; fake.used += 10                 # 10 s CPU on a machine 2x slower
     assert clock.end_turn() == pytest.approx(5.0)
-    fake.now += 30                                  # engine simulates: free
+    fake.now += 30; fake.used += 7                  # engine time (and anything outside the window): free
     clock.begin_turn()
-    fake.now += 10                                  # 10 s waiting (model API)
-    assert clock.end_turn() == pytest.approx(10.0)
-    view = clock.snapshot()
-    assert view["normalized_remaining_seconds"] == pytest.approx(885.0)
-    assert view["remaining_seconds"] == pytest.approx(1770.0)   # real seconds of this machine
-    assert view["speed_factor"] == 2.0
+    fake.now += 10; fake.used += 2                  # 2 s CPU + 8 s waiting (model API)
+    assert clock.end_turn() == pytest.approx(1.0 + 8.0)
+    assert clock.snapshot() == {"elapsed_seconds": 14.0, "remaining_seconds": 886.0, "speed_factor": 2.0,
+                                "cpu_seconds": 12.0, "wait_seconds": 8.0}
     two_threads = FairClock(900, gauge=fixed(1.0), clock=fake.clock, cpu=fake.cpu)
-    two_threads.agent_started(); two_threads.begin_turn()
-    fake.now += 4; fake.used += 8                   # parallel work never costs more than the turn
+    two_threads.begin_turn()
+    fake.now += 4; fake.used += 8                   # parallel work never costs more than the window
     assert two_threads.end_turn() == pytest.approx(4.0)
 
 
-def test_background_computing_between_turns_is_charged():
-    fake = Fake()
-    clock = FairClock(900, gauge=fixed(0.5), clock=fake.clock, cpu=fake.cpu)
-    clock.calibrate(); clock.agent_started()
-    fake.now += 3; fake.used += 2                   # reading initialize before the first request
-    clock.begin_turn()
-    assert clock.charged == pytest.approx(4.0)       # 2 CPU s on a 2x faster machine
-    fake.now += 1; fake.used += 1
-    clock.end_turn()
-    fake.now += 5; fake.used += 5                   # keeps computing while the engine simulates
-    clock.begin_turn()
-    assert clock.charged == pytest.approx(4.0 + 2.0 + 10.0)
-    assert clock.summary()["background_seconds"] == pytest.approx(7.0)
-
-
-def test_without_a_cpu_meter_every_turn_second_counts_as_computing():
+def test_without_a_cpu_meter_the_whole_window_counts_as_cpu():
     fake = Fake()
     clock = FairClock(100, gauge=fixed(4.0), clock=fake.clock)
-    clock.calibrate(); clock.agent_started(); clock.begin_turn()
+    clock.calibrate(); clock.begin_turn()
     fake.now += 40
     assert clock.end_turn() == pytest.approx(10.0)
     assert clock.summary()["cpu_meter"] == "none"
@@ -100,7 +82,7 @@ def test_speed_is_resampled_with_the_agent_frozen_and_the_hard_cap_holds():
     fake = Fake()
     clock = FairClock(100, gauge=fixed(1.0), clock=fake.clock, cpu=fake.cpu, pause=fake.pause,
                       resume=fake.resume, interval=60)
-    clock.calibrate(); clock.agent_started(); clock.begin_turn(); clock.end_turn()
+    clock.calibrate(); clock.begin_turn(); clock.end_turn()
     fake.now += 61
     clock.begin_turn(); clock.end_turn()
     assert fake.events == ["pause", "resume"] and clock.summary()["speed_samples"] == 2
@@ -149,11 +131,11 @@ def test_engine_end_to_end_compute_and_wait(bundle, tmp_path):
     spin = run_fake(bundle, tmp_path / "spin", "spin", 0.5, 2)
     assert spin["termination_reason"] == "global_wallclock_expired"
     assert spin["fair_clock"]["cpu_meter"] == "cpu" and spin["accounted_wallclock_seconds"] == 2
-    # Waiting (1 s per request, like a model call) counts one to one, however slow the
+    # Waiting (1 s per request, like a model call) is charged at real time, however slow the
     # machine (factor 4): a 3 s budget lasts three requests, not twelve.
     nap = run_fake(bundle, tmp_path / "nap", "nap", 4.0, 3)
     assert nap["termination_reason"] == "global_wallclock_expired"
-    assert 3 <= nap["decision_requests"] <= 4 and nap["fair_clock"]["busy_seconds"] < 0.5
+    assert 3 <= nap["decision_requests"] <= 4 and nap["fair_clock"]["cpu_seconds"] < 0.5
     # A hung agent ends at the hard cap (3 x budget) at the latest.
     idle = run_fake(bundle, tmp_path / "idle", "sleep", 4.0, 2)
     assert idle["termination_reason"] == "global_wallclock_expired" and idle["fair_clock"]["hard_cap_reached"]
@@ -161,12 +143,11 @@ def test_engine_end_to_end_compute_and_wait(bundle, tmp_path):
 
 
 @metered
-def test_engine_charges_background_threads(bundle, tmp_path):
+def test_engine_meters_threads_inside_the_window(bundle, tmp_path):
     honest = run_fake(bundle, tmp_path / "greedy", "greedy", 1.0, 30)
     assert honest["termination_reason"] in ("survey_complete", "agent_finished")
-    sneaky = run_fake(bundle, tmp_path / "background", "background", 1.0, 2)
-    assert sneaky["termination_reason"] == "global_wallclock_expired"
-    assert sneaky["fair_clock"]["background_seconds"] > 0
+    busy = run_fake(bundle, tmp_path / "background", "background", 1.0, 30)
+    assert busy["fair_clock"]["cpu_meter"] == "cpu" and busy["fair_clock"]["cpu_seconds"] > 0
 
 
 def test_initialize_and_requests_carry_the_clock(bundle, tmp_path):
@@ -176,4 +157,4 @@ def test_initialize_and_requests_carry_the_clock(bundle, tmp_path):
     assert payload["limits"]["clock"] == "fair-clock-v1" and payload["limits"]["speed_factor"] == 1.25
     view = v4_workflow.V4Workflow.request_message(1, {}, FairClock(60, gauge=fixed(1.25)).snapshot())
     assert set(view["payload"]["wallclock"]) == {"elapsed_seconds", "remaining_seconds", "speed_factor",
-                                                 "normalized_elapsed_seconds", "normalized_remaining_seconds"}
+                                                 "cpu_seconds", "wait_seconds"}

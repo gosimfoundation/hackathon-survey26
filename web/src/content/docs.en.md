@@ -273,7 +273,9 @@ The meaning of each group of fields in `initialize` is as follows:
 - `footprint`: describes the observing extent via each region's `component_id` and its right-ascension/declination vertex list `vertices`.
 - `targets`: declares the target table's column names in `columns`, with each row in `rows` holding values in the same order.
 - `limits`: gives the limits on the agent's runtime and responses.
-    - `global_wallclock_seconds`: the wall-clock time budget for the entire task card; 900 seconds in the example.
+    - `global_wallclock_seconds`: the time budget for the entire task card under the timing rule (see "Time limit" below); 900 seconds in the example.
+    - `clock`: the timing rule, currently `fair-clock-v1`.
+    - `speed_factor`: this machine's speed factor measured before the run (1.0 = the median evaluation machine; larger = slower).
     - `max_consecutive_reports`: the cap on consecutive `report` submissions, identical to `scoring.reporting.max_consecutive_reports`. Submitting another `report` after reaching the cap terminates the task card; that over-limit action is not settled. The counter resets to zero after a `wait` or `observe`; a correct report still counts as one `report`.
     - `response_max_bytes`: the size cap for the agent's entire `decision_response` JSON line, including both protocol fields and action parameters; measured in UTF-8 encoded bytes, excluding the trailing newline. The example value 524288 bytes is 512 KiB.
     - `decision_timeout`: the decision time-limit rule. Currently there is only the global runtime limit above; there is no separate time limit for an individual decision.
@@ -293,7 +295,7 @@ Whenever the agent needs to make a decision, the system sends a `decision_reques
     "survey_end_utc": "2026-10-08T08:45:00Z",
     "observe_action_index": 0,
     "running_total": 0.0,
-    "wallclock": {"elapsed_seconds": 0.047, "remaining_seconds": 899.953},
+    "wallclock": {"elapsed_seconds": 0.047, "remaining_seconds": 899.953, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002},
     "latest_bulletin": {
       "record_type": "bulletin",
       "slot_id": "N20261001-S001",
@@ -340,7 +342,7 @@ The meaning of each field is as follows:
 - `now_utc` and `survey_end_utc`: the current simulated time and the end time of the observing period, both in UTC. The example runs one week of observing (October 1 to 8).
 - `observe_action_index`: the number of `observe` actions executed so far.
 - `running_total`: the sum of each target's best score so far; it excludes the `required` penalty, the uniformity penalty, observation-request rewards, and `report` rewards/penalties, so it is not equal to the final score if the run stopped at this instant.
-- `wallclock`: the agent's elapsed and remaining wall-clock runtime.
+- `wallclock`: the agent's time budget under the timing rule (see "Time limit" below). `elapsed_seconds` and `remaining_seconds` are the budget used and left; `speed_factor` is the current speed factor; `cpu_seconds` and `wait_seconds` are the real CPU and waiting seconds measured inside the agent's turns so far. CPU time you measure yourself becomes budget seconds after dividing by `speed_factor`; waiting counts one to one.
 - `latest_bulletin` and `latest_forecast`: the most recently issued bulletin and the weather/event forecast as of the current moment.
 - `active_requests`: currently issued, not-yet-expired observation requests and their real-time progress; an empty array when there are no active requests.
 - `new_messages`: the complete message objects newly delivered since the last decision request, including bulletins, weather/event forecasts, observation requests, and, when applicable, request settlements, report results, or state resynchronizations. If one action spans multiple issuance times, these messages all arrive together in the next request.
@@ -569,7 +571,7 @@ Instrument-fault events reduce `instrument_efficiency` but never appear directly
 
 The meaning of these fields is as follows:
 
-- `now_utc`: the current simulated time. Since a report does not advance simulated time, it is the same as when `report` was submitted; processing the action still consumes real runtime.
+- `now_utc`: the current simulated time. Since a report does not advance simulated time, it is the same as when `report` was submitted; the backend's processing of the action is not charged to the agent.
 - `latest_bulletin`: the most recently issued per-slot bulletin. A report result does not rewrite this bulletin or get appended to the next weather bulletin; ordinary bulletins continue to be issued at the start of the next slot.
 - `new_messages`: contains one newly added report-result notice. The keys in that notice are:
     - `record_type: "report_result"`: indicates this is a report-result notice.
@@ -741,7 +743,7 @@ If the agent no longer wishes to keep observing, it can voluntarily submit:
 
 An action may only contain its specified fields. Unparseable JSON, a response exceeding `response_max_bytes`, a wrong protocol version or `decision_sequence`, unknown or extra fields, out-of-range or non-finite numeric values, non-integer seconds, unknown targets, a duplicate fibre or target, or continuing to `report` past the consecutive-report cap — all of these terminate the task card with `agent_error`; the over-limit or invalid action itself is not settled, but all valid observations and report rewards/penalties completed before it still count toward the final score. Fibre IDs are interpreted as integers, so the string keys `"5"` and `"05"` are treated as the same fibre.
 
-Global wall-clock runtime is measured starting from the first `decision_request` and includes both the agent's thinking time and the backend's processing time; there is no separate time limit for an individual round. When the time budget is exhausted, the task card ends with `global_wallclock_expired`. On a normal ending, the backend sends one final `finish` message that requires no reply, and then closes its input:
+**Time limit.** The budget is counted only during the agent's turns: from each `decision_request` until its response arrives. The backend's simulation and processing time outside the turns is not counted. Within a turn, `charged = cpu / speed_factor + (turn − cpu)`: `cpu` is the CPU time of all the agent's processes and threads during the turn, read by the backend from the container's cgroup accounting (never self-reported); the remainder of the turn (waiting on a model API, the network or disk) counts at real time. `speed_factor` comes from a fixed calibration program the backend runs on the same machine before the run and about every 60 seconds during it, with the agent paused (1.0 = the median evaluation machine, larger = slower). Every request reports the budget left under this rule in `wallclock.remaining_seconds`; plan by it. A real-time cap of 3 times the budget (2,700 seconds for 900) stops programs that hang. There is no separate time limit for an individual round. When the budget is exhausted, the task card ends with `global_wallclock_expired`; a response that arrives after that is ignored.
 
 ```json
 {
@@ -855,7 +857,7 @@ During a formal run, the configuration participants can rely on comes from `init
     - `observation_requests.completion_factor_threshold`: the public per-target completion-factor threshold for observation requests.
     - `observation_requests.miss_penalty`: the penalty for an unmet request; currently fixed at 0 in this protocol.
 - `limits`
-    - `global_wallclock_seconds`: the wall-clock runtime budget for the entire task card.
+    - `global_wallclock_seconds`: the time budget for the entire task card, in seconds under the timing rule.
     - `max_consecutive_reports`: the consecutive-report cap repeated at the protocol level, with the same meaning as the identically named field in the scoring configuration.
     - `response_max_bytes`: the UTF-8 byte cap for a single `decision_response`.
     - `decision_timeout`: the decision time-limit mode; currently only a global limit applies.

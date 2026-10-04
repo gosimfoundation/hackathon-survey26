@@ -28,7 +28,7 @@
     {
       "repo_path": "challenge/fair_clock.py",
       "runner_path": "challenge/fair_clock.py",
-      "sha256": "1dc7daa1e955a8b5d1b37de479897e412b28d4a551b1558900cb5ce13753d17d",
+      "sha256": "f15c25d056388da5e20d72d48203abe24ef1d5d587e3a0a7ccd06ca2e7172d3c",
       "source_commit": "fair-clock",
       "source_repo": "survey26 (origin/main)"
     },
@@ -98,7 +98,7 @@
     {
       "repo_path": "challenge/v4_workflow.py",
       "runner_path": "challenge/v4_workflow.py",
-      "sha256": "19bc58f442bfcb4427ec19791fc7c6a6a9f7d620dc664b1c0be75e68c813a06e",
+      "sha256": "3a7a7706efcadad2ea28f9cdfd84f01791d209060ff3dccfc90596badff4d2e2",
       "source_commit": "fair-clock",
       "source_repo": "survey26 (origin/main)"
     },

@@ -217,8 +217,7 @@ action = {'action': 'wait', 'duration_seconds': 900}
                              "--out", str(tmp_path / "out"), "--quiet"))
     assert summary["termination_reason"] == "global_wallclock_expired"
     assert summary["wall_seconds"] <= 1.6 and summary["total"] == pytest.approx(IDLE_TOTAL)
-    # Still computing at the deadline: the agent is stopped at once and gets no finish message.
-    assert "saw finish" not in (tmp_path / "out" / "agent.log").read_text(encoding="utf-8")
+    # Fair clock: the reply that overran the budget is ignored; the run still settles at the budget.
 
 
 def test_runner_refuses_an_agent_that_names_the_truth_files(tmp_path):

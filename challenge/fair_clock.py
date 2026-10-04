@@ -1,26 +1,26 @@
-"""Fair clock: a card's time budget counts only the agent's own work, in normalized seconds.
+"""Fair clock: a card's time budget counts only the agent's own turns, in charged seconds.
 
 Evaluation machines differ in speed, so a fixed budget of real seconds buys different amounts
-of computation. This module charges the budget in *normalized seconds*:
+of computation. The budget (900 s) is charged as follows:
 
-* The machine's speed is measured with a fixed, short, single-thread Python workload
-  (``workload``). ``speed_factor = measured time / REFERENCE_UNIT_SECONDS``: 1.0 on the reference
-  machine (the median GitHub-hosted evaluation runner), above 1 on a slower machine, below 1 on a
-  faster one. It is measured before the run (5 repetitions, agent not started yet) and again about
-  every ``SAMPLE_INTERVAL_SECONDS`` between decisions (3 repetitions, the agent frozen meanwhile);
+* Window. A turn runs from sending a ``decision_request`` until the agent's response arrives.
+  Only turns are charged; engine and platform time outside them never is.
+* Inside a turn: ``charged = cpu / speed_factor + (window - cpu)``. ``cpu`` is the CPU time of
+  all the agent's processes and threads during the window, read by the platform from the
+  agent container's cgroup (never self-reported), at most the window's length. The rest of the
+  window (waiting on a model API, the network, disk) is charged at real time: it does not
+  depend on the machine, and leaving it free would let a team move computation to its own
+  servers. Without a CPU meter (for example a local run on Windows) the whole window counts as
+  CPU.
+* ``speed_factor = measured time / REFERENCE_UNIT_SECONDS`` of a fixed, short, single-thread
+  Python calibration workload (``workload``) run by the engine on the same machine: 1.0 on the
+  reference machine (the median GitHub-hosted evaluation runner), above 1 on a slower machine,
+  below 1 on a faster one. It is measured before the agent starts (5 repetitions) and again
+  about every ``SAMPLE_INTERVAL_SECONDS`` between turns with the agent frozen (3 repetitions);
   the factor in use is the median of the last ``WINDOW`` samples.
-* Only the agent is charged. A turn runs from sending a ``decision_request`` until the response
-  arrives. During a turn, seconds in which the agent's processes were computing (their CPU time,
-  at most the turn's length) are divided by the speed factor; the rest of the turn (waiting on a
-  model API or the network) counts one to one. On a crowded machine a process gets less CPU per
-  real second; the calibration measures that share too and the CPU time is scaled back by it. Between turns the engine simulates, which is never
-  charged; computation the agent keeps doing in the background meanwhile is charged like a turn's.
-  Without a CPU meter (for example a local run on Windows) every turn second counts as computing.
-* The agent is told the remaining budget in real seconds of *this* machine if spent computing
-  (``remaining = (budget - charged) * speed_factor``), so its own timers agree with it. The
-  normalized values and the factor are sent alongside.
-* A hard wall-clock cap of ``HARD_CAP_MULTIPLIER`` x budget from the first request bounds every
-  run, whatever the factor.
+* The agent sees the budget in these charged seconds (``remaining_seconds``), with the speed
+  factor and its own cumulative CPU and wait seconds, so it can convert its own measurements.
+* A hard real-time cap of ``HARD_CAP_MULTIPLIER`` x budget from the first request ends hung runs.
 
 The engine itself stays deterministic: timing only decides when the run ends, never how an
 action is simulated or scored. Pure standard library.
@@ -77,13 +77,6 @@ def time_unit(timer: Callable[[], float] = time.perf_counter) -> float:
     return timer() - started
 
 
-def time_unit_with_cpu() -> tuple[float, float]:
-    """(real seconds, CPU seconds) of one calibration unit."""
-    started, cpu = time.perf_counter(), time.process_time()
-    workload()
-    return time.perf_counter() - started, time.process_time() - cpu
-
-
 def _median(values) -> float:
     ordered = sorted(values)
     middle = len(ordered) // 2
@@ -91,36 +84,18 @@ def _median(values) -> float:
 
 
 class SpeedGauge:
-    """Speed factor from repeated calibration samples (median of medians, recent window).
+    """Speed factor from repeated calibration samples (median of medians, recent window)."""
 
-    ``measure()`` returns the real seconds of one unit, or (real seconds, CPU seconds). The CPU
-    share (CPU / real) shows contention: on a crowded machine a process gets less CPU per real
-    second, and the agent's CPU time is scaled back to real computing seconds with it."""
-
-    def __init__(self, reference: float = REFERENCE_UNIT_SECONDS,
-                 measure: Callable[[], float | tuple[float, float]] = time_unit_with_cpu, window: int = WINDOW) -> None:
+    def __init__(self, reference: float = REFERENCE_UNIT_SECONDS, measure: Callable[[], float] = time_unit,
+                 window: int = WINDOW) -> None:
         self.reference = float(reference)
         self.measure = measure
         self.window = window
         self.samples: list[float] = []
-        self.shares: list[float] = []
 
     def sample(self, repeats: int) -> float:
-        walls, shares = [], []
-        for _ in range(max(1, repeats)):
-            value = self.measure()
-            wall, cpu = value if isinstance(value, tuple) else (value, value)
-            walls.append(wall)
-            shares.append(cpu / wall if wall > 0 else 1.0)
-        self.samples.append(_median(walls))
-        self.shares.append(_median(shares))
+        self.samples.append(_median([self.measure() for _ in range(max(1, repeats))]))
         return self.factor
-
-    @property
-    def cpu_share(self) -> float:
-        if not self.shares:
-            return 1.0
-        return min(1.0, max(0.05, _median(self.shares[-self.window:])))
 
     @property
     def factor(self) -> float:
@@ -145,14 +120,12 @@ class FairClock:
         self.cpu, self.pause, self.resume = cpu, pause, resume
         self.interval = interval
         self.hard_cap = hard_cap_multiplier * self.budget
-        self.charged = 0.0          # normalized seconds
-        self.turn_seconds = 0.0     # real seconds inside turns
-        self.busy_seconds = 0.0     # real computing seconds inside turns
-        self.background_seconds = 0.0  # real computing seconds between turns
+        self.charged = 0.0        # charged seconds
+        self.window_seconds = 0.0  # real seconds inside turns
+        self.cpu_seconds = 0.0     # agent CPU seconds inside turns (at most the window)
         self.started: float | None = None
         self.next_sample = 0.0
         self.meter = "none"
-        self._mark: tuple[float, float | None] | None = None  # (clock, cpu) at the last turn boundary
         self._turn: tuple[float, float | None] | None = None
         self._factors: list[float] = []
 
@@ -190,49 +163,35 @@ class FairClock:
         except Exception:  # noqa: BLE001 - a meter that fails is treated as unavailable
             value = None
         if value is None:
-            self.cpu = None  # gone (for example the agent exited): later turns count as computing
+            self.cpu = None  # gone (for example the agent exited): later windows count as CPU
         else:
             self.meter = "cpu"
         return value
 
-    def _busy(self, start: tuple[float, float | None], wall: float, cpu_now: float | None, *, default: float) -> float:
-        if cpu_now is None or start[1] is None:
-            return default
-        return min(wall, max(0.0, cpu_now - start[1]) / self.gauge.cpu_share)
-
-    def agent_started(self) -> None:
-        """When the agent's processes start (initialize is sent): their CPU counters start at
-        zero, so computation before the first request (reading initialize) is charged too."""
-        self._mark = (self.clock(), 0.0 if self.cpu is not None else None)
-
     def begin_turn(self) -> None:
-        """Just before a decision_request is sent."""
+        """Just before a decision_request is sent (between turns: resample the speed if due)."""
         now = self.clock()
         if self.started is None:
             self.started = now
             self.next_sample = now + self.interval
-        cpu_now = self._cpu()
-        if self._mark is not None:
-            wall = now - self._mark[0]
-            background = self._busy(self._mark, wall, cpu_now, default=0.0)
-            self.background_seconds += background
-            self.charged += background / self.factor
-        if now >= self.next_sample:
+        elif now >= self.next_sample:
             self._resample()
         self._turn = (self.clock(), self._cpu())
 
     def end_turn(self) -> float:
-        """Right after the response (or the end of the turn); returns the charge in normalized s."""
+        """Right after the response (or the end of the turn); returns the charge in seconds."""
         now = self.clock()
         start = self._turn or (now, None)
-        wall = max(0.0, now - start[0])
+        window = max(0.0, now - start[0])
         cpu_now = self._cpu()
-        busy = self._busy(start, wall, cpu_now, default=wall)
-        charge = busy / self.factor + (wall - busy)
-        self.turn_seconds += wall
-        self.busy_seconds += busy
+        if cpu_now is None or start[1] is None:
+            cpu = window
+        else:
+            cpu = min(window, max(0.0, cpu_now - start[1]))
+        charge = cpu / self.factor + (window - cpu)
+        self.window_seconds += window
+        self.cpu_seconds += cpu
         self.charged += charge
-        self._mark = (now, cpu_now)
         self._turn = None
         return charge
 
@@ -240,7 +199,7 @@ class FairClock:
 
     @property
     def remaining(self) -> float:
-        """Normalized seconds left."""
+        """Charged seconds left."""
         return max(0.0, self.budget - self.charged)
 
     @property
@@ -254,18 +213,18 @@ class FairClock:
 
     def turn_deadline(self) -> float:
         """Latest moment (same clock) a response to the current request can still be accepted:
-        all remaining budget spent waiting (factor >= 1) or computing (factor < 1)."""
+        all remaining budget spent waiting (factor >= 1) or computing (factor < 1). A response
+        that arrives after the budget is spent is ignored."""
         now = self.clock()
         return now + min(self.remaining * max(1.0, self.factor), max(0.0, self.wall_left()))
 
     def snapshot(self) -> dict:
-        factor = self.factor
         return {
-            "elapsed_seconds": round(self.charged * factor, 3),
-            "remaining_seconds": round(self.remaining * factor, 3),
-            "speed_factor": round(factor, 4),
-            "normalized_elapsed_seconds": round(self.charged, 3),
-            "normalized_remaining_seconds": round(self.remaining, 3),
+            "elapsed_seconds": round(self.charged, 3),
+            "remaining_seconds": round(self.remaining, 3),
+            "speed_factor": round(self.factor, 4),
+            "cpu_seconds": round(self.cpu_seconds, 3),
+            "wait_seconds": round(self.window_seconds - self.cpu_seconds, 3),
         }
 
     def summary(self) -> dict:
@@ -278,10 +237,9 @@ class FairClock:
             "speed_factor_min": round(min(self._factors), 4) if self._factors else None,
             "speed_factor_max": round(max(self._factors), 4) if self._factors else None,
             "speed_samples": len(self._factors),
-            "cpu_share": round(self.gauge.cpu_share, 4),
-            "turn_seconds": round(self.turn_seconds, 3),
-            "busy_seconds": round(self.busy_seconds, 3),
-            "background_seconds": round(self.background_seconds, 3),
+            "window_seconds": round(self.window_seconds, 3),
+            "cpu_seconds": round(self.cpu_seconds, 3),
+            "wait_seconds": round(self.window_seconds - self.cpu_seconds, 3),
             "run_wall_seconds": round(wall, 3),
             "hard_cap_seconds": self.hard_cap,
             "hard_cap_reached": self.started is not None and wall >= self.hard_cap,

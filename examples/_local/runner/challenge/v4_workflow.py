@@ -48,7 +48,7 @@ FINISH_SCHEMA = "v4-finish-v1"
 RESULT_SCHEMA = "v4-workflow-result-v1"
 V4_SCENARIO_PATH = Path("config") / "v4_scenario.json"
 # Organizer decision 2026-09-28: every card run is capped at 900 s. Since 2026-10-04 these are
-# normalized seconds of the agent's own work (challenge/fair_clock.py), not raw wall clock.
+# charged seconds of the agent's own turns (challenge/fair_clock.py), not raw wall clock.
 MAX_WALLCLOCK_SECONDS = 900.0
 DEFAULT_SUN_ALTITUDE_LIMIT_DEG = -18.0
 RESPONSE_MAX_BYTES = 512 * 1024  # enforced by the transport (project_platform.transport)
@@ -259,7 +259,6 @@ class V4Workflow:
                 except Exception as error:  # noqa: BLE001 - reported to the caller below
                     state["initialization_error"] = error
                     raise AgentTermination(TERMINATION_AGENT_ERROR, "agent initialization failed") from None
-            fair.agent_started()
 
             def agent(snapshot):
                 fair.begin_turn()
@@ -301,10 +300,10 @@ class V4Workflow:
             "termination_reason": termination["reason"],
             "termination_detail": termination["detail"],
             "global_wallclock_seconds": budget,
-            # Normalized seconds charged to the agent (challenge.fair_clock), at most the budget.
+            # Seconds charged to the agent (challenge.fair_clock), at most the budget.
             "accounted_wallclock_seconds": clock["charged_seconds"],
             # Real seconds the engine waited for responses (inside turns).
-            "agent_wallclock_seconds": clock["turn_seconds"],
+            "agent_wallclock_seconds": clock["window_seconds"],
             "speed_factor": clock["speed_factor"],
             "fair_clock": clock,
             "ignored_in_flight_response": state["ignored_in_flight"],
