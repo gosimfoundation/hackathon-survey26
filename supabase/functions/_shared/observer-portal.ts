@@ -4,7 +4,16 @@ import { boundedJson, decryptCredential, encryptCredential, ProxyError } from ".
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sourceRepository } from "./observer-github.ts";
-import { fetchArchive, resultCopy, type ResultStorage, storedAgentLog } from "./observer-agent-log.ts";
+import {
+  agentLogView,
+  fetchArchive,
+  RESULT_ARCHIVE_BYTES,
+  resultAgentLog,
+  resultCopy,
+  resultCopyPath,
+  type ResultStorage,
+  storedAgentLog,
+} from "./observer-agent-log.ts";
 import { validTeamDomain, validTeamVariableName } from "./observer-job.ts";
 
 type Dependencies = {
@@ -99,6 +108,54 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
     return data;
   };
   const staging = d.service.storage.from("observer-staging");
+  /** Trusted storage and the (lazily fetched) result archive of one run. */
+  const runResult = (run: string, path: string | null) => {
+    const github = !!path?.startsWith("github:");
+    const sign = async (name: string) => {
+      const { data, error } = await staging.createSignedUrl(name, 120, { download: "observer-result.zip" });
+      return error || !data ? null : data.signedUrl;
+    };
+    // The GitHub URL is looked up only when no stored copy exists yet; a copy is
+    // keyed by run + result reference + agent.log, so repeat downloads (and the
+    // site's "download all results") never re-fetch from GitHub.
+    let githubUrl: Promise<string> | undefined;
+    const githubLink = () => {
+      if (!d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
+      return githubUrl ??= d.artifactDownload(path!);
+    };
+    let source: Promise<Uint8Array> | undefined;
+    const result = () =>
+      source ??= (async () => {
+        if (!path) throw new Error("result_not_ready");
+        if (github) return await fetchArchive(await githubLink(), d.fetchArchive);
+        const stored = await staging.download(path);
+        if (stored.error || !stored.data) throw new Error("result_download_failed");
+        return new Uint8Array(await stored.data.arrayBuffer());
+      })();
+    const storage: ResultStorage = {
+      download: async (name) => {
+        const { data, error } = await staging.download(name);
+        return error || !data ? null : new Uint8Array(await data.arrayBuffer());
+      },
+      upload: async (name, bytes) => {
+        const { error } = await staging.upload(name, bytes, { contentType: "application/zip", upsert: true });
+        if (error) throw new Error("result_upload_failed");
+      },
+      sign,
+    };
+    // A GitHub result is read once and kept as the same plain copy download_result
+    // serves, so reading the log again does not re-fetch from GitHub.
+    const archive = async () => {
+      if (!github) return await result();
+      const copy = await resultCopyPath(run, path!, null);
+      const cached = await storage.download(copy);
+      if (cached) return cached;
+      const bytes = await result();
+      if (bytes.length <= RESULT_ARCHIVE_BYTES) await storage.upload(copy, bytes).catch(() => {});
+      return bytes;
+    };
+    return { storage, result, githubLink, archive };
+  };
   switch (body.action) {
     // Relay mode only: the open page answers its team's model calls with a key
     // that exists only in that page. The routes are empty in stored mode.
@@ -354,6 +411,26 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       if (!d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
       return { url: await d.artifactDownload(reference) };
     }
+    case "agent_log": {
+      // The team's own agent.log for one run (one card), for reading on the page.
+      // Same visibility as download_result: RLS on the participant's token.
+      const run = uuid(body.run_id);
+      const { data, error } = await d.user.from("observer_runs").select("result_path").eq("id", run)
+        .maybeSingle();
+      failure(error);
+      if (!data) throw new ProxyError(404, "run_not_found");
+      const { storage, archive } = runResult(run, data.result_path ?? null);
+      // An executor run keeps its log beside the result; a colocated run has it inside.
+      let log = await storedAgentLog(run, storage).catch(() => null);
+      if (!log && data.result_path) {
+        try {
+          log = await resultAgentLog(await archive());
+        } catch {
+          console.warn("observer-portal: agent.log could not be read from the result");
+        }
+      }
+      return agentLogView(log, body.full === true);
+    }
     case "download_result": {
       const run = uuid(body.run_id);
       // Read with the participant's token: RLS hides other teams' runs and runs of a
@@ -365,34 +442,7 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       const path: string = data.result_path;
       const github = path.startsWith("github:");
       if (github && !d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
-      const sign = async (name: string) => {
-        const { data, error } = await staging.createSignedUrl(name, 120, { download: "observer-result.zip" });
-        return error || !data ? null : data.signedUrl;
-      };
-      // The GitHub URL is looked up only when no stored copy exists yet; a copy is
-      // keyed by run + result reference + agent.log, so repeat downloads (and the
-      // site's "download all results") never re-fetch from GitHub.
-      let githubUrl: Promise<string> | undefined;
-      const githubLink = () => githubUrl ??= d.artifactDownload!(path);
-      let source: Promise<Uint8Array> | undefined;
-      const result = () =>
-        source ??= (async () => {
-          if (github) return await fetchArchive(await githubLink(), d.fetchArchive);
-          const stored = await staging.download(path);
-          if (stored.error || !stored.data) throw new Error("result_download_failed");
-          return new Uint8Array(await stored.data.arrayBuffer());
-        })();
-      const storage: ResultStorage = {
-        download: async (name) => {
-          const { data, error } = await staging.download(name);
-          return error || !data ? null : new Uint8Array(await data.arrayBuffer());
-        },
-        upload: async (name, bytes) => {
-          const { error } = await staging.upload(name, bytes, { contentType: "application/zip", upsert: true });
-          if (error) throw new Error("result_upload_failed");
-        },
-        sign,
-      };
+      const { storage, result, githubLink } = runResult(run, path);
       const log = await storedAgentLog(run, storage).catch(() => null);
       // The log is a convenience: without it the same result is served. codeload.github.com
       // only allows cross-origin reads from GitHub's own origins, so a GitHub result is

@@ -179,8 +179,13 @@ export async function singleFileZip(name: string, content: Uint8Array): Promise<
 }
 
 /** Read one named entry; bounded, CRC-checked, stored or deflated only. */
-export async function readZipEntry(zip: Uint8Array, name: string, limit: number): Promise<Uint8Array | null> {
-  const found = names(zip, directory(zip)).find((e) => e.name === name);
+export async function readZipEntry(
+  zip: Uint8Array,
+  name: string | ((name: string) => boolean),
+  limit: number,
+): Promise<Uint8Array | null> {
+  const match = typeof name === "string" ? (n: string) => n === name : name;
+  const found = names(zip, directory(zip)).find((e) => match(e.name));
   if (!found) return null;
   return await entryData(zip, found, limit);
 }

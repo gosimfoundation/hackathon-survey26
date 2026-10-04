@@ -386,3 +386,88 @@ Deno.test("allowed domains must be public names that resolve only to public addr
     assertEquals(c.calls.length, 0);
   }
 });
+
+Deno.test("agent_log shows the run's own agent.log: stored, or read from the result once", async () => {
+  const { singleFileZip, appendZipEntry } = await import("./observer-zip.ts");
+  const { AGENT_LOG_TAIL } = await import("./observer-agent-log.ts");
+  const run = "30000000-0000-4000-8000-000000000001";
+  const encode = (s: string) => new TextEncoder().encode(s);
+  const objects = new Map<string, Uint8Array>();
+  let github = 0, path: string | null = "github:ORG/participant-x@" + "a".repeat(40);
+  const folder = "ORG-participant-x-" + "a".repeat(40) + "/";
+  const result = await appendZipEntry(
+    await singleFileZip(folder + "decisions.csv", encode("night,action\n")),
+    "agent.log", // placed inside the result's folder, as the runner does
+    encode("[platform] project stderr\nplanner: night 1\n"),
+  );
+  const client = (visible: boolean) =>
+    ({
+      from: () => {
+        const query = {
+          select: () => query,
+          eq: () => query,
+          maybeSingle: () => Promise.resolve({ data: visible ? { result_path: path } : null, error: null }),
+        };
+        return query;
+      },
+      storage: {
+        from: () => ({
+          download: (name: string) =>
+            Promise.resolve(
+              objects.has(name)
+                ? { data: new Blob([objects.get(name)! as Uint8Array<ArrayBuffer>]), error: null }
+                : { data: null, error: { message: "Object not found" } },
+            ),
+          upload: (name: string, data: Uint8Array) => {
+            objects.set(name, data);
+            return Promise.resolve({ data: { path: name }, error: null });
+          },
+          createSignedUrl: () => Promise.resolve({ data: null, error: { message: "unused" } }),
+        }),
+      },
+    }) as unknown as SupabaseClient;
+  const read = (fields: Record<string, unknown> = {}, visible = true) =>
+    portalRequest(
+      new Request("https://portal.test", {
+        method: "POST",
+        body: JSON.stringify({ action: "agent_log", run_id: run, ...fields }),
+      }),
+      {
+        user: client(visible),
+        service: client(visible),
+        userId: user,
+        masterKey: master,
+        modelBases: [],
+        httpBases: [],
+        artifactDownload: () => {
+          github++;
+          return Promise.resolve("https://codeload.github.com/result.zip");
+        },
+        fetchArchive: () => Promise.resolve(new Response(result as Uint8Array<ArrayBuffer>)),
+      },
+    ) as Promise<{ available: boolean; log?: string; truncated?: boolean; bytes?: number }>;
+  // Another team's (or a sealed) run: refused before any storage read.
+  await assertRejects(() => read({}, false), ProxyError, "run_not_found");
+  await assertRejects(() => read({ run_id: "x" }), ProxyError, "invalid_identifier");
+  assertEquals(objects.size, 0);
+  // A colocated run: agent.log from inside the result's folder; GitHub is asked once.
+  const view = await read();
+  assertEquals(view, {
+    available: true,
+    bytes: 43,
+    truncated: false,
+    log: "[platform] project stderr\nplanner: night 1\n",
+  });
+  assertEquals((await read()).log, view.log);
+  assertEquals(github, 1);
+  // An executor run's stored log wins; a long one is shown as a tail of whole lines.
+  const long = "first line\n" + "x".repeat(AGENT_LOG_TAIL) + "\nlast line\n";
+  objects.set("agent-logs/" + run + "/agent-log.zip", await singleFileZip("agent.log", encode(long)));
+  const tail = await read();
+  assertEquals([tail.truncated, tail.log, tail.bytes], [true, "last line\n", long.length]);
+  assertEquals((await read({ full: true })).log, long);
+  // Nothing to show (no result yet, no stored log): the page explains where logs go.
+  objects.clear();
+  path = null;
+  assertEquals(await read(), { available: false });
+});
