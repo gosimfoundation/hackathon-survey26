@@ -383,10 +383,15 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
     for (const run of runs) {
       const folder = cardFolder(run)
       try {
-        const result = await portal<{ url: string }>('download_result', { run_id: run.id })
-        const res = await fetch(result.url)
-        if (!res.ok) throw new Error(`http_${res.status}`)
-        const inner = unzipSync(new Uint8Array(await res.arrayBuffer()))
+        // One retry with a fresh signed URL: a single dropped connection (seen as
+        // "Failed to fetch" / QUIC errors on flaky networks) should not lose a card.
+        const fetchCard = async () => {
+          const result = await portal<{ url: string }>('download_result', { run_id: run.id })
+          const res = await fetch(result.url)
+          if (!res.ok) throw new Error(`http_${res.status}`)
+          return new Uint8Array(await res.arrayBuffer())
+        }
+        const inner = unzipSync(await fetchCard().catch(fetchCard))
         for (const [name, bytes] of Object.entries(inner)) { if (!name.endsWith('/')) files[`${folder}/${name}`] = bytes }
       } catch (e) {
         errors.push(`${folder}: ${e instanceof Error ? e.message : 'download_failed'}`)
