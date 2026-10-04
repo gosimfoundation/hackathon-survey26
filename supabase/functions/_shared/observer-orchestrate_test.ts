@@ -48,6 +48,7 @@ for (const randomized of [false, true]) {
             if (name === "observer_instance_input") return Promise.resolve(instance);
             if (name === "observer_run_colocated") return Promise.resolve(false);
             if (name === "observer_hardening") return Promise.resolve({ restricted_egress: true, rescore: true });
+            if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
             if (name === "observer_pending_runs") {
               return Promise.resolve([{
                 id: run,
@@ -174,6 +175,7 @@ Deno.test("a final formal run whose instance lookup is refused is never schedule
       if (name === "observer_placement") return Promise.resolve("AGENTIC-OBSERVER26-runner-9");
       calls.push(name);
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
+      if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
       if (name === "observer_pending_runs") {
         return Promise.resolve([{ id: run, user_id: user, lease, mode: "project" }]);
       }
@@ -206,6 +208,7 @@ Deno.test("a colocated public run gets one engine job that also starts the parti
       if (name === "observer_runner_configuration") return Promise.resolve([{ organization }]);
       if (name === "observer_instance_input") return Promise.resolve(null);
       if (name === "observer_run_colocated") return Promise.resolve(true);
+      if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
       if (name === "observer_pending_runs") {
         return Promise.resolve([{
           id: run,
@@ -259,6 +262,7 @@ for (const restricted of [true, false]) {
             switchReads++;
             return Promise.resolve({ restricted_egress: restricted, rescore: true });
           }
+          if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
           if (name === "observer_pending_runs") {
             return Promise.resolve([run, lease].map((id) => ({
               id,
@@ -334,6 +338,7 @@ for (const colocated of [true, false]) {
           if (name === "observer_run_team_egress") {
             assertEquals(args.p_run, run);
             return Promise.resolve({
+              enabled: true,
               variables: [
                 { id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: cipher, plain_value: null },
                 {
@@ -347,6 +352,7 @@ for (const colocated of [true, false]) {
               domains: ["api.kimi.com"],
             });
           }
+          if (name === "observer_run_team_egress") return Promise.resolve({ enabled: false });
           if (name === "observer_pending_runs") {
             return Promise.resolve([{
               id: run,

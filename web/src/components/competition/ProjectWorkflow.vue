@@ -50,7 +50,7 @@ const protocolChoice = ref<ModelProtocol>(DEFAULT_MODEL_PROTOCOL)
 const modelOpen = ref(false)
 const modelForm = ref({ base_url: '', model: '', key: '' })
 // Rollout switch: the team's variables and allowed domains replace the model API settings.
-const teamEgress = computed(() => data.value?.team_egress === true)
+const teamEgress = computed(() => data.value?.team_environment?.enabled === true)
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
 const when = (value: string | null | undefined) => formatDateTime(value, locale.value)

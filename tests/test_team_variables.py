@@ -103,3 +103,15 @@ def test_relay_teams_are_told_to_enter_their_key(setup):
     assert env(uri, s['user'])['relay_key_missing'] is True
     save(uri, s['user'], 'OPENAI_API_KEY')
     assert env(uri, s['user'])['relay_key_missing'] is False
+
+
+def test_pilot_teams_get_team_egress_before_the_global_switch(setup):
+    s = setup; uri = s['uri']
+    run, _, _ = session(s)
+    assert rpc(uri, 'observer_run_team_egress', run)['enabled'] is False
+    assert env(uri, s['user'])['enabled'] is False
+    query(uri, 'update private.observer_hardening set team_egress_teams=array[%s]::uuid[] where id', (s['team'],))
+    assert rpc(uri, 'observer_run_team_egress', run)['enabled'] is True
+    assert env(uri, s['user'])['enabled'] is True
+    query(uri, "update private.observer_hardening set team_egress_teams='{}', team_egress=true where id")
+    assert rpc(uri, 'observer_run_team_egress', run)['enabled'] is True

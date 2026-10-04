@@ -19,6 +19,7 @@ export type TeamModel = {
 }
 export type TeamVariable = { name: string; secret: boolean; hint: string; value: string | null; updated_at: string }
 export type TeamEnvironment = {
+  enabled: boolean
   variables: TeamVariable[]
   domains: string[]
   relay_key_missing: boolean
@@ -39,7 +40,6 @@ export type PortalData = {
   team_model: TeamModel | null
   model_bases: string[]
   team_environment?: TeamEnvironment | null
-  team_egress?: boolean
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
   /** The team's final version per open formal phase; missing until the database provides it. */

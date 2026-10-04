@@ -21,6 +21,7 @@ export function randomCapability() {
  */
 export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, run: string) {
   const value = await deps.rpc("observer_run_team_egress", { p_run: run });
+  if (value?.enabled !== true) return null;
   const environment: Record<string, string> = {}, secrets: string[] = [];
   for (const variable of value?.variables ?? []) {
     environment[variable.name] = variable.secret
@@ -42,10 +43,10 @@ export async function scheduleRuns(deps: RunScheduler) {
   if (!installations.length) return [];
   const enabled = new Set(installations.map((i: { organization: string }) => i.organization));
   const runs = await deps.rpc("observer_pending_runs", { p_limit: 5 });
-  // Organizer switches, read once per pass and only when a project run needs them:
-  // model-proxy-only egress for colocated containers, and team egress (the team's
-  // variables and allowed domains instead of the model proxy).
-  let switches: Promise<{ restricted_egress?: boolean; team_egress?: boolean } | null> | undefined;
+  // Organizer switch, read once per pass and only when a colocated run needs it:
+  // model-proxy-only egress for colocated containers. Team egress is decided per
+  // run by observer_run_team_egress (global switch or pilot team).
+  let switches: Promise<{ restricted_egress?: boolean } | null> | undefined;
   const hardening = () => switches ??= deps.rpc("observer_hardening", {});
   const egressSwitch = async () => (await hardening())?.restricted_egress === true;
   const outcomes = [];
@@ -62,9 +63,8 @@ export async function scheduleRuns(deps: RunScheduler) {
       const colocated = run.mode === "project" && !instance &&
         await deps.rpc("observer_run_colocated", { p_run: run.id }) === true;
       const restricted = colocated && await egressSwitch();
-      const team = run.mode === "project" && (await hardening())?.team_egress === true
-        ? await teamEgress(deps, run.id)
-        : null;
+      // Team egress for this run's team: globally, or as a listed pilot team.
+      const team = run.mode === "project" ? await teamEgress(deps, run.id) : null;
       const participant = randomCapability(), engine = randomCapability();
       const jobs = [];
       const encodeJob = async (kind: string, input: Record<string, unknown>) => {

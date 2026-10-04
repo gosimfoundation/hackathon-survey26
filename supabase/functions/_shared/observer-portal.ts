@@ -152,11 +152,6 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         providers: await userRpc("observer_list_providers"),
         team_model: await userRpc("observer_team_model"),
         team_environment: await optionalUserRpc("observer_team_environment"),
-        // Rollout switch: while off, runs still use the model API settings above.
-        team_egress: await d.service.rpc("observer_hardening", {}).then(
-          (r: { data: { team_egress?: boolean } | null }) => r.data?.team_egress === true,
-          () => false,
-        ),
         model_bases: d.modelBases,
         // Informational like the quota; an older database without the RPC shows no choice.
         final_versions: finals.error ? null : finals.data,
