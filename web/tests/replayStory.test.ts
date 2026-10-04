@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { lightsTargets, storyFor, type StoryInput } from '../src/lib/replayStory.ts'
+import { LAND_PHASE, lightsTargets, shownSettled, storyFor, type StoryInput } from '../src/lib/replayStory.ts'
 
 const base: StoryInput = {
   loaded: true, ended: false, kind: 'observe', frac: 0.5, lapse: false, sunUp: false, open: true,
@@ -36,4 +36,12 @@ test('an exposure the scorer paid nothing for does not light its targets', () =>
   assert.equal(lightsTargets({ a: 'observe', cls: 'completed', score: 8.6, penalty: 0 }), true)
   assert.equal(lightsTargets({ a: 'observe', cls: 'completed', score: 0, penalty: 0 }), false)
   assert.equal(lightsTargets({ a: 'wait', cls: 'wait', score: 0, penalty: 0 }), false)
+})
+
+test('an exposure counts from the moment its fibres land, so score, lit targets and caption agree', () => {
+  assert.equal(shownSettled(9, null), 9)
+  assert.equal(shownSettled(9, { index: 9, phase: LAND_PHASE - 0.01 }), 9)
+  assert.equal(shownSettled(9, { index: 9, phase: LAND_PHASE }), 10)
+  // Never counts backwards when the clock has already finished it.
+  assert.equal(shownSettled(12, { index: 9, phase: 0.9 }), 12)
 })

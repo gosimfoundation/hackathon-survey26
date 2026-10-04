@@ -89,13 +89,15 @@ const END_HOLD_MS = 2_500
  */
 const RECENT_MS = 600
 /**
- * Real time each unit of weight is worth, and the bounds a full loop is kept inside. One exposure gets a
- * little over a second at 1x: long enough to see the telescope swing over, its fibres land and the score
- * tick, and to read the caption. The speed buttons cover viewers who want the whole week faster.
+ * Real time each unit of weight is worth, and the bounds a full loop is kept inside. One exposure gets
+ * about two seconds at 1x: the telescope swings over, its fibres land, the targets light and the score
+ * ticks, and the picture then holds still long enough to read the caption before the next swing. At a
+ * second a beat the caption changed faster than it could be read and the beam never stopped moving.
+ * The speed buttons cover viewers who want the whole week faster.
  */
-const MS_PER_UNIT = 1150
+const MS_PER_UNIT = 1900
 const LOOP_MIN_MS = 45_000
-const LOOP_MAX_MS = 330_000
+const LOOP_MAX_MS = 720_000
 /** How much sim time a collapsed gap actually shows: the quiet stretch just before the next exposure. */
 const GAP_SHOWN_SLOTS = 3
 /** One turn of the sky, used to keep a collapsed gap from sweeping the map round more than once. */

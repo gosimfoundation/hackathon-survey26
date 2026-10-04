@@ -35,6 +35,25 @@ export function lightsTargets(a: { a: string; cls: string; score: number; penalt
   return a.a === 'observe' && a.cls === 'completed' && a.score - a.penalty > 0
 }
 
+/**
+ * One exposure's beat on screen: the telescope swings over until SWING_END, its fibres reach out until
+ * LAND_PHASE, and from that moment the exposure counts — its targets light, the "+score" rises and the
+ * score readout ticks — while the picture holds still for the rest of the beat.
+ */
+export const SWING_END = 0.35
+export const LAND_PHASE = 0.55
+
+/**
+ * How many actions the picture should treat as finished. The run's clock only finishes an exposure at the
+ * end of its beat, which left the score and the lit targets one exposure behind the beam and the caption
+ * (the caption said +14.8 while +11.2 from the previous pointing was rising on screen). Counting the live
+ * exposure from the moment its fibres land keeps all of them on the same pointing.
+ */
+export function shownSettled(settled: number, live: { index: number; phase: number } | null): number {
+  if (!live || live.phase < LAND_PHASE) return settled
+  return Math.max(settled, live.index + 1)
+}
+
 const one = (v: number) => (Math.round(v * 10) / 10).toFixed(1)
 
 export function storyFor(s: StoryInput): Story {
