@@ -20,6 +20,8 @@ import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
+/** The phase evaluations here go to (null when none is open), so the page header can name it. */
+const emit = defineEmits<{ phase: [phase: { name_en: string; name_zh: string } | null] }>()
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
@@ -196,6 +198,7 @@ const activePhases = computed(() => (data.value?.phases ?? []).filter(p => (p.ph
 const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enabled))
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
+watch(selectedPhase, p => emit('phase', p ? { name_en: p.phases.name_en, name_zh: p.phases.name_zh } : null))
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
 const prep = computed(() => preparationQuota(data.value?.quota))
