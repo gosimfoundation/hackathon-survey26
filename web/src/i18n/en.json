@@ -2297,7 +2297,8 @@
     "popup_close": "Close announcement",
     "popup_all": "See all announcements",
     "popup_ok": "Got it",
-    "popup_more": "{n} more pinned"
+    "popup_more": "{n} more pinned, shown next",
+    "popup_dont_show": "Don't show this again"
   },
   "admin": {
     "title": "Admin",
