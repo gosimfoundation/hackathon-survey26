@@ -409,6 +409,20 @@ def test_organizer_script_status_results_and_estimate(hidden, monkeypatch, capsy
     assert 'DRY RUN' in out and 'colocated=true' in out and 'estimate: 4 runs' in out and '18 min per run' in out
     assert 'runner capacity:' in out and f'! {ORG}: needs up to ~18 min' in out and '3 batch user(s) without a placement' in out
     assert 'not enough runner minutes' in out
+    assert f'    {ORG}: 10 left (0 of 10 used), its placed teams need up to ~18' in out
+    assert 'public pool: not used for this phase (switched off)' in out
+    # A verified sealed transfer: the hidden phase prefers the public pool, which takes most of these minutes.
+    query(uri, "delete from private.observer_public_pool")
+    query(uri, """insert into private.observer_public_pool(organization,repository_id,organization_id,approved_sha,mode,
+        sealed_transfer_verified) values(%s,'4242','112',%s,'overflow',true)""", (ORG, 'b'*40))
+    query(uri, 'select public.observer_set_public_pool_phase(%s,true)', (target,))
+    out = main()
+    assert 'public pool: preferred for this phase (sealed transfer verified)' in out and 'up to 3 runs at a time' in out
+    assert f'! {ORG}' not in out
+    query(uri, 'update private.observer_public_pool set sealed_transfer_verified=false')
+    assert 'public pool: not used for this phase (sealed transfer not verified)' in main()
+    query(uri, "delete from private.observer_public_pool_phases")
+    query(uri, "delete from private.observer_public_pool")
     with pytest.raises(SystemExit):
         main('--limit', '2')
     out = main('--apply', '--limit', '2')

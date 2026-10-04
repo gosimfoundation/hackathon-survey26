@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
-import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
+import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { fmtUtc, num } from '../lib/format'
@@ -20,7 +20,7 @@ import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
 const { t, tf, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const { team } = useAuth()
+const { team, isAdmin } = useAuth()
 const { phases, loading: phasesLoading, reload } = usePhases(false)
 const entries = ref<LeaderboardEntry[]>([])
 const boardLoading = ref(false)
@@ -28,12 +28,22 @@ const updatedAt = ref<Date | null>(null)
 const selected = ref<LeaderboardEntry | null>(null)
 let timer: number | undefined
 
-const visiblePhases = computed(() => LEADERBOARD_SLUGS.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p))
+// The hidden final's tab comes last and exists only for phases the database returns (participants: once published).
+// Organizers may also open any phase they can read at /leaderboard/<slug> (e.g. a rehearsal) as a preview tab.
+const visiblePhases = computed(() => {
+  const listed = LEADERBOARD_PAGE_SLUGS.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p)
+  const slug = route.params.phase as string | undefined
+  const extra = isAdmin.value && slug && !listed.some(p => p.slug === slug) ? phases.value.find(p => p.slug === slug) : undefined
+  return extra ? [...listed, extra] : listed
+})
+// Without a slug the default stays among the original three boards, so the final never displaces them.
+const defaultPhases = computed(() => visiblePhases.value.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug)))
 const phase = computed<Phase | null>(() => {
   const slug = route.params.phase as string | undefined
   if (slug) return visiblePhases.value.find(p => p.slug === slug) ?? null
-  return visiblePhases.value.find(p => p.counts_for_final && (p.status === 'open' || p.status === 'closed')) ?? visiblePhases.value.find(p => p.status === 'open') ?? visiblePhases.value[0] ?? null
+  return defaultPhases.value.find(p => p.counts_for_final && (p.status === 'open' || p.status === 'closed')) ?? defaultPhases.value.find(p => p.status === 'open') ?? defaultPhases.value[0] ?? null
 })
+const tabLabel = (p: Phase) => LEADERBOARD_TAB_LABEL_KEYS[p.slug] ? t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]!) : (locale.value === 'zh' ? p.name_zh : p.name_en) || p.slug
 // One short plain line replaces all status badges: no extra wording beyond these two cases.
 const statusLine = computed(() => {
   if (!phase.value) return null
@@ -41,7 +51,9 @@ const statusLine = computed(() => {
   if (phase.value.slug === 'online' && phase.value.status === 'upcoming') return t('leaderboard.competition_starts')
   return null
 })
-const visible = computed(() => phase.value != null && phase.value.leaderboard_mode !== 'hidden')
+// Organizers see an unpublished board too, marked as a preview; the database decides what anyone else gets.
+const preview = computed(() => !!isAdmin.value && phase.value?.leaderboard_mode === 'hidden')
+const visible = computed(() => phase.value != null && (phase.value.leaderboard_mode !== 'hidden' || preview.value))
 // Practice boards rank one scenario at a time (?scenario=…); the final board averages every scenario.
 const scenarioTabs = computed(() => boardScenarios(phase.value))
 const sortedScenarios = computed(() => [...(phase.value?.scenarios ?? [])].sort((a, b) => scenarioOrder(a.slug) - scenarioOrder(b.slug)))
@@ -81,7 +93,7 @@ async function loadBoard() {
   finally { boardLoading.value = false }
 }
 
-watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario], () => { void loadBoard() })
+watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario, visible.value], () => { void loadBoard() })
 function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && document.visibilityState === 'visible') void loadBoard() }
 onMounted(async () => {
   await reload()
@@ -97,7 +109,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
-        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }">{{ t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]) }}</router-link>
+        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
@@ -119,6 +131,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <p class="mt-6"><button type="button" class="btn sm" :disabled="boardLoading" @click="loadBoard">↻ {{ t('leaderboard.refresh') }}</button></p>
         </div>
         <div class="min-w-0">
+          <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
           <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :model-value="cardTab" @update:model-value="pickCard" />

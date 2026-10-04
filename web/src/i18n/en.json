@@ -1243,7 +1243,8 @@
     "tabs": {
       "practice": "Practice",
       "debug": "Debug board",
-      "competition": "Competition"
+      "competition": "Competition",
+      "final": "Final"
     },
     "debug_submissions_closed": "Submissions closed",
     "competition_starts": "Starts Oct 5, 00:00 Beijing time",
@@ -1297,6 +1298,9 @@
     "final_version_help": "The best evaluation in this phase of the version this team chose as its final version; the final ranking is decided by that version's evaluation on the hidden cards E–H.",
     "averaged_runs": "mean of {n}",
     "averaged_runs_help": "Each card is the mean of {n} evaluations of the team's final version; the Overall tab is the mean over the cards.",
+    "range": "range {low}–{high}",
+    "range_help": "Lowest and highest of the {n} evaluations averaged here.",
+    "organizer_preview": "Organizer preview: participants cannot see this board until the organizers publish it.",
     "cards": "Cards",
     "overall_note": "Overall = the mean of a team's card scores in its best complete evaluation (a scored run on every card). Each card tab shows the run on that card from the same evaluation.",
     "card_note": "This board ranks each team's run on this card, taken from its best complete evaluation (the one with the highest mean over all cards).",

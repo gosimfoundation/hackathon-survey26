@@ -1243,7 +1243,8 @@
     "tabs": {
       "practice": "练习赛",
       "debug": "调试榜",
-      "competition": "正式赛"
+      "competition": "正式赛",
+      "final": "决赛"
     },
     "debug_submissions_closed": "已停止提交",
     "competition_starts": "北京时间 10 月 5 日 00:00 开赛",
@@ -1297,6 +1298,9 @@
     "final_version_help": "本队选定的最终版本在本赛程中最好一次评测的成绩；最终排名由该版本在隐藏任务卡 E–H 上的评测决定。",
     "averaged_runs": "{n} 次平均",
     "averaged_runs_help": "每张卡取该队最终版本 {n} 次评测的平均分，总榜为各卡平均分的平均。",
+    "range": "范围 {low}–{high}",
+    "range_help": "取平均的 {n} 次评测中的最低分和最高分。",
+    "organizer_preview": "主办方预览：公布前选手看不到此榜。",
     "cards": "任务卡",
     "overall_note": "总榜 = 每队最好的一次完整评测（每张任务卡都有计分运行）中各任务卡得分的平均。每张任务卡的榜单显示同一次评测在该卡上的成绩。",
     "card_note": "本榜单按每队在这张任务卡上的成绩排名，成绩取自该队最好的一次完整评测（各任务卡平均分最高的那次）。",

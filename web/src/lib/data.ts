@@ -48,7 +48,7 @@ export interface Phase {
   sort_order: number; starts_at: string | null; ends_at: string | null; allow_results: boolean; allow_agents: boolean
   daily_limit: number; leaderboard_mode: LeaderboardMode; counts_for_final: boolean; is_active: boolean
   scenarios: Scenario[]; status: PhaseStatus
-  observer_settings?: { projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number; sealed?: boolean } | null
+  observer_settings?: { projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number; sealed?: boolean; repeat_runs?: number } | null
 }
 export interface Announcement {
   id: string; title_en: string; title_zh: string; body_en: string | null; body_zh: string | null
@@ -71,6 +71,8 @@ export interface LeaderboardEntry {
   targets_observed?: number | null; components?: Record<string, number> | null
   /** Phases that average repeated evaluations (the hidden final): how many evaluations the row averages. */
   averaged_runs?: number | null
+  /** With averaged_runs: the lowest and highest of those evaluations (this tab's score), and per card on the overall tab. */
+  score_range?: [number, number] | null; card_ranges?: Record<string, [number, number]> | null
   /** The formal phase where teams choose a final version: whether this team chose one, and that version's score on this tab. */
   final_version?: { chosen: boolean; score: number | null } | null
 }
@@ -97,6 +99,13 @@ export function phaseCopy(
     ?? (locale === 'zh' ? phase.description_en : phase.description_zh)
     ?? ''
   const online=phase.observer_settings
+  // The hidden final: no daily evaluations; each team's final version is evaluated repeat_runs times and averaged.
+  if (online?.sealed && online.projects_enabled) {
+    const n = Math.max(1, Number(online.repeat_runs ?? 1))
+    return {description,facts:locale==='zh'
+      ? ['完整项目云端评测',`每队最终版本评测 ${n} 次`,...(n>1?[`每张卡取 ${n} 次平均，总分为各卡平均`]:[])]
+      : ['Complete project cloud evaluation',`Each team's final version evaluated ${n} time${n>1?'s':''}`,...(n>1?[`Each card is the mean of ${n} evaluations; overall is the mean over the cards`]:[])]}
+  }
   if (online?.projects_enabled || online?.local_sessions_enabled) return {description,facts:locale==='zh'
     ? [...(online.projects_enabled?['完整项目云端评测']:[]),...(online.local_sessions_enabled?['本地运行并提交 CSV']:[]),`每队每天 ${online.daily_batches} 次`,'同一次评测的多个场景取平均']
     : [...(online.projects_enabled?['Complete project cloud evaluation']:[]),...(online.local_sessions_enabled?['Local run with CSV submission']:[]),`${online.daily_batches} evaluations per team per day`,'Average across all scenarios in one evaluation']}
@@ -126,7 +135,7 @@ export function phaseStatus(p: { is_active: boolean; starts_at: string | null; e
 export async function loadPhases(all = false): Promise<Phase[]> {
   const { data, error } = await supabase
     .from('phases')
-    .select(`*, observer_settings:observer_phase_settings(projects_enabled,local_sessions_enabled,daily_batches,sealed), phase_scenarios(scenario_id, scenarios(${SCENARIO_PUBLIC_COLUMNS}))`)
+    .select(`*, observer_settings:observer_phase_settings(projects_enabled,local_sessions_enabled,daily_batches,sealed,repeat_runs), phase_scenarios(scenario_id, scenarios(${SCENARIO_PUBLIC_COLUMNS}))`)
     .order('sort_order', { ascending: true })
   if (error) throw error
   const rows = ((data ?? []) as any[]).map(row => {

@@ -87,6 +87,18 @@ def test_the_board_and_the_organizer_results_average_three_evaluations(two_teams
     assert row['unfinished_cards'] == [slug['g']] and row['observer_batch_id'] == mine[0]
     card_g = rpc(uri, 'observer_card_board', s['hidden'], slug['g'], 100, role='anon')['rows'][0]
     assert (card_g['total_score'], card_g['unfinished'], card_g['termination_reason']) == (pytest.approx(30), True, None)
+    # The range of the averaged evaluations: overall (evaluation means 45, 45, 52.5), per card, and on a card tab.
+    assert row['score_range'] == [pytest.approx(45), pytest.approx(52.5)]
+    assert {c: [pytest.approx(v) for v in r] for c, r in row['card_ranges'].items()} == {
+        slug['e']: [60, 90], slug['f']: [50, 50], slug['g']: [0, 60], slug['h']: [40, 40]}
+    assert card_g['score_range'] == [pytest.approx(0), pytest.approx(60)]
+    # An inactive phase (a rehearsal): organizers still see its board, nobody else does.
+    query(uri, 'update public.phases set is_active=false where id=%s', (s['hidden'],))
+    admin, _ = identity(uri)
+    query(uri, 'update public.profiles set is_admin=true where id=%s', (admin,))
+    assert rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='anon')['rows'] == []
+    assert [r['team_id'] for r in rpc(uri, 'observer_card_board', s['hidden'], None, 100, role='authenticated', user=admin)['rows']] == [str(s['team'])]
+    query(uri, 'update public.phases set is_active=true where id=%s', (s['hidden'],))
     # Every evaluation stays stored.
     assert query(uri, "select count(*) from public.observer_batches where phase_id=%s and status='scored'", (s['hidden'],)) == [(5,)]
 

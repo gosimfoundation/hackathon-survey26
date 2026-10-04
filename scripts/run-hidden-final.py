@@ -12,7 +12,9 @@ Results stay invisible to participants until the hidden phase's
 leaderboard_mode is set to 'published'. Operating procedure: docs/hidden-final-runbook.md.
 
 Dry run by default: prints what would be created, the run settings of the target
-phase and an estimate of runner minutes and duration. --apply creates the
+phase, an estimate of runner minutes and duration, the minutes left in every runner
+organization and whether the public-repository runner pool takes the runs (a sealed
+phase prefers it, without Actions minutes, once the sealed transfer is verified). --apply creates the
 evaluations in one transaction (private.observer_run_hidden_final, migrations
 20260927000800, 20261001000200, 20261001000900 and 20261004030000). A team that
 already has repeat_runs evaluations there (scored or still running) on the current
@@ -128,18 +130,44 @@ def runner_capacity(user_ids):
     """
     rows = deploy.query("select to_regprocedure('public.observer_organizations_by_load()') is not null as present")
     if not rows or not rows[0]['present']: return None
-    left = {r['organization']: max(0.0, float(r['monthly_minute_limit']) - float(r['month_minutes']))
-            for r in deploy.query('select organization, monthly_minute_limit, month_minutes'
-                                  ' from public.observer_organizations_by_load()')}
+    fleet = deploy.query('select organization, monthly_minute_limit, month_minutes from public.observer_organizations_by_load()')
+    left = {r['organization']: max(0.0, float(r['monthly_minute_limit']) - float(r['month_minutes'])) for r in fleet}
+    limit = {r['organization']: float(r['monthly_minute_limit']) for r in fleet}
     placed = {}
     if user_ids:
         placed = {str(r['user_id']): r['organization'] for r in deploy.query(
             'select user_id, organization from private.observer_placements where user_id=any(array['
             + ','.join(q(u) for u in user_ids) + ']::uuid[])')}
-    return {'left': left, 'placed': placed}
+    return {'left': left, 'limit': limit, 'placed': placed}
 
 
-def estimate(users, scenarios, runtime_seconds, capacity):
+def public_pool(target):
+    """Whether the public-repository runner pool (ops/public-runner-pool.md) takes the target phase's runs.
+
+    In overflow mode a sealed phase switched on for the pool prefers it once the sealed transfer is
+    verified (migration 20261004050000): up to max_active runs at a time, no Actions minutes, within
+    the pool's monthly cap. Returns None if the pool functions are missing.
+    """
+    rows = deploy.query("select to_regprocedure('public.observer_public_pool()') is not null as present")
+    if not rows or not rows[0]['present']: return None
+    pool = jsonish(one(deploy.query('select public.observer_public_pool() as pool'), 'pool')['pool'])
+    phase = one(deploy.query('select ph.slug, coalesce(c.sealed,false) as sealed from public.phases ph'
+                             ' left join public.observer_phase_settings c on c.phase_id=ph.id where ph.id='
+                             + q(target) + '::uuid'), 'target phase')
+    reason = None
+    if pool.get('mode', 'off') == 'off': reason = 'switched off'
+    elif not pool.get('approved_sha'): reason = 'no approved runtime'
+    elif pool['mode'] != 'overflow': reason = f"mode {pool['mode']} (drill users only)"
+    elif phase['slug'] not in (pool.get('phases') or []): reason = f"{phase['slug']} not switched on for the pool"
+    elif phase['sealed'] and not pool.get('sealed_transfer_verified'): reason = 'sealed transfer not verified'
+    elif not phase['sealed']: reason = 'unsealed phase: only while an organization is busy or near its minutes'
+    cap_left = max(0.0, float(pool.get('monthly_minute_cap') or 0) - float(pool.get('month_minutes') or 0))
+    return {'used': reason is None, 'reason': reason, 'max_active': int(pool.get('max_active') or 0),
+            'cap_left': cap_left, 'cap': float(pool.get('monthly_minute_cap') or 0),
+            'where': f"{pool.get('organization', '?')}/{pool.get('repository', 'observer-public')}"}
+
+
+def estimate(users, scenarios, runtime_seconds, capacity, pool=None):
     """Runner minutes and wall-clock time for new batches run by the given users (one entry per batch)."""
     runs = len(users) * int(scenarios or 0)
     if not runs: return '  estimate: nothing to run'
@@ -148,23 +176,44 @@ def estimate(users, scenarios, runtime_seconds, capacity):
     hours = (runs / SCHEDULED_RUNS_PER_MINUTE + per_run) / 60
     lines = [f'  estimate: {runs} runs, up to ~{minutes} runner minutes ({per_run:.0f} min per run at most),'
              f' about {hours:.1f} h until the last run finishes ({SCHEDULED_RUNS_PER_MINUTE} runs scheduled per minute)']
-    if capacity is None: return lines[0]
+    # The share the public pool can take: its free slots over the whole run, within its monthly cap.
+    share = 0.0
+    if pool is not None:
+        if pool['used']:
+            share = min(float(minutes), pool['cap_left'], pool['max_active'] * hours * 60)
+            lines.append(f"  public pool: preferred for this phase (sealed transfer verified), {pool['where']}:"
+                         f" up to {pool['max_active']} runs at a time, no Actions minutes,"
+                         f" {pool['cap_left']:.0f} of {pool['cap']:.0f} pool minutes left this month;"
+                         f" takes up to ~{share:.0f} of the ~{minutes} minutes, the rest runs on the organizations below")
+            if share < minutes and pool['max_active'] < 15:
+                lines.append("  public pool: for a larger share raise max_active before --apply, e.g."
+                             " select public.observer_set_public_pool(p_max_active=>15); (at most 20, shared with"
+                             " the pool organization's own jobs; ops/public-runner-pool.md)")
+        else:
+            lines.append(f"  public pool: not used for this phase ({pool['reason']}); every run uses Actions minutes")
+    if capacity is None: return '\n'.join(lines)
     left = capacity['left']
+    private = max(0.0, minutes - share)
     lines.append(f'  runner capacity: {sum(left.values()):.0f} minutes left this month on {len(left)} enabled organization(s)')
     need, unplaced = {}, 0
     for user in users:
         organization = capacity['placed'].get(str(user))
         if organization is None: unplaced += 1
-        else: need[organization] = need.get(organization, 0) + int(scenarios) * per_run
+        else: need[organization] = need.get(organization, 0) + int(scenarios) * per_run * (private / minutes)
+    for organization in sorted(left, key=lambda o: (len(o), o)):
+        used = capacity['limit'].get(organization, 0.0) - left[organization]
+        lines.append(f'    {organization}: {left[organization]:.0f} left ({used:.0f} of {capacity["limit"].get(organization, 0.0):.0f} used)'
+                     + (f', its placed teams need up to ~{need[organization]:.0f}' if organization in need else ''))
     short = sorted(o for o, n in need.items() if n > left.get(o, 0.0))
     for organization in short:
         lines.append(f'  ! {organization}: needs up to ~{need[organization]:.0f} min for its placed teams,'
                      f' {left.get(organization, 0.0):.0f} left (disabled or over its limit: jobs there may not start)')
     if unplaced:
         lines.append(f'  {unplaced} batch user(s) without a placement: assigned to the least loaded organization when scheduled')
-    if short or sum(left.values()) < minutes:
+    if short or sum(left.values()) < private:
         lines.append('  ! not enough runner minutes: enable more runner organizations, raise monthly_minute_limit'
-                     ' or move placements (scripts/rebalance-observer-placements.py) first')
+                     ' or move placements (scripts/rebalance-observer-placements.py) first'
+                     + ('' if pool is None or pool['used'] else '; or use the public pool (ops/public-runner-pool.md)'))
     return '\n'.join(lines)
 
 
@@ -372,7 +421,7 @@ def main():
     users = [t['user_id'] for t in result['teams'] if t['action'] in ('would_create', 'created')
              for _ in range(t.get('new_evaluations') or 1)]
     print(summarize(result) + '\n' + line + '\n'
-          + estimate(users, settings['scenarios'], settings['runtime_seconds'], runner_capacity(users)))
+          + estimate(users, settings['scenarios'], settings['runtime_seconds'], runner_capacity(users), public_pool(target)))
 
 
 if __name__ == '__main__': main()

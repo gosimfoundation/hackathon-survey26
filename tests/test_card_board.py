@@ -80,6 +80,8 @@ def test_cards_come_from_the_best_complete_batch(setup):
     slug = {k: v['slug'] for k, v in zip('abcd', result['cards'])}
     assert rows[1]['card_scores'] == {slug['a']: 90, slug['b']: 30, slug['c']: 10, slug['d']: 10}
     assert rows[0]['submission_count'] == 2 and rows[0]['targets_observed'] == 100
+    # One evaluation per team (repeat_runs=1): no range of averaged evaluations.
+    assert rows[0]['score_range'] is None and rows[0]['card_ranges'] is None and rows[0]['averaged_runs'] is None
     assert rows[0]['components'] == {'sum_best_scores': 50, 'required_penalty': -6, 'uniformity_penalty': -4, 'report_settlement': 0}
     # Card A: the same batches, not the team's best A run (100 in `first`).
     per_card = board(uri, s['phase'], slug['a'])
