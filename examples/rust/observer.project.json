@@ -5,5 +5,5 @@
   "working_directory": ".",
   "build": [["cargo", "build", "--release", "--locked"]],
   "run": ["./target/release/rust-agent"],
-  "environment": {}
+  "environment": {"CARGO_HOME": "/tmp/cargo-home"}
 }
