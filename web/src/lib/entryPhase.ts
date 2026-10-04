@@ -26,6 +26,11 @@ export function readEntryChoice(storage: StorageLike | null, userId: string | nu
   try { return storage?.getItem(entryStorageKey(userId)) === 'practice' ? 'practice' : 'online' } catch { return 'online' }
 }
 
+/** Where the page starts: once the online phase has ended, always practice (online stays viewable, read-only). */
+export function initialEntryChoice(storage: StorageLike | null, userId: string | null | undefined, onlineEnded: boolean): EntryChoice {
+  return onlineEnded ? 'practice' : readEntryChoice(storage, userId)
+}
+
 export function rememberEntryChoice(storage: StorageLike | null, userId: string | null | undefined, choice: EntryChoice) {
   if (!userId) return
   try { storage?.setItem(entryStorageKey(userId), choice) } catch { /* storage full or blocked */ }

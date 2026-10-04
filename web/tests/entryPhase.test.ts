@@ -42,3 +42,18 @@ test('the choice is remembered per user and defaults to online', () => {
   rememberEntryChoice(st, null, 'practice')
   assert.equal(st.m.size, 1)
 })
+
+test('after the online deadline the page opens on practice, whatever was remembered', async () => {
+  const { initialEntryChoice } = await import('../src/lib/entryPhase.ts')
+  const st = memory()
+  rememberEntryChoice(st, 'u1', 'online')
+  assert.equal(initialEntryChoice(st, 'u1', false), 'online')
+  assert.equal(initialEntryChoice(st, 'u1', true), 'practice')
+  assert.equal(initialEntryChoice(null, null, true), 'practice')
+  // The server answers project_phase_id = practice once online has ended; online stays viewable.
+  const s = state({ mode: 'competition', phase_id: 'online', practice_phase_id: 'pp', project_phase_id: 'pp' })
+  assert.equal(offersPracticeSwitch(s), true)
+  assert.equal(entryPhaseId(s, 'practice'), 'pp')
+  assert.equal(entryPhaseId(s, 'online'), 'online')
+  assert.deepEqual(entryPhaseIds(s), ['online', 'pp', 'pp'])
+})

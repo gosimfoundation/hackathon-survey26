@@ -208,14 +208,17 @@ const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enab
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
 // 线上赛 / 练习赛 (competition mode with practice open): the page's switch picks the phase, and the records
-// below follow it; otherwise every evaluation is listed as before.
+// below follow it; otherwise every evaluation is listed as before. A chosen phase that has ended (online after
+// its deadline) is read-only: no phase is selected, so nothing can start, while its records, logs, downloads
+// and the locked final version stay visible.
 const phaseSwitch = computed(() => offersPracticeSwitch(competition))
 function followEntry() {
   const wanted = entryPhase.value
-  if (phaseSwitch.value && wanted && openPhases.value.some(p => p.phase_id === wanted)) phaseId.value = wanted
+  if (!phaseSwitch.value || !wanted) return
+  phaseId.value = openPhases.value.some(p => p.phase_id === wanted) ? wanted : ''
 }
 watch(entryPhase, followEntry)
-const listedBatches = computed(() => (data.value?.batches ?? []).filter(b => !phaseSwitch.value || b.phase_id === phaseId.value))
+const listedBatches = computed(() => (data.value?.batches ?? []).filter(b => !phaseSwitch.value || b.phase_id === entryPhase.value))
 watch(selectedPhase, p => emit('phase', p ? { name_en: p.phases.name_en, name_zh: p.phases.name_zh } : null))
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
