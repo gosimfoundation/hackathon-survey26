@@ -1,6 +1,6 @@
 # GOSIM Agentic Observer 示例项目 / Example projects
 
-- 每个示例项目一个文件夹（`python/`、`python-pro/`、`typescript/`、`rust/` 等）：完整的示例智能体，各自的 README 和 AGENTS.md 说明如何配置与打包上传。
+- 每个示例项目一个文件夹（`python/`、`python-pro/`、`typescript/`、`rust/`、`rust-pro/` 等）：完整的示例智能体，各自的 README 和 AGENTS.md 说明如何配置与打包上传。
 - `docs/`：参赛文档（中文 / English）。
 - `local-cards/L1`–`L4`：四张完全公开的本地练习卡。
 - `runner/`：本地裁判程序，与平台使用同一份评测代码（`python3 runner/verify_engine.py` 可核对）。只需要 Python 3，无需安装任何库。

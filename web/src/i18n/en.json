@@ -2150,6 +2150,7 @@
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
+    "example_rust_pro_desc": "python-pro ported to Rust: the same planner, fault handling and LLM stages, at about 1/30 of the CPU time per decision.",
     "flow2": "Reference",
     "flow2_hint": "What you'll need for building and submitting your agent."
   },

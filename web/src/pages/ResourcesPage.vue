@@ -25,6 +25,7 @@ const exampleProjects = [
   { lang: 'python-pro', name: 'Python Pro', descKey: 'resources.example_python_pro_desc', available: true },
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
+  { lang: 'rust-pro', name: 'Rust Pro', descKey: 'resources.example_rust_pro_desc', available: true },
 ] as const
 
 // Talk recordings are hosted on Bilibili (fast in mainland China) rather than on our own servers.
