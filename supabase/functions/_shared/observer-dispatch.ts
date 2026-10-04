@@ -130,25 +130,21 @@ export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: stri
   // Never let the optional pool hold up dispatching.
   await rpc("observer_public_pool_reconcile", {}).catch(() => 0);
   const jobs: PendingJob[] = await rpc("observer_pending_jobs", { p_limit: limit });
-  const outcomes: Outcome[] = [];
   const partners = new Set<string>();
-  for (const job of jobs) {
+  const one = async (job: PendingJob): Promise<Outcome> => {
     if (partners.has(job.id)) {
-      outcomes.push({ id: job.id, dispatched: false, error: "moved_to_fallback" });
-      continue;
+      return { id: job.id, dispatched: false, error: "moved_to_fallback" };
     }
     try {
       if (job.runner === "public-hosted") {
         // Already in the pool (an ambiguous earlier dispatch): dispatched there
         // again, or sent home and dispatched there next round.
-        outcomes.push(await tryPublic(rpc, app, job, true) ?? { id: job.id, dispatched: false });
-        continue;
+        return await tryPublic(rpc, app, job, true) ?? { id: job.id, dispatched: false };
       }
       if (job.public) {
         const outcome = await tryPublic(rpc, app, job);
         if (outcome?.dispatched) {
-          outcomes.push(outcome);
-          continue;
+          return outcome;
         }
         // Declined, or failed and sent back for good: this round's attempt goes
         // to the job's own organization as usual.
@@ -157,24 +153,20 @@ export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: stri
       if (job.fallback) {
         const moved = await tryFallback(rpc, app, job, nonce, partners);
         if (moved) {
-          outcomes.push(moved);
-          continue;
+          return moved;
         }
         // A stalled job was already dispatched three times to its organization.
         if (job.fallback === "stalled") {
-          outcomes.push({ id: job.id, dispatched: false, error: "github_run_not_started" });
-          continue;
+          return { id: job.id, dispatched: false, error: "github_run_not_started" };
         }
       }
       const selfHosted = job.runner === "self-hosted";
       const first = await tryDispatch(rpc, app, job, job.organization, nonce, job.workflow_sha, selfHosted);
       if (first.ok) {
-        outcomes.push({ id: job.id, dispatched: true });
-        continue;
+        return { id: job.id, dispatched: true };
       }
       if (selfHosted || !ORGANIZATION_FAILURES.has(first.error ?? "")) {
-        outcomes.push({ id: job.id, dispatched: false, error: first.error });
-        continue;
+        return { id: job.id, dispatched: false, error: first.error };
       }
       const candidates: LoadRow[] = await rpc("observer_organizations_by_load", {});
       const next = candidates.find((c) => c.organization !== job.organization && !c.over_limit);
@@ -185,8 +177,7 @@ export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: stri
         await rpc("observer_failover_job", { p_job: job.id, p_organization: next.organization });
         const retried = await tryDispatch(rpc, app, job, next.organization, nonce, next.approved_sha);
         if (retried.ok) {
-          outcomes.push({ id: job.id, dispatched: true, failover: next.organization });
-          continue;
+          return { id: job.id, dispatched: true, failover: next.organization };
         }
         error = retried.error;
         failed.push(next.organization);
@@ -199,12 +190,20 @@ export async function dispatchPending(rpc: Rpc, app: Dispatcher, masterKey: stri
         : ORGANIZATION_FAILURES.has(error ?? "")
         ? await tryFallback(rpc, app, job, nonce, partners, failed)
         : null;
-      outcomes.push(moved ?? { id: job.id, dispatched: false, error });
+      return moved ?? { id: job.id, dispatched: false, error };
     } catch (error) {
       const code = error instanceof GitHubError ? error.code : "dispatch_unavailable";
       await rpc("observer_dispatch_error", { p_job: job.id, p_error: code });
-      outcomes.push({ id: job.id, dispatched: false, error: code });
+      return { id: job.id, dispatched: false, error: code };
     }
+  };
+  // Jobs are independent rows reserved by observer_pending_jobs, so they are
+  // dispatched concurrently. A round that may move a split run's partner to the
+  // self-hosted fallback stays sequential (the partner check needs the order).
+  if (jobs.some((j) => j.fallback)) {
+    const outcomes: Outcome[] = [];
+    for (const job of jobs) outcomes.push(await one(job));
+    return outcomes;
   }
-  return outcomes;
+  return await Promise.all(jobs.map(one));
 }
