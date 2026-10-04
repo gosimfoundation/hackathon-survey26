@@ -194,3 +194,24 @@ def test_late_receipt_error_after_trusted_score_publication_cannot_delete_the_sc
     query(uri,"update public.observer_runs set status='scored',score=123,finished_at=now() where id=%s",(run,))
     rpc(uri,"observer_finish_job",second,"405","1",{},"lost_receipt")
     assert query(uri,"select status,score from public.observer_runs where id=%s",(run,))==[("scored",123)]
+
+
+@pytest.mark.parametrize("terminal_status",["failed","succeeded"])
+def test_a_retry_may_reenqueue_the_same_run_and_kind_once_the_old_job_is_terminal(job,terminal_status):
+    # The retry/backoff system mints a brand-new job id on every attempt; a revision or run
+    # that fails once and gets requeued must be able to get a second job row, not collide
+    # with unique(run_id,kind) forever (the root cause of revisions/runs parked permanently
+    # by the ~2h retry budget without ever creating a second job).
+    s=job;uri=s["uri"]
+    query(uri,"update private.observer_jobs set status=%s,finished_at=now() where id=%s",(terminal_status,s["job"]))
+    second=uuid.uuid4();nonce=secrets.token_urlsafe(32)
+    rpc(uri,"observer_enqueue_job",second,"engine",s["run"],None,"AGENTIC-OBSERVER26-runner-1",nonce,"encrypted job payload","encrypted nonce")
+    assert query(uri,"select id,status from private.observer_jobs where run_id=%s",(s["run"],))==[(second,"queued")]
+
+
+def test_a_still_active_job_still_blocks_a_second_enqueue_for_the_same_run_and_kind(job):
+    s=job;uri=s["uri"]
+    second=uuid.uuid4();nonce=secrets.token_urlsafe(32)
+    with pytest.raises(psycopg.Error,match="duplicate key value violates unique constraint"):
+        rpc(uri,"observer_enqueue_job",second,"engine",s["run"],None,"AGENTIC-OBSERVER26-runner-1",nonce,"encrypted job payload","encrypted nonce")
+    assert query(uri,"select count(*) from private.observer_jobs where run_id=%s",(s["run"],))==[(1,)]
