@@ -13,17 +13,16 @@ import { assetUrl } from '../composables/api'
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
 
-// Pinned to the examples-2026-10-02 release tag, not releases/latest/download/... -- this
-// repo's own site-publish workflow (.github/workflows/publish-site.yml) mints a new "Website"
-// release and marks it --latest on every successful push to main, so "latest" here would almost
-// immediately redirect to a site tarball instead of this zip. Re-run scripts/build-examples-bundle.sh
-// to update the asset on this same tag.
-const EXAMPLES_BUNDLE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/download/examples-2026-10-02/gosim-observer-examples.zip'
+// Every example's ZIP and the all-in-one bundle are built with the site from examples/<name>/
+// (web/scripts/build-examples.mjs, build-examples-bundle.mjs) and served under /downloads/examples/,
+// so they always match main and include every example folder.
+const EXAMPLES_BUNDLE_URL = assetUrl('/downloads/examples/gosim-observer-examples.zip')
+const exampleZipUrl = (name: string) => assetUrl(`/downloads/examples/${name}.zip`)
 
-// A language's card only appears once examples/<lang>/ is published and its ZIP is built --
-// see web/scripts/build-examples.mjs. Adding another language later is one entry here.
+// One card per example folder; adding a new example is one entry here (its ZIP is built automatically).
 const exampleProjects = [
   { lang: 'python', name: 'Python', descKey: 'resources.example_python_desc', available: true },
+  { lang: 'python-pro', name: 'Python Pro', descKey: 'resources.example_python_pro_desc', available: true },
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
 ] as const
@@ -114,6 +113,7 @@ onMounted(async () => {
             <h3 class="mt-3">{{ ex.name }}</h3>
             <p>{{ t(ex.descKey) }}</p>
             <p v-if="ex.available" class="example-actions mt-5">
+              <a class="btn primary sm" :href="exampleZipUrl(ex.lang)" :download="`${ex.lang}.zip`" :data-testid="`example-zip-${ex.lang}`">{{ t('resources.example_zip') }} ↓</a>
               <a class="btn sm" :href="`https://github.com/gosimfoundation/hackathon-survey26/tree/main/examples/${ex.lang}`" target="_blank" rel="noopener">{{ t('resources.example_github') }} →</a>
             </p>
             <p v-else class="mt-5"><span class="pill upcoming">{{ t('resources.card_pending') }}</span></p>
