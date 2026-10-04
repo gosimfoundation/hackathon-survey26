@@ -76,7 +76,11 @@ rule-based value in place for that night.
    quality level, which an instrument fault lowers but the band does not.
 5. **Instrument faults.** Weather lowers both the quality level and the band; a fault lowers only the
    quality. The agent reports when `E = quality / band` stays low, and uses the free false-report allowance before
-   paid probes.
+   paid probes. Earthquakes need care: per the participant guide they lower instrument efficiency too, the loss
+   fades night by night, and a report does not repair it. So the agent does not probe in the first 12 hours
+   after an earthquake notice appears, and while the earthquake's effect may last it probes only on a new step
+   down in E from the preceding hours. On 12 local cards this alone saved most of the free probes that used to
+   go to earthquake drops (+0.9% in total).
 6. **Hidden pointing offset (Hard-mode cards).** The participant guide says such cards add a fixed,
    unannounced offset to every pointing. The agent scores candidate offsets on a grid scaled to the fibre
    pitch (widening it if the best candidate sits on its edge), infers the offset from which assigned

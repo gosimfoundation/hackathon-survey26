@@ -51,6 +51,12 @@ MAX_PAID_FALSE = _env("MAX_PAID", 6)
 PERSIST_NIGHTS = _env("PERSIST_NIGHTS", 3)
 E_PAID_STEP = _env("E_PAID_STEP", 0.05)   # ... minus this per paid false probe so far
 MAX_FALSE_REPORTS = 8
+# The participant guide: an earthquake (announced in the bulletin) lowers instrument efficiency, the loss fades
+# night by night, and a report does not repair it. So E drops right after an earthquake are not reportable, and
+# while its effect may last only a new step down in E (a fresh drop from the preceding hours) is fault evidence.
+QUAKE_HOLD_HOURS = _env("QUAKE_HOLD_HOURS", 12.0)   # no probes this long after an earthquake notice appears
+QUAKE_STEP = _env("QUAKE_STEP", 0.8)                # step: median E of the last 3 rows < this x the 9 rows before
+QUAKE_TAIL_HOURS = _env("QUAKE_TAIL_HOURS", 24.0)   # the earthquake period lasts this long after its last notice
 PAID_SPACING_HOURS = 20.0
 MIN_REPORT_SPACING_HOURS = 2.0
 # --- pace ---
@@ -93,6 +99,9 @@ class ObserverAgent:
         self.ref_from_hours = -1e9
         self.episode_blocked = False
         self.blocked_at_hour = -1
+        self.quake_on = False
+        self.quake_onset_hours = -1e9
+        self.quake_last_hours = -1e9
         # pace state
         self.cost_ema = [0.0, 0.0, 0.0, 0.0]     # CPU seconds per observe decision at each search level
         self.wall_ema = [0.0, 0.0, 0.0, 0.0]     # real seconds per observe decision (own turn, model waits excluded)
@@ -146,6 +155,13 @@ class ObserverAgent:
         if last.get("action") == "report":
             self._on_report_result(last, hours)
         planner.on_messages(payload.get("new_messages", []), payload.get("latest_bulletin"))
+        quake = any(kind == "earthquake" for kind, _ in planner.notices)
+        if quake and not self.quake_on:
+            self.quake_onset_hours = hours
+            log(f"pro: earthquake notice at {payload['now_utc']}")
+        self.quake_on = quake
+        if quake:
+            self.quake_last_hours = hours
         planner.on_requests(payload.get("active_requests", []))
         planner.on_result(payload.get("last_result"), now, hours)
         self._pace(payload, now)
@@ -286,6 +302,7 @@ class ObserverAgent:
         notices = sorted({f"{kind} {direction}" for kind, direction in self.planner.notices})
         return {"columns": ["utc_hour", "E", "scale"], "rows": rows, "ref": round(self._scale_ref(), 2),
                 "notices_now": notices,
+                "hours_since_earthquake_notice_began": None if self.quake_onset_hours < -1e8 else round(hours - self.quake_onset_hours, 1),
                 "free_false_reports_left": max(0, self.free_left()), "paid_false_reports_so_far": self.paid_false,
                 "correct_reports_so_far": self.correct_reports,
                 "hours_since_last_report": None if self.reports == 0 else round(hours - self.last_report_hours, 1)}
@@ -299,6 +316,8 @@ class ObserverAgent:
         one are free: spend free probes readily, paid ones only on strong, lasting evidence."""
         if self.false_reports >= MAX_FALSE_REPORTS or hours - self.last_report_hours < MIN_REPORT_SPACING_HOURS:
             return None
+        if hours - self.quake_onset_hours < QUAKE_HOLD_HOURS:
+            return None   # the earthquake explains the drop; a report would not repair it
         if self._fault_verdict(hours, payload) and self._model_agrees(hours, payload):
             self.last_report_hours = hours
             self.reports += 1
@@ -314,6 +333,14 @@ class ObserverAgent:
             log(f"pro: E {payload['now_utc']} {rows[-1][2]:.2f} scale {self.planner.scale:.3f} band {self.planner.band_level or 0:.3f}")
         if len(rows) < E_FREE_HOURS or rows[-1][0] < int(hours) - 1:
             return False
+        if QUAKE_STEP > 0 and hours - self.quake_last_hours < QUAKE_TAIL_HOURS:
+            if len(rows) < 8:
+                return False
+            last = sorted(e for _, _, e in rows[-3:])[1]
+            prev = sorted(e for _, _, e in rows[-12:-3])
+            if not (last < QUAKE_STEP * prev[len(prev) // 2] and rows[-3][0] >= int(hours) - 4):
+                return False
+            self.episode_blocked = False   # a new step is a new episode
         if self.episode_blocked:
             # this low episode was probed already and was not a fault: wait for a recovery first
             last4 = rows[-4:]
