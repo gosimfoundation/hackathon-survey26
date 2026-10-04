@@ -85,7 +85,7 @@ const others = computed(() => pinnedCount.value)
 </template>
 
 <style scoped>
-.pinned-dialog { width: min(44rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - 1.5rem); padding: 0; margin: auto;
+.pinned-dialog { width: min(64rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - 1.5rem); padding: 0; margin: auto;
   border: 1px solid rgba(158,173,255,.35); background: #0b1022; color: #e8ecf8; box-shadow: 0 24px 80px rgba(0,0,0,.6); }
 .pinned-dialog::backdrop { background: rgba(2,5,14,.72); backdrop-filter: blur(2px); }
 .pinned-panel { position: relative; padding: 1.5rem 1.4rem 1.25rem; overflow-wrap: anywhere; }
