@@ -24,7 +24,7 @@ const FORBIDDEN_PATH = /(^|\/)(\.env|\.env\.local|\.git|node_modules|target|__py
 const SECRET = /\b(sk-[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{10,}|ghp_[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})/
 
 test('every example folder gets a deterministic, clean per-example ZIP and is in the bundle', () => {
-  assert.ok(['python', 'python-pro', 'typescript', 'rust', 'rust-pro'].every((n) => exampleNames.includes(n)))
+  assert.ok(['python', 'python-pro', 'typescript', 'typescript-pro', 'rust', 'rust-pro'].every((n) => exampleNames.includes(n)))
   const out = build()
   try {
     for (const name of exampleNames) {
