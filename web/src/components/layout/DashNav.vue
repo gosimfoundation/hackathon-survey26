@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
-import { pendingTeamActions } from '../../stores/teamNotifications'
+import { pendingFriendRequests, pendingTeamActions } from '../../stores/teamNotifications'
 const { t, pick } = useI18n()
 const route = useRoute()
 const items = [
@@ -17,7 +17,8 @@ const isActive = (item: { to: string; exact?: boolean }) => item.exact ? route.p
 <template>
   <nav class="admin-nav">
     <router-link v-for="item in items" :key="item.to" :to="item.to" :class="{ active: isActive(item) }">{{ t(item.key) }}<span v-if="item.to === '/team' && pendingTeamActions"
-      class="nav-count" data-testid="dash-nav-team-count" :title="pick('Requests waiting for your answer', '待你处理的组队请求')">{{ pendingTeamActions > 99 ? '99+' : pendingTeamActions }}</span></router-link>
+      class="nav-count" data-testid="dash-nav-team-count" :title="pick('Requests waiting for your answer', '待你处理的组队请求')">{{ pendingTeamActions > 99 ? '99+' : pendingTeamActions }}</span><span v-if="item.to === '/profile' && pendingFriendRequests"
+      class="nav-count" data-testid="dash-nav-friend-count" :title="pick('Friend requests waiting for your answer', '待你处理的好友请求')">{{ pendingFriendRequests > 99 ? '99+' : pendingFriendRequests }}</span></router-link>
   </nav>
 </template>
 

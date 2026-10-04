@@ -155,3 +155,23 @@ def test_invite_by_uid_has_its_own_daily_limit_and_respects_blocks(database):
     assert call(uri, captain, "send_team_invite_by_uid", free["uid"]) == {"error": "daily_limit"}
     # The friend-request allowance is separate.
     assert call(uri, captain, "send_friend_request", 999999995) == {"error": "uid_unavailable"}
+
+
+def test_badge_counts_requests_waiting_for_an_answer(database):
+    uri = database
+    a, b, c, d = person(uri), person(uri), person(uri), person(uri)
+    count = lambda u: call(uri, u, "friend_request_count")  # noqa: E731
+    assert count(a) == 0
+    r1 = call(uri, b, "send_friend_request", a["uid"])["request_id"]
+    call(uri, c, "send_friend_request", a["uid"])
+    call(uri, d, "send_friend_request", a["uid"])
+    assert count(a) == 3 and count(b) == 0
+    # Looking at the list does not clear it; answering, blocking or a banned sender does.
+    friends(uri, a)
+    assert count(a) == 3
+    call(uri, a, "respond_friend_request", r1, True)
+    call(uri, a, "block_user", str(c["id"]))
+    query(uri, "update public.profiles set is_banned=true where id=%s", (d["id"],))
+    assert count(a) == 0
+    with pytest.raises(psycopg.Error, match="permission denied"):
+        query(uri, "select public.friend_request_count()", role="anon")
