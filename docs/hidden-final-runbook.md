@@ -25,7 +25,7 @@ v4 卡（含观测请求）只能在 colocated 模式下运行：`final-hidden` 
 3. 单队演练（可在比赛截止前做，用隐藏测试队）：
    `python3 scripts/run-hidden-final.py --team <测试队 slug> --before-freeze`（预览）→ 加 `--apply` 实跑 → `--status` 看进度 → `--results` 看结果。测试队是隐藏队伍，不参与排名，公布后普通选手在榜上也看不到它。
 4. 模型密钥：预览输出会标出仍为「不保存（relay）」或「加密保存但没有密钥」的队伍。规则要求调用模型的队伍在截止前改为加密保存；截止前可再发一次提醒。
-5. runner 分钟：预览输出的 `runner capacity:` 一行显示本月所有启用 runner 组织剩余分钟，`! AGENTIC-OBSERVER26-runner-N: needs …` 列出分钟不够其已分配队伍的组织。处理方法见第 4 节。
+5. runner 分钟：预览输出的 `runner capacity:` 一行显示本月所有启用 runner 组织剩余分钟总数，下面逐个列出每个组织的剩余分钟（已用/上限）和其已分配队伍最多需要的分钟；`! AGENTIC-OBSERVER26-runner-N: needs …` 列出分钟不够的组织。`public pool:` 一行说明公开仓库 runner 池是否承接本阶段的 run（不耗分钟）以及大约能承接多少分钟。处理方法见第 4 节。
 
 ## 3 · 截止后执行（10-07 15:59 UTC 之后）
 
@@ -75,13 +75,13 @@ python3 scripts/run-hidden-final.py --results --csv ~/hidden-final-results.csv
 - 作业落在哪个组织：每个批次以该队一名成员的身份运行，作业固定发往该成员已记录的 runner 组织（`private.observer_placements`，线上赛期间已确定）；只有派发报错时才会改投其他组织。也就是说**超过分钟上限的组织仍会继续接收其已分配队伍的作业**。
 - 容量风险：每个 runner 组织的计数上限 `monthly_minute_limit` 默认 1800 分钟/月（GitHub Free 私有仓库额度 2000），13 个组织约 23,400 分钟/月，**且与 10-05–10-07 的线上赛同属 10 月**。某个组织的 GitHub 额度用完后，发往它的作业不会启动、最终过期失败（平台失败，可重跑，但会拖延公布）。预览输出会给出总剩余分钟，并逐个列出「已分配队伍所需分钟超过剩余分钟」的组织（`! AGENTIC-OBSERVER26-runner-N: needs …`）。出现时先用 `scripts/rebalance-observer-placements.py` 把空闲成员挪到有余量的组织、启用更多组织或调整 `monthly_minute_limit`，再执行。10-07 截止前后务必各看一次预览。
 
-- **2026-10-04 容量评估（3 次取平均）**：已有完整计分练习评测的队伍 64 个（近 3 天活跃 59 个），按 60–100 队估算：每队 12 个 run，共 720–1,200 个 run。练习赛实测 engine 作业平均 3.7 分钟（p90 7.9 分钟），GitHub 计费约为数据库口径的 1.4 倍（按分钟取整），约 5 分钟/run；80 队约 4,800 分钟，若所有程序都跑满 900 秒则上限约 17,000 分钟。调度速度 5 run/分钟：80 队约 3.5 小时、100 队约 4.3 小时全部跑完（N=2 约 2.5 小时，N=5 约 6 小时），远在 24 小时内。13 个 runner 组织 GitHub 免费额度共 26,000 分钟/月，10-04 时已用约 5,700 分钟，线上赛 3 天预计再用 1–1.5 万分钟，**决赛时剩余可能只有约 4,000–9,000 分钟，是主要风险**。对策：截止后先看预览中的 `runner capacity`；按轮次创建保证分钟用完前每队已有相同次数的评测；必要时用 `scripts/rebalance-observer-placements.py` 把队伍挪到余量大的组织；公开仓库 runner 池（不计分钟）用于 `final-hidden` 前须先完成密封传输演练并设 `sealed_transfer_verified=true`（主办方决定）。
+- **2026-10-04 容量评估（3 次取平均）**：已有完整计分练习评测的队伍 64 个（近 3 天活跃 59 个），按 60–100 队估算：每队 12 个 run，共 720–1,200 个 run。练习赛实测 engine 作业平均 3.7 分钟（p90 7.9 分钟），GitHub 计费约为数据库口径的 1.4 倍（按分钟取整），约 5 分钟/run；80 队约 4,800 分钟，若所有程序都跑满 900 秒则上限约 17,000 分钟。调度速度 5 run/分钟：80 队约 3.5 小时、100 队约 4.3 小时全部跑完（N=2 约 2.5 小时，N=5 约 6 小时），远在 24 小时内。13 个 runner 组织 GitHub 免费额度共 26,000 分钟/月，10-04 时已用约 5,700 分钟，线上赛 3 天预计再用 1–1.5 万分钟，**决赛时剩余可能只有约 4,000–9,000 分钟，是主要风险**。对策：截止后先看预览中的 `runner capacity` 和 `public pool`；按轮次创建保证分钟用完前每队已有相同次数的评测；必要时用 `scripts/rebalance-observer-placements.py` 把队伍挪到余量大的组织；公开仓库 runner 池（不计分钟）：2026-10-04 已用演练阶段完成密封传输演练（通过，记录见 `ops/public-runner-pool.md`），已设 `sealed_transfer_verified=true` 并为 `final-hidden` 打开。池在 `overflow` 模式下对 `final-hidden` 优先使用（有空位就去池里，不等组织分钟快用完），每次最多 `max_active` 个同时运行，其余照常在各组织运行。默认 `max_active`=3 只能承接很小一部分；**决赛 `--apply` 前**建议 `select public.observer_set_public_pool(p_max_active=>15);`（最多 20，与 runner-12 自己的作业共用 20 个并发），预览里的 `public pool:` 一行会给出能承接的分钟数。关掉：`select public.observer_set_public_pool_phase('final-hidden', false);`（已在池里运行的不受影响）。
 
 ## 5 · 核验与公布
 
 1. `--results` 确认所有应参赛队伍都有 `scored` 结果（选手原因失败的卡已按 0 计入，标 `*`）；仍为 `failed (platform)` 的先 `--retry-failed`。
 2. 前列复现：对前列队伍的 run 用 `scripts/verify-v4-run.py --bundle <卡包> --result <结果包>` 回放核对（只输出总分、计数和摘要，不输出卡内容）；规则第 6 节第 4 条的复现核验另按约定进行。
-3. 公布：在管理后台「阶段」把 `final-hidden` 的榜单模式改为 `published`（或 `update public.phases set leaderboard_mode='published' where slug='final-hidden'`）。公布后选手可看到该阶段卡榜（每卡 + 总榜）和自己的结果；隐藏卡文件仍不公开。加密保存的模型密钥在公布且保留期满后自动删除（迁移 `20260927001200`）。
+3. 公布：在管理后台「阶段」把 `final-hidden` 的榜单模式改为 `published`（或 `update public.phases set leaderboard_mode='published' where slug='final-hidden'`）。公布后排行榜页最后会出现「决赛」标签（公布前选手看不到这个标签；管理员能看到，并标注「主办方预览」），显示每卡 3 次平均分、3 次的最低–最高分范围和「3 次平均」，以及总榜；选手也能看到自己的结果；隐藏卡文件仍不公开。加密保存的模型密钥在公布且保留期满后自动删除（迁移 `20260927001200`）。
 
 ## 6 · 保密要求
 
@@ -92,3 +92,4 @@ python3 scripts/run-hidden-final.py --results --csv ~/hidden-final-results.csv
 ## 7 · 线上演练记录
 
 - 2026-10-01：迁移 `20261001000200` 已部署。用隐藏测试队 `acceptance-w02-platform-test`（最终版本设为其 v4 探针版本）执行 `--team … --before-freeze` 预览 → `--apply`：4 个 run 全部由正常调度在 colocated 模式下跑完并计分，批次 `scored`，`--status`、`--results --csv` 输出正常（该队为隐藏队伍，不排名）。匿名访问 `final-hidden` 的阶段、卡榜和批次均为空或被拒。探针程序很快结束（平均每 run 不到 1 分钟），不能代表 900 s 跑满时的耗时。
+- 2026-10-04：公开仓库 runner 池密封传输演练（演练阶段 `rehearsal-final-avg`，隐藏测试队，4 张演练卡，不涉及 E–H）通过：3 个 run 在公开池、1 个在 runner-13，全部计分并经独立重算核验，分数与此前私有池评测完全一致；公开 run 的日志只有一行状态，没有卡、队伍、分数、签名 URL 或令牌，没有 artifact、annotation 或 cache；暂存的密封文件运行中为密文、结束后已删除。随后设 `sealed_transfer_verified=true` 并为 `final-hidden` 打开公开池。排行榜「决赛」标签用同一演练阶段以管理员和匿名身份核对过（管理员 `/leaderboard/rehearsal-final-avg` 可预览；匿名看不到）。

@@ -55,6 +55,10 @@ preparation or rescore jobs), and only for phases switched on in
 `private.observer_public_pool_phases`. A **sealed (hidden) phase** such as
 `final-hidden` additionally needs `sealed_transfer_verified = true`, which an
 organizer sets after an end-to-end drill has shown the sealed path working.
+In `overflow` mode such a sealed phase **prefers** the pool (migration
+`20261004050000`): its runs go there whenever a slot is free (`max_active`,
+`monthly_minute_cap`), without waiting for their organization to be busy or near
+its minutes, and the rest run in their own organizations as usual.
 
 Modes (`observer_set_public_pool`):
 
@@ -94,13 +98,55 @@ select public.observer_set_public_pool(p_max_active=>3, p_monthly_minute_cap=>60
   p_overflow_ratio=>0.8, p_busy_jobs=>12);
 select public.observer_set_public_pool_phase('practice-projects', true);
 select public.observer_set_public_pool_phase('online', true);
--- hidden final: only after a passing sealed-transfer drill
+-- hidden final: only after a passing sealed-transfer drill (done 2026-10-04, see below)
 select public.observer_set_public_pool(p_sealed_transfer_verified=>true);
 select public.observer_set_public_pool_phase('final-hidden', true);
+select public.observer_set_public_pool(p_max_active=>15);       -- during the final: a larger free share
 ```
 
 Every change is audited (`observer.public_pool`, `observer.public_pool_phase`).
 Turning the pool off never interrupts a run already claimed.
+
+## Sealed-transfer drill (hidden phases)
+
+Run it with test data only: a hidden test team and an inactive rehearsal phase
+whose cards are copies, never the real hidden cards.
+
+1. `observer_set_public_pool(p_drill_users=>array['<test user>']::uuid[], p_sealed_transfer_verified=>true)`
+   and `observer_set_public_pool_phase('<rehearsal phase>', true)` (no real hidden
+   phase is switched on yet, so the flag only reaches the rehearsal).
+2. Create one evaluation of the test team's version in the rehearsal phase; up to
+   `max_active` of its runs go to the pool, the rest to the team's organization.
+3. While a run is in flight, read `observer-staging/sealed/<job>/*.zip` with the
+   service key: every object must be ciphertext (no ZIP header, ~8 bits/byte).
+4. After the runs: every public job `succeeded`, `sealed_cleaned_at` set (staging
+   objects gone), runs `scored` with `score_check='verified'` (rescored in the home
+   organization), results committed to the team's private repository, and the
+   scores equal a private-pool evaluation of the same version.
+5. Public side, for every public run (`gh api repos/AGENTIC-OBSERVER26-runner-12/observer-public/actions/runs/<id>/logs`):
+   the log has one status line and the step's environment (`OBSERVER_JOB_URL`, the
+   job id, `OBSERVER_POOL`) only; no card, scenario, team, revision, score, digest,
+   signed URL or token appears; the run has no artifacts or annotations and the
+   repository no caches.
+6. Reset `p_drill_users=>'{}'`, switch the rehearsal phase off; keep
+   `sealed_transfer_verified` only if every check passed, then switch the hidden
+   phase on.
+
+**2026-10-04 drill: passed.** Rehearsal phase `rehearsal-final-avg` (inactive,
+sealed, colocated, 4 rehearsal cards), hidden test team
+`acceptance-w02-platform-test`, one evaluation: 3 runs in the pool (runs
+37176946016, 37176948557, 37176950489), 1 in runner-13. All four scored and
+verified by the rescore; the evaluation's score equals the team's three earlier
+private-pool evaluations exactly. Staging objects were ciphertext in flight and
+deleted afterwards. The 27 log files of the three public runs were checked against
+2,052 strings taken from the four card bundles and the runs (file names, keys,
+values, ids, scores, digests, commit ids) plus generic markers (`sig=`, `token=`,
+`eyJ`, `storage/v1`, `sk-`): no match apart from GitHub's own "Prepare all
+required actions". No artifacts, annotations or caches. Afterwards
+`sealed_transfer_verified=true` and `final-hidden` was switched on for the pool
+(mode `overflow`, `max_active` 3). Raise `max_active` (at most 20, shared with
+runner-12's own jobs) before the final for a larger share;
+`scripts/run-hidden-final.py` shows the share in its preview.
 
 ## Updating the runtime
 

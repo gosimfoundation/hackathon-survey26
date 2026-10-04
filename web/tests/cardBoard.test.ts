@@ -92,3 +92,18 @@ test('rows carry the averaged evaluation count and the final-version mark', asyn
   assert.deepEqual(board.rows.map(r => [r.averaged_runs, r.final_version]), [
     [3, { chosen: true, score: 7123.4 }], [null, { chosen: false, score: null }], [null, null]])
 })
+
+test('averaged rows carry the range of their evaluations, overall and per card', () => {
+  const row = toLeaderboardEntry({ team_id: 't1', total_score: 47.5, card_scores: { 'card-a': 70 }, averaged_runs: 3,
+    score_range: [45, 52.5], card_ranges: { 'card-a': [60, 90], 'card-b': 'bad' } }, 0)
+  assert.deepEqual([row.score_range, row.card_ranges], [[45, 52.5], { 'card-a': [60, 90] }])
+  const single = toLeaderboardEntry({ team_id: 't2', total_score: 1, card_scores: {}, score_range: null, card_ranges: null }, 0)
+  assert.deepEqual([single.score_range, single.card_ranges], [null, null])
+})
+
+test('the leaderboard page adds the final tab last; the home board keeps the three public boards', async () => {
+  const { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } = await import('../src/lib/leaderboardBoards.ts')
+  assert.deepEqual([...LEADERBOARD_SLUGS], ['practice-projects', 'practice', 'online'])
+  assert.deepEqual([...LEADERBOARD_PAGE_SLUGS], ['practice-projects', 'practice', 'online', 'final-hidden'])
+  assert.equal(LEADERBOARD_TAB_LABEL_KEYS['final-hidden'], 'leaderboard.tabs.final')
+})

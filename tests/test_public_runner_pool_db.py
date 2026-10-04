@@ -133,6 +133,29 @@ def test_hidden_phases_need_the_verified_sealed_transfer_and_capacity_is_capped(
         rpc(uri, "observer_public_job", second)
 
 
+def test_a_verified_sealed_phase_prefers_the_pool_in_overflow_mode(pool):
+    s = pool
+    uri = s["uri"]
+    set_pool(s, mode="overflow")
+    rpc(uri, "observer_set_public_pool_phase", s["slug"], True)
+    job, _, _ = project_job(s)
+    # Unsealed: only when the home organization is near its minutes or busy (it is not).
+    assert pending(s, job)[0]["public"] is False
+    query(uri, "update public.observer_phase_settings set sealed=true where phase_id=%s", (s["phase"],))
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is False  # sealed, transfer not verified
+    set_pool(s, sealed_transfer_verified=True)
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is True  # preferred although the home organization has minutes
+    set_pool(s, mode="off")
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is False
+    set_pool(s, mode="overflow")
+    rpc(uri, "observer_set_public_pool_phase", s["slug"], False)
+    query(uri, "update private.observer_jobs set last_dispatch_at=null,dispatch_count=0 where id=%s", (job,))
+    assert pending(s, job)[0]["public"] is False  # the phase must be switched on
+
+
 def test_a_public_job_is_claimed_only_by_its_dispatched_run_without_a_nonce(pool):
     s = pool
     uri = s["uri"]

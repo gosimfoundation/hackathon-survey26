@@ -8,6 +8,12 @@ function numberMap(value: unknown): Record<string, number> | null {
   return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([, v]) => typeof v === 'number') as [string, number][])
 }
 
+/** [lowest, highest] of the averaged evaluations, or null. */
+function range(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length !== 2 || value.some(v => typeof v !== 'number')) return null
+  return [value[0] as number, value[1] as number]
+}
+
 export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
   return {
     rank: Number(row.rank ?? index + 1),
@@ -46,6 +52,11 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
       targets_observed: numberOrNull(row.targets_observed),
       components: numberMap(row.components),
       averaged_runs: numberOrNull(row.averaged_runs),
+      score_range: range(row.score_range),
+      card_ranges: row.card_ranges && typeof row.card_ranges === 'object' && !Array.isArray(row.card_ranges)
+        ? Object.fromEntries(Object.entries(row.card_ranges as Record<string, unknown>)
+          .map(([slug, value]) => [slug, range(value)]).filter((entry): entry is [string, [number, number]] => entry[1] !== null))
+        : null,
       final_version: row.final_version && typeof row.final_version === 'object'
         ? { chosen: row.final_version.chosen === true, score: numberOrNull(row.final_version.score) } : null,
     } : {}),
