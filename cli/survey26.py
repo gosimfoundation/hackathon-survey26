@@ -128,6 +128,7 @@ MESSAGES = {
     "upload_failed": ("The file upload failed, possibly due to the network. Please try again.", "文件上传失败，可能是网络问题，请重试。"),
     "upload_not_found": ("The upload session expired or could not be found. Upload the file again.", "上传会话已过期或找不到，请重新上传。"),
     "upload_not_finished": ("The file has not finished uploading yet. Wait a moment and try again.", "文件还没有上传完成，请稍等再试一次。"),
+    "zip_has_no_code": ('No code files were found in the ZIP. Make sure you zipped the folder that contains your program, or start from an official example (the examples include observer.project.json).', '压缩包里没有找到代码文件。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。'),
     "portal_unavailable": ("Could not reach the server. Check your connection and try again.", "无法连接服务器，请检查网络后重试。"),
     "phase_closed": ("This phase is not taking evaluations right now.", "这个赛程现在不接受评测。"),
     "projects_not_enabled": ("Project evaluation is not open for the current competition.", "当前比赛尚未开放项目评测。"),

@@ -667,3 +667,50 @@ Deno.test("repository source options fail with clear errors and create nothing",
     assertEquals(c.uploads.length, 0);
   }
 });
+
+Deno.test("a ZIP without any program is refused before a revision exists; a missing manifest only warns", async () => {
+  const { filesZip } = await import("./observer-zip.ts");
+  const { inspectSourceNames } = await import("./observer-source-check.ts");
+  const zip = (paths: string[]) =>
+    filesZip(paths.map((path) => ({ path, data: new TextEncoder().encode("x"), executable: false })));
+  const upload = async (archive: Uint8Array) => {
+    const calls: Call[] = [];
+    const client = (label: string) =>
+      ({
+        rpc: (name: string, args: Record<string, unknown> = {}) => {
+          calls.push({ client: label, name, args });
+          const data = name === "observer_upload_access"
+            ? user + "/30000000-0000-4000-8000-000000000009/source.zip"
+            : name === "observer_submit_zip"
+            ? "30000000-0000-4000-8000-000000000010"
+            : null;
+          return Promise.resolve({ data, error: null });
+        },
+        storage: {
+          from: () => ({
+            list: () =>
+              Promise.resolve({ data: [{ name: "source.zip", metadata: { size: archive.length } }], error: null }),
+            download: () => Promise.resolve({ data: new Blob([archive as Uint8Array<ArrayBuffer>]), error: null }),
+          }),
+        },
+      }) as unknown as SupabaseClient;
+    const c = { calls, user: client("user"), service: client("service") };
+    const request = new Request("https://portal.test", {
+      method: "POST",
+      body: JSON.stringify({ action: "submit_zip", title: "Agent", upload_id: "30000000-0000-4000-8000-000000000009" }),
+    });
+    const deps = { user: c.user, service: c.service, userId: user, masterKey: master, modelBases: [], httpBases: [] };
+    return { c, run: () => portalRequest(request, deps) };
+  };
+  const empty = await upload(await zip(["proj/.gitignore", "proj/agent/.env.example", "proj/.venv/x.py"]));
+  const error = await assertRejects(() => empty.run(), ProxyError);
+  assertEquals(error.code, "zip_has_no_code");
+  assertEquals(error.detail, { files: ["proj/.gitignore", "proj/agent/.env.example", "proj/.venv/x.py"] });
+  assert(!empty.c.calls.some((x) => x.name === "observer_submit_zip"));
+  const code = await upload(await zip(["proj/agent.py", "proj/README.md"]));
+  assertEquals(await code.run(), { revision_id: "30000000-0000-4000-8000-000000000010", warning: "no_manifest" });
+  const manifest = await upload(await zip(["proj/observer.project.json", "proj/run.sh"]));
+  assertEquals(await manifest.run(), { revision_id: "30000000-0000-4000-8000-000000000010" });
+  assertEquals(inspectSourceNames(["a/Cargo.toml"]).code, true);
+  assertEquals(inspectSourceNames(["__MACOSX/a.py", ".git/hooks/x.sh", "a/README.md"]).code, false);
+});

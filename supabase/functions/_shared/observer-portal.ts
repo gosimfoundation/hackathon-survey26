@@ -5,6 +5,7 @@ import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { GitHubError, parseSourceUrl, sourceRef, sourceSubdir } from "./observer-github.ts";
 import { filesZip, readZipFiles, ZipError, zipNames } from "./observer-zip.ts";
+import { inspectSourceNames } from "./observer-source-check.ts";
 import {
   agentLogView,
   fetchArchive,
@@ -425,8 +426,21 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       ) {
         throw new ProxyError(400, "upload_not_finished");
       }
+      // A ZIP without any program is refused before a revision exists, so it never
+      // uses a preparation or a model call (the browser checks the same first).
+      let check;
+      try {
+        const { data: blob, error: readError } = await staging.download(path);
+        if (readError || !blob) throw new Error("unreadable");
+        check = inspectSourceNames(zipNames(new Uint8Array(await blob.arrayBuffer())));
+      } catch {
+        check = null; // unreadable here: the preparation job validates the archive as before
+      }
+      if (check && !check.manifest && !check.code) {
+        throw new ProxyError(400, "zip_has_no_code", { files: check.files });
+      }
       const revision = await userRpc("observer_submit_zip", { p_title: text(body.title, 100), p_upload: id });
-      return { revision_id: revision };
+      return check && !check.manifest ? { revision_id: revision, warning: "no_manifest" } : { revision_id: revision };
     }
     case "approve":
       await userRpc("observer_approve_revision", {

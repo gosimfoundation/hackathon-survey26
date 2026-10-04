@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { withNetworkRetry } from './networkRetry'
 import { isAlreadyUploaded, isDuplicateUploadResponse } from './uploadConflict'
 import type { EvaluationQuota, FinalVersion } from './projectEvaluation'
+import { ZipWithoutCodeError } from './sourceCheck'
 
 export type ProjectRevision = {
   id: string; status: string; source_kind: string; source_location: string; source_digest: string | null
@@ -70,9 +71,15 @@ export async function portal<T>(
       // A Response means the server actually answered (even with an error); anything
       // else (a dropped connection, a TLS reset) never reached it and is safe to retry.
       const reachedServer = error.context instanceof Response
+      let files: string[] | null = null
       if (reachedServer) {
-        try { code = (await error.context.clone().json()).error ?? code } catch { /* safe generic error */ }
+        try {
+          const body = await error.context.clone().json()
+          code = body.error ?? code
+          if (Array.isArray(body.detail?.files)) files = body.detail.files.map(String)
+        } catch { /* safe generic error */ }
       }
+      if (code === 'zip_has_no_code') throw new ZipWithoutCodeError(files ?? [])
       throw new PortalError(code, !reachedServer)
     }
     if (data?.error) throw new Error(data.error)
