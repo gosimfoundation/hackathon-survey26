@@ -314,7 +314,7 @@ def test_final_version_and_profile_and_leaderboard(gw, capsys):
     assert code == 1 and doc["error"]["code"] == "nickname_too_long"
     gw.routes["phases"] = (200, {"data": [{"id": PHASE, "slug": "online", "observer_settings": {"projects_enabled": True}}]})
     gw.routes["rpc:observer_card_board"] = (200, {"data": {"layout": "cards_overall", "cards": [], "scenario": None, "rows": [
-        {"rank": 1, "team_id": "other", "team_name": "A", "score": 70}, {"rank": 2, "team_id": "t1", "team_name": "Stars", "score": 61}]}})
+        {"rank": 1, "team_id": "other", "team_name": "A", "total_score": 70}, {"rank": 2, "team_id": "t1", "team_name": "Stars", "total_score": 61}]}})
     code, doc = run_json(capsys, "leaderboard", "--phase", "online", "--mine")
     assert code == 0 and [r["team_name"] for r in doc["data"]["rows"]] == ["Stars"]
 

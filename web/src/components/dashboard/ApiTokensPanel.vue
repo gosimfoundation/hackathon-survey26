@@ -103,7 +103,7 @@ onMounted(() => { void load().catch(() => { loaded.value = true }) })
           <tr v-for="token in tokens" :key="token.id" data-testid="api-token-row">
             <td>{{ token.name }} <span class="m text3 text-xs">s26_…{{ token.hint }}</span></td>
             <td class="text-xs text3">{{ w.created }} {{ when(token.created_at) }}<br>{{ w.used }} {{ when(token.last_used_at) }}</td>
-            <td class="r"><button type="button" class="copy-btn" :disabled="busy" @click="revoke(token)">{{ w.revoke }}</button></td>
+            <td class="r"><button type="button" class="copy-btn whitespace-nowrap" :disabled="busy" @click="revoke(token)">{{ w.revoke }}</button></td>
           </tr>
         </tbody>
       </table>

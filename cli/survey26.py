@@ -252,6 +252,8 @@ class Api:
                     code = str(json.loads(error.read().decode("utf-8")).get("error") or "request_failed")
                 except (ValueError, AttributeError):
                     code = "request_failed"
+                if "violates foreign key constraint" in code and "on table \"teams\"" in code:
+                    code = "has_submissions"  # a team with projects cannot be emptied or disbanded
                 retry = error.code in (502, 503, 504) and not write
                 if not retry or attempt >= self.retries:
                     raise CliError(code, status=error.code)
@@ -1452,9 +1454,9 @@ def cmd_leaderboard(api: Api, args, out: Out):
     rows = rows or []
     mine = [r for r in rows if team_id and r.get("team_id") == team_id]
     shown = mine if args.mine else rows
-    out.table([dict(r, score_text=fmt_score(r.get("score") if r.get("score") is not None else r.get("best_score"))) for r in shown],
+    out.table([dict(r, score_text=fmt_score(r.get("total_score"))) for r in shown],
               [("#", "rank"), (out.t("Team", "队伍"), "team_name"), (out.t("Score", "分数"), "score_text"),
-               (out.t("Evaluations", "评测次数"), "submissions")])
+               (out.t("Evaluations", "评测次数"), "submission_count")])
     if args.mine and not mine:
         out.line(out.t("Your team is not on this board yet.", "本队尚未出现在这个排行榜上。"))
     return {"phase": slug, "card": card, "cards": cards, "rows": shown, "my_team_id": team_id}
@@ -1546,8 +1548,8 @@ def build_parser() -> argparse.ArgumentParser:
     tv.add_argument("state", choices=["show", "on", "off"])
     tv.add_argument("--blurb")
     tv.add_argument("--contact")
-    tv.add_argument("--seeking", choices=["", "team", "teammates"], help="what you are looking for ('' = nothing)")
-    tv.add_argument("--seeking-count", type=int)
+    tv.add_argument("--seeking", choices=["", "astro", "ai"], help="the teammate you look for: astro (astronomy), ai, or '' (none)")
+    tv.add_argument("--seeking-count", type=int, choices=[1, 2])
 
     team = sub.add_parser("team", help="create, join and manage your team").add_subparsers(dest="cmd", metavar="ACTION")
     add(team, "show", cmd_team_show, "your team, invite code and members")
