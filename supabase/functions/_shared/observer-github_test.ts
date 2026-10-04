@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { createLocalJWKSet, exportJWK, exportPKCS8, generateKeyPair, SignJWT } from "npm:jose@6.1.0";
+import { createLocalJWKSet, errors, exportJWK, exportPKCS8, generateKeyPair, SignJWT } from "npm:jose@6.1.0";
 import {
   CONTROL_REPOSITORY,
   GitHubApp,
@@ -334,6 +334,21 @@ Deno.test("OIDC validates signature, audience and exact trusted workflow identit
     async () => verifyWorkflowIdentity(await signed({}, "different-service"), expected, keys),
     GitHubError,
   );
+});
+
+Deno.test("an unreachable GitHub key set is retryable (503), a bad token stays 401", async () => {
+  const token = await signed();
+  for (const failure of [new errors.JWKSTimeout(), new errors.JOSEError("Expected 200 OK"), new TypeError("network")]) {
+    const error = await assertRejects(
+      () => verifyWorkflowIdentity(token, expected, () => Promise.reject(failure)),
+      GitHubError,
+    );
+    assertEquals([error.code, error.status], ["workflow_identity_unavailable", 503]);
+  }
+  for (const bad of [token.slice(0, -4) + "AAAA", "not.a.jwt"]) {
+    const error = await assertRejects(() => verifyWorkflowIdentity(bad, expected, keys), GitHubError);
+    assertEquals([error.code, error.status], ["invalid_workflow_identity", 401]);
+  }
 });
 
 Deno.test("release OIDC requires the exact approved tag and workflow commit", async () => {
