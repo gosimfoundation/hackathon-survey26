@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 
+use crate::clock::Clock;
 use crate::protocol::{decode_targets, InitPayload, ScoringKnobs, Target};
 use crate::scoring::{self, FiberGrid, LunarModel, ProgramConfig, SIDEREAL_DEG_PER_SECOND};
 
@@ -254,30 +255,36 @@ fn assign_night_windows(targets: &mut [Target], nights: &[Night], longitude_deg:
 }
 
 /// Running state of the conversation itself: how far we are and how much
-/// real-wallclock budget is left. Learned sky/target knowledge lives in `memory`.
-#[derive(Default)]
+/// time budget is left (`clock`). Learned sky/target knowledge lives in `memory`.
 pub struct RunState {
     pub decisions_seen: i64,
     pub observe_actions_sent: i64,
-    pub wallclock_remaining: f64,
     pub wallclock_total: f64,
+    pub clock: Clock,
+    /// 0 = full search, 1 = one anchor, 2 = one anchor and a short candidate pool.
+    pub pace_level: usize,
+    /// Floor for `pace_level`, raised when our own measured cost was too high.
+    pub min_pace_level: usize,
     pub llm_calls_made: u32,
-    pub llm_seconds_spent: f64,
 }
 
 impl RunState {
     pub fn new(wallclock_total: f64) -> Self {
         RunState {
-            wallclock_remaining: wallclock_total,
+            decisions_seen: 0,
+            observe_actions_sent: 0,
             wallclock_total,
-            ..Default::default()
+            clock: Clock::new(wallclock_total),
+            pace_level: 0,
+            min_pace_level: 0,
+            llm_calls_made: 0,
         }
     }
 
-    /// Conservative safety margin: once less than this remains, stop issuing
-    /// LLM calls and new `observe`/`wait` actions and finish cleanly instead,
-    /// rather than risk being killed mid-decision with no `finish` message.
+    /// Conservative safety margin: once less than this many real CPU seconds
+    /// (or real seconds before the cap) remain, finish cleanly instead of
+    /// risking being stopped mid-decision.
     pub fn is_near_deadline(&self) -> bool {
-        self.wallclock_remaining < 10.0
+        self.clock.compute_left() < 10.0
     }
 }

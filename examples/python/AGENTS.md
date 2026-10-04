@@ -23,6 +23,7 @@ agent_core/
   scoring.py               factor/score estimates from PUBLIC scoring config only
   planner.py               decision logic: wait / observe / report / finish
   llm_client.py            OpenAI-compatible chat client, defaults to Kimi Coding Plan
+  clock.py                 fair-clock budget: pace on remaining_real_cpu_seconds + process CPU time
   memory.py                optional, best-effort JSONL decision trace (off by default)
   validation.py            protocol-legal action checking + a deterministic fallback
 observer.project.json      platform project manifest (image, run command, env)
@@ -52,9 +53,10 @@ Copy `.env.example` to `.env` and set:
 - `OPENAI_MODEL` -- defaults to `k3` when unset.
 
 Any other OpenAI-compatible `/chat/completions` endpoint works too -- just point
-`OPENAI_BASE_URL` / `OPENAI_MODEL` at it. On the platform, `OPENAI_BASE_URL` /
-`OPENAI_API_KEY` are injected automatically for every run (the platform's own model
-proxy and a temporary credential); `.env` is never uploaded and is excluded by
+`OPENAI_BASE_URL` / `OPENAI_MODEL` at it. On the platform,
+the variables your team saves under "Keys and network" (e.g. `OPENAI_API_KEY`,
+`OPENAI_BASE_URL`, `OPENAI_MODEL`) are the program's environment, and it calls the
+provider directly; `.env` is never uploaded and is excluded by
 `pack_agent.py`.
 
 ## Packing and uploading as a complete project

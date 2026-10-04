@@ -32,6 +32,7 @@ import { LLMAdvisor, configError } from "./llmClient";
 import { RunMemory } from "./memory";
 import { deterministicFallback, validateAction } from "./validate";
 import { formatUtc, parseUtc } from "./skymath";
+import { Clock } from "./clock";
 
 const PROTOCOL = "participant-agent-protocol-v4";
 
@@ -53,6 +54,8 @@ class Agent {
   private suspicion: number[] = [];
   private observes = 0;
   private consecutiveReports = 0;
+  private minLevel = 0;
+  readonly clock = new Clock();
 
   constructor(payload: InitializeEnvelope["payload"]) {
     const started = Date.now();
@@ -96,7 +99,8 @@ class Agent {
     if (payload.last_result?.action === "observe") {
       this.memory.recordObserveResult(payload.last_result.assigned_count, payload.last_result.hit_count);
     }
-    this.pace(payload, now);
+    this.clock.update(payload.wallclock);
+    this.pace(now);
     st.currentActionIndex = payload.observe_action_index;
     this.planner.requestThresholds(payload.active_requests ?? []);
 
@@ -135,18 +139,25 @@ class Agent {
     return Math.round(Math.max(60, Math.min(3600, slot - into)));
   }
 
-  /** Do less work per decision when the wall clock is short for the nights still to come. */
-  private pace(payload: DecisionRequestEnvelope["payload"], now: Date): void {
-    const remainingWall = payload.wallclock?.remaining_seconds ?? 1e9;
+  /**
+   * Do less work per decision when the compute budget is short for the nights still to come. Budget
+   * and own cost are both real CPU seconds of this machine (see clock.ts), so the pace does not depend
+   * on how fast the machine is.
+   */
+  private pace(now: Date): void {
     let nightSeconds = 0;
     for (const { start, end } of this.state.nights) {
       if (end > now) nightSeconds += Math.max(0, (end.getTime() - Math.max(start.getTime(), now.getTime())) / 1000);
     }
     const decisionsLeft = Math.max(1.0, nightSeconds / 700.0);
-    const perDecision = remainingWall / decisionsLeft;
-    const level = perDecision > 0.12 ? 0 : perDecision > 0.04 ? 1 : 2;
+    const perDecision = this.clock.computeLeft() / decisionsLeft;
+    let level = perDecision > 0.12 ? 0 : perDecision > 0.04 ? 1 : 2;
+    // Safety net from our own measurement: if recent decisions cost more CPU than we can afford per
+    // decision, never go back to a slower level for the rest of the run.
+    if (this.clock.avgCost > perDecision) this.minLevel = Math.min(2, Math.max(this.minLevel, level + 1));
+    level = Math.max(level, this.minLevel);
     if (level !== this.state.fastLevel) {
-      log(`agent: pace level ${level} (${Math.round(perDecision * 1000)} ms per decision left)`);
+      log(`agent: pace level ${level} (${Math.round(perDecision * 1000)} ms CPU per decision left, recent cost ${Math.round(this.clock.avgCost * 1000)} ms)`);
       this.state.fastLevel = level;
     }
   }
@@ -158,7 +169,7 @@ class Agent {
     const nightDate = new Date(nightStart.getTime() - 12 * 3_600_000).toISOString().slice(0, 10);
     const tonight = this.memory.lastForecast.filter((n) => n.nights?.includes(nightDate));
     const bulletin = payload.latest_bulletin?.notices ?? [];
-    const left = payload.wallclock?.remaining_seconds ?? 0;
+    const left = this.clock.wallLeft; // model waits cost real time, not CPU budget
 
     const plan = await this.advisor.nightPlan(nightDate, tonight, bulletin, left);
     if (plan) log(`llm night ${nightDate}: avoid ${[...plan.avoidDirections]} duration x${plan.durationScale.toFixed(2)}`);
@@ -200,7 +211,7 @@ class Agent {
     this.suspicion.push(hours);
     if (this.suspicion.length < REPORT_CONFIRMATIONS) return null;
     this.suspicion = [];
-    const verdict = await this.advisor.confirmReport(evidence, payload.wallclock?.remaining_seconds ?? 0);
+    const verdict = await this.advisor.confirmReport(evidence, this.clock.wallLeft);
     if (verdict === false) {
       log(`agent: report vetoed by the model at ${payload.now_utc} (${JSON.stringify(evidence)})`);
       this.lastReportHours = hours;
@@ -261,6 +272,7 @@ async function main(): Promise<number> {
       const request = message as DecisionRequestEnvelope;
       let action: DecisionAction;
       const now = parseUtc(request.payload.now_utc);
+      agent?.clock.startDecision(); // measure our own CPU cost per decision
       try {
         if (!agent) throw new Error("decision_request received before initialize");
         action = await agent.respond(request.payload);
@@ -273,6 +285,7 @@ async function main(): Promise<number> {
         action = { ...action, decision_source: agent && agent.llmCalls > 0 ? "llm-advised" : "deterministic" };
       }
       writeDecisionResponse(request.decision_sequence, action);
+      agent?.clock.endDecision();
     } else if (message.message_type === "finish") {
       const finish = message as FinishEnvelope;
       const observes = agent?.observeCount ?? 0;

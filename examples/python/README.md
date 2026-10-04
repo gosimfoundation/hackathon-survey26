@@ -25,6 +25,7 @@ agent_core/
   scoring.py               factor/score estimates from PUBLIC scoring config only
   planner.py               decision logic: wait / observe / report / finish
   llm_client.py            an OpenAI-compatible chat client, defaults to Kimi Coding Plan
+  clock.py                 the fair-clock budget: remaining CPU, own CPU cost per decision
   memory.py                an optional, best-effort JSONL decision trace (off by default)
   validation.py            protocol-legal action checking + a deterministic fallback
 observer.project.json      the platform's project manifest (image, run command, env)
@@ -97,7 +98,7 @@ averaged. If a call keeps failing after its retries, that question's answer is l
 of the merge for the night (the other one still counts if it succeeded); the next
 night's calls are unaffected. Target selection, fibre filling, exposure sizing, and
 instrument-fault reporting are otherwise fully deterministic -- calling a model on every
-one of the ~1,000-5,000 decisions in a run would blow through the wall clock; the
+one of the ~1,000-5,000 decisions in a run would waste real time; the
 participant guide's own advice is "do not call a model on every decision." A third,
 occasional call asks the model to confirm a suspected instrument fault before reporting
 one (at most twice per run; the rule-based evidence check that triggers it runs far less
@@ -107,16 +108,43 @@ often than once per night).
 
 `LLMClient` enforces, regardless of what the model does:
 
-- a per-call timeout (default 12 s) that also shrinks as the wall clock runs low (never
-  cuts into the last 60 s of the survey's own budget);
-- a total LLM time budget per run (default 300 s, well under the 900 s wall clock);
-- a call cap per run (default 100);
-- up to 3 attempts for one question before moving on without an answer for it this time;
-  the next scheduled call still goes ahead as normal;
+- a per-attempt timeout (default 20 s) and at most 60 s per question, retries included;
+- no new call in the last 5 minutes before the real-time cap (see "Time budget" below);
+- a call cap per run (default 100 requests);
+- up to 4 attempts for one question: HTTP 429/5xx, timeouts and network errors are retried
+  with exponential backoff plus jitter, honouring `Retry-After`; other errors (bad key, bad
+  request) are not retried. The next scheduled call still goes ahead as normal;
 - every exception (network, timeout, bad JSON, missing fields) is caught -- a failed
   attempt never raises past `ask_json`, and `ask_json` returns `None` when all attempts
   for that question are exhausted;
 - the HTTP `User-Agent` header is never set or overridden.
+
+## Time budget (fair clock)
+
+Each card has a budget of 900 **normalized CPU seconds**: only the CPU time this program uses
+during its own turns is charged, divided by the machine's `speed_factor`. Waiting (model API,
+network, idle) and the engine's time are free; a 30-minute real-time cap ends hung runs. Every
+`decision_request` carries `payload.wallclock`; the fields this agent uses (`agent_core/clock.py`):
+
+- `remaining_real_cpu_seconds` -- the budget left, in real CPU seconds of *this* machine;
+- `wall_remaining_seconds` -- real time left before the 30-minute cap;
+- `remaining_seconds` -- the budget left in normalized seconds (fallback for older local runners).
+
+The agent measures its own cost per decision with process CPU time (`time.process_time()`) and compares it
+with `remaining_real_cpu_seconds` -- the same unit. Do not time yourself with a wall clock against
+`remaining_seconds`: on the platform's measurements such agents lost about 11% on a 2x slower
+machine, against about 3.6% when pacing this way. When the budget per remaining decision gets
+short, the planner searches less. As a sanity guard it never plans to use more than 80% of the
+real time left, since a slow machine could otherwise fill the 30-minute cap with CPU alone.
+
+Model calls only wait, so they cost real time, not budget. They are bounded by real time instead:
+a timeout per attempt (20 s), 60 s per question including retries, no new call in the last
+5 minutes before the cap, and at most 100 requests per run. HTTP 429 and 5xx, timeouts and network
+errors are retried with exponential backoff plus random jitter, honouring `Retry-After`. In the
+hidden final a card's 3 repeats run at the same time on your team's key, so rate limits are
+likely; when a question still fails, that step uses the rule-based answer.
+
+stdout carries protocol messages only; every log line goes to stderr.
 
 ## Configuration (.env)
 

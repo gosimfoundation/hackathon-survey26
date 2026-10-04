@@ -4,13 +4,17 @@
 //! and the key comes from `OPENAI_API_KEY` (or `KIMI_API_KEY`). Any other
 //! OpenAI-compatible endpoint works the same way by setting those three.
 //!
-//! A call that fails (network error, timeout, malformed reply) is retried up
-//! to `MAX_ATTEMPTS` times; if every attempt fails, the night's plan uses its
-//! own rule-based numbers for that one step instead, and the next scheduled
-//! LLM step still runs normally. Every call also counts against `RunState`'s
-//! running totals so one run never exceeds `LLM_MAX_CALLS` calls or
-//! `LLM_BUDGET_SECONDS` of real time, and the planner stops attempting calls
-//! once the global wall-clock budget runs low (`state::RunState`).
+//! Waiting for the model is not charged to the CPU budget (see `clock.rs`),
+//! but it does use real time, and each card has a 30-minute real-time cap.
+//! So model use is bounded by real time: every attempt has a timeout
+//! (default 20 s), one question gives up after 60 s in total, no call starts
+//! in the last 5 minutes before the cap, and a run makes at most
+//! `LLM_MAX_CALLS` requests. HTTP 429 (rate limit) and 5xx answers, timeouts
+//! and network errors are retried with exponential backoff plus random
+//! jitter, honouring `Retry-After`. In the hidden final a card's 3 repeats
+//! run at the same time on the same key, so 429s are to be expected; the
+//! jitter keeps the repeats from retrying in lockstep. If a question still
+//! fails, the night's plan uses its own rule-based numbers for that step.
 
 use serde_json::{json, Value};
 use std::env;
@@ -20,14 +24,32 @@ use crate::state::RunState;
 
 const DEFAULT_BASE_URL: &str = "https://api.kimi.com/coding/v1";
 const DEFAULT_MODEL: &str = "k3";
-const MAX_ATTEMPTS: u32 = 3;
+const MAX_ATTEMPTS: u32 = 4;
+/// No new model call this close to the real-time cap.
+const WALL_RESERVE_SECONDS: f64 = 300.0;
+/// One question, all retries and backoff included.
+const QUESTION_DEADLINE_SECONDS: f64 = 60.0;
+const MAX_BACKOFF_SECONDS: f64 = 20.0;
+
+/// Why an attempt failed, and whether trying again can help.
+enum Failure {
+    /// 429, 5xx, timeout or network trouble; carries `Retry-After` if sent.
+    Retryable(String, Option<f64>),
+    /// 400/401/403/404 and the like: retrying will not help.
+    Fatal(String),
+}
+
+/// A number in [0, 1) for backoff jitter, without a `rand` dependency.
+fn jitter() -> f64 {
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
+    (nanos % 1_000_000) as f64 / 1_000_000.0
+}
 
 pub struct LlmClient {
     base_url: String,
     api_key: String,
     model: String,
-    timeout: Duration,
-    budget_seconds: f64,
+    timeout_seconds: f64,
     max_calls: u32,
 }
 
@@ -56,12 +78,7 @@ impl LlmClient {
             .ok()
             .and_then(|s| s.trim().parse().ok())
             .filter(|&s| s > 0)
-            .unwrap_or(12);
-        let budget_seconds: f64 = env::var("LLM_BUDGET_SECONDS")
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .filter(|&s: &f64| s > 0.0)
-            .unwrap_or(300.0);
+            .unwrap_or(20);
         let max_calls: u32 = env::var("LLM_MAX_CALLS")
             .ok()
             .and_then(|s| s.trim().parse().ok())
@@ -71,8 +88,7 @@ impl LlmClient {
             base_url,
             api_key,
             model,
-            timeout: Duration::from_secs(timeout_seconds),
-            budget_seconds,
+            timeout_seconds: timeout_seconds as f64,
             max_calls,
         })
     }
@@ -85,7 +101,7 @@ impl LlmClient {
         &self.model
     }
 
-    fn attempt_chat(&self, system: &str, user: &str) -> Result<String, String> {
+    fn attempt_chat(&self, system: &str, user: &str, timeout: Duration) -> Result<String, Failure> {
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let body = json!({
             "model": self.model,
@@ -98,13 +114,21 @@ impl LlmClient {
                 {"role": "user", "content": user},
             ],
         });
-        let response = ureq::post(&url)
-            .timeout(self.timeout)
+        let response = match ureq::post(&url)
+            .timeout(timeout)
             .set("Authorization", &format!("Bearer {}", self.api_key))
             .set("Content-Type", "application/json")
             .send_json(body)
-            .map_err(|e| format!("request failed ({e})"))?;
-        let parsed: Value = response.into_json().map_err(|e| format!("response was not JSON ({e})"))?;
+        {
+            Ok(response) => response,
+            Err(ureq::Error::Status(code, response)) if code == 429 || code >= 500 => {
+                let retry_after = response.header("Retry-After").and_then(|v| v.trim().parse::<f64>().ok());
+                return Err(Failure::Retryable(format!("HTTP {code}"), retry_after));
+            }
+            Err(ureq::Error::Status(code, _)) => return Err(Failure::Fatal(format!("HTTP {code}"))),
+            Err(e) => return Err(Failure::Retryable(format!("request failed ({e})"), None)), // timeout, reset, DNS ...
+        };
+        let parsed: Value = response.into_json().map_err(|e| Failure::Retryable(format!("response was not JSON ({e})"), None))?;
         parsed
             .get("choices")
             .and_then(|c| c.get(0))
@@ -112,25 +136,39 @@ impl LlmClient {
             .and_then(|m| m.get("content"))
             .and_then(|c| c.as_str())
             .map(|s| s.to_string())
-            .ok_or_else(|| "response had no choices[0].message.content".to_string())
+            .ok_or_else(|| Failure::Retryable("response had no choices[0].message.content".to_string(), None))
     }
 
-    /// Retries up to `MAX_ATTEMPTS` times, charging every attempt against
-    /// `run`'s call count and time budget. Stops early (without spending an
-    /// attempt) once the run is close to its global wall-clock deadline, or
-    /// once this run's own LLM call/time budget is used up.
+    /// One question: up to `MAX_ATTEMPTS` attempts with backoff, all within
+    /// `QUESTION_DEADLINE_SECONDS` and never in the last
+    /// `WALL_RESERVE_SECONDS` before the real-time cap
+    /// (`run.clock.wall_left`). `None` means: use the rule-based answer.
     fn chat(&self, system: &str, user: &str, run: &mut RunState) -> Option<String> {
+        let started = Instant::now();
+        let deadline = QUESTION_DEADLINE_SECONDS.min(run.clock.wall_left - WALL_RESERVE_SECONDS);
         for attempt in 1..=MAX_ATTEMPTS {
-            if run.llm_calls_made >= self.max_calls || run.llm_seconds_spent >= self.budget_seconds || run.wallclock_remaining <= 30.0 {
+            let time_left = deadline - started.elapsed().as_secs_f64();
+            if time_left < 2.0 || run.llm_calls_made >= self.max_calls {
                 return None;
             }
             run.llm_calls_made += 1;
-            let started = Instant::now();
-            let result = self.attempt_chat(system, user);
-            run.llm_seconds_spent += started.elapsed().as_secs_f64();
-            match result {
+            let timeout = Duration::from_secs_f64(self.timeout_seconds.min(time_left));
+            match self.attempt_chat(system, user, timeout) {
                 Ok(content) => return Some(content),
-                Err(reason) => crate::memory::log(&format!("llm: attempt {attempt}/{MAX_ATTEMPTS} failed ({reason})")),
+                Err(Failure::Fatal(reason)) => {
+                    crate::memory::log(&format!("llm: call failed ({reason}); not retrying"));
+                    return None;
+                }
+                Err(Failure::Retryable(reason, retry_after)) => {
+                    // Exponential backoff with full jitter (1, 2, 4 ... s,
+                    // randomised), or the server's Retry-After.
+                    let pause = retry_after.unwrap_or_else(|| jitter() * 2f64.powi(attempt as i32 - 1)).min(MAX_BACKOFF_SECONDS);
+                    crate::memory::log(&format!("llm: attempt {attempt}/{MAX_ATTEMPTS} failed ({reason}); retry in {pause:.1}s"));
+                    if attempt == MAX_ATTEMPTS || started.elapsed().as_secs_f64() + pause > deadline - 2.0 {
+                        return None;
+                    }
+                    std::thread::sleep(Duration::from_secs_f64(pause)); // waiting: no CPU budget is charged
+                }
             }
         }
         None

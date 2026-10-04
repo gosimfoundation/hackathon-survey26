@@ -20,7 +20,8 @@ planner, and calls an LLM twice per night for forecast/bulletin advice. Read
 | `src/state.rs` | One-time config snapshot from `initialize`: catalogue, night calendar, visibility windows, spatial index. |
 | `src/memory.rs` | What the agent has learned from its own feedback, and the stderr logger. |
 | `src/planner.rs` | Turns one `decision_request` into one `decision_response`: anchor search and duration/program choice. |
-| `src/llm.rs` | OpenAI-compatible chat client (default: Kimi Coding Plan), with retries and a run-wide budget. |
+| `src/llm.rs` | OpenAI-compatible chat client (default: Kimi Coding Plan), with backoff retries, bounded by real time. |
+| `src/clock.rs` | Fair-clock budget: remaining CPU (`remaining_real_cpu_seconds`) and own CPU cost per decision. |
 | `src/scoring.rs` | Public sky geometry + scoring formulas (no scenario data). |
 | `src/validate.rs` | Protocol-rule validation and the deterministic safe fallback. |
 
@@ -48,8 +49,9 @@ Copy `.env.example` to `.env` and set:
 
 Any other OpenAI-compatible `/chat/completions` endpoint works too -- just
 point `OPENAI_BASE_URL` / `OPENAI_MODEL` at it. On the platform,
-`OPENAI_BASE_URL` / `OPENAI_API_KEY` are injected automatically for every run
-(the platform's own model proxy and a temporary credential); `.env` must never
+the variables your team saves under "Keys and network" (e.g. `OPENAI_API_KEY`,
+`OPENAI_BASE_URL`, `OPENAI_MODEL`) are the program's environment, and it calls the
+provider directly; `.env` must never
 be uploaded in a submission.
 
 ## Packing and uploading as a complete project

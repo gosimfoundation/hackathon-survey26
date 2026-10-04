@@ -38,6 +38,7 @@ from .geometry import (
     tangent_offsets,
     wrap180,
 )
+from .clock import Clock
 from .llm_client import LLMClient
 from .memory import TraceLog
 from .state import PendingPrediction
@@ -97,6 +98,8 @@ class Planner:
         self.state = state
         self.log = log
         self.grid = state.fiber_grid
+        self.clock = Clock()
+        self.min_level = 0
         self.llm = LLMClient(log=log)
         self.trace = TraceLog(log=log)
 
@@ -137,7 +140,8 @@ class Planner:
         if last_result and last_result.get("action") == "observe":
             self.total_assigned += int(last_result.get("assigned_count", 0))
             self.total_hit += int(last_result.get("hit_count", 0))
-        self._pace(payload, now)
+        self.clock.update(payload.get("wallclock"))
+        self._pace(now)
         self._current_action_index = payload.get("observe_action_index")
         self._request_thresholds_now = self._request_thresholds(payload.get("active_requests") or [])
 
@@ -191,16 +195,23 @@ class Planner:
         into = (now - night_start).total_seconds() % slot
         return int(max(60, min(3600, slot - into if into else slot)))
 
-    def _pace(self, payload: dict, now) -> None:
-        """Do less work per decision when the wall clock is short for the nights still to come."""
+    def _pace(self, now) -> None:
+        """Do less work per decision when the compute budget is short for the nights
+        still to come. Budget and own cost are both real CPU seconds of this machine
+        (see clock.py), so the pace does not depend on how fast the machine is."""
         state = self.state
-        remaining_wall = float((payload.get("wallclock") or {}).get("remaining_seconds", 1e9))
         night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in state.nights if end > now)
         decisions_left = max(1.0, night_seconds / 700.0)
-        per_decision = remaining_wall / decisions_left
+        per_decision = self.clock.compute_left() / decisions_left
         level = 0 if per_decision > 0.12 else 1 if per_decision > 0.04 else 2
+        # Safety net from our own measurement: if recent decisions cost more CPU than we
+        # can afford per decision, never go back to a slower level for the rest of the run.
+        if self.clock.avg_cost > per_decision:
+            self.min_level = min(2, max(self.min_level, level + 1))
+        level = max(level, self.min_level)
         if level != state.fast_level:
-            self.log(f"planner: pace level {level} ({per_decision * 1000:.0f} ms per decision left)")
+            self.log(f"planner: pace level {level} ({per_decision * 1000:.0f} ms CPU per decision left, "
+                     f"recent cost {self.clock.avg_cost * 1000:.0f} ms)")
             state.fast_level = level
 
     # -- LLM: two calls once per night, merged -----------------------------------
@@ -212,7 +223,7 @@ class Planner:
         applied to state.extra_avoid / state.duration_scale for the rest of the night."""
         state = self.state
         night_date = (night_start - timedelta(hours=12)).date().isoformat()
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        left = self.clock.wall_left  # model waits cost real time, not CPU budget
 
         forecast_tonight = [n for n in self._last_forecast_notices if night_date in (n.get("nights") or [])]
         bulletin_notices = (payload.get("latest_bulletin") or {}).get("notices", [])
@@ -285,7 +296,7 @@ class Planner:
         verdict_answer = self.llm.ask_json(
             "You check telescope data quality. A false instrument-fault report costs points, "
             'a correct one earns points. Reply with one JSON object only: {"report": true|false}.',
-            evidence._asdict(), float((payload.get("wallclock") or {}).get("remaining_seconds", 0)),
+            evidence._asdict(), self.clock.wall_left,
         )
         verdict = verdict_answer.get("report") if isinstance(verdict_answer, dict) and \
             isinstance(verdict_answer.get("report"), bool) else None

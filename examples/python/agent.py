@@ -16,6 +16,9 @@ README for configuration details.
   decision_request   -> Planner.decide(), validated, sent back as decision_response
   finish              -> Planner.on_finish() logs a summary and the process exits
 
+Pacing uses the fair clock (agent_core/clock.py): the budget is CPU time, so the
+agent measures its own cost with process CPU time, not with a wall clock.
+
 Any planner exception is caught here and replaced with a safe fallback action --
 a bug in the strategy must never end the run as agent_error or hang the process.
 """
@@ -57,6 +60,8 @@ def main() -> int:
 
         elif kind == "decision_request":
             sequence = message["decision_sequence"]
+            if planner is not None:
+                planner.clock.start_decision()  # measure our own CPU cost per decision
             consecutive_reports = planner.consecutive_reports if planner is not None else 0
             try:
                 action = planner.decide(message["payload"]) if planner is not None else fallback_action("not initialized")
@@ -70,6 +75,8 @@ def main() -> int:
             if planner is not None:
                 planner.note_action(action)
             send_response(sequence, action)
+            if planner is not None:
+                planner.clock.end_decision()
 
         elif kind == "finish":
             if planner is not None:

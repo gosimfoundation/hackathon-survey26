@@ -3,6 +3,7 @@
 //! and sends everything else (startup notes, learning updates, LLM call
 //! outcomes) to stderr. See `README.md` for the module map.
 
+mod clock;
 mod llm;
 mod memory;
 mod planner;
@@ -83,12 +84,14 @@ fn run_decision_loop<R: BufRead, W: Write>(
     loop {
         match protocol::read_message(reader) {
             Ok(Some(Inbound::DecisionRequest { sequence, snapshot })) => {
+                run.clock.start_decision(); // measure our own CPU cost per decision
                 let response = planner::decide(sequence, &snapshot, config, run, memory, llm_client);
                 let is_finish = response.action == "finish";
                 if let Err(e) = protocol::write_response(writer, &response) {
                     log(&format!("agent: failed to write response ({e}); exiting"));
                     return;
                 }
+                run.clock.end_decision();
                 if is_finish {
                     log("agent: sent our own finish; exiting ahead of the backend's closing message");
                     return;

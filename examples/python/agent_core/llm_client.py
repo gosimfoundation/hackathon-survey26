@@ -12,11 +12,15 @@ See https://www.kimi.com/code/docs/en/ for the Kimi Coding Plan API. This client
 sets or overrides the HTTP User-Agent header -- whatever Python's standard library
 sends by default is left alone.
 
-Every call has a timeout (default 12 s) and the whole run has a total time budget
-(default 300 s) and a call cap (default 100), so the two LLM-advised planning steps
-stay well inside the 900 s wall clock. A call that fails or times out is retried up to
-`max_retries` times; if all of those fail, that one planning step falls back to its
-rule-based answer for this night -- the next night's calls still go through normally.
+Waiting for the model is not charged to the CPU budget (see clock.py), but it does use
+real time, and each card has a 30-minute real-time cap. So model use is bounded by real
+time: every attempt has a timeout (default 20 s), one question gives up after 60 s in
+total, no call starts in the last 5 minutes before the cap, and a run makes at most 100
+requests. HTTP 429 (rate limit) and 5xx answers, timeouts and network errors are retried
+with exponential backoff plus random jitter, honouring `Retry-After`. In the hidden final
+a card's 3 repeats run at the same time on the same key, so 429s are to be expected; the
+jitter keeps the repeats from retrying in lockstep. If a question still fails, that one
+planning step falls back to its rule-based answer -- the next night's calls run normally.
 
 Standard library only (urllib) so the example has zero third-party dependencies.
 """
@@ -24,6 +28,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import time
 import urllib.error
@@ -33,6 +38,25 @@ from typing import Optional
 DEFAULT_BASE_URL = "https://api.kimi.com/coding/v1"
 DEFAULT_MODEL = "k3"
 _JSON_OBJECT = re.compile(r"\{.*\}", re.S)
+
+WALL_RESERVE_SECONDS = 300.0   # no new model call this close to the real-time cap
+QUESTION_DEADLINE_SECONDS = 60.0  # one question, all retries and backoff included
+MAX_BACKOFF_SECONDS = 20.0
+
+
+class RetryableError(Exception):
+    """429, 5xx, timeout or network trouble: worth another try after a pause."""
+
+    def __init__(self, reason: str, retry_after: Optional[float] = None):
+        super().__init__(reason)
+        self.retry_after = retry_after
+
+
+def _retry_after_seconds(value: Optional[str]) -> Optional[float]:
+    try:
+        return max(0.0, float(value)) if value else None
+    except ValueError:
+        return None  # an HTTP date is allowed too; we simply use our own backoff then
 
 
 class MissingAPIKeyError(RuntimeError):
@@ -47,27 +71,20 @@ def require_api_key() -> None:
 
 
 class LLMClient:
-    def __init__(self, log=lambda text: None, call_timeout_seconds: float = 12.0,
-                 total_budget_seconds: float = 300.0, max_calls: int = 100, max_retries: int = 3):
+    def __init__(self, log=lambda text: None, call_timeout_seconds: float = 20.0,
+                 max_calls: int = 100, max_attempts: int = 4):
         self.log = log
         self.base_url = os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/") or DEFAULT_BASE_URL
         self.api_key = os.environ.get("OPENAI_API_KEY", "").strip() or os.environ.get("KIMI_API_KEY", "").strip()
         self.model = os.environ.get("OPENAI_MODEL", "").strip() or DEFAULT_MODEL
         self.call_timeout_seconds = call_timeout_seconds
-        self.total_budget_seconds = total_budget_seconds
         self.max_calls = max_calls
-        self.max_retries = max_retries
-        self.spent_seconds = 0.0
+        self.max_attempts = max_attempts
         self.calls_made = 0
 
-    def _budget_left(self, wallclock_remaining_seconds: float) -> float:
-        # Never let a model call eat into the last minute of wall clock, and never
-        # exceed this run's own LLM time allowance.
-        return min(self.call_timeout_seconds, self.total_budget_seconds - self.spent_seconds,
-                   max(0.0, wallclock_remaining_seconds - 60.0))
-
     def _attempt(self, system_prompt: str, user_payload: dict, timeout: float) -> dict:
-        """One HTTP attempt. Raises on any problem; the caller retries or gives up."""
+        """One HTTP attempt. Raises RetryableError for problems worth retrying, any other
+        exception for problems that will not go away (bad key, bad request)."""
         body = json.dumps({
             "model": self.model,
             "messages": [
@@ -83,38 +100,52 @@ class LLMClient:
             self.base_url + "/chat/completions", data=body, method="POST",
             headers={"Content-Type": "application/json", "Authorization": "Bearer " + self.api_key},
         )
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 or exc.code >= 500:
+                raise RetryableError(f"HTTP {exc.code}", _retry_after_seconds(exc.headers.get("Retry-After")))
+            raise  # 400/401/403/404: retrying will not help
+        except (urllib.error.URLError, OSError) as exc:  # timeout, connection reset, DNS ...
+            raise RetryableError(type(exc).__name__)
         text = data["choices"][0]["message"]["content"] or ""
         match = _JSON_OBJECT.search(text)
         if not match:
-            raise ValueError("no JSON object in model reply")
+            raise RetryableError("no JSON object in model reply")
         parsed = json.loads(match.group(0))
         if not isinstance(parsed, dict):
-            raise ValueError("model reply was not a JSON object")
+            raise RetryableError("model reply was not a JSON object")
         return parsed
 
-    def ask_json(self, system_prompt: str, user_payload: dict, wallclock_remaining_seconds: float) -> Optional[dict]:
-        """One planning question, answered as exactly one JSON object. Retries up to
-        `max_retries` times on failure; returns None once the budget/call cap/retries
-        are exhausted, so the caller's rule-based answer can take over for this step."""
-        last_error: Optional[Exception] = None
-        for _attempt_number in range(self.max_retries):
+    def ask_json(self, system_prompt: str, user_payload: dict, wall_left_seconds: float) -> Optional[dict]:
+        """One planning question, answered as exactly one JSON object, or None so the
+        caller's rule-based answer takes over for this step. `wall_left_seconds` is the
+        real time left before the card's cap (`wallclock.wall_remaining_seconds`)."""
+        deadline = time.monotonic() + min(QUESTION_DEADLINE_SECONDS, wall_left_seconds - WALL_RESERVE_SECONDS)
+        for attempt in range(1, self.max_attempts + 1):
+            time_left = deadline - time.monotonic()
+            if time_left < 2.0:
+                self.log("llm: no time left for this question; using the rule-based path")
+                return None
             if self.calls_made >= self.max_calls:
                 self.log("llm: call cap reached for this run; using the rule-based path")
                 return None
-            timeout = self._budget_left(wallclock_remaining_seconds)
-            if timeout < 1.5:
-                self.log("llm: LLM time budget exhausted; using the rule-based path")
-                return None
-            started = time.monotonic()
             self.calls_made += 1
             try:
-                return self._attempt(system_prompt, user_payload, timeout)
-            except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
-                last_error = exc
-            finally:
-                self.spent_seconds += time.monotonic() - started
-        self.log(f"llm: call failed after {self.max_retries} attempts ({type(last_error).__name__}); "
-                 "this step falls back to its rule-based answer")
+                return self._attempt(system_prompt, user_payload, min(self.call_timeout_seconds, time_left))
+            except RetryableError as exc:
+                # Exponential backoff with full jitter (1, 2, 4 ... s, randomised), or the
+                # server's Retry-After when it sends one.
+                pause = exc.retry_after if exc.retry_after is not None else random.uniform(0, 2.0 ** (attempt - 1))
+                pause = min(pause, MAX_BACKOFF_SECONDS)
+                self.log(f"llm: attempt {attempt}/{self.max_attempts} failed ({exc}); retry in {pause:.1f}s")
+                if attempt < self.max_attempts and time.monotonic() + pause < deadline - 2.0:
+                    time.sleep(pause)  # sleeping is waiting: no CPU budget is charged
+                else:
+                    break
+            except Exception as exc:  # noqa: BLE001 - never let the model break a decision
+                self.log(f"llm: call failed ({type(exc).__name__}: {exc}); not retrying")
+                break
+        self.log("llm: no answer for this question; this step falls back to its rule-based answer")
         return None

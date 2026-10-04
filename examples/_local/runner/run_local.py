@@ -27,7 +27,8 @@ What happens (same engine the platform uses):
     the engine's time are free; a real-time cap (30 min for 900) ends hung runs. A fast laptop has a
     factor below 1, so the same 900 buys LESS real CPU time than on the median evaluation machine --
     e.g. factor 0.4 means about 360 s of CPU. Each request's `wallclock.remaining_seconds` is the budget
-    left; rely on it. CPU is metered on Linux and macOS (main process only on macOS); elsewhere a whole
+    left; `wallclock.remaining_real_cpu_seconds` is the same budget in real CPU seconds of this machine,
+    to compare with CPU time your agent measures itself (time.process_time and the like). CPU is metered on Linux and macOS (main process only on macOS); elsewhere a whole
     turn counts as CPU;
   * at the end it gets one `finish` message, stdin is closed, and it has 30 grace seconds to exit.
 
