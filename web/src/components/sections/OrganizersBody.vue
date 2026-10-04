@@ -18,7 +18,7 @@ const { items, committee, logo, photo } = useOrganizers()
       <p>{{ item.desc }}</p>
     </article>
   </div>
-  <div class="reveal mt-16">
+  <div id="committee" class="reveal mt-16 scroll-mt-24">
     <div class="rule-b pb-3">
       <span class="label accent">{{ t('home.credibility.committee.kicker') }}</span>
     </div>
