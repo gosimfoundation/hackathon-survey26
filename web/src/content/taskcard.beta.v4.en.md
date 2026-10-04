@@ -10,7 +10,7 @@ A season from mid-October: the sky moves with the season, and the targets lie in
 | Survey | 2026-10-18 to 2026-11-24, 38 nights. You observe when the sun is below −18°. |
 | Targets | 9,600 targets on 1,920 deg² of sky, in 3 regions. 480 are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. The fibre count and layout are those sent in `initialize`. |
-| Time limit | 900 s for the whole survey, counted only during the agent's turns (platform processing not counted; see the rules). |
+| Time limit | 900 s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 30-minute real-time cap). |
 | Weather | Not public. During a run the agent receives a briefing every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
 

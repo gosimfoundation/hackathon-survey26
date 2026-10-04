@@ -1798,7 +1798,7 @@
       "Limits: 20 MB per upload, 2,000 files, 50 MB uncompressed, no symlinks. Caches, scratch/ and run_output/ are left out automatically."
     ],
     "wallclock": "Time budget",
-    "wallclock_note": "Each card has one time budget, counted only during your agent's turns: CPU time adjusted for machine speed, waiting at real time; platform processing is not counted. No per-step timeout. Anything committed before it runs out still scores.",
+    "wallclock_note": "Each card has one budget of normalized CPU time: only CPU your agent uses during its turns counts, adjusted for machine speed; waiting and platform processing are not counted; a 30-minute real-time cap applies. No per-step timeout. Anything committed before it runs out still scores.",
     "wallclock_results_note": "A results file is replayed offline and costs no budget; the budget only applies to agents running on the platform.",
     "weather_public": "weather public",
     "weather_hidden": "weather hidden",
@@ -2098,7 +2098,7 @@
       },
       {
         "q": "What is the time limit per card?",
-        "a": "Each card has a 900 s budget (global_wallclock_seconds in the initialize message), on Practice, in the competition and on the hidden cards. It is counted only during your agent's turns, from each decision_request until your response; platform simulation and processing are not counted. Within a turn, the CPU time your container uses is divided by the machine's speed factor (measured by the platform with a fixed calibration program; 1.0 = the median evaluation machine, larger = slower), and the rest of the turn, such as waiting on a model API, counts at real time. Each request's wallclock.remaining_seconds gives the budget left; plan by it. A real-time cap of 3 × the budget stops programs that hang. There is no per-decision limit. When the budget is used up the agent is stopped, earlier observations still score and the terminal penalties apply. This timing applies to every evaluation started from 4 October 2026; earlier results remain valid."
+        "a": "Each card has a budget of 900 s of normalized CPU time (global_wallclock_seconds in the initialize message), on Practice, in the competition and on the hidden cards. Only the CPU time your agent's container uses during its turns counts (from each decision_request until your response), divided by the machine's speed factor (measured by the platform with a fixed calibration program; 1.0 = the median evaluation machine, larger = slower). Waiting on a model API or the network and platform processing are not counted. Each request's wallclock.remaining_seconds gives the budget left; plan by it. A real-time cap of 30 minutes per card stops programs that hang. There is no per-decision limit. When the budget or the cap is used up the agent is stopped, earlier observations still score and the terminal penalties apply. This timing applies to every evaluation started from 4 October 2026; earlier results remain valid."
       },
       {
         "q": "Which task-card data are not public?",
