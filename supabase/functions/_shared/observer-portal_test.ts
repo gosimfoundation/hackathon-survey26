@@ -471,3 +471,105 @@ Deno.test("agent_log shows the run's own agent.log: stored, or read from the res
   path = null;
   assertEquals(await read(), { available: false });
 });
+
+function snapshotClients(enabled: boolean, uploadError: unknown = null) {
+  const calls: Call[] = [];
+  const uploads: { bucket: string; path: string; size: number }[] = [];
+  const client = (label: string) =>
+    ({
+      rpc: (name: string, args: Record<string, unknown> = {}) => {
+        calls.push({ client: label, name, args });
+        const data = name === "observer_source_snapshots_enabled"
+          ? enabled
+          : name === "observer_create_project"
+          ? "30000000-0000-4000-8000-000000000003"
+          : null;
+        return Promise.resolve({ data, error: null });
+      },
+      storage: {
+        from: (bucket: string) => ({
+          upload: (path: string, bytes: Uint8Array) => {
+            uploads.push({ bucket, path, size: bytes.length });
+            return Promise.resolve({ error: uploadError });
+          },
+        }),
+      },
+    }) as unknown as SupabaseClient;
+  return { calls, uploads, user: client("user"), service: client("service") };
+}
+function submitRepository(
+  c: ReturnType<typeof snapshotClients>,
+  resolveSource?: (url: string) => Promise<{ commit: string; archiveUrl: string }>,
+  body: Uint8Array<ArrayBuffer> = new Uint8Array([80, 75, 3, 4, 1, 2, 3]),
+) {
+  return portalRequest(
+    new Request("https://portal.test", {
+      method: "POST",
+      body: JSON.stringify({ action: "submit_repository", title: "Agent", url: "https://github.com/example/agent" }),
+    }),
+    {
+      user: c.user,
+      service: c.service,
+      userId: user,
+      masterKey: master,
+      modelBases: [],
+      httpBases: [],
+      resolveSource,
+      fetchArchive: (() => Promise.resolve(new Response(body))) as typeof fetch,
+    },
+  );
+}
+const commit = "a".repeat(40);
+
+Deno.test("a repository submission stores the zipball of its exact commit before the revision exists", async () => {
+  const c = snapshotClients(true);
+  const result = await submitRepository(c, (url) => {
+    assertEquals(url, "https://github.com/example/agent");
+    return Promise.resolve({ commit, archiveUrl: "https://codeload.github.com/example/agent/legacy.zip/" + commit });
+  });
+  assertEquals(result, { revision_id: "30000000-0000-4000-8000-000000000003", source_commit: commit });
+  assertEquals(c.uploads.length, 1);
+  assertEquals(c.uploads[0].bucket, "observer-sources");
+  assert(c.uploads[0].path.startsWith(user + "/" + commit + "-"));
+  assertEquals(c.calls.map((x) => x.name), [
+    "observer_source_snapshots_enabled",
+    "observer_create_project",
+    "observer_record_source_snapshot",
+  ]);
+  const recorded = c.calls[2].args;
+  assertEquals([recorded.p_commit, recorded.p_path, recorded.p_bytes], [commit, c.uploads[0].path, 7]);
+  assert(/^[0-9a-f]{64}$/.test(String(recorded.p_sha256)));
+});
+
+Deno.test("with snapshots off a repository submission is URL-only as before", async () => {
+  const c = snapshotClients(false);
+  let resolved = 0;
+  const result = await submitRepository(c, () => {
+    resolved++;
+    return Promise.reject(new Error("unused"));
+  });
+  assertEquals(result, { revision_id: "30000000-0000-4000-8000-000000000003" });
+  assertEquals(resolved, 0);
+  assertEquals(c.uploads.length, 0);
+});
+
+Deno.test("no revision is created when the source cannot be preserved", async () => {
+  const cases: [ReturnType<typeof snapshotClients>, () => Promise<{ commit: string; archiveUrl: string }>, string][] = [
+    [
+      snapshotClients(true),
+      () => Promise.reject(Object.assign(new Error("x"), { code: "private_source_requires_zip" })),
+      "private_source_requires_zip",
+    ],
+    [snapshotClients(true), () => Promise.reject(new Error("github down")), "source_snapshot_unavailable"],
+    [
+      snapshotClients(true, { message: "storage down" }),
+      () => Promise.resolve({ commit, archiveUrl: "https://codeload.github.com/x" }),
+      "source_snapshot_unavailable",
+    ],
+  ];
+  for (const [c, resolve, code] of cases) {
+    const error = await assertRejects(() => submitRepository(c, resolve), ProxyError);
+    assertEquals(error.code, code);
+    assert(!c.calls.some((x) => x.name === "observer_create_project"));
+  }
+});

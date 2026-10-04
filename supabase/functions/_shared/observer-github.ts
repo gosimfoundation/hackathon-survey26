@@ -269,9 +269,52 @@ export class GitHubApp {
     return value.token;
   }
 
+  /**
+   * The exact commit a public source repository's default branch points at now, and a
+   * temporary codeload URL of that commit's zipball (no fork, nothing written). Used at
+   * submission time so every submitted version is pinned and preserved.
+   */
+  async resolvePublicSource(
+    userId: string,
+    url: string,
+  ): Promise<{ sourceRepository: string; commit: string; archiveUrl: string }> {
+    const source = sourceRepository(url);
+    const { organization } = await placement(userId, this.locate);
+    const token = await this.installationToken(organization);
+    const original: Repository = await this.request("/repos/" + source, token);
+    if (original.private) throw new GitHubError("private_source_requires_zip");
+    const commit = await this.request(
+      "/repos/" + source + "/commits/" + encodeURIComponent(original.default_branch),
+      token,
+    );
+    if (!SHA.test(commit.sha)) throw new GitHubError("invalid_source_commit");
+    const response = await this.fetcher(API + "/repos/" + source + "/zipball/" + commit.sha, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+      headers: {
+        authorization: "Bearer " + token,
+        accept: "application/vnd.github+json",
+        "user-agent": "Agentic-Observer26",
+      },
+    });
+    await response.body?.cancel();
+    const location = response.headers.get("location");
+    if (response.status !== 302 || !location) throw new GitHubError("archive_not_ready", response.status);
+    const archive = new URL(location);
+    if (
+      archive.protocol !== "https:" || archive.hostname !== "codeload.github.com" || archive.username ||
+      archive.password
+    ) {
+      throw new GitHubError("unexpected_archive_destination");
+    }
+    return { sourceRepository: source, commit: commit.sha, archiveUrl: archive.href };
+  }
+
   async forkPublicSource(
     userId: string,
     url: string,
+    // The commit pinned at submission (observer_revisions.submitted_commit), if any.
+    pinned?: string | null,
   ): Promise<{ repository: Repository; sourceCommit: string; sourceRepository: string }> {
     const source = sourceRepository(url);
     const { organization } = await placement(userId, this.locate);
@@ -279,10 +322,10 @@ export class GitHubApp {
     const original: Repository = await this.request("/repos/" + source, token);
     if (original.private) throw new GitHubError("private_source_requires_zip");
     // Resolve before forking: a moving default branch cannot alter the submitted revision.
-    const commit = await this.request(
-      "/repos/" + source + "/commits/" + encodeURIComponent(original.default_branch),
-      token,
-    );
+    // A revision pinned at submission keeps exactly that commit.
+    const commit = pinned
+      ? { sha: pinned }
+      : await this.request("/repos/" + source + "/commits/" + encodeURIComponent(original.default_branch), token);
     if (!SHA.test(commit.sha)) throw new GitHubError("invalid_source_commit");
     const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(original.id))));
     const name = "source-" + Array.from(hash.slice(0, 10), (n) => n.toString(16).padStart(2, "0")).join("");

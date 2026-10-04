@@ -36,6 +36,7 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
       modelBases: list("OBSERVER_MODEL_BASES"),
       httpBases: list("OBSERVER_MODEL_HTTP_BASES"),
       artifactDownload: async (reference) => artifactDownload(await configuredApp(service), reference),
+      resolveSource: async (source) => (await configuredApp(service)).resolvePublicSource(account.user.id, source),
     });
     return Response.json({ data: result }, { headers: cors });
   } catch (error) {

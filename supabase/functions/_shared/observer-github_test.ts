@@ -3,10 +3,10 @@ import { createLocalJWKSet, exportJWK, exportPKCS8, generateKeyPair, SignJWT } f
 import {
   CONTROL_REPOSITORY,
   GitHubApp,
-  PUBLIC_POOL_REPOSITORY,
   GitHubError,
   isRunnerOrganization,
   placement,
+  PUBLIC_POOL_REPOSITORY,
   sourceRepository,
   verifyWorkflowIdentity,
 } from "./observer-github.ts";
@@ -74,8 +74,9 @@ function backend() {
       return Response.json({ enabled: permissions.get(full) ?? true });
     }
     if (path.endsWith("/commits/main")) return Response.json({ sha: branchSha });
-    if (path.includes("/commits/observer-runtime-")) return tagSha
-      ? Response.json({sha:tagSha}) : Response.json({message:"not found"},{status:404});
+    if (path.includes("/commits/observer-runtime-")) {
+      return tagSha ? Response.json({ sha: tagSha }) : Response.json({ message: "not found" }, { status: 404 });
+    }
     if (path.endsWith("/forks") && method === "POST") {
       const original = repos.get(full);
       const repo = {
@@ -126,7 +127,7 @@ function backend() {
     suspend: () => suspended = true,
     wrongAccount: () => installAccount = "outsider",
     wrongBranch: () => branchSha = "b".repeat(40),
-    tag: (value: string) => tagSha=value,
+    tag: (value: string) => tagSha = value,
     refs,
     failTrees: (n: number) => treeFailures = n,
   };
@@ -269,13 +270,18 @@ Deno.test("archive redirects return only codeload destinations without forwardin
   assertEquals(f.calls.filter((c) => c.path.includes("/zipball/")).length, 1);
 });
 
-Deno.test("queued runtime releases survive a main update but a moved tag is rejected",async()=>{
-  const f=backend();f.repos.set(organization+"/"+CONTROL_REPOSITORY,{id:10,private:true,fork:false});
-  f.tag(sha);f.wrongBranch();
-  await f.app.dispatch(organization,"observer-engine.yml",user,"x".repeat(43),sha);
-  assertEquals(f.calls.at(-1)?.body.ref,"observer-runtime-"+sha);
+Deno.test("queued runtime releases survive a main update but a moved tag is rejected", async () => {
+  const f = backend();
+  f.repos.set(organization + "/" + CONTROL_REPOSITORY, { id: 10, private: true, fork: false });
+  f.tag(sha);
+  f.wrongBranch();
+  await f.app.dispatch(organization, "observer-engine.yml", user, "x".repeat(43), sha);
+  assertEquals(f.calls.at(-1)?.body.ref, "observer-runtime-" + sha);
   f.tag("b".repeat(40));
-  await assertRejects(()=>f.app.dispatch(organization,"observer-engine.yml",user,"x".repeat(43),sha),GitHubError);
+  await assertRejects(
+    () => f.app.dispatch(organization, "observer-engine.yml", user, "x".repeat(43), sha),
+    GitHubError,
+  );
 });
 
 const expected: WorkflowIdentity = {
@@ -318,12 +324,18 @@ Deno.test("OIDC validates signature, audience and exact trusted workflow identit
   );
 });
 
-Deno.test("release OIDC requires the exact approved tag and workflow commit",async()=>{
-  const ref="refs/tags/observer-runtime-"+sha;
-  const workflow_ref=organization+"/"+CONTROL_REPOSITORY+"/.github/workflows/observer-engine.yml@"+ref;
-  assertEquals((await verifyWorkflowIdentity(await signed({ref,workflow_ref}),expected,keys)).runId,"789");
-  await assertRejects(async()=>verifyWorkflowIdentity(await signed({ref:ref+"x",workflow_ref}),expected,keys),GitHubError);
-  await assertRejects(async()=>verifyWorkflowIdentity(await signed({ref,workflow_ref,sha:"b".repeat(40)}),expected,keys),GitHubError);
+Deno.test("release OIDC requires the exact approved tag and workflow commit", async () => {
+  const ref = "refs/tags/observer-runtime-" + sha;
+  const workflow_ref = organization + "/" + CONTROL_REPOSITORY + "/.github/workflows/observer-engine.yml@" + ref;
+  assertEquals((await verifyWorkflowIdentity(await signed({ ref, workflow_ref }), expected, keys)).runId, "789");
+  await assertRejects(
+    async () => verifyWorkflowIdentity(await signed({ ref: ref + "x", workflow_ref }), expected, keys),
+    GitHubError,
+  );
+  await assertRejects(
+    async () => verifyWorkflowIdentity(await signed({ ref, workflow_ref, sha: "b".repeat(40) }), expected, keys),
+    GitHubError,
+  );
 });
 
 Deno.test("a valid GitHub signature from another repo, workflow, ref or attempt cannot claim a job", async () => {
@@ -351,11 +363,26 @@ Deno.test("the public pool dispatches only its approved tag with an opaque job i
   await assertRejects(() => f.app.dispatchPublic(organization, "77", user, sha), GitHubError); // no tag
   f.tag(sha);
   assertEquals(await f.app.dispatchPublic(organization, "77", user, sha), "31337");
-  assertEquals(f.calls.at(-1)?.path, "/repos/" + organization + "/observer-public/actions/workflows/observer-engine.yml/dispatches");
-  assertEquals(f.calls.at(-1)?.body, { ref: "observer-runtime-" + sha, inputs: { job_id: user }, return_run_details: true });
-  await assertRejects(() => f.app.dispatchPublic(organization, "78", user, sha), GitHubError, "public_pool_repository_mismatch");
+  assertEquals(
+    f.calls.at(-1)?.path,
+    "/repos/" + organization + "/observer-public/actions/workflows/observer-engine.yml/dispatches",
+  );
+  assertEquals(f.calls.at(-1)?.body, {
+    ref: "observer-runtime-" + sha,
+    inputs: { job_id: user },
+    return_run_details: true,
+  });
+  await assertRejects(
+    () => f.app.dispatchPublic(organization, "78", user, sha),
+    GitHubError,
+    "public_pool_repository_mismatch",
+  );
   f.repos.set(organization + "/" + PUBLIC_POOL_REPOSITORY, { id: 77, private: true, fork: false });
-  await assertRejects(() => f.app.dispatchPublic(organization, "77", user, sha), GitHubError, "public_pool_repository_mismatch");
+  await assertRejects(
+    () => f.app.dispatchPublic(organization, "77", user, sha),
+    GitHubError,
+    "public_pool_repository_mismatch",
+  );
 });
 
 Deno.test("a backend-committed result is one fixed root commit on the run's result branch", async () => {
@@ -379,8 +406,12 @@ Deno.test("public-pool OIDC needs the public repository, public visibility and t
   const ref = "refs/tags/observer-runtime-" + sha;
   const repository = organization + "/" + PUBLIC_POOL_REPOSITORY;
   const pub: WorkflowIdentity = { ...expected, repository: PUBLIC_POOL_REPOSITORY, visibility: "public" };
-  const ok = { repository, repository_visibility: "public", ref,
-    workflow_ref: repository + "/.github/workflows/observer-engine.yml@" + ref };
+  const ok = {
+    repository,
+    repository_visibility: "public",
+    ref,
+    workflow_ref: repository + "/.github/workflows/observer-engine.yml@" + ref,
+  };
   assertEquals((await verifyWorkflowIdentity(await signed(ok), pub, keys)).runId, "789");
   for (
     const invalid of [
@@ -388,11 +419,20 @@ Deno.test("public-pool OIDC needs the public repository, public visibility and t
       { ref: "refs/heads/main", workflow_ref: repository + "/.github/workflows/observer-engine.yml@refs/heads/main" },
       { repository: organization + "/" + CONTROL_REPOSITORY },
     ]
-  ) await assertRejects(async () => verifyWorkflowIdentity(await signed({ ...ok, ...invalid }), pub, keys), GitHubError);
+  ) {
+    await assertRejects(
+      async () => verifyWorkflowIdentity(await signed({ ...ok, ...invalid }), pub, keys),
+      GitHubError,
+    );
+  }
   // The private pool never accepts a public repository, and names are fixed.
   await assertRejects(async () => verifyWorkflowIdentity(await signed(ok), expected, keys), GitHubError);
   for (const config of [{ ...pub, visibility: "private" as const }, { ...pub, repository: "other" }]) {
-    await assertRejects(async () => verifyWorkflowIdentity(await signed(ok), config, keys), GitHubError, "invalid_workflow_configuration");
+    await assertRejects(
+      async () => verifyWorkflowIdentity(await signed(ok), config, keys),
+      GitHubError,
+      "invalid_workflow_configuration",
+    );
   }
 });
 
@@ -408,4 +448,42 @@ Deno.test("a transient GitHub error while committing a public-pool result is ret
   assertEquals(f.calls.filter((c) => c.path.endsWith("/git/trees")).length, 3);
   f.failTrees(10);
   await assertRejects(() => f.app.commitResult(user, "00000000-0000-4000-8000-0000000000cd", files), GitHubError);
+});
+
+Deno.test("a submission resolves the exact commit and its zipball without forking", async () => {
+  const f = backend();
+  f.repos.set("example/project", {
+    id: 72,
+    full_name: "example/project",
+    private: false,
+    fork: false,
+    default_branch: "main",
+  });
+  const result = await f.app.resolvePublicSource(user, "https://github.com/example/project");
+  assertEquals(result.commit, sha);
+  assertEquals(result.sourceRepository, "example/project");
+  assert(result.archiveUrl.startsWith("https://codeload.github.com/example/project/"));
+  assert(result.archiveUrl.endsWith(sha));
+  assert(!f.calls.some((c) => c.path.endsWith("/forks")));
+  f.repos.set("example/secret", { id: 73, private: true, default_branch: "main" });
+  await assertRejects(
+    () => f.app.resolvePublicSource(user, "https://github.com/example/secret"),
+    GitHubError,
+    "private_source_requires_zip",
+  );
+});
+
+Deno.test("a fork for a pinned submission keeps the submitted commit", async () => {
+  const f = backend();
+  f.repos.set("example/project", {
+    id: 72,
+    full_name: "example/project",
+    private: false,
+    fork: false,
+    default_branch: "main",
+  });
+  const pinned = "e".repeat(40);
+  const result = await f.app.forkPublicSource(user, "https://github.com/example/project", pinned);
+  assertEquals(result.sourceCommit, pinned);
+  assert(!f.calls.some((c) => c.path === "/repos/example/project/commits/main"));
 });

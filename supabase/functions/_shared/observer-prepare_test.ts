@@ -37,8 +37,12 @@ for (const source_kind of ["repository", "zip"]) {
             assertEquals(owner, user);
             return privateRepo;
           },
-          forkPublicSource: async (owner, url) => {
-            assertEquals([owner, url], [user, source_location]);
+          forkPublicSource: async (owner, url, pinned) => {
+            assertEquals([owner, url, pinned], [
+              user,
+              source_location,
+              source_kind === "repository" ? "f".repeat(40) : null,
+            ]);
             forks++;
             return {
               repository: {
@@ -62,6 +66,7 @@ for (const source_kind of ["repository", "zip"]) {
               lease,
               source_kind,
               source_location,
+              ...(source_kind === "repository" ? { submitted_commit: "f".repeat(40) } : {}),
               model_run_id: modelRun,
               model: "qwen-test",
               // The ZIP case also covers a v4 public-test scenario.

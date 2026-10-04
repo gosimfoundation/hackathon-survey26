@@ -28,7 +28,37 @@ type Dependencies = {
   artifactDownload?: (reference: string) => Promise<string>;
   /** Fetches signed result archives; tests replace it. */
   fetchArchive?: typeof fetch;
+  /** Resolves a public repository's current commit and its zipball URL (GitHub App). */
+  resolveSource?: (url: string) => Promise<{ commit: string; archiveUrl: string }>;
 };
+// A repository submission is preserved as the zipball of its exact commit (bucket
+// observer-sources; nothing deletes from it). Larger sources must be uploaded as ZIP.
+export const SOURCE_SNAPSHOT_LIMIT = 104857600;
+async function sha256Hex(bytes: Uint8Array<ArrayBuffer>) {
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return Array.from(hash, (n) => n.toString(16).padStart(2, "0")).join("");
+}
+async function boundedDownload(url: string, fetcher: typeof fetch, limit: number): Promise<Uint8Array<ArrayBuffer>> {
+  const response = await fetcher(url, { redirect: "follow", signal: AbortSignal.timeout(60000) });
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    throw new ProxyError(503, "source_snapshot_unavailable");
+  }
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of response.body) {
+    size += chunk.length;
+    if (size > limit) throw new ProxyError(400, "source_too_large");
+    chunks.push(chunk);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
+}
 const known = new Set([
   "team_required",
   "model_request_already_received",
@@ -228,13 +258,53 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       } catch {
         throw new ProxyError(400, "invalid_repository_url");
       }
-      return {
-        revision_id: await userRpc("observer_create_project", {
-          p_title: text(body.title, 100),
-          p_source_kind: "repository",
-          p_source_location: "https://github.com/" + repository,
-        }),
-      };
+      const location = "https://github.com/" + repository;
+      const title = text(body.title, 100);
+      // Every submitted version is pinned and preserved before anything else happens:
+      // the exact commit is resolved now and its zipball stored, whether or not the
+      // preparation later succeeds and whatever the team does to the repository.
+      let snapshot: { commit: string; path: string; bytes: number; sha256: string } | null = null;
+      if (await serviceRpc("observer_source_snapshots_enabled", {})) {
+        if (!d.resolveSource) throw new ProxyError(503, "source_snapshot_unavailable");
+        let resolved: { commit: string; archiveUrl: string };
+        try {
+          resolved = await d.resolveSource(location);
+        } catch (error) {
+          if ((error as { code?: string })?.code === "private_source_requires_zip") {
+            throw new ProxyError(400, "private_source_requires_zip");
+          }
+          throw new ProxyError(503, "source_snapshot_unavailable");
+        }
+        if (!/^[0-9a-f]{40}$/.test(resolved.commit)) throw new ProxyError(503, "source_snapshot_unavailable");
+        let bytes: Uint8Array<ArrayBuffer>;
+        try {
+          bytes = await boundedDownload(resolved.archiveUrl, d.fetchArchive ?? fetch, SOURCE_SNAPSHOT_LIMIT);
+        } catch (error) {
+          throw error instanceof ProxyError ? error : new ProxyError(503, "source_snapshot_unavailable");
+        }
+        const path = d.userId + "/" + resolved.commit + "-" + crypto.randomUUID() + ".zip";
+        const { error } = await d.service.storage.from("observer-sources").upload(path, bytes, {
+          contentType: "application/zip",
+          upsert: false,
+        });
+        if (error) throw new ProxyError(503, "source_snapshot_unavailable");
+        snapshot = { commit: resolved.commit, path, bytes: bytes.length, sha256: await sha256Hex(bytes) };
+      }
+      const revision = await userRpc("observer_create_project", {
+        p_title: title,
+        p_source_kind: "repository",
+        p_source_location: location,
+      });
+      if (snapshot) {
+        await serviceRpc("observer_record_source_snapshot", {
+          p_revision: revision,
+          p_commit: snapshot.commit,
+          p_path: snapshot.path,
+          p_bytes: snapshot.bytes,
+          p_sha256: snapshot.sha256,
+        });
+      }
+      return snapshot ? { revision_id: revision, source_commit: snapshot.commit } : { revision_id: revision };
     }
     case "submit_zip": {
       const id = uuid(body.upload_id);
