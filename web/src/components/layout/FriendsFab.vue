@@ -19,6 +19,9 @@ import { loadDmOverview, loadDmThread, reportDm, sendDm } from '../../lib/dmApi'
 import { pendingFriendRequests, refreshFriendRequests, unreadDirectMessages } from '../../stores/teamNotifications'
 import { openUidCard } from '../../stores/profileCard'
 import UserAvatar from '../UserAvatar.vue'
+import FriendTeamLine from '../FriendTeamLine.vue'
+import { emptyContext } from '../../lib/friendTeams'
+import { loadFriendTeamContext } from '../../lib/friendTeamsApi'
 
 const { t, tf } = useI18n()
 const i18n = useI18n()
@@ -61,6 +64,8 @@ const draft = ref('')
 const sending = ref(false)
 const list = ref<HTMLElement | null>(null)
 const composer = ref<HTMLTextAreaElement | null>(null)
+// Friends' teams and ranks: loaded once per opening (one RPC + one cached board call), not on every 5 s tick.
+const teamCtx = ref(emptyContext())
 const draftLength = computed(() => [...draft.value].length)
 
 function syncBadge(o: DmOverview) {
@@ -102,6 +107,7 @@ async function openPanel() {
   await nextTick()
   if (panel.value && !panel.value.open) panel.value.showModal()
   void loadHome()
+  void loadFriendTeamContext().then(c => { teamCtx.value = c }).catch(() => {})
   poll = setInterval(tick, DM_PANEL_POLL_MS)
 }
 function closePanel() { if (panel.value?.open) panel.value.close() }
@@ -261,6 +267,7 @@ watch(isLoggedIn, logged => { if (!logged) closePanel(); void nextTick(schedule)
                 </span>
                 <span v-if="p.unread" class="fp-unread" :aria-label="tf('dm.unread_n', { n: p.unread })">{{ p.unread > 99 ? '99+' : p.unread }}</span>
               </button>
+              <FriendTeamLine v-if="p.is_friend" class="fp-team" :user-id="p.user_id" :uid="p.uid" :in-team="p.in_team" :ctx="teamCtx" />
             </li>
           </ul>
           <p class="fp-hint">{{ t('dm.hint') }}</p>
@@ -340,6 +347,8 @@ watch(isLoggedIn, logged => { if (!logged) closePanel(); void nextTick(schedule)
 .fp-person { display: flex; width: 100%; align-items: center; gap: .6rem; padding: .55rem .2rem; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .08);
   background: none; color: inherit; text-align: left; cursor: pointer; }
 .fp-person:hover, .fp-person:focus-visible { background: rgba(158, 173, 255, .08); }
+.fp-team { padding: 0 .2rem .55rem 2.9rem; border-bottom: 1px solid rgba(255, 255, 255, .08); margin-top: -1px; }
+.fp-list li:has(.fp-team) .fp-person { border-bottom-color: transparent; }
 .fp-person-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .fp-person-top { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
 .fp-time { margin-left: auto; flex: none; color: rgba(205, 214, 238, .5); font-size: .7rem; }

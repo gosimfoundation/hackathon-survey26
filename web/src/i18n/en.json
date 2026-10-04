@@ -2899,5 +2899,17 @@
     "admin_delete": "Delete message",
     "admin_dismiss": "Dismiss",
     "admin_delete_confirm": "Delete this message? Both people will see \"removed by the organizers\"."
+  },
+  "friend_team": {
+    "board_online": "Online",
+    "board_practice": "Practice overall",
+    "rank": "#{n}",
+    "no_score": "No score yet",
+    "apply": "Ask to join",
+    "applied": "Request sent. The captain will decide.",
+    "requested": "Requested",
+    "reason_requested": "You already asked; waiting for the captain.",
+    "reason_locked": "team locked",
+    "reason_full": "team full"
   }
 }
