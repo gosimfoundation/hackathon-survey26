@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
+import { normalizeQuotaResetNotice, type QuotaResetNotice } from './quotaReset'
 import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
 import { cached, invalidatePrefix } from './requestCache'
 import { scenarioOrder } from './scenarioLabels'
@@ -333,4 +334,12 @@ export async function revealTeammateContact(id: string): Promise<{ contact: stri
   const { data, error } = await supabase.rpc('teammate_contact', { p_id: id })
   if (error) throw error
   return (data ?? null) as { contact: string; github: string } | null
+}
+
+// --- organizer quota reset notice --------------------------------------------
+
+export async function loadQuotaResetNotice(): Promise<QuotaResetNotice | null> {
+  const { data, error } = await supabase.rpc('observer_quota_reset_notice')
+  if (error) throw error
+  return normalizeQuotaResetNotice(data)
 }
