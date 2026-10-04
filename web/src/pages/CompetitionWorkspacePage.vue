@@ -7,6 +7,7 @@ import { offersPracticeSwitch } from '../lib/entryPhase'
 import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
+import CompeteGuide from '../components/competition/CompeteGuide.vue'
 import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import TeamInbox from '../components/TeamInbox.vue'
@@ -56,13 +57,23 @@ onMounted(async()=>{try{await refreshMe()
     <div v-else-if="!team" class="panel"><p>{{ t('submit.errors.need_team') }}</p><p class="mt-5 actions-inline"><router-link class="btn primary sm" to="/team">{{ t('nav.team') }} →</router-link><SoloTeamButton /></p></div>
     <p v-else-if="!phase" class="panel">{{ pick('No competition is available yet.','当前还没有开放的比赛。') }}</p>
     <template v-else>
-      <div v-if="showSwitch" class="actions-inline mb-5" role="group" :aria-label="pick('Evaluation phase','评测赛程')" data-testid="entry-switch">
+      <!-- 新手指南: first-visit spotlight tour of the simplified layout, replayable from its button. -->
+      <div class="compete-top mb-5">
+      <div v-if="showSwitch" class="actions-inline" role="group" :aria-label="pick('Evaluation phase','评测赛程')" data-testid="entry-switch">
         <button type="button" class="btn sm" :class="{ primary: entryChoice==='online' }" :aria-pressed="entryChoice==='online'" data-testid="entry-online" @click="chooseEntry('online')">{{ pick('Online competition','线上赛') }}</button>
         <button type="button" class="btn sm" :class="{ primary: entryChoice==='practice' }" :aria-pressed="entryChoice==='practice'" data-testid="entry-practice" @click="chooseEntry('practice')">{{ pick('Practice','练习赛') }}</button>
         <router-link class="text2 text-sm" :to="`/leaderboard/${boardSlug}`" data-testid="entry-board">{{ entryChoice==='practice' ? pick('Practice leaderboard →','练习赛排行榜 →') : pick('Online leaderboard →','线上赛排行榜 →') }}</router-link>
         <span class="text3 text-sm">{{ entryChoice==='practice' ? pick('Practice does not affect the online ranking; it has its own daily evaluations.','练习赛不影响线上赛排名，评测次数单独计算。') : pick('Evaluations here count for the online leaderboard.','这里的评测计入线上赛排行榜。') }}</span>
       </div>
+      <div v-if="layout==='v2'" class="compete-guide-btn"><CompeteGuide /></div>
+      </div>
       <ProjectWorkflow :layout="layout" @phase="p => workflowPhase = p" />
     </template>
   </DashShell>
 </template>
+
+<style scoped>
+.compete-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; }
+.compete-top > [data-testid="entry-switch"] { flex: 1 1 18rem; }
+.compete-guide-btn { margin-left: auto; }
+</style>
