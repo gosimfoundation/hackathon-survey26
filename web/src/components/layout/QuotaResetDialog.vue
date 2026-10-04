@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // Tells logged-in contestants (with a team) that the organizers reset today's evaluation quota. Shown once per
-// reset (dismissed ids in localStorage; blocked storage only means it may show again) and only within 24 hours
-// of the reset. Shares the pinned-announcement dialog look and takes turns with the other popups (stores/overlay).
+// reset (lib/popupRules; remembered locally and on the server) and only within 24 hours of the reset. Shares the
+// pinned-announcement dialog look; one popup per page load (stores/overlay).
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { loadQuotaResetNotice } from '../../lib/data'
-import { QUOTA_RESET_SEEN_KEY, parseQuotaResetSeen, quotaResetText, rememberQuotaResetSeen, shouldShowQuotaReset,
+import { QUOTA_RESET_SEEN_KEY, parseQuotaResetSeen, quotaResetText, shouldShowQuotaReset,
   type QuotaResetNotice } from '../../lib/quotaReset'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
+import { quotaResetKey } from '../../lib/popupRules'
+import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 
 const OVERLAY = 'quota-reset'
 const { t, pick } = useI18n()
@@ -26,11 +28,16 @@ watch(() => team.value?.id, async id => {
   checkedTeam = id
   try {
     const next = await loadQuotaResetNotice()
-    if (!shouldShowQuotaReset(next, parseQuotaResetSeen(readSeen()))) return
+    if (!next) return
+    if (parseQuotaResetSeen(readSeen()).has(next.id)) markSeen([quotaResetKey(next.id)])
+    const seen = await seenKeys()
+    if (!shouldShowQuotaReset(next, new Set(seen.has(quotaResetKey(next.id)) ? [next.id] : []))) return
     notice.value = next
     requestOverlay(OVERLAY, { modal: true })
   } catch { /* not shown */ }
 }, { immediate: true })
+
+const finish = useSeenWhileOpen(open, () => notice.value ? [quotaResetKey(notice.value.id)] : [])
 
 watch(open, async isOpen => {
   await nextTick()
@@ -42,7 +49,7 @@ watch(open, async isOpen => {
 
 function dismiss() {
   if (!notice.value) return
-  try { localStorage.setItem(QUOTA_RESET_SEEN_KEY, rememberQuotaResetSeen(readSeen(), notice.value.id)) } catch { /* storage may be blocked */ }
+  finish()
   notice.value = null
   if (dialog.value?.open) dialog.value.close()
   releaseOverlay(OVERLAY)

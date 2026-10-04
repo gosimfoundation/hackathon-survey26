@@ -1,14 +1,16 @@
 <script setup lang="ts">
-// The newest pinned announcement the visitor has not dismissed opens as a dialog on any page (the slim
-// banner alone went unnoticed). Dismissed ids are remembered in localStorage; it takes turns with the
-// sky-map walkthrough (stores/overlay) so the two never cover each other.
+// The newest pinned announcement the visitor has not seen opens as a dialog on any page (the slim banner alone
+// went unnoticed). Seen = shown (lib/popupRules): keyed by id + a hash of its text, so it comes back only when the
+// announcement changes; remembered on this device and, when signed in, on the server. One popup per page load (stores/overlay).
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../../lib/data'
 import { fmtUtc } from '../../lib/format'
-import { PINNED_SEEN_KEY, pickPinnedPopup, pinnedRows, parseSeen, rememberSeen } from '../../lib/pinnedPopup'
+import { PINNED_SEEN_KEY, pinnedRows, parseSeen } from '../../lib/pinnedPopup'
+import { announcementKey } from '../../lib/popupRules'
+import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
 import AnnouncementBody from '../content/AnnouncementBody.vue'
 
@@ -17,21 +19,29 @@ const { t, tf, pick } = useI18n()
 const route = useRoute()
 const dialog = ref<HTMLDialogElement | null>(null)
 const item = ref<Announcement | null>(null)
-const pinnedIds = ref<string[]>([])
+const pinnedKeys = ref<string[]>([])
 const open = computed(() => !!item.value && overlayActive(OVERLAY))
 
-function readSeen() { try { return localStorage.getItem(PINNED_SEEN_KEY) } catch { return null } }
+function readLegacySeen() { try { return parseSeen(localStorage.getItem(PINNED_SEEN_KEY)) } catch { return new Set<string>() } }
 
 onMounted(async () => {
   if (!isSupabaseConfigured) return
   let rows: Announcement[] = []
   try { rows = await loadAnnouncements(20) } catch { return }
-  const next = pickPinnedPopup(rows, parseSeen(readSeen()))
+  const pinned = pinnedRows(rows)
+  if (!pinned.length) return
+  // Ids dismissed before content keys existed count as seen for their current text.
+  const legacy = readLegacySeen()
+  markSeen(pinned.filter(row => legacy.has(String(row.id))).map(announcementKey))
+  const seen = await seenKeys()
+  const next = pinned.find(row => !seen.has(announcementKey(row)))
   if (!next) return
-  pinnedIds.value = pinnedRows(rows).map(row => String(row.id))
+  // Seeing the newest one also settles the older pinned ones, so they do not pop up one after another.
+  pinnedKeys.value = pinned.map(announcementKey)
   item.value = next
   requestOverlay(OVERLAY, { modal: true })
 })
+const finish = useSeenWhileOpen(open, () => pinnedKeys.value)
 
 // The announcements page already shows everything: do not cover it, and keep the popup for later.
 watch([open, () => route.path], async ([isOpen, path]) => {
@@ -44,12 +54,12 @@ watch([open, () => route.path], async ([isOpen, path]) => {
 
 function dismiss() {
   if (!item.value) return
-  try { localStorage.setItem(PINNED_SEEN_KEY, rememberSeen(readSeen(), pinnedIds.value)) } catch { /* storage may be blocked */ }
+  finish()
   item.value = null
   if (dialog.value?.open) dialog.value.close()
   releaseOverlay(OVERLAY)
 }
-const others = computed(() => Math.max(0, pinnedIds.value.length - 1))
+const others = computed(() => Math.max(0, pinnedKeys.value.length - 1))
 </script>
 
 <template>

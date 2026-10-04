@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Tells members of a team that can claim its Kimi Coding Plan code (eligible, codes left, not claimed yet).
 // Never shown once the pool is empty (sold out).
-// The captain is sent to the dashboard panel; other members are asked to ping the captain. Dismissing is
-// remembered per team in localStorage. Shares the pinned-announcement dialog look and takes turns with it.
+// The captain is sent to the dashboard panel; other members are asked to ping the captain. Seen once per team and
+// role (lib/popupRules: a change, e.g. becoming captain, shows it again), remembered locally and on the server.
+// Shares the pinned-announcement dialog look; one popup per page load (stores/overlay).
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
@@ -10,6 +11,8 @@ import { useAuth } from '../../stores/auth'
 import { loadKimiPlanStatus } from '../../lib/data'
 import { kimiPlanPopupRole } from '../../lib/kimiPlan'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
+import { kimiPlanKey } from '../../lib/popupRules'
+import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 
 const OVERLAY = 'kimi-plan'
 const KEY = 'sac.kimi-plan-popup.dismissed.'
@@ -21,19 +24,25 @@ const captain = ref(false)
 const teamId = ref<string | null>(null)
 const open = computed(() => !!teamId.value && overlayActive(OVERLAY))
 
-function dismissed(id: string) { try { return localStorage.getItem(KEY + id) === '1' } catch { return false } }
+function legacyDismissed(id: string) { try { return localStorage.getItem(KEY + id) === '1' } catch { return false } }
+const seenKey = ref('')
 
 watch(() => team.value?.id, async id => {
-  if (!id || id === teamId.value || dismissed(id)) return
+  if (!id || id === teamId.value) return
   try {
     const status = await loadKimiPlanStatus()
     const role = kimiPlanPopupRole(status) // null once the pool is empty: no popup for teams without a code
     if (!role) return
+    const key = kimiPlanKey(id, role)
+    if (legacyDismissed(id)) markSeen([key])
+    if ((await seenKeys()).has(key)) return
     captain.value = role === 'captain'
+    seenKey.value = key
     teamId.value = id
     requestOverlay(OVERLAY, { modal: true })
   } catch { /* not shown */ }
 }, { immediate: true })
+const finish = useSeenWhileOpen(open, () => [seenKey.value])
 
 // Not over the dashboard itself: the panel is right there.
 watch([open, () => route.path], async ([isOpen, path]) => {
@@ -46,7 +55,7 @@ watch([open, () => route.path], async ([isOpen, path]) => {
 
 function dismiss() {
   if (!teamId.value) return
-  try { localStorage.setItem(KEY + teamId.value, '1') } catch { /* storage may be blocked */ }
+  finish()
   teamId.value = null
   if (dialog.value?.open) dialog.value.close()
   releaseOverlay(OVERLAY)

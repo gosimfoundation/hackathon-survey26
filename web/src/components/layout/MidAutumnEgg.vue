@@ -1,24 +1,29 @@
 <script setup lang="ts">
-// Mid-Autumn Festival greeting: shown around the festival, dismissible, remembered per year.
+// Mid-Autumn Festival greeting: shown around the festival, once per person and year (lib/popupRules).
 import { onMounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isMidAutumnToday } from '../../lib/eggs'
+import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 
 const { t } = useI18n()
 const storageKey = `egg-mid-autumn-${new Date().getFullYear()}`
 const visible = ref(false)
 
-onMounted(() => {
+const seenKey = `egg:${storageKey}`
+const finish = useSeenWhileOpen(visible, () => [seenKey])
+
+onMounted(async () => {
   // Automated browsers (tests, screenshot tours) only see it when asked for with ?egg=midautumn.
   const forced = new URLSearchParams(window.location.search).get('egg') === 'midautumn'
   if (!forced && (navigator.webdriver || !isMidAutumnToday())) return
-  try { if (localStorage.getItem(storageKey) === 'closed') return } catch { /* storage may be blocked */ }
+  try { if (localStorage.getItem(storageKey) === 'closed') markSeen([seenKey]) } catch { /* storage may be blocked */ }
+  if ((await seenKeys()).has(seenKey)) return
   visible.value = true
 })
 
 function close() {
+  finish()
   visible.value = false
-  try { localStorage.setItem(storageKey, 'closed') } catch { /* storage may be blocked */ }
 }
 </script>
 

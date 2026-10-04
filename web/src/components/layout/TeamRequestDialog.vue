@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // One popup per new waiting team request/invitation: "N requests are waiting for you" with a button to the team
-// page, where they are answered. Each row pops up once (ids in localStorage; blocked storage only means it may show
-// again); the badge and the team-page block keep showing it until it is answered. Takes turns with the other popups.
+// page, where they are answered. Each row pops up once (lib/popupRules; remembered locally and on the server); the
+// badge and the team-page block keep showing it until it is answered. One popup per page load (stores/overlay).
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { supabase } from '../../lib/supabase'
-import { TEAM_INBOX_SEEN_KEY, normalizeInbox, parseSeen, rememberSeen, unseenActionable, type InboxRow } from '../../lib/teamInbox'
+import { TEAM_INBOX_SEEN_KEY, actionable, normalizeInbox, parseSeen, type InboxRow } from '../../lib/teamInbox'
+import { inboxKey } from '../../lib/popupRules'
+import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
 import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/overlay'
 import { pendingTeamActions } from '../../stores/teamNotifications'
 
@@ -28,12 +30,18 @@ watch([pendingTeamActions, () => route.path], async ([count, path]) => {
   try {
     const { data, error } = await supabase.rpc('my_team_inbox')
     if (error) return
-    const fresh = unseenActionable(normalizeInbox(data), parseSeen(readSeen()))
+    const waiting = actionable(normalizeInbox(data))
+    const legacy = parseSeen(readSeen())
+    markSeen(waiting.filter(r => legacy.has(r.id)).map(r => inboxKey(r.id)))
+    const seen = await seenKeys()
+    const fresh = waiting.filter(r => !seen.has(inboxKey(r.id)))
     if (!fresh.length) return
     rows.value = fresh
     requestOverlay(OVERLAY, { modal: true })
   } finally { checking = false }
 }, { immediate: true })
+
+const finish = useSeenWhileOpen(open, () => rows.value.map(r => inboxKey(r.id)))
 
 watch(open, async isOpen => {
   await nextTick()
@@ -45,7 +53,7 @@ watch(open, async isOpen => {
 
 function dismiss(go = false) {
   if (!rows.value.length) return
-  try { localStorage.setItem(TEAM_INBOX_SEEN_KEY, rememberSeen(readSeen(), rows.value.map(r => r.id))) } catch { /* storage may be blocked */ }
+  finish()
   rows.value = []
   if (dialog.value?.open) dialog.value.close()
   releaseOverlay(OVERLAY)

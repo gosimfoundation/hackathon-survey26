@@ -1,6 +1,6 @@
 """Pinned announcements pop up: the newest unseen pinned one opens on any page, with clickable links and
-its poster shown whole (also on a phone); once dismissed it stays closed, a newer pinned one pops up again;
-it never covers the sky-map walkthrough (one after the other)."""
+its poster shown whole (also on a phone); once seen it stays closed (also after a reload, and when it was only
+left on screen), a newer pinned one or an edited text pops up again (web/src/lib/popupRules.ts)."""
 import os
 import secrets
 
@@ -58,7 +58,8 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         page.goto(portal_site + '/leaderboard?lang=zh', wait_until='domcontentloaded')
         page.wait_for_timeout(1500)
         expect(popup_box(page)).to_have_count(0)
-        assert sorted(page.evaluate("JSON.parse(localStorage.getItem('sac.pinned-announcements.seen'))")) == sorted([str(older), str(talk)])
+        seen = page.evaluate("JSON.parse(localStorage.getItem('sac.popups.seen'))")
+        assert sorted(k.split(':')[1] for k in seen if k.startswith('ann:')) == sorted([str(older), str(talk)])
 
         # A newer pinned announcement pops up again (English); Esc closes it too.
         announce(uri, 'Newer ' + tag, 'fresh news')
@@ -69,28 +70,19 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         expect(popup_box(page)).to_have_count(0)
         context.close()
 
-        # First visit to the home page: the sky-map walkthrough and the popup take turns, never both at once.
+        # Merely shown for a few seconds counts as seen: a reload does not bring it back; an edited text does.
+        query(uri, "update public.announcements set body_zh=body_zh||' (更新)' where id=%s", (talk,))
+        query(uri, "update public.announcements set is_pinned=false where title_en like %s", ('Newer ' + tag + '%',))
         home = browser.new_context(viewport={'width': 1365, 'height': 900}).new_page()
         home.on('pageerror', lambda e: errors.append(str(e)))
         home.goto(portal_site + '/?lang=zh', wait_until='domcontentloaded')
-        tour, popup = home.locator('.sky-tour-shade'), popup_box(home)
-        expect(popup).to_have_count(1, timeout=15000)  # the announcements have arrived
-        home.wait_for_timeout(500)
-        assert tour.is_visible() != popup.is_visible(), 'exactly one of the two is open'
-        # The walkthrough card sits in the hero; a pointer click can land under the sticky header after
-        # scrolling, so its close button is pressed directly (the turn-taking is what is checked here).
-        if tour.is_visible():
-            home.get_by_test_id('sky-tour-close').dispatch_event('click')
-            expect(popup).to_be_visible()
-            home.get_by_role('button', name='知道了').click()
-        else:
-            home.get_by_role('button', name='知道了').click()
-            expect(tour).to_be_visible()
-            home.get_by_test_id('sky-tour-close').dispatch_event('click')
-        expect(popup).to_have_count(0)
-        expect(tour).to_have_count(0)
+        expect(popup_box(home)).to_be_visible(timeout=15000)
+        home.wait_for_timeout(3500)
+        home.reload(wait_until='domcontentloaded')
+        home.wait_for_timeout(3000)
+        expect(popup_box(home)).to_have_count(0)
         # "See all announcements" leads to the list, which is never covered.
-        home.evaluate("localStorage.removeItem('sac.pinned-announcements.seen')")
+        home.evaluate("localStorage.removeItem('sac.popups.seen')")
         home.goto(portal_site + '/start?lang=en', wait_until='domcontentloaded')
         home.get_by_test_id('pinned-announcement-all').click()
         expect(home).to_have_url(portal_site + '/announcements')
@@ -100,7 +92,6 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         # On a phone the poster fits the screen and the dialog scrolls; nothing overflows sideways.
         phone = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True).new_page()
         phone.on('pageerror', lambda e: errors.append(str(e)))
-        query(uri, "update public.announcements set is_pinned=false where title_en like %s", ('Newer ' + tag + '%',))
         phone.goto(portal_site + '/rules?lang=zh', wait_until='domcontentloaded')
         box = popup_box(phone)
         expect(box).to_be_visible(timeout=15000)

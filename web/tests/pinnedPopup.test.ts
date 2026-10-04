@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { parseSeen, pickPinnedPopup, pinnedRows, rememberSeen } from '../src/lib/pinnedPopup.ts'
 import { overlayActive, releaseOverlay, requestOverlay } from '../src/stores/overlay.ts'
+import { SETTLE_MS } from '../src/lib/popupRules.ts'
 
 const row = (id: string, created_at: string, is_pinned = true, is_published = true) => ({ id, created_at, is_pinned, is_published })
 const rows = [
@@ -32,13 +33,15 @@ test('the stored list survives bad values and stays bounded', () => {
   assert.ok(seen.has('79') && !seen.has('0'))
 })
 
-test('overlays take turns: the second one opens when the first is released', () => {
+test('one popup per page load: the most important asker wins, the rest wait for a later visit', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  requestOverlay('kimi-plan')
   requestOverlay('pinned-announcement')
-  requestOverlay('sky-tour')
-  requestOverlay('pinned-announcement')
-  assert.ok(overlayActive('pinned-announcement') && !overlayActive('sky-tour'))
+  assert.ok(!overlayActive('kimi-plan') && !overlayActive('pinned-announcement'))
+  t.mock.timers.tick(SETTLE_MS)
+  assert.ok(overlayActive('pinned-announcement') && !overlayActive('kimi-plan'))
+  requestOverlay('team-requests')
+  assert.ok(!overlayActive('team-requests'))
   releaseOverlay('pinned-announcement')
-  assert.ok(overlayActive('sky-tour'))
-  releaseOverlay('sky-tour')
-  assert.ok(!overlayActive('sky-tour'))
+  assert.ok(!overlayActive('pinned-announcement') && !overlayActive('kimi-plan') && !overlayActive('team-requests'))
 })
