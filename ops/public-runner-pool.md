@@ -224,6 +224,13 @@ public repositories (`266caa0`, previous `6adf43a`); see `ops/egress-routes.md`.
 private `observer-control` repositories (`ops/github-installations.json`), after a canary on runner-1
 (private and public) whose engine and score jobs succeeded.
 
+**2026-10-04 21:07 UTC: transient-error backoff** (hackathon-survey26 #330: job API calls,
+the sealed result PUT and signed downloads ride out network/429/5xx for about a minute; run
+b9285236 had failed on a Storage 520) approved on all 13 public repositories (, previous
+) and all 13 private  repositories (),
+after a canary on runner-1 (private and public) whose public engine and score jobs succeeded.
+Queued public jobs were moved to the new commit in the same transaction.
+
 ## Updating the runtime
 
 1. `python scripts/build-observer-control.py --public <new dir>` from the
