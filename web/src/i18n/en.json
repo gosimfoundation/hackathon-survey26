@@ -2145,6 +2145,8 @@
     "talk_tencent_replay": "Tencent Meeting replay",
     "examples_bundle_download": "Download all examples (incl. local practice cards)",
     "example_github": "View on GitHub",
+    "example_zip": "Download ZIP",
+    "example_python_pro_desc": "A strong reference agent (Python standard library only): a carefully built observation planner plus a few LLM calls at key points.",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
