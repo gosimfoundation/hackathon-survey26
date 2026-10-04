@@ -340,6 +340,8 @@ class ObserverAgent:
             prev = sorted(e for _, _, e in rows[-12:-3])
             if not (last < QUAKE_STEP * prev[len(prev) // 2] and rows[-3][0] >= int(hours) - 4):
                 return False
+            if self.episode_blocked and rows[-3][0] <= self.blocked_at_hour:
+                return False   # the step that was already probed, not a new one
             self.episode_blocked = False   # a new step is a new episode
         if self.episode_blocked:
             # this low episode was probed already and was not a fault: wait for a recovery first
