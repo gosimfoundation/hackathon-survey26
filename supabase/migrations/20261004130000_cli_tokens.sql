@@ -6,12 +6,15 @@
 -- for the allow-listed contestant actions. Permissions, quotas and limits are therefore
 -- exactly those of the website; organizer actions are never reachable with a token.
 --
--- Rollout switch (site_settings.cli_tokens_enabled): false = off, true = everyone,
+-- Rollout switch (private.cli_config.enabled): false = off, true = everyone,
 -- {"users": ["<uuid>", ...]} = only these accounts. Rollback, one line:
---   update public.site_settings set value = 'false' where key = 'cli_tokens_enabled';
+--   update private.cli_config set enabled = 'false';
 
-insert into public.site_settings (key, value) values ('cli_tokens_enabled', 'false'::jsonb)
-on conflict (key) do nothing;
+create table if not exists private.cli_config (
+  id boolean primary key default true check (id),
+  enabled jsonb not null default 'false'::jsonb
+);
+insert into private.cli_config (id) values (true) on conflict (id) do nothing;
 
 create table if not exists private.cli_tokens (
   id uuid primary key default gen_random_uuid(),
@@ -41,15 +44,15 @@ create table if not exists private.cli_sessions (
   updated_at timestamptz not null default now()
 );
 
-revoke all on private.cli_tokens, private.cli_rate, private.cli_sessions from public, anon, authenticated;
+revoke all on private.cli_config, private.cli_tokens, private.cli_rate, private.cli_sessions from public, anon, authenticated;
 
 create or replace function private.cli_tokens_on(p_user uuid)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce((select case
-      when jsonb_typeof(s.value) = 'boolean' then s.value = 'true'::jsonb
-      when jsonb_typeof(s.value) = 'object' then coalesce(s.value -> 'users', '[]'::jsonb) ? p_user::text
+      when jsonb_typeof(c.enabled) = 'boolean' then c.enabled = 'true'::jsonb
+      when jsonb_typeof(c.enabled) = 'object' then coalesce(c.enabled -> 'users', '[]'::jsonb) ? p_user::text
       else false end
-    from public.site_settings s where s.key = 'cli_tokens_enabled'), false)
+    from private.cli_config c where c.id), false)
 $$;
 revoke all on function private.cli_tokens_on(uuid) from public, anon, authenticated;
 

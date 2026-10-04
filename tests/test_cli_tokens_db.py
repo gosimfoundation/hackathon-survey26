@@ -9,7 +9,7 @@ from test_project_database import database, identity, query, rpc  # noqa: F401
 
 
 def switch(uri, value):
-    query(uri, "update public.site_settings set value=%s::jsonb where key='cli_tokens_enabled'", (value,))
+    query(uri, "update private.cli_config set enabled=%s::jsonb", (value,))
 
 
 def sha(token):

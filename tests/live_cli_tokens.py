@@ -7,7 +7,7 @@
 Checks: a token is created (shown once, only its hash stored), acts as its owner with the same answers the
 website gets, cannot reach organizer actions or other teams' data, cannot widen profile fields, is rate
 limited, records its last use, and stops working the moment it is revoked. The token it creates is revoked
-at the end. Requires the account to be included in site_settings.cli_tokens_enabled.
+at the end. Requires the account to be included in private.cli_config.enabled.
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Personal API tokens for the survey26 command-line tool. Shown only while the rollout
-// switch (site_settings.cli_tokens_enabled) includes this account, or when the account
+// switch (private.cli_config.enabled) includes this account, or when the account
 // still has tokens it may want to revoke. The token itself is shown once, right after
 // it is created; the server keeps only its hash.
 import { computed, onMounted, ref } from 'vue'
