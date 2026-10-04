@@ -45,3 +45,13 @@ test('the FAQ explains how dependencies are installed', () => {
     assert.match(a, /--target/)
   }
 })
+
+test('the FAQ and the rules use the current protocol and data-release terms', () => {
+  for (const locale of ['zh', 'en']) {
+    const faq = load(locale).faq.items.map((i: any) => `${i.q}\n${i.a}`).join('\n')
+    assert.doesNotMatch(faq, /tile_science_value|candidate tiles|候选天区|weather\.csv|weather_events\.csv|agent_initialization_error|场景|scenario/i)
+    assert.match(faq, /agent_error/)
+    const rules = src(`content/rules.${locale}.md`)
+    assert.doesNotMatch(rules, /含天气、预报与事件文件|including the weather, forecast and event files/)
+  }
+})

@@ -2038,11 +2038,11 @@
     "items": [
       {
         "q": "I am not a strong programmer. What is the minimum?",
-        "a": "Your agent only needs one decision function: it receives the candidates that can be observed right now, already ranked, and returns the one to observe or none to wait. See the Docs for the interface and how to submit."
+        "a": "Your agent is a long-running program: at every decision it reads one JSON message (decision_request) from standard input and writes one action to standard output — observe (pointing, fibre assignments, exposure time and program), wait, report or finish. The easiest start is to download an example project from the Resources page, run it on the local practice cards, and then change its strategy. See the Docs for the protocol and how to submit."
       },
       {
         "q": "Do I need an astronomy background?",
-        "a": "Not much, though it helps. Essentially, your agent receives JSON snapshots: the current slot's weather, the candidate tiles with altitude, airmass, lunar factor, effective conditions and tile_science_value, the forecasts and requests issued so far, and your progress. The docs explain the few terms that appear. You could also team up with someone who has an astronomy background."
+        "a": "Not much, though it helps. At the start your agent receives the site, the target catalogue (position, class, brightness, weight, required or not), the sky footprint, the fibre configuration and the scoring parameters; at every decision it receives the current time, the latest weather bulletin and forecast, new messages (such as time-limited observation requests), the result of the last exposure and the time remaining. Terms such as altitude, moonlight and the DARK/BRIGHT/BACKUP programs are explained in the Docs. You are also welcome to team up with someone who has an astronomy background."
       },
       {
         "q": "Can I compete alone?",
@@ -2050,7 +2050,7 @@
       },
       {
         "q": "Which languages can I use?",
-        "a": "The formal hackathon competition allows any implementation language. Submit your complete project as a ZIP file and it runs in the cloud."
+        "a": "Any implementation language. Both Practice and the competition take a complete project (a public GitHub repository or a ZIP), which the platform builds and runs in the cloud. The Resources page offers example projects in Python, TypeScript and Rust."
       },
       {
         "q": "Can I use an LLM or a commercial API?",
@@ -2061,12 +2061,12 @@
         "a": "Each card has one wall clock of 900 s (global_wallclock_seconds, sent in the initialize message), on Practice, in the competition and on the hidden cards. It starts at the first decision_request and covers every decision, including your think time and model calls and platform processing. There is no per-decision limit. When it expires the agent is stopped; the observations made so far still score and the terminal penalties still apply."
       },
       {
-        "q": "What is hidden on the competition scenarios?",
-        "a": "weather.csv, weather_forecasts.csv and weather_events.csv. Your agent still sees the current slot's weather, each candidate's effective conditions (directional events applied), the forecasts issued so far and the active requests — everything the snapshots publish — but never future weather. The practice scenarios are hidden the same way."
+        "q": "Which task-card data are not public?",
+        "a": "Each task card publishes its targets, sky footprint, site, telescope and fibre configuration, observing calendar and scoring parameters: practice cards α–δ can be downloaded from the Resources page now, cards A–D are published when the competition starts, and hidden cards E–H are not published before the competition ends. The actual weather of each time slot, the full forecast series, the event timeline and instrument faults are not public for any card, practice cards α–δ included; during a run your agent only receives a bulletin every 15 minutes, a forecast about once a week and other messages, and never sees future weather. The local practice cards bundled with the example projects include their full weather and event files, for local debugging and scoring only."
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 8 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. Practice ranks each scenario separately."
+        "a": "Practice: 8 complete-project evaluations per team per day (separate board). Competition: 4 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. The Practice board ranks each card separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2086,7 +2086,7 @@
       },
       {
         "q": "What happens if my agent crashes or times out?",
-        "a": "A run that fails to initialize within 30 seconds, exits, or answers with an invalid message ends with termination_reason agent_error or agent_initialization_error. The actions committed before that are still scored, with the terminal penalties applied, and the agent's stderr tail is shown on the submission page. If the global wall clock expires, the committed actions are scored the same way (global_wallclock_expired). Fix and resubmit within the daily limit."
+        "a": "If the program crashes, exits early, or answers with a message that cannot be parsed or does not follow the protocol, the card ends with agent_error; when the 900 s run out it ends with global_wallclock_expired. In both cases the valid observations made before still score and the terminal penalties still apply. Build and run logs are under Logs for that evaluation on the Participate page, visible only to your team and the organizers. Fix the problem and resubmit within the daily limit."
       },
       {
         "q": "Are prizes taxed?",
