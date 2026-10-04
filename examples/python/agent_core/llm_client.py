@@ -74,8 +74,10 @@ class LLMClient:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(user_payload)},
             ],
-            "temperature": 0,
-            "max_tokens": 250,
+            # No "temperature": Kimi Coding Plan models (k3 / kimi-for-coding) reject any
+            # value but 1 with HTTP 400, so leave it to the provider's default. Reasoning
+            # models spend tokens thinking before the JSON answer, hence the roomy cap.
+            "max_tokens": 1024,
         }).encode("utf-8")
         request = urllib.request.Request(
             self.base_url + "/chat/completions", data=body, method="POST",
