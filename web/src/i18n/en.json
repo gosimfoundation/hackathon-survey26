@@ -2086,6 +2086,10 @@
       {
         "q": "Does the platform provide API credits?",
         "a": "The platform does not provide model credits. Cloud runs of complete projects use your own API key, set on the Participate page. The first 100 teams to complete the practice round (at least one successful practice score) get a Kimi perk: one Kimi Coding Plan code per team, first come, first served. Once the organizers release the codes, the captain claims it on the dashboard."
+      },
+      {
+        "q": "Can a Python agent use third-party libraries such as numpy?",
+        "a": "Yes. List them in requirements.txt at the project root and put the install command in the build field of observer.project.json; the platform runs it in the build step before the evaluation starts (the build has internet access, and its time does not count toward the 900 s per card). The container's system directories are read-only, so install into the project folder, for example \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]], and set \"PYTHONPATH\": \"/workspace/.deps\" under \"environment\"; a plain pip install -r requirements.txt fails because the system directories are read-only. A requirements.txt without a build step is not installed automatically. While the agent runs it has no network access except the model API, so downloading or installing anything at run time will not work. The same applies to other languages, for example npm ci or cargo build. We recommend one Practice submission first to confirm that the build and run succeed."
       }
     ]
   },

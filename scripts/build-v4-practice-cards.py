@@ -170,9 +170,8 @@ def render_page(card_json: Path, language: str) -> str:
                   "练习赛成绩只用于练习，不决定奖项。")
         rows = [
             ("| 站点 | 智利帕拉纳尔（虚拟站点）。纬度 −24.62°，经度 −70.40°。 |", f"| 站点 | {site}。纬度 {lat}，经度 {lon}。 |"),
-            ("| 仪器 | 16 个光纤可指派方格，排成 4 × 4、无间隙。总面积 6.4 平方度，视场宽约 2.53°。 |",
-             f"| 仪器 | {f['fibers']} 个光纤可指派方格，排成 {f['grid']} × {f['grid']}、无间隙。总面积 {f['field_area']:g} 平方度，视场宽约 {across:.2f}°。 |"),
-            ("给最多 16 根光纤各分配一个目标", f"给最多 {f['fibers']} 根光纤各分配一个目标"),
+            ("| 仪器 | 16 个光纤可指派方格，排成 4 × 4、无间隙。总面积 6.4 平方度，视场宽约 2.53°。",
+             f"| 仪器 | {f['fibers']} 个光纤可指派方格，排成 {f['grid']} × {f['grid']}、无间隙。总面积 {f['field_area']:g} 平方度，视场宽约 {across:.2f}°。"),
             ("太阳低于 −18° 时可以观测", f"太阳低于 {_deg(f['sun_limit']).replace('.00', '')} 时可以观测"),
             ("全程不低于 30° 高度角", f"全程不低于 {f['min_alt']:g}° 高度角"),
             ("你曝光 900 秒。", f"你曝光 {long_exposure} 秒。"),
@@ -197,9 +196,8 @@ def render_page(card_json: Path, language: str) -> str:
                   "Practice scores do not decide awards.")
         rows = [
             ("| Site | Paranal, Chile (virtual). Latitude −24.62°, longitude −70.40°. |", f"| Site | {site}. Latitude {lat}, longitude {lon}. |"),
-            ("| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. |",
-             f"| Instrument | {f['fibers']} contiguous fibre assignment cells in a {f['grid']} × {f['grid']} grid. The field covers {f['field_area']:g} deg² and is about {across:.2f}° across. |"),
-            ("put up to 16 targets on fibres", f"put up to {f['fibers']} targets on fibres"),
+            ("| Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across.",
+             f"| Instrument | {f['fibers']} contiguous fibre assignment cells in a {f['grid']} × {f['grid']} grid. The field covers {f['field_area']:g} deg² and is about {across:.2f}° across."),
             ("when the sun is below −18°", f"when the sun is below {_deg(f['sun_limit']).replace('.00', '')}"),
             ("stays at or above 30° altitude", f"stays at or above {f['min_alt']:g}° altitude"),
             ("You expose it for 900 s.", f"You expose it for {long_exposure} s."),
