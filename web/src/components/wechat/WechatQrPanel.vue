@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Profile: upload, replace or delete my WeChat QR code and choose who may see it (friends by default).
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { describeError } from '../../lib/errors'
 import { useFlash } from '../../stores/flash'
@@ -8,6 +9,7 @@ import { qrFileProblem, type MyQr, type QrVisibility } from '../../lib/wechatQr'
 import { deleteMyWechatQr, loadMyWechatQr, setWechatQrVisibility, signedWechatQrUrl, uploadWechatQr } from '../../lib/wechatQrApi'
 
 const { t } = useI18n()
+const route = useRoute()
 const i18n = useI18n()
 const flash = useFlash()
 const qr = ref<MyQr | null>(null)
@@ -40,11 +42,19 @@ function setVisibility(v: QrVisibility) {
   if (!qr.value || qr.value.visibility === v) return
   void run(() => setWechatQrVisibility(v), t('wechat_qr.visibility_saved'))
 }
-onMounted(() => { reload().catch(() => { /* panel stays empty */ }) })
+onMounted(async () => {
+  await reload().catch(() => { /* panel stays empty */ })
+  // Opened from the menu or the 找队友 prompt: bring the panel into view and put focus on the upload button.
+  if (route.hash === '#wechat-qr') {
+    await nextTick()
+    document.getElementById('wechat-qr')?.scrollIntoView({ block: 'start' }); window.scrollBy(0, -80)
+    ;(document.querySelector('[data-testid=wechat-qr-upload]') as HTMLButtonElement | null)?.focus({ preventScroll: true })
+  }
+})
 </script>
 
 <template>
-  <div id="wechat-qr" class="panel mt-8" data-testid="wechat-qr-panel">
+  <div id="wechat-qr" class="panel" data-testid="wechat-qr-panel">
     <div class="hd"><h2>{{ t('wechat_qr.title') }}</h2><span class="text3 text-sm">{{ t('common.optional') }}</span></div>
     <p class="text2 text-sm">{{ t('wechat_qr.lede') }}</p>
     <div class="qr-own mt-4">

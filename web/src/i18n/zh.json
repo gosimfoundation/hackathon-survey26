@@ -154,7 +154,8 @@
     },
     "register_float": "报名",
     "about": "组委会",
-    "find_uid": "按 UID 找人"
+    "find_uid": "按 UID 找人",
+    "wechat_qr": "微信二维码"
   },
   "hero": {
     "eyebrow": "GOSIM 黑客松 · 智能巡天",
@@ -2839,7 +2840,12 @@
       "invalid_visibility": "未知的可见范围。",
       "storage_unavailable": "上传失败，请稍后再试。",
       "admin_only": "仅限主办方。"
-    }
+    },
+    "prompt": "上传微信二维码，方便别人联系你。",
+    "prompt_button": "上传微信二维码",
+    "prompt_done": "已保存，默认仅好友可见。",
+    "prompt_settings": "修改可见范围",
+    "menu": "微信二维码"
   },
   "cards": {
     "card_not_available": "无法查看这张名片（申请或邀请可能已处理或撤回）。"
