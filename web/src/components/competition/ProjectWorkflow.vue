@@ -15,6 +15,7 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition, entryPhase } from '../../stores/competition'
 import { entryPhaseIds, offersPracticeSwitch } from '../../lib/entryPhase'
+import { tabFromQuery } from '../../lib/deepLink'
 import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
@@ -526,6 +527,8 @@ type V2Tab = 'progress' | 'history' | 'settings'
 const V2_TAB_KEY = 'compete-v2-tab'
 const v2Tab = ref<V2Tab>((() => {
   if (location.hash.startsWith('#batch-')) return 'history'
+  const asked = tabFromQuery(new URLSearchParams(location.search).get('tab')) // deep link: /compete?tab=settings
+  if (asked) return asked
   try { const saved = localStorage.getItem(V2_TAB_KEY); return saved === 'history' || saved === 'settings' ? saved : 'progress' } catch { return 'progress' }
 })())
 watch(v2Tab, tab => { try { localStorage.setItem(V2_TAB_KEY, tab) } catch { /* storage blocked */ } })
