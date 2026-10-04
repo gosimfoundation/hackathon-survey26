@@ -43,11 +43,11 @@ export function quotaResetText(notice: QuotaResetNotice): { en: string; zh: stri
   const counts = [...new Set(notice.phases.map(p => p.daily_batches))]
   const cycle = { en: ' (the daily cycle starts at 08:00 Beijing time / 00:00 UTC).', zh: '（按北京时间 8 点 / UTC 0 点的每日周期计算）。' }
   if (counts.length === 1) {
-    return { en: `Evaluation counts have been reset: every team has ${counts[0]} evaluations again today${cycle.en}`,
-      zh: `评测次数已清零：今天每队重新有 ${counts[0]} 次评测机会${cycle.zh}` }
+    return { en: `Every team has ${counts[0]} evaluations again today${cycle.en} Earlier results and scores are unchanged.`,
+      zh: `今天每队重新有 ${counts[0]} 次评测机会${cycle.zh}之前的评测记录和成绩不受影响。` }
   }
   return {
-    en: `Evaluation counts have been reset: every team has its full daily evaluations again today (${notice.phases.map(p => `${p.name_en}: ${p.daily_batches}`).join(', ')})${cycle.en}`,
-    zh: `评测次数已清零：今天每队重新有完整的每日评测机会（${notice.phases.map(p => `${p.name_zh} ${p.daily_batches} 次`).join('、')}）${cycle.zh}`,
+    en: `Every team has its full daily evaluations again today (${notice.phases.map(p => `${p.name_en}: ${p.daily_batches}`).join(', ')})${cycle.en} Earlier results and scores are unchanged.`,
+    zh: `今天每队重新有完整的每日评测机会（${notice.phases.map(p => `${p.name_zh} ${p.daily_batches} 次`).join('、')}）${cycle.zh}之前的评测记录和成绩不受影响。`,
   }
 }

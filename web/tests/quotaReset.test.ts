@@ -36,8 +36,8 @@ test('unreadable or blocked storage never throws and means not dismissed', () =>
 
 test('the text uses the backend daily amount, not a fixed 40', () => {
   const n = normalizeQuotaResetNotice(raw)!
-  assert.equal(quotaResetText(n).zh, '评测次数已清零：今天每队重新有 40 次评测机会（按北京时间 8 点 / UTC 0 点的每日周期计算）。')
-  assert.match(quotaResetText(n).en, /every team has 40 evaluations again today/)
+  assert.equal(quotaResetText(n).zh, '今天每队重新有 40 次评测机会（按北京时间 8 点 / UTC 0 点的每日周期计算）。之前的评测记录和成绩不受影响。')
+  assert.match(quotaResetText(n).en, /Every team has 40 evaluations again today/)
   const other = normalizeQuotaResetNotice({ ...raw, phases: [{ ...raw.phases[0], daily_batches: 25 }] })!
   assert.match(quotaResetText(other).zh, /今天每队重新有 25 次评测机会/)
   const mixed = normalizeQuotaResetNotice({ ...raw, phases: [raw.phases[0], { ...raw.phases[1], daily_batches: 10 }] })!
