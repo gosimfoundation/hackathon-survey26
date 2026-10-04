@@ -48,6 +48,7 @@ Docker with production flags pinned to 2 vCPUs; the compute-adaptive reference a
 | normalized think time, remaining in this machine's seconds | 20 | 7.3 % | -0.23 | -5.2 % |
 | cpu/factor + wait, remaining in charged seconds | 16 | 11.2 %* | -0.08 | -4.0 % |
 | cpu/factor only (default), agent unchanged | 16 | 5.0 % | -0.75 | -11.0 % |
+| cpu/factor only (default), agent paces on `remaining_real_cpu_seconds` | 16 | 5.0 % | -0.22 | -3.6 % |
 
   (* one 3,197 outlier from the agent's own bimodal behaviour.) With the default mode the
   remaining budget is fair, but an agent that compares `remaining_seconds` with its own
