@@ -157,6 +157,8 @@ def test_batch_freezes_all_scenarios_and_admission_is_atomic(setup):
     extra=uuid.uuid4()
     query(uri,"insert into public.scenarios(id,slug,name) values(%s,%s,'Extra')",(extra,str(extra)))
     query(uri,"insert into public.phase_scenarios values(%s,%s)",(s["phase"],extra))
+    # One evaluation in flight at a time here, so concurrent admission must create exactly one.
+    query(uri,"update public.observer_phase_settings set max_active_evaluations=1 where phase_id=%s",(s["phase"],))
     def create(_):
         try:
             return rpc(uri,"observer_create_batch",s["phase"],None,role="authenticated",user=s["user"])

@@ -11,7 +11,7 @@ import RunLogs from './RunLogs.vue'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
-import { canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
@@ -68,7 +68,7 @@ const words = computed(() => pick({
   step1: 'Step 1 · Upload a project', step1Note: 'Up to 10 uploads per day. Uploading does not use evaluations.',
   step2: 'Step 2 · Review and confirm a version', step2Note: 'Does not use evaluations. When preparation finishes, open the review, check the execution settings and adapter code, and confirm the version.',
   step3: 'Step 3 · Start an evaluation', step3Note: 'Each click uses one of today’s evaluations. One evaluation runs every scenario of this phase once; its score is the average of those scenarios. The leaderboard keeps your team’s best evaluation. Evaluations that fail because of the platform are not counted.',
-  left: 'Evaluations left today', perDay: 'per day', dailyLimit: 'Daily evaluation limit', active: 'An evaluation is running. Start the next one when it finishes.',
+  left: 'Evaluations left today', perDay: 'per day', dailyLimit: 'Daily evaluation limit', active: 'Your team can run up to {n} evaluations at a time. Start the next one when one of them finishes.',
   noneLeft: 'No evaluations left today.', noApproved: 'Confirm a version in step 2 first.', evaluated: 'Evaluated', times: '×', confirmedAt: 'Confirmed',
   evaluateAgain: 'Evaluate again', repeat: 'This version has already been evaluated. Evaluating it again uses one more of today’s evaluations', repeatLeft: 'left today', proceed: 'Continue?',
   withdraw: 'Withdraw', withdrawConfirm: 'Withdraw this version? It will be hidden and can no longer be confirmed or evaluated. The upload still counts toward today’s 10 uploads.',
@@ -120,7 +120,7 @@ const words = computed(() => pick({
   step1: '第1步 · 上传项目', step1Note: '每天最多 10 次，不占评测次数。',
   step2: '第2步 · 检查并确认版本', step2Note: '不占评测次数。准备完成后点“检查接口”，核对运行设置和适配代码，再确认版本。',
   step3: '第3步 · 开始评测', step3Note: '每点一次占当天 1 次；一次评测会把本赛程全部场景各跑一遍，分数是这些场景的平均分；排行榜取本队最高的一次；因平台原因失败的不计次数。',
-  left: '今天还剩', perDay: '每天', dailyLimit: '每日评测上限', active: '本队有评测正在进行，结束后才能开始下一次。',
+  left: '今天还剩', perDay: '每天', dailyLimit: '每日评测上限', active: '本队最多可同时进行 {n} 个评测，请等其中一个结束后再开始。',
   noneLeft: '今天的评测次数已用完。', noApproved: '请先在第2步确认一个版本。', evaluated: '已评测', times: '次', confirmedAt: '确认于',
   evaluateAgain: '再评测一次', repeat: '这个版本已经评测过。再评测一次会再占用今天 1 次评测', repeatLeft: '今天还剩', proceed: '确定继续吗？',
   withdraw: '撤回', withdrawConfirm: '撤回这个版本？撤回后它会被隐藏，不能再确认或评测；已用的上传次数不退回。',
@@ -172,7 +172,10 @@ const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === p
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Shown even before the quota RPC answers: the phase setting is the same number the database enforces.
 const dailyLimit = computed(() => quota.value?.daily_batches ?? selectedPhase.value?.daily_batches ?? null)
-const activeBatch = computed(() => (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
+// Up to max_active_evaluations of the team's evaluations may run at once (a self-check set counts once).
+const activeLimit = computed(() => selectedPhase.value?.max_active_evaluations ?? 4)
+const activeBatch = computed(() => activeEvaluations(data.value?.batches) >= activeLimit.value)
+const selfCheckActive = computed(() => (data.value?.batches ?? []).some(b => !!b.repeat_group && ['queued', 'running'].includes(b.status)))
 const shownProjects = computed(() => visibleProjects(data.value?.projects, showWithdrawn.value))
 const hiddenCount = computed(() => withdrawnCount(data.value?.projects))
 const approvedVersions = computed(() => (data.value?.projects ?? []).flatMap(p => p.observer_revisions
@@ -203,7 +206,8 @@ function errorMessage(e: unknown) {
   const messages: Record<string, string> = {
     stale_approval: pick('The version changed. Reopen the review before confirming.', '版本已变化，请重新打开并检查。'),
     csv_does_not_match_session: pick('This CSV differs from the server-recorded decisions.', '这个 CSV 与服务器记录的决策不一致。'),
-    batch_already_active: pick('Your team already has an active evaluation.', '本队已有正在进行的评测。'),
+    batch_already_active: pick(`Your team can run up to ${activeLimit.value} evaluations at a time.`, `本队最多可同时进行 ${activeLimit.value} 个评测。`),
+    repeat_already_active: pick('An “Evaluate 3 times and average” set is already running. Start another when it finishes.', '已有一组「评测 3 次取平均」正在进行，请等它结束后再开始。'),
     preparation_limit: pick('Your team already has three projects being prepared.', '本队已有三个项目正在准备，请等待完成。'),
     preparation_daily_limit: pick('Your team has used today’s ten project preparations.', '本队今天的十次项目准备机会已用完。'),
     local_session_not_ready: pick('The local engine is not ready yet, or the run has ended. Refresh its status.', '本地会话尚未启动或已经结束，请刷新查看状态。'),
@@ -593,7 +597,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             · <strong>{{ pick(`${words.left}: ${quota.remaining}`, `${words.left} ${quota.remaining} 次`) }}</strong></template>
             <span v-if="dailyLimit != null" class="help" data-testid="evaluation-reset"> ({{ formatDailyReset(quota?.resets_at, locale) }})</span></p>
           <p v-if="quota && quota.remaining <= 0" class="help">{{ words.noneLeft }}</p>
-          <p v-else-if="activeBatch" class="help">{{ words.active }}</p>
+          <p v-else-if="activeBatch" class="help" data-testid="evaluation-active-limit">{{ words.active.replace('{n}', String(activeLimit)) }}</p>
           <p v-if="approvedVersions.length" class="help mt-3" data-testid="self-check-note">{{ words.selfCheckNote }}<template v-if="!canSelfCheck(quota)"> {{ words.selfCheckNeed }}</template></p>
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
@@ -602,7 +606,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
             <span v-if="v.evaluated" class="meta">{{ pick(`${words.evaluated} ${v.evaluated}${words.times}`, `${words.evaluated} ${v.evaluated} ${words.times}`) }}</span>
             <button type="button" class="btn primary sm" :disabled="busy || locked.has('evaluate:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || (quota != null && quota.remaining <= 0)" data-testid="project-evaluate-button" :aria-busy="pending === 'evaluate:'+v.revision.id" @click="evaluate(v.revision.id)">{{ pending === 'evaluate:'+v.revision.id ? words.working : v.evaluated ? words.evaluateAgain : words.evaluate }}</button>
-            <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || !canSelfCheck(quota)" :title="canSelfCheck(quota) ? words.selfCheckNote : words.selfCheckNeed" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.revision.id" @click="selfCheck(v.revision.id)">{{ pending === 'selfcheck:'+v.revision.id ? words.working : words.selfCheck }}</button>
+            <button type="button" class="btn sm" :disabled="busy || locked.has('selfcheck:'+v.revision.id) || !selectedPhase?.projects_enabled || activeBatch || selfCheckActive || !canSelfCheck(quota)" :title="canSelfCheck(quota) ? words.selfCheckNote : words.selfCheckNeed" data-testid="project-self-check-button" :aria-busy="pending === 'selfcheck:'+v.revision.id" @click="selfCheck(v.revision.id)">{{ pending === 'selfcheck:'+v.revision.id ? words.working : words.selfCheck }}</button>
           </div>
         </template>
       </section>

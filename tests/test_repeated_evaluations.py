@@ -202,8 +202,8 @@ def test_self_check_uses_three_evaluations_runs_them_in_turn_and_the_board_keeps
     assert query(uri, 'select id from public.observer_batches where id=any(%s) order by created_at,id', (batches,)) == [(b,) for b in batches]
     assert next(q for q in rpc(uri, 'observer_evaluation_quota', role='authenticated', user=s['user'])
                 if q['phase_id'] == str(s['phase']))['remaining'] == 4
-    # One set (or evaluation) at a time; its evaluations run one after another.
-    with pytest.raises(psycopg.Error, match='batch_already_active'):
+    # One self-check set at a time; its evaluations run one after another.
+    with pytest.raises(psycopg.Error, match='repeat_already_active'):
         self_check(s, rev, True)
     assert pending_batches(s, (s['team'],)) == {batches[0]}
     for value, batch in zip((30, 50, 40), batches):
@@ -247,3 +247,28 @@ def test_the_online_board_marks_each_teams_final_version(online):
     # Not in practice phases.
     query(uri, 'update public.phases set counts_for_final=false where id=%s', (s['phase'],))
     assert row()['final_version'] is None
+
+
+def test_a_team_runs_up_to_four_evaluations_side_by_side(online):
+    """A/B comparisons: different versions evaluated at the same time; a self-check set counts once."""
+    s = online; uri = s['uri']
+    query(uri, 'update public.observer_phase_settings set daily_batches=40 where phase_id=%s', (s['phase'],))
+    query(uri, "insert into private.observer_scenario_bundles values(%s,'public/test.zip',%s)", (s['scenario'], 'f'*64))
+    a, b = revision(s), revision(s)
+    materialize(s, a); materialize(s, b)
+    create = lambda rev: query(uri, 'select public.observer_create_batch(%s,%s,true)', (s['phase'], rev),
+                               role='authenticated', user=s['user'])[0][0]
+    first, second = create(a), create(b)
+    # Both are handed to the dispatcher at once (no per-team serialization outside a self-check set).
+    assert pending_batches(s, (s['team'],)) == {first, second}
+    group = self_check(s, a, True)                  # the third unit: three evaluations, counted once
+    fourth = create(b)
+    with pytest.raises(psycopg.Error, match='batch_already_active'):
+        create(a)
+    # The self-check's evaluations still run one after another; the fourth runs right away.
+    assert pending_batches(s, (s['team'],)) == {uuid.UUID(group['batch_ids'][0]), fourth}
+    # Configurable per phase.
+    query(uri, 'update public.observer_phase_settings set max_active_evaluations=6 where phase_id=%s', (s['phase'],))
+    create(a)
+    # The organizers' sealed final evaluations never count toward the limit.
+    assert query(uri, 'select private.observer_active_evaluations(%s)', (s['team'],)) == [(5,)]

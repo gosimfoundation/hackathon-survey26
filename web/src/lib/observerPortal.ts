@@ -28,7 +28,7 @@ export type TeamEnvironment = {
 }
 export type PortalData = {
   phases: { phase_id: string; projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number
-    model_token_limit: number; model_call_limit: number; model_concurrency: number; phases: { slug: string; name_en: string; name_zh: string; is_active: boolean
+    model_token_limit: number; model_call_limit: number; model_concurrency: number; max_active_evaluations?: number; phases: { slug: string; name_en: string; name_zh: string; is_active: boolean
       starts_at: string | null; ends_at: string | null } }[]
   projects: { id: string; title: string; created_at: string; observer_revisions: ProjectRevision[] }[]
   batches: { id: string; mode: string; status: string; score: number | null; created_at: string
