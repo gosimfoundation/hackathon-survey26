@@ -101,7 +101,8 @@ prizes will be announced separately.
 1. Be respectful to one another. Harassment, discrimination, and abusive content in team names, notes, agent output, or posts and messages in WeChat groups or on other social media are not tolerated.
 2. Do not share accounts, do not submit another team's work, and do not create multiple teams to multiply the daily limit.
 3. Report platform defects to the organizers instead of exploiting them. Reports of scorer or sandbox issues are welcome and credited.
-4. Decisions of the organizers on eligibility, disqualification, and awards are final.
+4. Personal API tokens for the command-line tool act as the account that created them, with the same permissions, daily limits and quotas as the website. Actions taken with a token are attributed to that account. Do not give a token to anyone outside your team; revoke it on the profile page when it is no longer needed.
+5. Decisions of the organizers on eligibility, disqualification, and awards are final.
 
 ## 9. Data and privacy
 

@@ -49,6 +49,7 @@ const bilibiliPlayer = (bvid: string) => `https://player.bilibili.com/player.htm
 const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
   { n: '01', title: 'resources.docs', desc: 'resources.docs_desc', href: '/docs', primary: false, label: 'common.view', route: true },
+  { n: '02', title: 'resources.cli_tool', desc: 'resources.cli_tool_desc', href: '/cli', primary: false, label: 'common.view', route: true },
 ])
 const language = computed<CardLanguage>(() => locale.value === 'zh' ? 'zh' : 'en')
 const taskCards = [...practiceCards, ...FORMAL_CARDS]

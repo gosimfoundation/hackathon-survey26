@@ -10,6 +10,7 @@ import { invalidateBoardCache } from '../lib/data'
 import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
+import ApiTokensPanel from '../components/dashboard/ApiTokensPanel.vue'
 
 const { t, locale, setLocale } = useI18n()
 const i18n = useI18n()
@@ -176,6 +177,7 @@ async function changePassword() {
             <button class="btn sm" type="submit" :disabled="pwBusy">{{ t('profile.change') }}</button>
           </form>
         </div>
+        <ApiTokensPanel />
       </div>
     </div>
   </DashShell>

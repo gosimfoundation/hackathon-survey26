@@ -26,6 +26,7 @@ export const STATIC_ROUTES = {
   'cards/c': 'cards',
   'cards/d': 'cards',
   docs: 'docs',
+  cli: 'cli',
   faq: 'faq',
   resources: 'resources',
   leaderboard: 'leaderboard',

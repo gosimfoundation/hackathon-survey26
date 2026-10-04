@@ -88,6 +88,11 @@
       "teammates": {
         "title": "Find teammates",
         "description": "Find each other by astronomy tier and AI tier, and build a complementary team."
+      },
+      "cli": {
+        "title": "Command-line tool",
+        "kicker": "survey26",
+        "description": "Install the survey26 command-line tool, create a personal API token, and do everything the website offers from a terminal or a coding agent."
       }
     }
   },
@@ -2054,6 +2059,8 @@
     "cli": "Command line",
     "docs": "Documentation",
     "docs_desc": "Registration and teams, complete-project submission, launch configuration, model APIs, evaluation quota and the final version.",
+    "cli_tool": "Command-line tool (survey26)",
+    "cli_tool_desc": "Do everything the website offers from a terminal or a coding agent: team, keys and network, project upload, evaluations, logs and results. Includes the personal API token setup and a usage guide for coding agents.",
     "flow_examples": "Example projects",
     "flow_examples_hint": "Complete example agent projects. Pick a language to start from and adapt the strategy to your own.",
     "flow_talks": "Talk recordings",
@@ -2144,6 +2151,14 @@
       {
         "q": "Can my agent use several models or several providers at once?",
         "a": "Yes. In \"Keys and network\", save a key for each provider (e.g. KIMI_API_KEY, DEEPSEEK_API_KEY) and add each provider's domain (e.g. api.kimi.com, api.deepseek.com). Your program can then call several providers at the same time, over any protocol (OpenAI-compatible, Anthropic Messages or the provider's own API), and choose the model for each request, for example a fast, inexpensive model for simple steps and a stronger one for key decisions. Model calls are paid for by your team. See the example projects' READMEs for code."
+      },
+      {
+        "q": "Can I do everything from the command line or let a coding agent do it?",
+        "a": "Yes. The official survey26 command-line tool (Resources → Command-line tool) covers everything the website offers to contestants: team, keys and network, project upload, version confirmation, evaluations, logs, results, the final version and the leaderboard. Create a personal API token on your profile page and set it as SURVEY26_TOKEN. The tool has the same daily limits and quotas as the website, and every command supports --json output for programs and coding agents."
+      },
+      {
+        "q": "What can a personal API token do, and how do I protect it?",
+        "a": "A token acts as your account, with exactly your permissions, daily limits and quotas; organizer functions are never available with a token, and tokens cannot create or revoke other tokens. Anyone who has the token can act as you, so do not put it in repositories, project ZIPs, logs or chats. The profile page shows when each token was last used; revoke a token there when it is no longer needed or may have been exposed, and it stops working immediately."
       }
     ]
   },
