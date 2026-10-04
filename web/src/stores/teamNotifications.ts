@@ -5,7 +5,14 @@ import { supabase } from '../lib/supabase'
 export const unreadTeamNotifications = ref(0)
 /** Requests/invitations waiting for this person's answer; stays until answered, read or not. */
 export const pendingTeamActions = ref(0)
+/** Friend requests waiting for this person's answer; stays until answered (accept, decline or block). */
+export const pendingFriendRequests = ref(0)
+export async function refreshFriendRequests() {
+  const { data, error } = await supabase.rpc('friend_request_count')
+  if (!error) pendingFriendRequests.value = Number(data ?? 0)
+}
 export async function refreshTeamNotifications() {
+  void refreshFriendRequests()
   const { data, error } = await supabase.rpc('team_notification_counts')
   if (!error && data) {
     pendingTeamActions.value = Number(data.pending ?? 0)
@@ -16,7 +23,7 @@ export async function refreshTeamNotifications() {
   const old = await supabase.rpc('team_invitation_unread')
   if (!old.error) unreadTeamNotifications.value = Number(old.data ?? 0)
 }
-export function clearTeamNotifications() { unreadTeamNotifications.value = 0; pendingTeamActions.value = 0 }
+export function clearTeamNotifications() { unreadTeamNotifications.value = 0; pendingTeamActions.value = 0; pendingFriendRequests.value = 0 }
 export async function teamAction(name: string, args?: Record<string, unknown>) {
   const { data, error } = await supabase.rpc(name, args)
   if (error) throw error

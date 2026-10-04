@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // My UID, friends, friend requests and blocked people. A captain can invite a friend without a team in one click.
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { refreshFriendRequests } from '../../stores/teamNotifications'
 import { useI18n } from '../../composables/useI18n'
 import { describeError } from '../../lib/errors'
 import { useAuth } from '../../stores/auth'
@@ -13,6 +15,7 @@ import WechatQrButton from '../wechat/WechatQrButton.vue'
 import { visibleWechatQrs } from '../../lib/wechatQrApi'
 
 const { t, tf } = useI18n()
+const route = useRoute()
 const i18n = useI18n()
 const flash = useFlash()
 const { me, team } = useAuth()
@@ -30,6 +33,7 @@ async function reload() {
   try {
     data.value = await loadFriends()
     qrs.value = await visibleWechatQrs(data.value.friends.map(f => f.user_id)).catch(() => ({}))
+    void refreshFriendRequests()
   } catch (e) { flash.error(errorText(e)) }
   finally { loaded.value = true }
 }
@@ -63,7 +67,11 @@ async function copyUid() {
   catch { flash.error(t('team.copy_fallback')) }
 }
 
-onMounted(reload)
+// Opened from the bell (/profile#friends): the panel renders after the page's own loading, so scroll here.
+onMounted(async () => {
+  await reload()
+  if (route.hash === '#friends') { await nextTick(); document.getElementById('friends')?.scrollIntoView({ block: 'start' }); window.scrollBy(0, -80) }
+})
 </script>
 
 <template>
