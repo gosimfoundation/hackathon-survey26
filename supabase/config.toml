@@ -439,3 +439,7 @@ verify_jwt = false
 [functions.observer-portal]
 # Validates the user session and team before every operation.
 verify_jwt = false
+
+[functions.survey26-cli]
+# Personal API tokens (not JWTs): checked against their stored hash on every request.
+verify_jwt = false

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/build-kit.mjs && node scripts/build-examples.mjs",
+    "prebuild": "node scripts/build-kit.mjs && node scripts/build-examples.mjs && node scripts/build-cli.mjs",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "build-kit": "node scripts/build-kit.mjs",
