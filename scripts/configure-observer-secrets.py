@@ -68,7 +68,9 @@ def main():
     if not state.get('model_key'):raise RuntimeError('Supply the authorized test model key through process environment')
     stored=subprocess.run(['security','add-generic-password','-U','-s',SERVICE,'-a',ref,'-w',json.dumps(state)],capture_output=True)
     if stored.returncode:raise RuntimeError('Could not persist backend credentials in Keychain')
-    base='http://office.liyao.space:40101/v1'
+    # The organizer's own relay (an http:// address): supplied at run time, never stored in the repository.
+    base=os.environ.get('OBSERVER_ORGANIZER_RELAY_BASE','')
+    if not base.startswith('http://'):raise RuntimeError('Set OBSERVER_ORGANIZER_RELAY_BASE to the organizer relay base URL')
     values={'OBSERVER_GITHUB_APP_ID':str(app['id']),'OBSERVER_GITHUB_APP_PEM':app['pem'],
       'OBSERVER_KEY_ENCRYPTION_KEY':state['master'],'OBSERVER_DISPATCH_SECRET':state['dispatch'],
       'OBSERVER_DEFAULT_MODEL_PROVIDER':state['provider_id'],'OBSERVER_MODEL_BASES':','.join([base,*team_bases]),'OBSERVER_MODEL_HTTP_BASES':base}
