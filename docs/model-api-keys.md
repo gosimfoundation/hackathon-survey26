@@ -111,6 +111,15 @@ select public.observer_set_model_proxy(p_prepare_direct=>false, p_retired=>false
 update private.observer_providers set enabled=true where team_id is null;          -- organizer route back
 ```
 
+**Live 2026-10-04.** Runtime with direct access published and approved on all 13
+`observer-control` repositories (main `3a68787`, previous shas in git history of
+`ops/github-installations.json`). Hidden test team "Proxy retirement test (hidden)"
+(Kimi via `OPENAI_*`, domain `api.kimi.com`): a project without
+`observer.project.json` was adapted by calling Kimi directly, public test passed,
+zero proxy calls. With the proxy retired and direct access off, the same project's
+preparation failed (proxy refused) and was requeued; once direct access was on, the
+retry passed. Both switches on since 08:30 UTC.
+
 ---
 
 # Model proxy (previous path; retired for team-egress teams, rollback only)
