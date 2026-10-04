@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .v4_workflow import PROTOCOL_VERSION, V4_SCENARIO_PATH, V4Workflow
+from .fair_clock import ProcessAgent
 
 MAX_RESPONSE_BYTES = 512 * 1024
 FINISH_GRACE_SECONDS = 30.0
@@ -207,7 +208,9 @@ def run_card(card_dir: Path, agent: AgentProcess, output_dir: Path, *, wallclock
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    result = workflow.run(decide, output_dir, wallclock_seconds=wallclock_seconds, initialize=initialize)
+    # Same fair clock as the platform (challenge/fair_clock.py): normalized agent time only.
+    result = workflow.run(decide, output_dir, wallclock_seconds=wallclock_seconds, initialize=initialize,
+                          agent_hooks=ProcessAgent(agent))
     init_error = result.pop("initialization_error", None)
     if init_error is None:
         agent.finish({**V4Workflow.finish_payload(result), "termination_reason": result["termination_reason"],

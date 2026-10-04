@@ -37,6 +37,9 @@ jobs:
       - name: Run the trusted engine entrypoint
         env:
           OBSERVER_JOB_URL: ${{ vars.OBSERVER_JOB_URL }}
+          # Fair clock (challenge/fair_clock.py): cpu (default) or charged_wait; optional wall cap in seconds.
+          OBSERVER_CLOCK_MODE: ${{ vars.OBSERVER_CLOCK_MODE }}
+          OBSERVER_WALL_CAP_SECONDS: ${{ vars.OBSERVER_WALL_CAP_SECONDS }}
           OBSERVER_JOB_ID: ${{ inputs.job_id }}
           OBSERVER_POOL: public
         run: |

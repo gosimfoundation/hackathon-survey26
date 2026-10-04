@@ -6,12 +6,14 @@ participant project or used on the executor host with a hidden scenario mounted.
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from challenge.challenge_workflow import ChallengeWorkflow
 from challenge import v4_workflow
+from challenge.fair_clock import DockerAgent, ProcessAgent, container_name
 from .session import SessionClient, long_poll_seconds, wait_until
 from .scenario_instances import PANEL_VERSION, calibrated_score
 from .transport import NORMAL_TERMINATION_REASONS
@@ -216,7 +218,8 @@ def run_v4_session(scenario: Path, output: Path, client: SessionClient, *, wallc
         return transport.receive(deadline)
 
     result = workflow.run(decide, output, wallclock_seconds=wallclock_seconds,
-                          initialize=provider.publish_initial, deadline_cap=lambda: provider.server_deadline)
+                          initialize=provider.publish_initial, deadline_cap=lambda: provider.server_deadline,
+                          agent_hooks=agent_hooks(transport))
     result.pop("initialization_error", None)
     if provider.initialization_error is not None:
         # Same as v3: a failed startup fails the job instead of publishing an empty score.
@@ -229,6 +232,17 @@ def run_v4_session(scenario: Path, output: Path, client: SessionClient, *, wallc
         pass
     digest = hashlib.sha256((output / "decisions.csv").read_bytes()).hexdigest()
     return result, digest
+
+
+def agent_hooks(transport):
+    """Fair-clock hooks for the participant: its Docker container (production), or the bare
+    process the tests use. Only Docker client settings reach the docker CLI."""
+    name = container_name(getattr(transport, "command", None))
+    if name is not None:
+        client = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT",
+                                                    "DOCKER_CONFIG") if key in os.environ}
+        return DockerAgent(name, client)
+    return ProcessAgent(transport)
 
 
 def last_committed_sequence(result: dict) -> int:

@@ -9,6 +9,9 @@ Modes (argv[1]):
   sleep        never answers (wall-clock expiry)
   sleep-after:N    greedy for N decisions, then never answers (expiry with a history)
   finish-after:N   greedy for N decisions, then {"action": "finish"}
+  spin         computes forever instead of answering (fair-clock expiry on CPU time)
+  background   greedy, but a thread keeps computing between requests (charged as well)
+  nap          greedy after waiting 1 s per request (like a model call)
 Every mode logs "INIT <json>" (a summary of initialize) and "FINISH-MSG <json>" to stderr.
 With PROBE=1 it also logs what it can see of the host ("PROBE <json>").
 """
@@ -88,6 +91,11 @@ def answer(message):
     state["count"] += 1
     if MODE == "wait":
         return {"action": "wait", "duration_seconds": 3600}
+    if MODE == "nap":
+        time.sleep(1)
+    if MODE == "spin":
+        while True:
+            pass
     if MODE == "sleep" or MODE.startswith("sleep-after:") and state["count"] > int(MODE.split(":")[1]):
         time.sleep(3600)
     if MODE.startswith("bad-after:") and state["count"] > int(MODE.split(":")[1]):
@@ -105,6 +113,14 @@ if os.environ.get("PROBE") == "1":
     log("PROBE", {"bundle_visible": os.path.exists(os.environ.get("PROBE_PATH", "/nonexistent")),
                   "admin_key_visible": "SUPABASE_SERVICE_ROLE_KEY" in os.environ,
                   "docker_socket_visible": os.path.exists("/var/run/docker.sock")})
+
+if MODE == "background":
+    import threading
+
+    def _spin():
+        while True:
+            pass
+    threading.Thread(target=_spin, daemon=True).start()
 
 for line in sys.stdin:
     message = json.loads(line)

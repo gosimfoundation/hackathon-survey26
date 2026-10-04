@@ -83,3 +83,19 @@ python3 run_local.py --card L3 --agent "./rust-agent" --agent-cwd /path/to/rust-
 输出落在 `--out`（默认 `run_output/`）：`decisions.csv`、`observations.csv`、
 `messages.jsonl`、`score_report.json`、`workflow_result.json`、`actions.jsonl`、`agent.log`。
 标准输出的最后一行是 JSON 格式的分数摘要。
+
+## Time limit (timing rule) / 计时方式
+
+The budget (900 by default) uses the platform's timing rule: only the CPU time your agent uses during its
+turns (from each `decision_request` until its response) counts, divided by this machine's speed factor.
+Waiting (e.g. on a model) and the engine's time are free; a real-time cap (30 minutes for 900) ends hung
+runs. The factor is 1.0 on the median GitHub evaluation runner; a fast laptop typically has a factor below
+1 and therefore gets **less** real CPU time than 900 s. The summary prints `speed_factor` and a
+`fair_clock` breakdown; each request's `wallclock.remaining_seconds` is the budget left. CPU is metered on
+Linux and macOS (main process only on macOS); elsewhere a whole turn counts as CPU.
+
+预算（默认 900）采用与平台相同的计时规则：只计智能体在回合内（每条 `decision_request` 到回复）使用的 CPU
+时间，并除以本机速度系数；等待（例如等待模型）和引擎时间不计；另有实际时间上限（900 对应 30 分钟）。
+速度系数以 GitHub 评测机器的中位速度为 1.0；较快的笔记本系数通常小于 1，因此可用的实际 CPU 时间**少于**
+900 秒。结果摘要中有 `speed_factor` 和 `fair_clock` 明细；每条请求的 `wallclock.remaining_seconds` 是剩余
+预算。Linux 和 macOS 上计量 CPU（macOS 只计主进程），其他系统整个回合按 CPU 计。

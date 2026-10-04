@@ -25,11 +25,13 @@ from __future__ import annotations
 
 import csv
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Mapping
 
 from .contracts import write_text_lf
+from .fair_clock import CLOCK_SCHEMA, POLL_SECONDS, FairClock, SpeedGauge, configured
 from .v4_config_check import DEFAULT_MAX_CONSECUTIVE_REPORTS
 from .v4_fiber_map import FiberGrid
 from .v4_runner import (
@@ -46,7 +48,8 @@ SNAPSHOT_SCHEMA = "v4-decision-snapshot-v1"
 FINISH_SCHEMA = "v4-finish-v1"
 RESULT_SCHEMA = "v4-workflow-result-v1"
 V4_SCENARIO_PATH = Path("config") / "v4_scenario.json"
-# Organizer decision 2026-09-28: every card run is capped at 900 s of wall clock.
+# Organizer decision 2026-09-28: every card run is capped at 900 s. Since 2026-10-04 these are
+# charged seconds of the agent's own turns (challenge/fair_clock.py), not raw wall clock.
 MAX_WALLCLOCK_SECONDS = 900.0
 DEFAULT_SUN_ALTITUDE_LIMIT_DEG = -18.0
 RESPONSE_MAX_BYTES = 512 * 1024  # enforced by the transport (project_platform.transport)
@@ -108,7 +111,7 @@ class V4Workflow:
             raise ValueError("wallclock budget must be positive")
         return budget
 
-    def initialize_payload(self, wallclock_seconds: float) -> dict:
+    def initialize_payload(self, wallclock_seconds: float, speed_factor: float | None = None) -> dict:
         scenario = self.scenario
         config = self.config
         base = self.scenario_path.parent
@@ -171,6 +174,8 @@ class V4Workflow:
             },
             "limits": {
                 "global_wallclock_seconds": wallclock_seconds,
+                "clock": CLOCK_SCHEMA,
+                "speed_factor": None if speed_factor is None else round(speed_factor, 4),
                 "max_consecutive_reports": scenario.score_config["reporting"].get(
                     "max_consecutive_reports", DEFAULT_MAX_CONSECUTIVE_REPORTS
                 ),
@@ -184,9 +189,8 @@ class V4Workflow:
         return {"protocol_version": PROTOCOL_VERSION, "message_type": "initialize", "payload": payload}
 
     @staticmethod
-    def request_message(sequence: int, snapshot: Mapping, elapsed: float, remaining: float) -> dict:
-        payload = {"schema_version": SNAPSHOT_SCHEMA, **snapshot,
-                   "wallclock": {"elapsed_seconds": round(elapsed, 3), "remaining_seconds": round(max(0.0, remaining), 3)}}
+    def request_message(sequence: int, snapshot: Mapping, wallclock: Mapping) -> dict:
+        payload = {"schema_version": SNAPSHOT_SCHEMA, **snapshot, "wallclock": dict(wallclock)}
         return {"protocol_version": PROTOCOL_VERSION, "message_type": "decision_request",
                 "decision_sequence": sequence, "payload": payload}
 
@@ -222,6 +226,10 @@ class V4Workflow:
         wallclock_seconds: float | None = None,
         initialize: Callable[[dict], None] | None = None,
         deadline_cap: Callable[[], float | None] | None = None,
+        agent_hooks=None,
+        speed_gauge: SpeedGauge | None = None,
+        clock_mode: str | None = None,
+        wall_cap: float | None = None,
     ) -> dict:
         """Run the card; returns the workflow result (also written to workflow_result.json).
 
@@ -229,44 +237,70 @@ class V4Workflow:
         and any other exception for a broken agent. ``initialize`` failures propagate after
         the run is settled with no decisions, so the caller can fail the job like v3.
         ``deadline_cap`` optionally returns an external (session) deadline in the same clock.
+        ``agent_hooks`` (optional) offers ``pause()``, ``resume()`` and ``cpu()`` for the agent's
+        processes (challenge.fair_clock.DockerAgent / ProcessAgent): the budget is charged with
+        the fair clock (module docstring of challenge.fair_clock). ``clock_mode`` and ``wall_cap``
+        default to the organizer configuration (challenge.fair_clock.configured).
         """
         budget = self.wallclock_budget(wallclock_seconds)
-        state: dict = {"sequence": 0, "started": None, "deadline": None, "ignored_in_flight": False,
-                       "initialization_error": None, "agent_seconds": 0.0}
+        hook = (lambda name: getattr(agent_hooks, name, None)) if agent_hooks is not None else (lambda name: None)
+        mode, cap = configured()
+        fair = FairClock(budget, gauge=speed_gauge, clock=self.clock, cpu=hook("cpu"), pause=hook("pause"),
+                         resume=hook("resume"), mode=clock_mode or mode, wall_cap=wall_cap or cap)
+        stop = hook("stop")
+        state: dict = {"sequence": 0, "ignored_in_flight": False, "initialization_error": None, "stopped": False}
+
+        def watch(done: threading.Event) -> None:
+            # The budget runs out during a turn: stop the agent; its reply would be ignored anyway.
+            while not done.wait(POLL_SECONDS):
+                if fair.over_budget():
+                    state["stopped"] = True
+                    if stop is not None:
+                        stop()
+                    return
         actions: list[str] = []  # every action the runner received, for organizer replay
 
         def deadline() -> float:
             cap = deadline_cap() if deadline_cap is not None else None
-            return state["deadline"] if cap is None else min(state["deadline"], cap)
+            limit = fair.turn_deadline()
+            return limit if cap is None else min(limit, cap)
 
         def factory(_context):
+            # The machine is measured before the agent starts, so nothing competes with it.
+            factor = fair.calibrate()
             if initialize is not None:
                 try:
-                    initialize(self.initialize_payload(budget))
+                    initialize(self.initialize_payload(budget, factor))
                 except Exception as error:  # noqa: BLE001 - reported to the caller below
                     state["initialization_error"] = error
                     raise AgentTermination(TERMINATION_AGENT_ERROR, "agent initialization failed") from None
-            state["started"] = self.clock()
-            state["deadline"] = state["started"] + budget
 
             def agent(snapshot):
+                fair.begin_turn()
                 limit = deadline()
-                now = self.clock()
-                if now >= limit:
+                if fair.expired or self.clock() >= limit:
                     raise AgentTermination(TERMINATION_WALLCLOCK)
                 state["sequence"] += 1
                 sequence = state["sequence"]
-                message = self.request_message(sequence, snapshot, now - state["started"], limit - now)
+                message = self.request_message(sequence, snapshot, fair.snapshot())
+                done = threading.Event()
+                watcher = threading.Thread(target=watch, args=(done,), daemon=True)
+                watcher.start()
                 try:
                     response = decide(message, limit)
                 except TimeoutError:
                     state["ignored_in_flight"] = True
                     raise AgentTermination(TERMINATION_WALLCLOCK) from None
                 except Exception as error:  # noqa: BLE001 - a broken agent, never the engine
+                    if state["stopped"]:
+                        state["ignored_in_flight"] = True
+                        raise AgentTermination(TERMINATION_WALLCLOCK) from None
                     raise AgentTermination(TERMINATION_AGENT_ERROR, _safe_detail(error)) from None
                 finally:
-                    state["agent_seconds"] += self.clock() - now
-                if self.clock() >= limit:
+                    done.set()
+                    watcher.join()
+                    fair.end_turn()
+                if fair.expired or state["stopped"] or self.clock() >= limit:
                     state["ignored_in_flight"] = True
                     raise AgentTermination(TERMINATION_WALLCLOCK)
                 try:
@@ -280,9 +314,8 @@ class V4Workflow:
 
         report = run_scenario(self.scenario_path, factory, Path(output_dir))
         report.pop("organizer_only", None)
-        started = state["started"]
-        elapsed = 0.0 if started is None else max(0.0, min(self.clock(), state["deadline"]) - started)
         termination = report["termination"]
+        clock = fair.summary()
         result = {
             "schema_version": RESULT_SCHEMA,
             "protocol_version": PROTOCOL_VERSION,
@@ -290,8 +323,12 @@ class V4Workflow:
             "termination_reason": termination["reason"],
             "termination_detail": termination["detail"],
             "global_wallclock_seconds": budget,
-            "accounted_wallclock_seconds": round(elapsed, 3),
-            "agent_wallclock_seconds": round(state["agent_seconds"], 3),
+            # Seconds charged to the agent (challenge.fair_clock), at most the budget.
+            "accounted_wallclock_seconds": clock["charged_seconds"],
+            # Real seconds the engine waited for responses (inside turns).
+            "agent_wallclock_seconds": clock["window_seconds"],
+            "speed_factor": clock["speed_factor"],
+            "fair_clock": clock,
             "ignored_in_flight_response": state["ignored_in_flight"],
             "decision_requests": state["sequence"],
             "last_decision_sequence": state["sequence"],
