@@ -35,21 +35,25 @@ Deno.serve({ port: Number(Deno.env.get("OBSERVER_LISTEN_PORT") ?? 8000) }, async
     const masterKey = Deno.env.get("OBSERVER_KEY_ENCRYPTION_KEY") ?? "";
     await rpc("observer_reconcile_jobs", {});
     await rpc("observer_reconcile_sessions", {});
-    await rpc("observer_reconcile_preparations", {});
-    const prepared = await schedulePreparations({ rpc, app, masterKey, apiBase: Deno.env.get("SUPABASE_URL") ?? "" });
+    // Each stage is isolated: a failure while scheduling new preparations or runs
+    // (a GitHub outage while creating a repository, a bad row) never holds up
+    // dispatching the jobs that are already queued, nor the other stages.
+    await rpc("observer_reconcile_preparations", {}).catch(() => 0);
+    const prepared = await schedulePreparations({ rpc, app, masterKey, apiBase: Deno.env.get("SUPABASE_URL") ?? "" })
+      .catch(() => [{ error: "preparation_scheduling_unavailable" }]);
     const scheduled = await scheduleRuns({
       rpc,
       masterKey,
       apiBase: Deno.env.get("SUPABASE_URL") ?? "",
       ensureRepository: (user) => app.privateParticipantRepository(user),
-    });
+    }).catch(() => [{ error: "run_scheduling_unavailable" }]);
     // The rescore never holds up dispatching evaluations.
     const rescoring = await scheduleScores({ rpc, masterKey }).catch(() => [{ error: "rescore_unavailable" }]);
     const dispatched = await dispatchPending(rpc, app, masterKey);
     const cleaned = await cleanupUploads(rpc, async (path) => {
       const { error } = await service.storage.from("observer-staging").remove([path]);
       if (error) throw new ProxyError(503, "temporary_cleanup_failed");
-    });
+    }).catch(() => 0);
     const sealed = await cleanupSealed(rpc, async (paths) => {
       const { error } = await service.storage.from("observer-staging").remove(paths);
       if (error) throw new ProxyError(503, "temporary_cleanup_failed");

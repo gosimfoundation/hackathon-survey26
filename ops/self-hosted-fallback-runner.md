@@ -1,5 +1,44 @@
 # Self-hosted evaluation fallback runner
 
+## Status: switched off (2026-10-04)
+
+Off since 2026-10-04 08:00 UTC (`fallback_capacity=0` on runner-13; the Mac's
+LaunchAgents unloaded). Not deleted: the VM (`observer-fallback`, user
+`observerfb`), its runner registration and every file stay, so it can come back.
+
+Why: with 26 cloud targets (13 private organizations with health and cooldown,
+`ops/private-target-health.md`, plus 13 free public repositories) a job that a
+broken organization does not start already moves to a healthy one, so the
+fallback no longer covers a case the cloud does not. It was used twice
+(2026-10-02, before the fair clock and team egress); it was never drilled with
+the current runtime, and it had real weaknesses as a last resort: one Mac on a
+flaky proxy (its watcher log showed hours of TLS failures on 2026-10-03/04), an
+arm64 VM unlike the x86 GitHub runners (participants' amd64-only images would
+fail there; the fair clock calibrates per machine but was referenced on GitHub
+runners), and a job accepted for it is never re-dispatched — it waits for the VM
+until its lease ends.
+
+The runtime it would run is always the approved tag of runner-13 (same code as
+the cloud, including fair clock and team egress); the host side (Docker in the
+VM, egress proxy, pf) is unchanged since 2026-10-02.
+
+Rollback (bring it back):
+
+```sql
+update private.observer_installations set fallback_capacity=1 where organization='AGENTIC-OBSERVER26-runner-13';
+```
+
+```sh
+mv ~/Library/LaunchAgents/disabled/org.agentic-observer.{fallback-watcher,egress-proxy}.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/org.agentic-observer.fallback-watcher.plist ~/Library/LaunchAgents/org.agentic-observer.egress-proxy.plist
+```
+
+GitHub removes a self-hosted runner that stays offline for 14 days (from
+2026-10-04: around 2026-10-18); after that, register it again with
+`ops/fallback-runner/install-runner.sh` before the rollback. Before relying on
+it again, drill one job end to end with a hidden test team (a participant
+image, the fair clock, team egress), and keep at least 40 GB free on the Mac.
+
 Evaluation normally runs on GitHub-hosted runners in the runner organizations
 (`AGENTIC-OBSERVER26-runner-N`). The fallback runner is an organizer-owned,
 isolated Linux virtual machine that takes jobs **only when GitHub-hosted
