@@ -112,12 +112,19 @@ reserved. The relay page forwards the agent's body unchanged and sends its own
 model field only as the default, so the call digest recorded by the proxy and the
 digest the page claims are computed over the same body.
 
-On an endpoint listed in `OBSERVER_MODEL_BASES` (organizer-configured, shown as
-suggestions) only the default model or a model in `OBSERVER_TRUSTED_BASE_MODELS`
-(comma-separated, empty by default) is forwarded; any other model name is
-replaced by the default model. Organizer-credit calls (non-formal runs, the
-organizer provider) are unchanged: the model must be on that provider's own
-`models` list in the database.
+When the provider rejects the agent's model as unknown (HTTP 400/404/422 whose
+body mentions the model together with "not found", "does not exist", "invalid",
+"unsupported", "不存在" and similar), the proxy retries once with the default model
+and returns that result. Nothing else is retried, and the default model itself is
+never retried. Both attempts belong to one call: one reservation, one digest/claim,
+one settlement (the successful attempt's usage), one shared deadline. The provider's
+error body is inspected in memory only and never forwarded. Relay mode does the
+same inside the portal.
+
+This applies to every team endpoint, including those listed in
+`OBSERVER_MODEL_BASES` (shown as suggestions): they are always used with the team's
+own key. Organizer-credit calls (non-formal runs, the organizer provider) are
+unchanged: the model must be on that provider's own `models` list in the database.
 
 ## Protocol: OpenAI-compatible or Anthropic Messages
 

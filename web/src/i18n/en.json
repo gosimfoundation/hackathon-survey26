@@ -1822,7 +1822,7 @@
       "protocol_anthropic": "Anthropic Messages (/v1/messages)",
       "protocol_hint": "OpenAI-compatible is the default. Choose Anthropic Messages only if your provider speaks that API, and give its endpoint exactly as the Anthropic SDK expects (usually without a trailing /v1 — the SDK appends /v1/messages itself). The platform never translates between the two; a mismatched call is refused.",
       "model": "Default model",
-      "model_hint": "Your agent may set the model parameter of each request to any model your provider offers (for example a fast, inexpensive model for simple steps and a stronger one for key decisions); the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model here. Model calls are paid for by your team's key. With an endpoint preset by the organizers in the suggestions list, only the default model or a model the organizers allow is forwarded.",
+      "model_hint": "Your agent may set the model parameter of each request to any model your provider offers (for example a fast, inexpensive model for simple steps and a stronger one for key decisions); the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model here. Model calls are paid for by your team's key. If the provider rejects a request because it does not recognise the model name, the platform retries it once with the default model.",
       "key": "API key",
       "save": "Save encrypted key",
       "replace": "Replace key",
@@ -2103,7 +2103,7 @@
       },
       {
         "q": "Can my agent use different models for different steps?",
-        "a": "Yes. With your team's own endpoint and key, your agent may set the model parameter of each request to any model your provider offers, for example a fast, inexpensive model for simple steps and a stronger one for key decisions; the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model entered under Model API. Model calls are paid for by your team's key, so please make sure the model names in your code are offered by your provider. With an endpoint preset by the organizers in the suggestions list, only the default model or a model the organizers allow is forwarded."
+        "a": "Yes. With your team's own endpoint and key, your agent may set the model parameter of each request to any model your provider offers, for example a fast, inexpensive model for simple steps and a stronger one for key decisions; the platform forwards it unchanged. Requests without a model (or with model team-model) use the default model entered under Model API. Model calls are paid for by your team's key, so please make sure the model names in your code are offered by your provider. If the provider rejects a request because it does not recognise the model name, the platform retries it once with the default model."
       }
     ]
   },

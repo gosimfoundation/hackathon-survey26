@@ -84,6 +84,8 @@ class _TeamProvider(BaseHTTPRequestHandler):
             self.send_header("Content-Length","0");self.end_headers();return
         if mode=="reject":
             code,payload=401,{"error":{"message":"rejected "+(api_key or auth)}}
+        elif body.get("model")=="unknown-model":
+            code,payload=404,{"error":{"code":"model_not_found","message":"The model does not exist"}}
         elif messages_shape:
             code,payload=200,{"type":"message","role":"assistant",
                 "content":[{"type":"text","text":"echo "+api_key if mode=="echo" else "OK"}],
@@ -153,8 +155,7 @@ def edge_stack(tmp_path_factory):
         env["DENO_CERT"]=str(team[2])
     env.update({"SUPABASE_URL":harness.url,"SUPABASE_SERVICE_ROLE_KEY":service_key(),"SUPABASE_ANON_KEY":anon_key(),
                 "OBSERVER_KEY_ENCRYPTION_KEY":encoded,"OBSERVER_DEFAULT_MODEL_PROVIDER":str(provider),
-                "OBSERVER_MODEL_BASES":",".join([*bases,"https://personal.example/v1"]),"OBSERVER_MODEL_HTTP_BASES":",".join(b for b in bases if b.startswith("http://")),
-                "OBSERVER_TRUSTED_BASE_MODELS":"allowed-fast-model"})
+                "OBSERVER_MODEL_BASES":",".join([*bases,"https://personal.example/v1"]),"OBSERVER_MODEL_HTTP_BASES":",".join(b for b in bases if b.startswith("http://"))})
     deno=os.environ["OBSERVER_DENO_BIN"]
     # Only disposable test credentials are used in this integration fixture.
     encrypted=subprocess.run([deno,"eval",
@@ -353,17 +354,22 @@ def test_formal_run_calls_the_saved_https_provider_without_page_or_organizer_fal
         assert status==200,response
         sent=provider.requests[-1]
         assert (sent['path'],sent['auth'])==('/v1/chat/completions','Bearer '+key)
-        assert sent['body']['model']=='team-model-v1' and sent['body']['max_tokens']==32
+        # The project's own model name reaches the team's provider unchanged.
+        assert sent['body']['model']=='project-default' and sent['body']['max_tokens']==32
         assert s['participant'] not in json.dumps(sent)
         assert key not in json.dumps(response) and '[REDACTED]' in response['choices'][0]['message']['content']
         assert query(uri,'select tokens_used,calls_used,calls_active from private.observer_sessions where run_id=%s',
                      (s['run'],))==[(17,1,0)]
-        # This stub base is organizer-configured (trusted): only the default model or one on
-        # OBSERVER_TRUSTED_BASE_MODELS is forwarded; the agent may pick among those per call.
-        for model,expected in (('allowed-fast-model','allowed-fast-model'),('team-model','team-model-v1')):
+        # The agent picks the model per call on the team's own key; team-model means the default.
+        for model,expected in (('fast-model','fast-model'),('team-model','team-model-v1')):
             status,response=post(model_url,{**body,'model':model},credential)
             assert status==200,response
             assert provider.requests[-1]['body']['model']==expected
+        # A model the provider does not know is retried once with the default model.
+        count=len(provider.requests)
+        status,response=post(model_url,{**body,'model':'unknown-model'},credential)
+        assert status==200,response
+        assert [r['body']['model'] for r in provider.requests[count:]]==['unknown-model','team-model-v1']
         status,response=post(model_url,{**body,'model':'bad\nmodel'},credential)
         assert (status,response['error']['code'])==(400,'invalid_model')
         # Redirects are never followed and provider rejections are never forwarded.
@@ -431,7 +437,7 @@ def test_formal_run_calls_the_saved_anthropic_provider_with_x_api_key_and_no_tra
         sent=provider.requests[-1]
         assert sent['path']=='/v1/messages'
         assert sent['api_key']==key and sent['anthropic_version']=='2023-06-01' and not sent['auth']
-        assert sent['body']['model']=='claude-team-v1' and sent['body']['max_tokens']==32
+        assert sent['body']['model']=='project-default' and sent['body']['max_tokens']==32
         assert s['participant'] not in json.dumps(sent)
         assert key not in json.dumps(result) and '[REDACTED]' in result['content'][0]['text']
         assert query(uri,'select tokens_used,calls_used,calls_active from private.observer_sessions where run_id=%s',
