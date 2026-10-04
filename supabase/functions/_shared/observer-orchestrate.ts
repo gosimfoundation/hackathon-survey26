@@ -58,8 +58,10 @@ export async function scheduleRuns(deps: RunScheduler) {
   let switches: Promise<{ restricted_egress?: boolean } | null> | undefined;
   const hardening = () => switches ??= deps.rpc("observer_hardening", {});
   const egressSwitch = async () => (await hardening())?.restricted_egress === true;
-  const outcomes = [];
-  for (const run of runs) {
+  // Runs are independent rows (each with its own lease), so they are handled
+  // concurrently; the database caps a pass at 10 runs / 20 score jobs.
+  // deno-lint-ignore no-explicit-any
+  return await Promise.all(runs.map(async (run: any) => {
     try {
       const { organization } = await placement(run.user_id, databaseLocator(deps.rpc));
       if (!enabled.has(organization)) throw new GitHubError("runner_not_configured");
@@ -139,14 +141,13 @@ export async function scheduleRuns(deps: RunScheduler) {
         p_local_credential: local,
         p_jobs: jobs,
       });
-      outcomes.push({ id: run.id, scheduled: true });
+      return { id: run.id, scheduled: true };
     } catch (error) {
       const code = error instanceof GitHubError ? error.code : "schedule_unavailable";
       await deps.rpc("observer_run_schedule_error", { p_run: run.id, p_lease: run.lease, p_error: code });
-      outcomes.push({ id: run.id, scheduled: false, error: code });
+      return { id: run.id, scheduled: false, error: code };
     }
-  }
-  return outcomes;
+  }));
 }
 
 /**
@@ -158,8 +159,10 @@ export async function scheduleScores(deps: Pick<RunScheduler, "rpc" | "masterKey
   const installations = await deps.rpc("observer_runner_configuration", {});
   if (!installations.length) return [];
   const runs = await deps.rpc("observer_pending_score_runs", { p_limit: deps.limit ?? 5 });
-  const outcomes = [];
-  for (const run of runs) {
+  // Runs are independent rows (each with its own lease), so they are handled
+  // concurrently; the database caps a pass at 10 runs / 20 score jobs.
+  // deno-lint-ignore no-explicit-any
+  return await Promise.all(runs.map(async (run: any) => {
     try {
       const id = crypto.randomUUID(), nonce = randomCapability();
       const input = {
@@ -184,11 +187,10 @@ export async function scheduleScores(deps: Pick<RunScheduler, "rpc" | "masterKey
         ),
         p_encrypted_nonce: await encryptCredential(nonce, id + ":nonce", deps.masterKey),
       });
-      outcomes.push({ id: run.id, scheduled: true });
+      return { id: run.id, scheduled: true };
     } catch (error) {
       const code = error instanceof GitHubError ? error.code : "schedule_unavailable";
-      outcomes.push({ id: run.id, scheduled: false, error: code });
+      return { id: run.id, scheduled: false, error: code };
     }
-  }
-  return outcomes;
+  }));
 }
