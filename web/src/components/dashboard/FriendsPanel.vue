@@ -8,9 +8,12 @@ import { describeError } from '../../lib/errors'
 import { useAuth } from '../../stores/auth'
 import { useFlash } from '../../stores/flash'
 import { emptyFriends, parseUid, type FriendsData } from '../../lib/friends'
-import { blockUser, cancelFriendRequest, inviteToTeamByUid, loadFriends, removeFriend, respondFriendRequest,
+import { blockUser, cancelFriendRequest, loadFriends, removeFriend, respondFriendRequest,
   sendFriendRequest, unblockUser } from '../../lib/friendsApi'
 import UserAvatar from '../UserAvatar.vue'
+import FriendTeamLine from '../FriendTeamLine.vue'
+import { emptyContext } from '../../lib/friendTeams'
+import { loadFriendTeamContext } from '../../lib/friendTeamsApi'
 import WechatQrButton from '../wechat/WechatQrButton.vue'
 import { visibleWechatQrs } from '../../lib/wechatQrApi'
 
@@ -18,20 +21,21 @@ const { t, tf } = useI18n()
 const route = useRoute()
 const i18n = useI18n()
 const flash = useFlash()
-const { me, team } = useAuth()
+const { me } = useAuth()
 const data = ref<FriendsData>(emptyFriends())
 const loaded = ref(false)
 const busy = ref(false)
 const uidInput = ref('')
 const copied = ref(false)
 const qrs = ref<Record<string, string>>({})
-const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
+const teamCtx = ref(emptyContext())
 const myUid = computed(() => data.value.uid ?? me.value?.uid ?? null)
 const errorText = (e: unknown) => describeError(e, i18n, ['friends.errors', 'team.errors'])
 
 async function reload() {
   try {
     data.value = await loadFriends()
+    void loadFriendTeamContext().then(c => { teamCtx.value = c }).catch(() => {})
     qrs.value = await visibleWechatQrs(data.value.friends.map(f => f.user_id)).catch(() => ({}))
     void refreshFriendRequests()
   } catch (e) { flash.error(errorText(e)) }
@@ -59,7 +63,6 @@ const cancel = (id: string) => run(() => cancelFriendRequest(id))
 const remove = (userId: string) => { if (window.confirm(t('friends.remove_confirm'))) void run(() => removeFriend(userId)) }
 const block = (userId: string) => { if (window.confirm(t('friends.block_confirm'))) void run(() => blockUser(userId)) }
 const unblock = (userId: string) => run(() => unblockUser(userId))
-const invite = (uid: number) => run(() => inviteToTeamByUid(uid), t('friends.invited'))
 
 async function copyUid() {
   if (!myUid.value) return
@@ -111,11 +114,11 @@ onMounted(async () => {
     <ul v-else class="friends-list" data-testid="friend-list">
       <li v-for="f in data.friends" :key="f.user_id">
         <span class="friends-who"><UserAvatar :name="f.name" :avatar-url="f.avatar_url" />
-          <span><b>{{ f.name }}</b><small class="friends-sub">{{ f.team_name || (f.in_team ? '—' : t('friends.no_team')) }}<template v-if="f.uid"> · <span class="mono" translate="no">{{ f.uid }}</span></template></small></span>
+          <span><b>{{ f.name }}</b><small class="friends-sub">{{ f.team_name || (f.in_team ? '—' : t('friends.no_team')) }}<template v-if="f.uid"> · <span class="mono" translate="no">{{ f.uid }}</span></template></small>
+            <FriendTeamLine class="friends-team" :user-id="f.user_id" :uid="f.uid" :in-team="f.in_team" :ctx="teamCtx" /></span>
         </span>
         <span class="actions-inline">
           <WechatQrButton v-if="qrs[f.user_id]" :user-id="f.user_id" :path="qrs[f.user_id]!" :name="f.name" />
-          <button v-if="isLeader && !f.in_team && f.uid" type="button" class="copy-btn" data-testid="friend-invite" :disabled="busy" @click="invite(f.uid)">{{ t('friends.invite_team') }}</button>
           <button type="button" class="copy-btn" :disabled="busy" @click="remove(f.user_id)">{{ t('friends.remove') }}</button>
           <button type="button" class="copy-btn" :disabled="busy" @click="block(f.user_id)">{{ t('friends.block') }}</button>
         </span>
@@ -155,5 +158,6 @@ onMounted(async () => {
   padding: .55rem 0; border-bottom: 1px solid rgba(255, 255, 255, .08); }
 .friends-who { display: inline-flex; align-items: center; gap: .55rem; min-width: 0; overflow-wrap: anywhere; }
 .friends-who b { display: block; font-weight: 600; }
+.friends-team { margin-top: .25rem; }
 .friends-sub { display: block; font-size: .74rem; color: rgba(205, 214, 238, .6); }
 </style>

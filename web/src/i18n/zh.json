@@ -2899,5 +2899,17 @@
     "admin_delete": "删除消息",
     "admin_dismiss": "忽略",
     "admin_delete_confirm": "确定删除这条消息？双方都会看到「此消息已被组织者删除」。"
+  },
+  "friend_team": {
+    "board_online": "线上赛",
+    "board_practice": "练习赛总榜",
+    "rank": "第 {n} 名",
+    "no_score": "还没有成绩",
+    "apply": "申请加入",
+    "applied": "申请已发送，等队长同意。",
+    "requested": "已申请",
+    "reason_requested": "你已经申请过了，等队长回应。",
+    "reason_locked": "队伍已锁定",
+    "reason_full": "队伍已满"
   }
 }
