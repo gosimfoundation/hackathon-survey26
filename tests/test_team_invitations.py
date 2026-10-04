@@ -105,3 +105,35 @@ def test_notification_history_paginates_and_new_captain_receives_pending_request
         query(uri,'select public.mark_team_invitations_read(%s::uuid[],%s::timestamptz)',
             ([r['id'] for r in page],max(r['updated_at'] for r in page)),role='authenticated',user=next_leader)
     assert rpc(uri,'team_invitation_unread',role='authenticated',user=next_leader)==0
+
+
+def test_inbox_keeps_pending_requests_visible_until_answered(database):
+    """Read or not, a pending request stays in the captain's inbox and badge count until it is answered."""
+    uri=database; leader,team=identity(uri); guest,stale=newcomer(uri),newcomer(uri)
+    counts=lambda who: rpc(uri,'team_notification_counts',role='authenticated',user=who)
+    inbox=lambda who: rpc(uri,'my_team_inbox',role='authenticated',user=who)
+    request=rpc(uri,'request_team_join',team,role='authenticated',user=guest)
+    old=rpc(uri,'request_team_join',team,role='authenticated',user=stale)
+    _,elsewhere=identity(uri); query(uri,'update public.profiles set team_id=%s where id=%s',(elsewhere,stale))
+    rows=rpc(uri,'my_team_invitations',role='authenticated',user=leader)
+    query(uri,'select public.mark_team_invitations_read(%s::uuid[],%s::timestamptz)',
+        ([r['id'] for r in rows],max(r['updated_at'] for r in rows)),role='authenticated',user=leader)
+    assert counts(leader)=={'pending':1,'unread':0}
+    received={r['id']:r for r in inbox(leader)['received']}
+    assert received[str(request)]['blocked'] is None and received[str(request)]['sender_name']
+    assert received[str(old)]['blocked']=='joined_other_team'
+    assert inbox(leader)['sent']==[]
+    mine=inbox(guest)
+    assert mine['received']==[] and [(r['id'],r['status']) for r in mine['sent']]==[(str(request),'pending')]
+    assert counts(guest)['pending']==0
+    assert rpc(uri,'respond_team_invite',request,True,role='authenticated',user=leader)=='accepted'
+    assert counts(leader)['pending']==0 and [r['id'] for r in inbox(leader)['received']]==[str(old)]
+    assert inbox(guest)['sent'][0]['status']=='accepted'
+    rpc(uri,'respond_team_invite',old,False,role='authenticated',user=leader)
+    assert inbox(leader)['received']==[]
+    invitee=newcomer(uri); invite=rpc(uri,'send_team_invite',invitee,role='authenticated',user=leader)
+    assert [r['id'] for r in inbox(leader)['sent']]==[str(invite)]
+    assert counts(invitee)=={'pending':1,'unread':1} and inbox(invitee)['received'][0]['kind']=='invite'
+    assert inbox(newcomer(uri))=={'received':[],'sent':[]}
+    with pytest.raises(psycopg.Error,match='permission denied'):
+        rpc(uri,'my_team_inbox',role='anon')

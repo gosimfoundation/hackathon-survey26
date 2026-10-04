@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { unreadTeamNotifications, refreshTeamNotifications } from '../../stores/teamNotifications'
+import { unreadTeamNotifications, pendingTeamActions, refreshTeamNotifications, clearTeamNotifications } from '../../stores/teamNotifications'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
@@ -17,7 +17,7 @@ const router = useRouter()
 const { isLoggedIn, isAdmin, signOut } = useAuth()
 let notificationTimer: ReturnType<typeof setInterval> | undefined
 function pollNotifications() { if (isLoggedIn.value && document.visibilityState === 'visible') void refreshTeamNotifications() }
-watch(isLoggedIn, logged => { if (logged) void refreshTeamNotifications(); else unreadTeamNotifications.value=0 }, {immediate:true})
+watch(isLoggedIn, logged => { if (logged) void refreshTeamNotifications(); else clearTeamNotifications() }, {immediate:true})
 onMounted(() => {
   notificationTimer = setInterval(pollNotifications, 60000)
   document.addEventListener('visibilitychange', pollNotifications)
@@ -28,6 +28,8 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', pollNotifications)
   window.removeEventListener('focus', pollNotifications)
 })
+// Waiting requests stay counted until answered; otherwise the dot shows unread updates.
+const bellCount = computed(() => pendingTeamActions.value || unreadTeamNotifications.value)
 const { registrationOpen } = useRegistrationOpen()
 const flash = useFlash()
 const mobileOpen = ref(false)
@@ -130,15 +132,17 @@ async function logout() {
             <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
           </div>
         </div>
-        <router-link v-if="isLoggedIn" to="/dashboard" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="dashActive() ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.dashboard') }}</router-link>
+        <router-link v-if="isLoggedIn" to="/dashboard" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="dashActive() ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.dashboard') }}<span v-if="pendingTeamActions" class="nav-count" data-testid="nav-dashboard-count">{{ pendingTeamActions > 99 ? '99+' : pendingTeamActions }}</span></router-link>
         <router-link v-if="isAdmin" to="/admin" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="route.path.startsWith('/admin') ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.admin') }}</router-link>
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
         <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
-        <router-link v-if="isLoggedIn" to="/notifications" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80" :aria-label="pick('Team notifications','组队通知')" data-testid="team-notifications">
+        <router-link v-if="isLoggedIn" :to="pendingTeamActions ? '/team#requests' : '/notifications'" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80"
+          :aria-label="pendingTeamActions ? pick(`${pendingTeamActions} team requests waiting for you`, `${pendingTeamActions} 条待处理的组队请求`) : pick('Team notifications','组队通知')"
+          :title="pendingTeamActions ? pick(`${pendingTeamActions} team requests waiting for you`, `${pendingTeamActions} 条待处理的组队请求`) : pick('Team notifications','组队通知')" data-testid="team-notifications">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
-          <span v-if="unreadTeamNotifications" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ unreadTeamNotifications > 99 ? '99+' : unreadTeamNotifications }}</span>
+          <span v-if="bellCount" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ bellCount > 99 ? '99+' : bellCount }}</span>
         </router-link>
         <span v-if="fullMoon" class="moon-chip hidden md:inline-flex" :title="pick('Full moon tonight.', '今晚满月。')">🌕</span>
         <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center whitespace-nowrap border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
@@ -147,8 +151,9 @@ async function logout() {
         <button v-if="isLoggedIn" data-testid="nav-logout" type="button" @click="logout" class="ml-1 hidden h-10 items-center whitespace-nowrap border border-white/35 px-4 font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5] transition-colors hover:border-[#315efb] hover:text-[#78a6ff] md:inline-flex">{{ t('nav.logout') }}</button>
         <router-link v-else-if="registrationOpen" data-testid="nav-register" to="/register" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.register') }}</router-link>
         <router-link v-else data-testid="nav-register" to="/register?mode=login" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.login') }}</router-link>
-        <button class="ml-1 lg:hidden" type="button" @click="mobileOpen = !mobileOpen" :aria-label="t('nav.menu')" :aria-expanded="mobileOpen">
+        <button class="relative ml-1 lg:hidden" type="button" @click="mobileOpen = !mobileOpen" :aria-label="t('nav.menu')" :aria-expanded="mobileOpen">
           <svg class="h-6 w-6 text-text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <span v-if="pendingTeamActions" class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" data-testid="menu-dot"></span>
         </button>
       </div>
     </div>
@@ -158,6 +163,7 @@ async function logout() {
       <router-link v-for="item in items" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
       <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
       <router-link v-if="isLoggedIn" to="/dashboard" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.dashboard') }}</router-link>
+      <router-link v-if="isLoggedIn && pendingTeamActions" to="/team#requests" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-team-requests">{{ pick('Team requests waiting for you', '待处理的组队请求') }} <span class="nav-count">{{ pendingTeamActions > 99 ? '99+' : pendingTeamActions }}</span></router-link>
       <router-link v-if="isAdmin" to="/admin" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.admin') }}</router-link>
       <p class="mt-4 mb-1 font-mono text-[.62rem] uppercase tracking-[.14em] text-white/35">{{ t('nav.series.label') }}</p>
       <template v-for="item in seriesItems" :key="item.n">
@@ -175,5 +181,7 @@ async function logout() {
 </template>
 
 <style scoped>
+.nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.1rem; height: 1.1rem; margin-left: .35rem; padding: 0 .3rem;
+  border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; line-height: 1; letter-spacing: 0; }
 @media (max-width: 1279px) { .main-link { letter-spacing: .02em; } }
 </style>

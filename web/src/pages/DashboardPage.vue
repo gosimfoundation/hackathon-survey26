@@ -16,6 +16,7 @@ import StatusPill from '../components/layout/StatusPill.vue'
 import SkeletonRows from '../components/layout/SkeletonRows.vue'
 import KimiPlanPanel from '../components/dashboard/KimiPlanPanel.vue'
 import QuestPanel from '../components/dashboard/QuestPanel.vue'
+import TeamInbox from '../components/TeamInbox.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
 import { questProgress } from '../lib/quest'
 
@@ -92,6 +93,7 @@ onMounted(async () => {
 
 <template>
   <DashShell :kicker="t('dash.title')" :title="tf('dash.welcome', { name: me?.nickname || me?.name || me?.email || '' })">
+    <TeamInbox compact />
     <div v-if="loading" class="dash-grid"><div class="panel"><SkeletonRows :rows="5" :cols="5" :label="t('dash.loading')" /></div><div class="panel"><SkeletonRows :rows="3" :cols="2" :label="t('dash.loading')" /></div></div>
     <div v-else class="dash-grid">
       <div>
