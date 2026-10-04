@@ -57,7 +57,7 @@ def export_control(destination: Path, *, source: Path = ROOT) -> dict:
 def export_public(destination: Path, *, source: Path = ROOT) -> dict:
     """The public runner pool repository (ops/public-runner-pool.md).
 
-    Only the trusted runtime and the single public engine workflow: no tests
+    Only the trusted runtime and the public engine and score workflows: no tests
     (no push or pull request workflow may exist in a public repository), no
     other workflow, nothing that is not already public in this repository.
     """
@@ -67,6 +67,7 @@ def export_public(destination: Path, *, source: Path = ROOT) -> dict:
     for package in ("project_platform", "challenge"):
         files.extend((p, p.relative_to(source)) for p in (source / package).glob("*.py"))
     files.append((source / "ops/public-pool/observer-engine.yml", Path(".github/workflows/observer-engine.yml")))
+    files.append((source / "ops/public-pool/observer-score.yml", Path(".github/workflows/observer-score.yml")))
     files.append((source / "ops/public-pool/requirements.txt", Path("public-pool-requirements.txt")))
     if not (source / "project_platform/sealing.py").is_file():
         raise ValueError("Trusted platform sources are missing.")

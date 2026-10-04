@@ -264,3 +264,46 @@ function singleFileZipSync(name: string) {
   out.set(end, local.length + central.length);
   return out;
 }
+
+Deno.test("a public-pool score job gets its scenario and the run's result sealed, and nothing to upload", async () => {
+  const scoreInput = {
+    kind: "score",
+    job_id: job,
+    run_id: run,
+    scenario_ref: { bucket: "observer-scenarios", path: "card/scenario.zip" },
+    scenario_digest: "d".repeat(64),
+    result_ref: "github:AGENTIC-OBSERVER26-runner-3/participant-" + "f".repeat(32) + "@" + "c".repeat(40),
+    decisions_digest: "e".repeat(64),
+    termination_reason: "agent_finished",
+  };
+  const { dependencies, staged } = deps({
+    readArchive: () => Promise.resolve(new TextEncoder().encode("run result bytes")),
+  }, scoreInput);
+  const asScore = (d: JobDependencies): JobDependencies => ({
+    ...d,
+    rpc: async (name, args) =>
+      name === "observer_job_identity" ? { ...identity, workflow: "observer-score.yml" } : await d.rpc(name, args),
+  });
+  const response = await jobRequest(
+    request("claim", { runner_key: encodeKey(publicKeyFor(runnerKey)) }),
+    asScore(dependencies),
+  );
+  assertEquals(Object.keys(response), ["sealed"]);
+  const sealed = Uint8Array.from(atob((response as { sealed: string }).sealed), (c) => c.charCodeAt(0));
+  const payload = JSON.parse(new TextDecoder().decode(await openSealed(runnerKey, sealed, "claim:" + job)));
+  assertEquals(payload.scenario_url, "https://storage.test/sealed/" + job + "/scenario.zip?token=t");
+  assertEquals(payload.result_url, "https://storage.test/sealed/" + job + "/trace.zip?token=t");
+  assertEquals([payload.artifact_upload, payload.result_key, payload.result_ref], [undefined, undefined, undefined]);
+  assertEquals(
+    new TextDecoder().decode(await openSealed(runnerKey, staged.get("trace")!, "trace:" + job)),
+    "run result bytes",
+  );
+  await assertRejects(() => openSealed(runnerKey, staged.get("trace")!, "scenario:" + job), SealError);
+  // A score payload carrying a result key is refused.
+  const forged = deps({}, { ...scoreInput, result_key: encodeKey(publicKeyFor(resultKey)) });
+  await assertRejects(
+    () =>
+      jobRequest(request("claim", { runner_key: encodeKey(publicKeyFor(runnerKey)) }), asScore(forged.dependencies)),
+    ProxyError,
+  );
+});

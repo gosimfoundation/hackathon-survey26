@@ -930,3 +930,39 @@ def test_v4_colocated_run_with_restricted_egress_and_a_forged_score(edge_stack, 
     finally:
         stub.shutdown()
         stub.server_close()
+
+
+def test_public_pool_score_job_opens_sealed_inputs_and_matches_the_private_rescore(card, files, tmp_path):
+    """A rescore in a public repository receives the scenario and the result sealed to
+    its in-memory key (never plaintext on a URL) and recomputes the same score."""
+    pytest.importorskip("cryptography")
+    from project_platform.artifacts import pack_results
+    from project_platform.job_client import Http, JobClient, JobError
+    from project_platform.job_runner import SealedTransfer, score_job
+    from project_platform.sealing import SealKey, seal
+    from test_v4_engine import run_card
+
+    result, digest, *_ = run_card(card, tmp_path / "out", "greedy", wallclock_seconds=120)
+    files_, base = files
+    scenario_zip, result_zip = _zip_tree(card), pack_results(tmp_path / "out")
+    plain = _score(files_, base, tmp_path, scenario_zip, result_zip, digest, result["termination_reason"])
+    job, key = str(uuid.uuid4()), SealKey()
+    name = uuid.uuid4().hex
+    files_["/sealed-scenario-" + name] = seal(key.public, scenario_zip, "scenario:" + job)
+    files_["/sealed-trace-" + name] = seal(key.public, result_zip, "trace:" + job)
+    assert scenario_zip not in files_["/sealed-scenario-" + name] and b"decisions.csv" not in files_["/sealed-trace-" + name]
+    client = JobClient("https://jobs.test/job", job, None, lambda: "identity", http=Http(local=True), seal_key=key)
+    payload = {"kind": "score", "job_id": job, "run_id": plain["run_id"],
+               "scenario_url": base + "/sealed-scenario-" + name, "scenario_digest": hashlib.sha256(scenario_zip).hexdigest(),
+               "result_url": base + "/sealed-trace-" + name, "decisions_digest": digest,
+               "termination_reason": result["termination_reason"]}
+    root = tmp_path / "sealed-job"
+    root.mkdir()
+    sealed = score_job(payload, root, Http(local=True), sealed=SealedTransfer(client))
+    assert sealed["score"] == plain["score"]
+    # A plaintext (unsealed) input or one sealed for another purpose is refused.
+    other = tmp_path / "other-job"
+    other.mkdir()
+    with pytest.raises(JobError):
+        score_job({**payload, "result_url": base + "/sealed-scenario-" + name}, other, Http(local=True),
+                  sealed=SealedTransfer(client))

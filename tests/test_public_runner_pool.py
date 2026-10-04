@@ -114,7 +114,7 @@ def test_engine_refuses_a_sealed_mismatch_before_downloading(tmp_path):
         engine_job(payload, tmp_path, FakeHttp())
 
 
-def test_public_export_has_one_engine_workflow_with_only_an_opaque_input(tmp_path):
+def test_public_export_has_engine_and_score_workflows_with_only_an_opaque_input(tmp_path):
     import importlib.util
     import subprocess
     import sys
@@ -124,16 +124,18 @@ def test_public_export_has_one_engine_workflow_with_only_an_opaque_input(tmp_pat
     destination = tmp_path / "public"
     inventory = module.export_public(destination)
     workflows = [p for p in inventory if p.startswith(".github/")]
-    assert workflows == [".github/workflows/observer-engine.yml"]
+    assert workflows == [".github/workflows/observer-engine.yml", ".github/workflows/observer-score.yml"]
     assert "project_platform/sealing.py" in inventory and "public-pool-requirements.txt" in inventory
     assert not any(p.startswith("tests/") for p in inventory)
     for path, digest in inventory.items():
         assert hashlib.sha256((destination / path).read_bytes()).hexdigest() == digest
-    workflow = (destination / ".github/workflows/observer-engine.yml").read_text()
-    for forbidden in ("job_nonce", "upload-artifact", "actions/cache", "GITHUB_STEP_SUMMARY", "secrets.",
-                      "pull_request", "push:", "refs/heads/main", "cache:"):
-        assert forbidden not in workflow
-    assert workflow.count("> /dev/null 2>&1") == 2 and "OBSERVER_POOL: public" in workflow
+    for name in ("observer-engine.yml", "observer-score.yml"):
+        workflow = (destination / ".github/workflows" / name).read_text()
+        for forbidden in ("job_nonce", "upload-artifact", "actions/cache", "GITHUB_STEP_SUMMARY", "secrets.",
+                          "pull_request", "push:", "refs/heads/main", "cache:"):
+            assert forbidden not in workflow
+        assert workflow.count("> /dev/null 2>&1") == 2 and "OBSERVER_POOL: public" in workflow
+        assert "job_runner " + name.split("-")[1].split(".")[0] + " > /dev/null" in workflow
     requirements = (destination / "public-pool-requirements.txt").read_text()
     pins = [line.split("==")[0] for line in requirements.splitlines() if "==" in line]
     assert pins == ["cryptography", "cffi", "pycparser"] and requirements.count("--hash=sha256:") == 5

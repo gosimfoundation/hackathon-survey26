@@ -265,7 +265,10 @@ def test_split_runs_and_other_job_kinds_never_use_the_public_pool(pool):
     assert pending(s, job)[0]["public"] is False
     score, _, run2 = project_job(s)
     query(uri, "update private.observer_jobs set kind='score' where id=%s", (score,))
-    assert pending(s, score)[0]["public"] is None
+    # Score jobs use the public repositories only for drill users or with score_jobs on
+    # (tests/test_public_rescore_db.py).
+    set_pool(s, drill_users=[])
+    assert pending(s, score)[0]["public"] is False
 
 
 def test_finished_public_jobs_are_listed_once_for_sealed_object_cleanup(pool):

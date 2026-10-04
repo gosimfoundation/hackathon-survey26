@@ -284,7 +284,7 @@ def _trace_rejected() -> ProjectJobFailure:
     return ProjectJobFailure({'stage': 'score', 'code': 'score_trace_mismatch', 'log': ''})
 
 
-def score_job(payload: dict, root: Path, http: Http) -> dict:
+def score_job(payload: dict, root: Path, http: Http, sealed: SealedTransfer | None = None) -> dict:
     """Independent rescore of a finished run; no participant code runs here.
 
     Downloads the scenario and the run's stored result, proves decisions.csv is
@@ -294,10 +294,13 @@ def score_job(payload: dict, root: Path, http: Http) -> dict:
     with challenge.scoring_core. The platform compares this with the engine's
     self-reported score and keeps the recomputed one.
     """
-    files = download_project(http, payload["scenario_url"], payload["scenario_digest"])
+    # Public runner pool: the scenario and the run's result arrive sealed to this
+    # job's in-memory key (ops/public-runner-pool.md); the score goes back to the
+    # job API only, never to the log.
+    files = _download(http, payload["scenario_url"], payload["scenario_digest"], sealed, "scenario")
     scenario = root / "scenario"
     extract_project(files, scenario)
-    artifact = {item.path: item.data for item in download_project(http, payload["result_url"])}
+    artifact = {item.path: item.data for item in _download(http, payload["result_url"], None, sealed, "trace")}
     trace = artifact.get("decisions.csv")
     if trace is None or hashlib.sha256(trace).hexdigest() != payload["decisions_digest"]:
         raise _trace_rejected()
@@ -330,7 +333,8 @@ def run_claimed(kind: str, client: JobClient, root: Path) -> None:
             'engine': lambda payload, root, http: engine_job(
                 payload, root, http, repository_credentials=client.artifact_repository,
                 sealed=SealedTransfer(client) if client.seal_key is not None else None),
-            'score': score_job,
+            'score': lambda payload, root, http: score_job(
+                payload, root, http, sealed=SealedTransfer(client) if client.seal_key is not None else None),
             'prepare': lambda payload, root, http: prepare_project(payload, http, repository_credentials=client.artifact_repository),
         }.get(kind)
         if handler is None:
@@ -369,9 +373,9 @@ def main() -> int:
     args = parser.parse_args()
     try:
         # The public-repository pool (ops/public-runner-pool.md) dispatches only
-        # an opaque job id; its engine jobs use sealed transfers end to end.
+        # an opaque job id; its engine and score jobs use sealed transfers end to end.
         public = os.environ.get("OBSERVER_POOL") == "public"
-        if public and args.kind != "engine":
+        if public and args.kind not in ("engine", "score"):
             raise JobError("public_pool_engine_only")
         client = JobClient(os.environ.get("OBSERVER_JOB_URL", ""), os.environ.get("OBSERVER_JOB_ID", ""),
                            None if public else os.environ.get("OBSERVER_JOB_NONCE", ""), GitHubIdentity(),

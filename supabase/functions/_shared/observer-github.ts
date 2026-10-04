@@ -390,8 +390,16 @@ export class GitHubApp {
    * what the job's claim is bound to instead of a nonce. Only the approved
    * runtime tag is dispatched, never a branch.
    */
-  async dispatchPublic(organization: string, repositoryId: string, jobId: string, approvedSha: string) {
-    if (!UUID.test(jobId) || !SHA.test(approvedSha) || !/^\d+$/.test(repositoryId)) {
+  async dispatchPublic(
+    organization: string,
+    repositoryId: string,
+    jobId: string,
+    approvedSha: string,
+    kind: "engine" | "score" = "engine",
+  ) {
+    if (
+      !UUID.test(jobId) || !SHA.test(approvedSha) || !/^\d+$/.test(repositoryId) || !["engine", "score"].includes(kind)
+    ) {
       throw new GitHubError("invalid_job_dispatch");
     }
     const full = target(organization, PUBLIC_POOL_REPOSITORY);
@@ -404,7 +412,7 @@ export class GitHubApp {
     const tag = await this.request("/repos/" + full + "/commits/" + ref, token);
     if (tag.sha !== approvedSha) throw new GitHubError("control_revision_not_approved");
     const run = await this.request(
-      "/repos/" + full + "/actions/workflows/observer-engine.yml/dispatches",
+      "/repos/" + full + "/actions/workflows/observer-" + kind + ".yml/dispatches",
       token,
       "POST",
       { ref, inputs: { job_id: jobId }, return_run_details: true },
