@@ -25,7 +25,7 @@ local runners). Participant-facing rule: rules §5 item 10, docs "Time limit", F
 Configuration (repository variables of each runner repository, passed to the engine workflow):
 `OBSERVER_CLOCK_MODE` = `cpu` | `charged_wait` (empty = `cpu`), `OBSERVER_WALL_CAP_SECONDS`
 (60-21600, empty = mode default). The session deadline (migration
-`20261004050000_fair_clock_session_deadline.sql`) is 3 x runtime + 120 s for colocated phases,
+`20261004060000_fair_clock_session_deadline.sql`) is 3 x runtime + 120 s for colocated phases,
 so caps above 2820 s are cut by the session.
 
 ## Measurements (2026-10-04, GitHub-hosted ubuntu-24.04 runners)
