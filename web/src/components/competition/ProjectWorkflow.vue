@@ -280,6 +280,8 @@ function errorMessage(e: unknown) {
     team_variable_limit: t('submit.team_env.variable_limit'),
     invalid_team_domains: t('submit.team_env.invalid_domain'),
     team_domain_not_public: t('submit.team_env.domain_not_public'),
+    invalid_egress_route: pick('Choose direct, China route or overseas route.', '请选择直连、回国代理或海外代理。'),
+    egress_route_unavailable: pick('Egress routes are not offered right now; evaluations connect directly.', '出网线路暂未开放，评测直接连接。'),
     final_version_locked: pick('The online phase has ended; the final version can no longer change.', '线上赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),

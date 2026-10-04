@@ -388,6 +388,25 @@ Deno.test("allowed domains must be public names that resolve only to public addr
   }
 });
 
+Deno.test("the egress route is a label the team member's own call saves", async () => {
+  const ok = clients({ egress_route: { available: true, route: "cn", auto_fallback: false } });
+  await portal({ action: "set_team_egress_route", route: "cn", auto_fallback: false }, ok);
+  assertEquals(ok.calls[0], {
+    client: "user",
+    name: "observer_set_team_egress_route",
+    args: { p_route: "cn", p_auto_fallback: false },
+  });
+  const keep = clients({});
+  await portal({ action: "set_team_egress_route", route: "overseas" }, keep);
+  assertEquals(keep.calls[0].args, { p_route: "overseas", p_auto_fallback: null });
+  for (const body of [{ route: "proxy" }, { route: "CN" }, {}, { route: "cn", auto_fallback: "yes" }]) {
+    const bad = clients({});
+    const error = await assertRejects(() => portal({ action: "set_team_egress_route", ...body }, bad));
+    assertEquals((error as ProxyError).code, "invalid_egress_route");
+    assertEquals(bad.calls.length, 0);
+  }
+});
+
 Deno.test("agent_log shows the run's own agent.log: stored, or read from the result once", async () => {
   const { singleFileZip, appendZipEntry } = await import("./observer-zip.ts");
   const { AGENT_LOG_TAIL } = await import("./observer-agent-log.ts");

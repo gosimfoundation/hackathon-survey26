@@ -80,6 +80,7 @@ export const ALLOWED_PORTAL = new Set([
   "save_team_variable",
   "delete_team_variable",
   "set_team_domains",
+  "set_team_egress_route",
 ]);
 
 /** Profile columns the profile and teammates pages write. */

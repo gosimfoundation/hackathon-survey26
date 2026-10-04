@@ -307,3 +307,32 @@ Deno.test("a public-pool score job gets its scenario and the run's result sealed
     ProxyError,
   );
 });
+
+Deno.test("egress route nodes reach a public run only inside the sealed claim", async () => {
+  const node = {
+    type: "hysteria2",
+    server: "hy1.node-canary.example",
+    server_port: 40001,
+    password: "hy2-password-canary",
+    tls: { enabled: true, server_name: "hy1.node-canary.example" },
+  };
+  const input = {
+    ...stored,
+    restricted_egress: undefined,
+    team_egress: {
+      environment: {},
+      secrets: [],
+      domains: [],
+      open: true,
+      route: { name: "overseas", fallback: true, cap_bytes: 1000 },
+    },
+  };
+  const { dependencies } = deps({}, JSON.parse(JSON.stringify(input)));
+  dependencies.egressRoutes = { cn: [], overseas: [node] };
+  const response = await jobRequest(request("claim", { runner_key: encodeKey(publicKeyFor(runnerKey)) }), dependencies);
+  const text = JSON.stringify(response);
+  for (const secret of ["node-canary", "hy2-password-canary", "40001"]) assertEquals(text.includes(secret), false);
+  const sealed = Uint8Array.from(atob((response as { sealed: string }).sealed), (c) => c.charCodeAt(0));
+  const payload = JSON.parse(new TextDecoder().decode(await openSealed(runnerKey, sealed, "claim:" + job)));
+  assertEquals(payload.team_egress.route, { name: "overseas", fallback: true, cap_bytes: 1000, nodes: [node] });
+});

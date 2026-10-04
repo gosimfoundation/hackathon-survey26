@@ -27,6 +27,8 @@ export type TeamEnvironment = {
   domains: string[]
   relay_key_missing: boolean
   limits: { variables: number; domains: number; value_bytes: number }
+  /** 出网线路: labels only; missing until the database provides it. */
+  egress_route?: { available: boolean; route: 'direct' | 'cn' | 'overseas'; auto_fallback: boolean } | null
 }
 export type PortalData = {
   phases: { phase_id: string; projects_enabled: boolean; local_sessions_enabled: boolean; daily_batches: number

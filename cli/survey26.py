@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -116,6 +116,9 @@ MESSAGES = {
     "invalid_team_variable": ("Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
                               "变量名或值不符合要求：变量名使用大写字母、数字和下划线，不能使用平台保留的名称；值不能为空且不超过 8 KB。"),
     "team_variable_limit": ("The variable limit has been reached; delete a variable you no longer use first.", "变量数量已达上限，请先删除不再使用的变量。"),
+    "invalid_egress_route": ("Choose an egress route: direct, cn or overseas.", "请选择出网线路：direct（直连）、cn（回国代理）或 overseas（海外代理）。"),
+    "egress_route_unavailable": ("Egress routes are not offered right now; evaluations connect directly.",
+                                 "出网线路暂未开放，评测直接连接。"),
     "invalid_team_domains": ("Invalid domain: enter the name only (e.g. api.kimi.com), without https://, a port or a path, and not an IP address or internal name; at most 10.",
                              "域名格式不正确：只填写域名本身（例如 api.kimi.com），不含 https://、端口或路径，不能是 IP 地址或内网名称；最多 10 个。"),
     "team_domain_not_public": ("This domain does not resolve right now, or resolves to a non-public address, so it cannot be added.",
@@ -994,6 +997,23 @@ def _print_env(out: Out, env: dict) -> None:
                        "每个访问地址都会被记录（不含内容），无需登记域名。"))
     else:
         out.line(out.t("Allowed domains: ", "允许访问的域名：") + (", ".join(env.get("domains") or []) or out.t("(none)", "（无）")))
+    if env.get("egress_route"):
+        out.line(_route_text(out, env["egress_route"]))
+
+
+ROUTE_LABELS = {"direct": ("direct", "直连"), "cn": ("China route", "回国代理"), "overseas": ("overseas route", "海外代理")}
+
+
+def _route_text(out: Out, route: dict) -> str:
+    name = route.get("route") or "direct"
+    label = out.t(*ROUTE_LABELS.get(name, (name, name)))
+    text = out.t("Egress route: ", "出网线路：") + label
+    if name != "direct":
+        text += out.t(" (automatic fallback to direct: %s)", "（节点不可用时自动改为直连：%s）") % (
+            out.t("on", "开") if route.get("auto_fallback", True) else out.t("off", "关"))
+    if not route.get("available"):
+        text += out.t(" - not offered right now; evaluations connect directly", "（暂未开放，评测直接连接）")
+    return text
 
 
 def _env_view(env: dict) -> dict:
@@ -1104,6 +1124,20 @@ def cmd_env_domains(api: Api, args, out: Out):
     env = _env_view((api.portal("set_team_domains", write=True, domains=hosts) or {}).get("team_environment") or {})
     out.line(out.t("Allowed domains: ", "允许访问的域名：") + (", ".join(env.get("domains") or []) or out.t("(none)", "（无）")))
     return {"domains": env.get("domains") or []}
+
+
+def cmd_env_route(api: Api, args, out: Out):
+    env = None
+    route = args.route
+    if route is None:
+        env = (api.portal("team_environment") or {}).get("team_environment") or {}
+        route = (env.get("egress_route") or {}).get("route") or "direct"
+    if args.route is not None or args.fallback is not None:
+        fields = {"route": route} if args.fallback is None else {"route": route, "auto_fallback": args.fallback}
+        env = (api.portal("set_team_egress_route", write=True, **fields) or {}).get("team_environment") or {}
+    route = env.get("egress_route") or {"available": False, "route": "direct", "auto_fallback": True}
+    out.line(_route_text(out, route))
+    return {"egress_route": route}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1794,6 +1828,13 @@ def build_parser() -> argparse.ArgumentParser:
     add(dsub, "list", cmd_env_domains, "list domains")
     add(dsub, "set", cmd_env_domains, "replace the list (at most 10)").add_argument("hosts", nargs="+")
     add(dsub, "clear", cmd_env_domains, "remove all domains")
+    er = add(env, "route", cmd_env_route, "egress route for evaluations: direct (default), cn (China route) or "
+             "overseas (overseas route); without arguments, show it")
+    er.add_argument("route", nargs="?", choices=["direct", "cn", "overseas"])
+    er.add_argument("--fallback", dest="fallback", action="store_true", default=None,
+                    help="when no route node works, connect directly (default)")
+    er.add_argument("--no-fallback", dest="fallback", action="store_false",
+                    help="when no route node works, refuse the connection instead")
 
     proj = sub.add_parser("project", help="submit projects and manage versions").add_subparsers(dest="cmd", metavar="ACTION")
     add(proj, "list", cmd_project_list, "your project versions").add_argument("--all", action="store_true", help="include withdrawn versions")

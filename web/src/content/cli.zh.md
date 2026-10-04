@@ -58,7 +58,7 @@ survey26 whoami
 | 队伍 | `team show`、`team members`、`team create 队名 [--max-size N]`、`team join 邀请码`、`team leave`、`team code [--regenerate]`、`team set --name … --max-size … --lock/--unlock`、`team transfer 用户ID`、`team kick 用户ID`、`team disband`、`team directory`、`team request 队伍ID`、`team invite-uid UID`（队长） |
 | 好友 | `friends list`（你的 UID、好友、请求、已屏蔽）、`friends add UID`、`friends accept ID`、`friends decline ID`、`friends cancel ID`、`friends remove 用户ID`、`friends block 用户ID`、`friends unblock 用户ID` |
 | 消息通知 | `invites list`、`invites accept ID`、`invites decline ID`、`invites cancel ID` |
-| 密钥与网络 | `env show`、`env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix 名称] [--replace]`（即「添加模型服务」）、`env set 名称 --value-stdin [--plain]`、`env set 名称 --from-env 变量`、`env unset 名称`、`env domains set 域名…`、`env domains clear` |
+| 密钥与网络 | `env show`、`env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix 名称] [--replace]`（即「添加模型服务」）、`env set 名称 --value-stdin [--plain]`、`env set 名称 --from-env 变量`、`env unset 名称`、`env domains set 域名…`、`env domains clear`、`env route [direct\|cn\|overseas] [--fallback\|--no-fallback]` |
 | 第 1 步 · 上传项目 | `project upload 文件.zip [--title …]`、`project submit-repo https://github.com/OWNER/REPO [--branch 分支] [--subdir 子目录] [--title …]`（也可以直接用 `…/tree/分支/子目录` 或 `…/commit/提交号` 链接；提交时记录具体 commit） |
 | 第 2 步 · 检查并确认版本 | `project list [--all]`、`project wait 版本`、`project show 版本 --files`、`project logs 版本`、`project confirm 版本`、`project withdraw 版本`、`project download 版本`、`project evidence 版本 --notes … --code-url …` |
 | 第 3 步 · 开始评测 | `quota`、`eval start 版本`、`eval selfcheck 版本`（评测 3 次取平均）、`eval list`、`eval show 评测`、`eval wait [评测]` |
@@ -86,6 +86,8 @@ survey26 final set 1a2b3c4d
 ```
 
 `env model` 与网站「添加模型服务」表单写入相同的三个变量，使用相同的服务商预设：密钥以密文保存，接口地址和模型名以明文保存。不加 `--prefix` 时变量名为 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`（Anthropic 为 `ANTHROPIC_*`）；加 `--prefix KIMI` 时为 `KIMI_API_KEY` 等，便于同时配置多个服务商。已存在的变量不会被覆盖，除非加 `--replace`（否则退出码为 2）。`--key -` 从标准输入读取密钥，避免密钥出现在 shell 历史中。
+
+`env route` 查看或设置本队评测的出网线路，与「密钥与网络」中的「出网线路」是同一项设置：`direct`（直连，默认）、`cn`（回国代理）或 `overseas`（海外代理）。选择线路后，程序的对外连接经平台提供的该线路发出；加 `--fallback`（默认）时线路不可用则改为直连，加 `--no-fallback` 时则拒绝该连接。运行的网络记录会注明每个访问地址走的线路。
 
 ## 5. 输出与退出码
 

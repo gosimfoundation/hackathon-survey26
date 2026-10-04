@@ -154,6 +154,8 @@ const known = new Set([
   "invalid_team_variable",
   "team_variable_limit",
   "invalid_team_domains",
+  "invalid_egress_route",
+  "egress_route_unavailable",
   "team_domain_not_public",
 ]);
 function failure(error: { message: string } | null) {
@@ -523,6 +525,19 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       }
       await serviceRpc("observer_set_team_domains", { p_user: d.userId, p_hosts: hosts });
       return { team_environment: await userRpc("observer_team_environment") };
+    }
+    case "set_team_egress_route": {
+      // 出网线路: labels only (direct, cn, overseas); no node detail ever reaches a page.
+      if (!["direct", "cn", "overseas"].includes(body.route)) throw new ProxyError(400, "invalid_egress_route");
+      if (body.auto_fallback !== undefined && typeof body.auto_fallback !== "boolean") {
+        throw new ProxyError(400, "invalid_egress_route");
+      }
+      return {
+        team_environment: await userRpc("observer_set_team_egress_route", {
+          p_route: body.route,
+          p_auto_fallback: body.auto_fallback ?? null,
+        }),
+      };
     }
     case "save_provider":
       // The former multi-provider settings stay retired; teams use save_team_model.

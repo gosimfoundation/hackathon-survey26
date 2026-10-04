@@ -99,6 +99,7 @@ def result_zip(wrapper, files):
 
 
 ENV = {"enabled": True, "open": True, "domains": ["api.kimi.com"], "limits": {"variables": 20},
+       "egress_route": {"available": True, "route": "cn", "auto_fallback": True},
        "variables": [{"name": "KIMI_API_KEY", "secret": True, "hint": "wxyz", "value": None, "updated_at": "t"},
                      {"name": "MODEL", "secret": False, "hint": "", "value": "k2", "updated_at": "t"}]}
 BOARD = {"layout": "cards_overall", "cards": [{"slug": "v4-a", "name": "Card A"}], "scenario": None, "rows": [
@@ -133,6 +134,9 @@ def base_routes(url):
         "portal:save_team_variable": (200, {"data": {"team_environment": ENV}}),
         "portal:delete_team_variable": (200, {"data": {"team_environment": ENV}}),
         "portal:set_team_domains": (200, lambda b: (200, {"data": {"team_environment": dict(ENV, domains=b["fields"]["domains"])}})),
+        "portal:set_team_egress_route": (200, lambda b: (200, {"data": {"team_environment": dict(ENV, egress_route={
+            "available": True, "route": b["fields"]["route"],
+            "auto_fallback": b["fields"].get("auto_fallback", ENV["egress_route"]["auto_fallback"])})}})),
         "portal:evaluate": (200, {"data": {"batch_id": BATCH}}),
         "portal:approve": (200, {"data": {"accepted": True}}),
         "portal:withdraw": (200, {"data": {"accepted": True}}),
@@ -378,6 +382,13 @@ SCENARIOS = [
     ("env-domains", ["--json", "env", "domains"], {"exit": 0}),
     ("env-domains-set", ["--json", "env", "domains", "set", "a.example", "b.example"], {"exit": 0}),
     ("env-domains-clear", ["--json", "env", "domains", "clear"], {"exit": 0}),
+    ("env-route-show", ["--json", "env", "route"], {"exit": 0}),
+    ("env-route-show-human-zh", ["--lang", "zh", "env", "route"], {"exit": 0, "human": True}),
+    ("env-route-set", ["--json", "env", "route", "overseas"], {"exit": 0}),
+    ("env-route-set-no-fallback-human", ["env", "route", "cn", "--no-fallback"], {"exit": 0, "human": True}),
+    ("env-route-fallback-only", ["--json", "env", "route", "--fallback"], {"exit": 0}),
+    ("env-route-direct", ["--json", "env", "route", "direct"], {"exit": 0}),
+    ("env-route-bad", ["--json", "env", "route", "proxy"], {"exit": 2}),
     ("env-model-kimi", ["--json", "env", "model", "--provider", "kimi", "--key", "sk-kimi-123456789"], {"exit": 0}),
     ("env-model-human", ["env", "model", "--provider", "deepseek", "--key", "sk-1"], {"exit": 0, "human": True}),
     ("env-model-key-stdin", ["--json", "env", "model", "--provider", "moonshot", "--key", "-", "--model", " kimi-k3 "], {"stdin": "  sk-stdin-key \n", "exit": 0}),

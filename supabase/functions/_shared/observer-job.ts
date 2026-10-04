@@ -29,7 +29,46 @@ export type JobDependencies = {
   storeAgentLog?: (run: string, log: Uint8Array) => Promise<void>;
   /** Public runner pool only (ops/public-runner-pool.md). */
   publicPool?: PublicPoolDependencies;
+  /**
+   * Egress route nodes (Supabase secret OBSERVER_EGRESS_ROUTES; ops/egress-routes.md),
+   * added to a job's team_egress.route at claim time only, never stored in a job input.
+   */
+  egressRoutes?: EgressRoutes;
 };
+
+export type EgressRoutes = { cn: Record<string, unknown>[]; overseas: Record<string, unknown>[] };
+
+const ROUTE_NODE_FIELDS: Record<string, string[]> = {
+  vless: ["type", "server", "server_port", "uuid", "flow", "tls", "packet_encoding"],
+  hysteria2: ["type", "server", "server_port", "password", "tls", "up_mbps", "down_mbps", "obfs"],
+};
+
+/** The node list of OBSERVER_EGRESS_ROUTES (sing-box outbounds); throws on any other shape. */
+export function parseEgressRoutes(text: string): EgressRoutes {
+  const value = JSON.parse(text);
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid");
+  const out: EgressRoutes = { cn: [], overseas: [] };
+  for (const name of ["cn", "overseas"] as const) {
+    const nodes = value[name] ?? [];
+    if (!Array.isArray(nodes) || nodes.length > (name === "cn" ? 1 : 4)) throw new Error("invalid");
+    for (const node of nodes) {
+      if (!validRouteNode(node)) throw new Error("invalid");
+    }
+    out[name] = nodes;
+  }
+  return out;
+}
+
+function validRouteNode(node: unknown) {
+  if (!node || typeof node !== "object" || Array.isArray(node)) return false;
+  const value = node as Record<string, unknown>;
+  const fields = ROUTE_NODE_FIELDS[String(value.type)];
+  return !!fields && Object.keys(value).every((key) => fields.includes(key)) &&
+    typeof value.server === "string" && /^[A-Za-z0-9.:\[\]-]{1,253}$/.test(value.server) &&
+    Number.isInteger(value.server_port) && Number(value.server_port) > 0 && Number(value.server_port) < 65536 &&
+    !!value.tls && typeof value.tls === "object" && (value.tls as Record<string, unknown>).enabled === true &&
+    JSON.stringify(value).length <= 4096;
+}
 
 /**
  * The public-repository pool's sealed transfers. A public run's inputs and
@@ -349,9 +388,8 @@ function validateTeamEgress(value: unknown) {
   const invalid = () => new ProxyError(503, "invalid_job_payload");
   if (
     !egress || typeof egress !== "object" || Array.isArray(egress) ||
-    !["domains,environment,secrets", "domains,environment,open,secrets"].includes(
-      Object.keys(egress).sort().join(","),
-    ) ||
+    !["domains,environment,secrets", "domains,environment,open,secrets", "domains,environment,open,route,secrets"]
+      .includes(Object.keys(egress).sort().join(",")) ||
     (egress.open !== undefined && (egress.open !== true || !Array.isArray(egress.domains) || egress.domains.length))
   ) throw invalid();
   const environment = egress.environment as Record<string, unknown> | null;
@@ -365,6 +403,19 @@ function validateTeamEgress(value: unknown) {
         new TextEncoder().encode(text).length > 8192;
     })
   ) throw invalid();
+  if (egress.route !== undefined) {
+    // Labels and limits from the job input, plus the nodes the claim added (project_platform/team_egress.py).
+    const route = egress.route as Record<string, unknown> | null;
+    if (
+      !route || typeof route !== "object" || Array.isArray(route) ||
+      !["cap_bytes,fallback,name", "cap_bytes,fallback,name,nodes"].includes(Object.keys(route).sort().join(",")) ||
+      (route.name !== "cn" && route.name !== "overseas") || typeof route.fallback !== "boolean" ||
+      !Number.isSafeInteger(route.cap_bytes) || Number(route.cap_bytes) <= 0 ||
+      (route.nodes !== undefined &&
+        (!Array.isArray(route.nodes) || route.nodes.length > (route.name === "cn" ? 1 : 4) ||
+          !route.nodes.every(validRouteNode)))
+    ) throw invalid();
+  }
   const secrets = egress.secrets, domains = egress.domains;
   if (
     !Array.isArray(secrets) || secrets.some((name) => typeof name !== "string" || !names.includes(name)) ||
@@ -580,6 +631,18 @@ export async function jobRequest(request: Request, deps: JobDependencies) {
         }
         parsed.repository = { full_name: fresh.full_name, token: fresh.token };
       }
+    }
+    const team = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed.team_egress : undefined;
+    if (team && typeof team === "object" && !Array.isArray(team) && team.route !== undefined) {
+      // The stored input names the route only; its nodes join the payload here, for the
+      // run's own sidecar (sealed to the job's key in the public pool). No nodes configured:
+      // the runner falls back to direct (or refuses) as the team chose.
+      const route = team.route;
+      if (
+        !["execute", "engine"].includes(parsed.kind) || !route || typeof route !== "object" ||
+        Array.isArray(route) || route.nodes !== undefined || (route.name !== "cn" && route.name !== "overseas")
+      ) throw new ProxyError(503, "invalid_job_payload");
+      team.route = { ...route, nodes: deps.egressRoutes?.[route.name as "cn" | "overseas"] ?? [] };
     }
     if (runnerKey && parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.kind === "engine") {
       parsed.artifact_upload = { kind: "sealed", path: "sealed/" + body.job_id + "/result.zip" };

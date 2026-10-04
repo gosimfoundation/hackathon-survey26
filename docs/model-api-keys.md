@@ -1,5 +1,15 @@
 # Participant keys, network access and model APIs
 
+## Egress route (出网线路, optional)
+
+With open egress, a team may choose an egress route (`direct` default, `cn`, `overseas`;
+migration `20261005020000_egress_routes`, switch `observer_hardening.egress_routes`).
+The sidecar then sends every connection it allows through the pinned route client in
+its own network namespace, with failover between nodes, an optional direct fallback,
+a per-run cap on proxied bytes and the path of every destination in the egress log.
+Node settings exist only as the Supabase secret `OBSERVER_EGRESS_ROUTES` and in the
+claim payload; see `ops/egress-routes.md`.
+
 ## Open egress and the egress log (current)
 
 With `observer_hardening.open_egress` on (or the team in `open_egress_teams`;

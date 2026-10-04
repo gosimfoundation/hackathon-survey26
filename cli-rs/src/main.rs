@@ -1172,6 +1172,29 @@ fn print_env(out: &Out, env: &Value) {
     } else {
         out.line(&format!("{}{}", out.t("Allowed domains: ", "允许访问的域名："), domains_text(out, env)));
     }
+    if truthy(&env["egress_route"]) {
+        out.line(&route_text(out, &env["egress_route"]));
+    }
+}
+
+fn route_text(out: &Out, route: &Value) -> String {
+    let name = if truthy(&route["route"]) { py_str(&route["route"]) } else { "direct".to_string() };
+    let label = match name.as_str() {
+        "direct" => out.t("direct", "直连").to_string(),
+        "cn" => out.t("China route", "回国代理").to_string(),
+        "overseas" => out.t("overseas route", "海外代理").to_string(),
+        other => other.to_string(),
+    };
+    let mut text = format!("{}{}", out.t("Egress route: ", "出网线路："), label);
+    if name != "direct" {
+        let fallback = route.get("auto_fallback").map(truthy).unwrap_or(true);
+        let state = if fallback { out.t("on", "开") } else { out.t("off", "关") };
+        text += &out.t(" (automatic fallback to direct: %s)", "（节点不可用时自动改为直连：%s）").replace("%s", state);
+    }
+    if !truthy(&route["available"]) {
+        text += out.t(" - not offered right now; evaluations connect directly", "（暂未开放，评测直接连接）");
+    }
+    text
 }
 
 fn domains_text(out: &Out, env: &Value) -> String {
@@ -1329,6 +1352,30 @@ fn cmd_env_domains(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let env = team_environment(api.portal("set_team_domains", true, json!({"domains": hosts}))?);
     out.line(&format!("{}{}", out.t("Allowed domains: ", "允许访问的域名："), domains_text(out, &env)));
     Ok(json!({"domains": if truthy(&env["domains"]) { env["domains"].clone() } else { json!([]) }}))
+}
+
+fn cmd_env_route(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let fallback = match a.get("fallback") { Some(Parsed::Bool(b)) => Some(*b), _ => None };
+    let mut env = Value::Null;
+    let route = match a.str("route") {
+        Some(r) => r,
+        None => {
+            env = or_empty(g(&or_empty(api.portal("team_environment", false, json!({}))?), "team_environment"));
+            let r = &env["egress_route"]["route"];
+            if truthy(r) { py_str(r) } else { "direct".to_string() }
+        }
+    };
+    if a.str("route").is_some() || fallback.is_some() {
+        let fields = match fallback {
+            None => json!({"route": route}),
+            Some(f) => json!({"route": route, "auto_fallback": f}),
+        };
+        env = or_empty(g(&or_empty(api.portal("set_team_egress_route", true, fields)?), "team_environment"));
+    }
+    let route = if truthy(&env["egress_route"]) { env["egress_route"].clone() }
+        else { json!({"available": false, "route": "direct", "auto_fallback": true}) };
+    out.line(&route_text(out, &route));
+    Ok(json!({"egress_route": route}))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2158,6 +2205,7 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_env_unset" => cmd_env_unset,
         "cmd_env_model" => cmd_env_model,
         "cmd_env_domains" => cmd_env_domains,
+        "cmd_env_route" => cmd_env_route,
         "cmd_project_list" => cmd_project_list,
         "cmd_project_submit_repo" => cmd_project_submit_repo,
         "cmd_project_upload" => cmd_project_upload,

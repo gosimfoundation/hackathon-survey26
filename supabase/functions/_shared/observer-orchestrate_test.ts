@@ -508,6 +508,13 @@ Deno.test("open egress sends no domain list and the job API accepts only open:tr
   });
   assertEquals((await decodeTeamEgress({ ...value, open: false }, key))?.domains, ["api.kimi.com"]);
   assertEquals(await decodeTeamEgress({ ...value, enabled: false }, key), null);
+  // The egress route travels as a label only (nodes are added at claim time), with open egress only.
+  const route = { name: "overseas", fallback: true, cap_bytes: 524288000 };
+  const routeOf = (team: unknown) => (team as { route?: unknown } | null)?.route;
+  assertEquals(routeOf(await decodeTeamEgress({ ...value, route }, key)), route);
+  assertEquals(routeOf(await decodeTeamEgress({ ...value, route: null }, key)), undefined);
+  assertEquals(routeOf(await decodeTeamEgress({ ...value, open: false, route }, key)), undefined);
+  assertEquals(routeOf(await decodeTeamEgress({ ...value, route: { ...route, name: "direct" } }, key)), undefined);
   const run = crypto.randomUUID();
   const base = {
     kind: "execute",
