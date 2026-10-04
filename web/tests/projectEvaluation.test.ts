@@ -100,3 +100,16 @@ test('daily project preparations come from the quota rows, never a fixed number'
   assert.deepEqual(preparationQuota([{ phase_id: 'a', daily_batches: 40, used: 0, remaining: 40, resets_at: 'r',
     preparations_daily: 40, preparations_used: 3, preparations_remaining: 37 }]), { daily: 40, used: 3, remaining: 37, resets_at: 'r' })
 })
+
+test('evaluations without a model are marked in the download name and metadata', async () => {
+  const { evaluationMetadata, evaluationZipName, isNoModel } = await import('../src/lib/projectEvaluation.ts')
+  const plain = { id: 'abcdef12-0000', created_at: 't', phase_id: 'p', revision_id: 'r' }
+  const off = { ...plain, model_disabled: true, repeat_group: 'g' }
+  assert.equal(isNoModel(plain), false)
+  assert.equal(isNoModel(off), true)
+  assert.equal(evaluationZipName(plain, '2026-10-05'), 'gosim-observer-abcdef12-2026-10-05.zip')
+  assert.equal(evaluationZipName(off, '2026-10-05'), 'gosim-observer-abcdef12-no-model-2026-10-05.zip')
+  assert.deepEqual(evaluationMetadata(off, 'v1'), { evaluation_id: 'abcdef12-0000', created_at: 't', phase_id: 'p',
+    revision_id: 'r', version: 'v1', model_provided: false, model_disabled: true, self_check_group: 'g' })
+  assert.equal(evaluationMetadata(plain, null).model_provided, true)
+})

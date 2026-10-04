@@ -30,7 +30,7 @@ if sys.version_info < (3, 9):
     sys.stderr.write("agent: Python 3.9 or newer is required\n")
     raise SystemExit(3)
 
-from agent_core.llm_client import MissingAPIKeyError, require_api_key
+from agent_core.llm_client import MissingAPIKeyError, model_disabled, require_api_key
 from agent_core.planner import Planner
 from agent_core.protocol import log, read_messages, send_response
 from agent_core.state import SurveyState
@@ -43,6 +43,8 @@ def main() -> int:
     except MissingAPIKeyError as exc:
         log(f"agent: {exc}")
         return 1
+    if model_disabled():
+        log("agent: OBSERVER_MODEL_DISABLED=1, running rules only (no model calls)")
 
     state = None
     planner = None

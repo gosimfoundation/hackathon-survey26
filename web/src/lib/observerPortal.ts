@@ -20,7 +20,13 @@ export type TeamModel = {
   protocol: 'openai' | 'anthropic'
   saved: { base_url: string; model: string; key_hint: string; saved_at: string } | null
 }
-export type TeamVariable = { name: string; secret: boolean; hint: string; value: string | null; updated_at: string }
+export type TeamVariable = {
+  name: string; secret: boolean; hint: string; value: string | null; updated_at: string
+  /** Tagged as model-related: left out of evaluations run without a model. Missing on an older database. */
+  model?: boolean
+  /** Switched off: kept (secrets stay encrypted) but given to no run. */
+  disabled?: boolean
+}
 export type TeamEnvironment = {
   enabled: boolean
   open?: boolean
@@ -38,6 +44,8 @@ export type PortalData = {
   projects: { id: string; title: string; created_at: string; observer_revisions: ProjectRevision[] }[]
   batches: { id: string; mode: string; status: string; score: number | null; created_at: string
     phase_id: string; revision_id: string | null; quota_refunded?: boolean
+    /** 本次不提供模型: the evaluation ran without the team's model variables (OBSERVER_MODEL_DISABLED=1). */
+    model_disabled?: boolean
     /** Set on the evaluations of one self-check ("evaluate 3 times and average"). */
     repeat_group?: string | null; repeat_runs?: number | null
     observer_runs: { id: string; scenario_id: string; status: string; score: number | null; result_path: string | null

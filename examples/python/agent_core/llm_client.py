@@ -63,10 +63,15 @@ class MissingAPIKeyError(RuntimeError):
     pass
 
 
+def model_disabled() -> bool:
+    """The platform sets OBSERVER_MODEL_DISABLED=1 for an evaluation without a model: rules only, no key needed."""
+    return os.environ.get("OBSERVER_MODEL_DISABLED") == "1"
+
+
 def require_api_key() -> None:
-    """Raise MissingAPIKeyError if neither OPENAI_API_KEY nor KIMI_API_KEY is set.
+    """Raise MissingAPIKeyError if neither OPENAI_API_KEY nor KIMI_API_KEY is set (unless the model is disabled).
     Called once at process startup, before reading anything from stdin."""
-    if not (os.environ.get("OPENAI_API_KEY", "").strip() or os.environ.get("KIMI_API_KEY", "").strip()):
+    if not model_disabled() and not (os.environ.get("OPENAI_API_KEY", "").strip() or os.environ.get("KIMI_API_KEY", "").strip()):
         raise MissingAPIKeyError("missing API key: set OPENAI_API_KEY")
 
 
@@ -77,6 +82,7 @@ class LLMClient:
         self.base_url = os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/") or DEFAULT_BASE_URL
         self.api_key = os.environ.get("OPENAI_API_KEY", "").strip() or os.environ.get("KIMI_API_KEY", "").strip()
         self.model = os.environ.get("OPENAI_MODEL", "").strip() or DEFAULT_MODEL
+        self.disabled = model_disabled()  # OBSERVER_MODEL_DISABLED=1: every question takes the rule-based path
         self.call_timeout_seconds = call_timeout_seconds
         self.max_calls = max_calls
         self.max_attempts = max_attempts
@@ -122,6 +128,8 @@ class LLMClient:
         """One planning question, answered as exactly one JSON object, or None so the
         caller's rule-based answer takes over for this step. `wall_left_seconds` is the
         real time left before the card's cap (`wallclock.wall_remaining_seconds`)."""
+        if self.disabled:
+            return None
         deadline = time.monotonic() + min(QUESTION_DEADLINE_SECONDS, wall_left_seconds - WALL_RESERVE_SECONDS)
         for attempt in range(1, self.max_attempts + 1):
             time_left = deadline - time.monotonic()

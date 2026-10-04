@@ -1,5 +1,5 @@
 {
- "version": "1.5.0",
+ "version": "1.6.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1034,6 +1034,66 @@
   {
    "path": [
     "env",
+    "disable"
+   ],
+   "help": "switch a variable off: kept (secrets stay encrypted) but not given to evaluations",
+   "group": false,
+   "func": "cmd_env_disable",
+   "positionals": [
+    {
+     "name": "name",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "env",
+    "enable"
+   ],
+   "help": "switch a variable on again",
+   "group": false,
+   "func": "cmd_env_enable",
+   "positionals": [
+    {
+     "name": "name",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "env",
+    "tag"
+   ],
+   "help": "mark a variable model-related or not (model-related ones are left out of eval start --no-model)",
+   "group": false,
+   "func": "cmd_env_tag",
+   "positionals": [
+    {
+     "name": "name",
+     "nargs": 1,
+     "help": ""
+    },
+    {
+     "name": "tag",
+     "nargs": 1,
+     "help": "",
+     "choices": [
+      "model",
+      "none"
+     ]
+    }
+   ],
+   "options": []
+  },
+  {
+   "path": [
+    "env",
     "model"
    ],
    "help": "add a model service like the website's quick form: key (secret), base URL and model",
@@ -1574,6 +1634,14 @@
      "kind": "value",
      "type": "str",
      "help": "phase slug (default: the one the website uses)"
+    },
+    {
+     "flags": [
+      "--no-model"
+     ],
+     "dest": "no_model",
+     "kind": "flag",
+     "help": "this evaluation without a model: no model-related team variables, OBSERVER_MODEL_DISABLED=1 (to compare with and without an LLM)"
     }
    ]
   },
@@ -1610,6 +1678,14 @@
      "kind": "value",
      "type": "str",
      "help": ""
+    },
+    {
+     "flags": [
+      "--no-model"
+     ],
+     "dest": "no_model",
+     "kind": "flag",
+     "help": "all 3 evaluations without a model (see eval start --no-model)"
     }
    ]
   },

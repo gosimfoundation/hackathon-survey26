@@ -22,7 +22,13 @@ export function randomCapability() {
  * and the runner receives it only through its authenticated claim.
  */
 export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, run: string) {
-  return decodeTeamEgress(await deps.rpc("observer_run_team_egress", { p_run: run }), deps.masterKey);
+  const value = await deps.rpc("observer_run_team_egress", { p_run: run });
+  return {
+    team: await decodeTeamEgress(value, deps.masterKey),
+    // An evaluation without a model (本次不提供模型): the database has already left out the
+    // team's model variables; the job adds OBSERVER_MODEL_DISABLED=1 to the project's environment.
+    modelDisabled: value?.model_disabled === true,
+  };
 }
 
 /** The job-input form of observer_run_team_egress / observer_preparation_team_egress (null while off). */
@@ -96,7 +102,10 @@ export async function scheduleRuns(deps: RunScheduler) {
         await deps.rpc("observer_run_colocated", { p_run: run.id }) === true;
       const restricted = colocated && await egressSwitch();
       // Team egress for this run's team: globally, or as a listed pilot team.
-      const team = run.mode === "project" ? await teamEgress(deps, run.id) : null;
+      const { team, modelDisabled } = run.mode === "project"
+        ? await teamEgress(deps, run.id)
+        : { team: null, modelDisabled: false };
+      const noModel = modelDisabled ? { model_disabled: true } : {};
       const participant = randomCapability(), engine = randomCapability();
       const jobs = [];
       const encodeJob = async (kind: string, input: Record<string, unknown>) => {
@@ -123,6 +132,7 @@ export async function scheduleRuns(deps: RunScheduler) {
             ? {
               ...(restricted ? { restricted_egress: true } : {}),
               ...(team ? { team_egress: team } : {}),
+              ...noModel,
               archive_ref: run.archive_ref,
               colocated: {
                 run_credential: "obs_" + run.id + "." + participant,
@@ -142,6 +152,7 @@ export async function scheduleRuns(deps: RunScheduler) {
             session_url: api + "observer-session",
             model_base_url: api + "observer-model/v1",
             ...(team ? { team_egress: team } : {}),
+            ...noModel,
             archive_ref: run.archive_ref,
             source_digest: run.materialized_digest,
             manifest: run.manifest,

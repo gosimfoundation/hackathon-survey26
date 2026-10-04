@@ -55,11 +55,12 @@ def iso(seconds_ago):
     return datetime.fromtimestamp(time.time() - seconds_ago, timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f+00")
 
 
-def listing(batch_status="scored", evaluated=False, recent=False, repeat=False):
+def listing(batch_status="scored", evaluated=False, recent=False, repeat=False, no_model=False):
     created = iso(60) if recent else "2026-10-01T00:00:00Z"
     batches = [{"id": BATCH, "status": batch_status, "score": 61.5 if batch_status == "scored" else None,
                 "phase_id": PHASE, "revision_id": REV2 if evaluated else "other", "created_at": "2026-10-02T00:00:00Z",
                 "repeat_group": "g1" if repeat else None, "repeat_runs": 3 if repeat else None, "quota_refunded": False,
+                **({"model_disabled": True} if no_model else {}),
                 "observer_runs": [
                     {"id": RUN_B, "scenario_id": SC_B, "status": "scored", "score": 60, "result_path": "x"},
                     {"id": RUN_A, "scenario_id": SC_A, "status": batch_status if batch_status != "scored" else "scored",
@@ -101,7 +102,7 @@ def result_zip(wrapper, files):
 ENV = {"enabled": True, "open": True, "domains": ["api.kimi.com"], "limits": {"variables": 20},
        "egress_route": {"available": True, "route": "cn", "auto_fallback": True},
        "variables": [{"name": "KIMI_API_KEY", "secret": True, "hint": "wxyz", "value": None, "updated_at": "t"},
-                     {"name": "MODEL", "secret": False, "hint": "", "value": "k2", "updated_at": "t"}]}
+                     {"name": "MODEL", "secret": False, "hint": "", "value": "k2", "updated_at": "t", "model": True, "disabled": True}]}
 BOARD = {"layout": "cards_overall", "cards": [{"slug": "v4-a", "name": "Card A"}], "scenario": None, "rows": [
     {"rank": 1, "team_id": "other", "team_name": "A", "total_score": 70.5, "submission_count": 3},
     {"rank": 2, "team_id": "t1", "team_name": "Stars", "total_score": 61, "submission_count": 1}]}
@@ -133,6 +134,7 @@ def base_routes(url):
         "portal:team_environment": (200, {"data": {"team_environment": ENV}}),
         "portal:save_team_variable": (200, {"data": {"team_environment": ENV}}),
         "portal:delete_team_variable": (200, {"data": {"team_environment": ENV}}),
+        "portal:set_team_variable_flags": (200, {"data": {"team_environment": ENV}}),
         "portal:set_team_domains": (200, lambda b: (200, {"data": {"team_environment": dict(ENV, domains=b["fields"]["domains"])}})),
         "portal:set_team_egress_route": (200, lambda b: (200, {"data": {"team_environment": dict(ENV, egress_route={
             "available": True, "route": b["fields"]["route"],
@@ -379,6 +381,13 @@ SCENARIOS = [
     ("env-set-two-sources", ["--json", "env", "set", "X", "v", "--value-stdin"], {"exit": 2}),
     ("env-set-no-value", ["--json", "env", "set", "X"], {"exit": 2}),
     ("env-unset", ["--json", "env", "unset", "MODEL"], {"exit": 0}),
+    ("env-disable", ["--json", "env", "disable", "MODEL"], {"exit": 0}),
+    ("env-enable-human-zh", ["--lang", "zh", "env", "enable", "MODEL"], {"exit": 0, "human": True}),
+    ("env-tag-model", ["--json", "env", "tag", "KIMI_API_KEY", "model"], {"exit": 0}),
+    ("env-tag-none-human", ["env", "tag", "MODEL", "none"], {"exit": 0, "human": True}),
+    ("env-tag-bad", ["--json", "env", "tag", "MODEL", "maybe"], {"exit": 2}),
+    ("env-disable-missing", ["--json", "env", "disable", "NOPE"],
+     {"routes": {"portal:set_team_variable_flags": (400, {"error": "team_variable_not_found"})}, "exit": 1}),
     ("env-domains", ["--json", "env", "domains"], {"exit": 0}),
     ("env-domains-set", ["--json", "env", "domains", "set", "a.example", "b.example"], {"exit": 0}),
     ("env-domains-clear", ["--json", "env", "domains", "clear"], {"exit": 0}),
@@ -452,6 +461,15 @@ SCENARIOS = [
     ("eval-no-phase", ["--json", "eval", "start", REV2], {"routes": {"rpc:current_competition": (200, {"data": {"mode": "competition", "phase_id": "zz"}}),
                                                                      "rpc:my_observer_phase": (200, {"data": None})}, "exit": 1}),
     ("eval-selfcheck", ["--json", "eval", "selfcheck", REV2, "--yes"], {"exit": 0}),
+    ("eval-start-no-model", ["--json", "eval", "start", REV2, "--no-model"], {"exit": 0}),
+    ("eval-start-no-model-human", ["eval", "start", REV2, "--no-model"], {"exit": 0, "human": True}),
+    ("eval-repeat-no-model", ["--json", "eval", "start", "33339", "--yes", "--no-model"],
+     {"routes": {"portal:list": (200, {"data": listing(evaluated=True)})}, "exit": 0}),
+    ("eval-selfcheck-no-model", ["--json", "eval", "selfcheck", REV2, "--yes", "--no-model"], {"exit": 0}),
+    ("eval-no-model-refused", ["--json", "eval", "start", REV2, "--no-model"],
+     {"routes": {"portal:evaluate": (400, {"error": "no_model_not_available"})}, "exit": 1}),
+    ("eval-list-no-model", ["--json", "eval", "list"], {"routes": {"portal:list": (200, {"data": listing(no_model=True)})}, "exit": 0}),
+    ("eval-show-no-model-human", ["eval", "show", "latest"], {"routes": {"portal:list": (200, {"data": listing(no_model=True)})}, "exit": 0, "human": True}),
     ("eval-selfcheck-needs-yes", ["--json", "eval", "selfcheck", REV2], {"exit": 2}),
     ("eval-list", ["--json", "eval", "list", "--limit", "1"], {"routes": {"portal:list": (200, {"data": listing(repeat=True)})}, "exit": 0}),
     ("eval-list-negative", ["--json", "eval", "list", "--limit", "-1"], {"routes": {"portal:list": (200, {"data": listing(repeat=True)})}, "exit": 0}),
@@ -468,6 +486,8 @@ SCENARIOS = [
     ("results-log-unknown-uuid", ["--json", "results", "log", "99999999-9999-9999-9999-999999999999"], {"exit": 0}),
     ("results-download", ["--json", "results", "download", "55555555"], {"exit": 0}),
     ("results-download-all", ["--json", "results", "download-all"], {"exit": 0}),
+    ("results-download-all-no-model", ["--json", "results", "download-all"],
+     {"routes": {"portal:list": (200, {"data": listing(no_model=True)})}, "exit": 0}),
     ("results-download-all-partial", ["--json", "results", "download-all", "latest", "-o", "all.zip"],
      {"routes": {"portal:download_result": (200, lambda b: (200, {"data": {"url": "http://127.0.0.1:1/x"}}) if b["fields"]["run_id"] == RUN_B
                                             else (404, {"error": "result_not_ready"}))}, "exit": 1}),

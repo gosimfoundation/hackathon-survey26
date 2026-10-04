@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { portal, type TeamEnvironment } from '../../lib/observerPortal'
-import { PROVIDERS, configuredServices, newVariableCount, normalizePrefix, presetById, serviceNames, serviceWrites,
-  type ConfiguredService } from '../../lib/modelServices'
+import { PROVIDERS, configuredServices, newVariableCount, normalizePrefix, presetById, serviceNames, serviceVariableNames,
+  serviceWrites, type ConfiguredService } from '../../lib/modelServices'
 
 // Keys and network: the team's variables (environment of its program). With open
 // egress the program may reach any public address, so there is no domain list;
@@ -73,7 +73,7 @@ function saveService() {
   svc.value.key = ''
   emit('act', async () => {
     for (const w of list) {
-      if (w.op === 'save') await portal('save_team_variable', { name: w.name, value: w.value, secret: w.secret })
+      if (w.op === 'save') await portal('save_team_variable', { name: w.name, value: w.value, secret: w.secret, model: w.model })
       else await portal('delete_team_variable', { name: w.name })
     }
     resetService()
@@ -86,6 +86,19 @@ function deleteService(s: ConfiguredService) {
     for (const name of names) await portal('delete_team_variable', { name })
     if (editing.value === s.prefix) resetService()
   }, t('submit.team_env.svc.deleted'))
+}
+
+// Switch a variable off (kept, not given to runs) or tag it as model-related (left out of
+// evaluations started with 「本次不提供模型」).
+function setFlags(name: string, flags: { model?: boolean; disabled?: boolean }) {
+  emit('act', async () => { await portal('set_team_variable_flags', { name, ...flags }) },
+    flags.disabled === undefined ? t('submit.team_env.flags.model_saved') : flags.disabled ? t('submit.team_env.flags.disabled') : t('submit.team_env.flags.enabled'))
+}
+function toggleService(s: ConfiguredService) {
+  const names = serviceVariableNames(s, existing.value)
+  const disabled = !s.disabled
+  emit('act', async () => { for (const name of names) await portal('set_team_variable_flags', { name, disabled }) },
+    disabled ? t('submit.team_env.flags.disabled') : t('submit.team_env.flags.enabled'))
 }
 
 function saveVariable() {
@@ -120,15 +133,17 @@ function addDomain() {
       <p class="help" data-testid="model-service-examples">{{ t('submit.team_env.svc.examples') }}</p>
 
       <ul v-if="services.length" class="svc-cards" data-testid="model-service-cards">
-        <li v-for="s in services" :key="s.prefix" class="svc-card" :class="{ editing: editing === s.prefix }" :data-testid="'model-service-card-' + s.prefix">
+        <li v-for="s in services" :key="s.prefix" class="svc-card" :class="{ editing: editing === s.prefix, off: s.disabled }" :data-testid="'model-service-card-' + s.prefix">
           <div class="min-w-0">
             <strong>{{ s.provider ? providerName(s.provider.id) : s.label }}</strong>
+            <span v-if="s.disabled" class="pill ml-2" :data-testid="'model-service-off-' + s.prefix">{{ t('submit.team_env.flags.off_pill') }}</span>
             <span> · {{ s.model || t('submit.team_env.svc.no_model') }}</span>
             <span> · {{ s.hint ? tf('submit.team_env.svc.key_ending', { hint: s.hint }) : t('submit.model_api.key_hidden') }}</span>
             <div class="help break-all"><code>{{ s.prefix }}_*</code> <span v-if="s.baseUrl">{{ s.baseUrl }}</span></div>
           </div>
           <span class="svc-actions">
             <button type="button" class="btn sm" :disabled="busy" :data-testid="'model-service-edit-' + s.prefix" @click="editService(s)">{{ t('submit.team_env.svc.edit') }}</button>
+            <button type="button" class="btn sm" :disabled="busy" :title="t('submit.team_env.flags.service_help')" :data-testid="'model-service-toggle-' + s.prefix" @click="toggleService(s)">{{ s.disabled ? t('submit.team_env.flags.enable') : t('submit.team_env.flags.disable') }}</button>
             <button type="button" class="btn sm danger" :disabled="busy" :data-testid="'model-service-delete-' + s.prefix" @click="deleteService(s)">{{ t('submit.team_env.delete') }}</button>
           </span>
         </li>
@@ -168,10 +183,16 @@ function addDomain() {
     <summary><h3 class="inline">{{ t('submit.team_env.svc.advanced') }}</h3></summary>
     <h3 class="mt-3">{{ t('submit.team_env.vars_title') }}</h3>
     <p class="help">{{ tf('submit.team_env.vars_help', { variables: limits.variables }) }}</p>
+    <p class="help" data-testid="team-env-flags-help">{{ t('submit.team_env.flags.help') }}</p>
     <ul v-if="variables.length" class="team-env-list" data-testid="team-env-variables">
-      <li v-for="v in variables" :key="v.name">
+      <li v-for="v in variables" :key="v.name" :class="{ off: v.disabled }" :data-testid="'team-env-variable-' + v.name">
         <code>{{ v.name }}</code>
         <span class="help break-all">{{ v.secret ? (v.hint ? tf('submit.model_api.key_ending', { hint: v.hint }) : t('submit.model_api.key_hidden')) : v.value }}</span>
+        <span v-if="v.disabled" class="pill" :data-testid="'team-env-off-' + v.name">{{ t('submit.team_env.flags.off_pill') }}</span>
+        <label v-if="v.disabled !== undefined" class="check flag"><input type="checkbox" :checked="!v.disabled" :disabled="busy" :data-testid="'team-env-enabled-' + v.name"
+          @change="setFlags(v.name, { disabled: !($event.target as HTMLInputElement).checked })">{{ t('submit.team_env.flags.enabled_label') }}</label>
+        <label v-if="v.model !== undefined" class="check flag" :title="t('submit.team_env.flags.model_help')"><input type="checkbox" :checked="v.model" :disabled="busy" :data-testid="'team-env-model-' + v.name"
+          @change="setFlags(v.name, { model: ($event.target as HTMLInputElement).checked })">{{ t('submit.team_env.flags.model_label') }}</label>
         <button type="button" class="btn sm" :disabled="busy" :data-testid="'team-env-delete-' + v.name" @click="deleteVariable(v.name)">{{ t('submit.team_env.delete') }}</button>
       </li>
     </ul>
@@ -229,6 +250,8 @@ function addDomain() {
 .team-env-list { list-style: none; padding: 0; margin: .5rem 0; display: grid; gap: .4rem; }
 .team-env-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .team-env-list code { font-weight: 600; }
+.team-env-list li.off code, .svc-card.off strong { opacity: .55; text-decoration: line-through; }
+.check.flag { font-size: .85rem; margin: 0; }
 .svc-panel { border: 1px solid rgba(158,173,255,.35); padding: 1rem 1.1rem; background: rgba(49,94,251,.06); }
 .svc-panel select { width: 100%; }
 .svc-cards { list-style: none; padding: 0; margin: .75rem 0; display: grid; gap: .5rem; }

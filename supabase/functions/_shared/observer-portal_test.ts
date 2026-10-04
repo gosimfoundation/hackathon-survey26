@@ -121,6 +121,58 @@ Deno.test("a repeat evaluation is only requested with an explicit confirmation",
   ]);
 });
 
+Deno.test("an evaluation without a model is requested only with no_model: true", async () => {
+  const phase = "30000000-0000-4000-8000-000000000001", revision = "30000000-0000-4000-8000-000000000002";
+  const c = clients("batch");
+  await portal({ action: "evaluate", phase_id: phase, revision_id: revision, no_model: "yes" }, c);
+  await portal({ action: "evaluate", phase_id: phase, revision_id: revision, no_model: true }, c);
+  assertEquals(c.calls.map((x) => x.args), [
+    { p_phase: phase, p_revision: revision },
+    { p_phase: phase, p_revision: revision, p_no_model: true },
+  ]);
+});
+
+Deno.test("team variables are tagged or switched off by name, without their values", async () => {
+  const c = clients({ variables: [] });
+  await portal({ action: "set_team_variable_flags", name: "OPENAI_API_KEY", disabled: true }, c);
+  await portal({ action: "set_team_variable_flags", name: "MY_TOKEN", model: true }, c);
+  assertEquals(c.calls, [
+    {
+      client: "user",
+      name: "observer_set_team_variable_flags",
+      args: { p_name: "OPENAI_API_KEY", p_model: null, p_disabled: true },
+    },
+    {
+      client: "user",
+      name: "observer_set_team_variable_flags",
+      args: { p_name: "MY_TOKEN", p_model: true, p_disabled: null },
+    },
+  ]);
+  for (
+    const bad of [
+      { name: "lower", disabled: true },
+      { name: "OPENAI_API_KEY" },
+      { name: "OPENAI_API_KEY", disabled: "yes" },
+      { name: "OPENAI_API_KEY", model: 1 },
+    ]
+  ) {
+    const rejected = clients();
+    const error = await assertRejects(
+      () => portal({ action: "set_team_variable_flags", ...bad }, rejected),
+      ProxyError,
+    );
+    assertEquals(error.code, "invalid_team_variable");
+    assertEquals(rejected.calls.length, 0);
+  }
+  // 「添加模型服务」 tags its variables explicitly.
+  const tagged = clients({});
+  await portal({ action: "save_team_variable", name: "DEEPSEEK_KEY", value: key, model: true }, tagged);
+  assertEquals(tagged.calls[0].args.p_model, true);
+  const plain = clients({});
+  await portal({ action: "save_team_variable", name: "DEEPSEEK_KEY", value: key }, plain);
+  assertEquals("p_model" in plain.calls[0].args, false);
+});
+
 Deno.test("withdrawal uses the caller's team RPC and database refusals keep their codes", async () => {
   const revision = "30000000-0000-4000-8000-000000000002";
   const c = clients();

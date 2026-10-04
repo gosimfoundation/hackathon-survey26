@@ -15,7 +15,8 @@ What it does (details in README.md and planner.py):
 4. Pace: the search level adapts to the measured cost per decision so a 4-month card fits the wall clock.
 5. Model (advisor.py): at every night start a night plan (forecast + bulletin -> bad night, sectors to avoid)
    and a fault review (own quality table -> how likely a fault is, which gates paid reports); before a paid
-   report the model confirms or vetoes. Calls run in the background; without an API key the agent exits.
+   report the model confirms or vetoes. Calls run in the background; without an API key the agent exits,
+   except when the platform sets OBSERVER_MODEL_DISABLED=1 (an evaluation without a model): then rules only.
 """
 from __future__ import annotations
 
@@ -74,12 +75,33 @@ def log(text: str) -> None:
     print(text, file=sys.stderr, flush=True)
 
 
+class RulesOnly:
+    """The advisor's interface without a model (OBSERVER_MODEL_DISABLED=1): every rule default stands."""
+    night_date = None
+
+    def start_night(self, night_date, *_args):
+        self.night_date = night_date
+        return None, None
+
+    def poll(self):
+        return None, None
+
+    def confirm_report(self, *_args):
+        return None
+
+
+def model_disabled() -> bool:
+    """The platform sets OBSERVER_MODEL_DISABLED=1 for an evaluation started with 「本次不提供模型」 / --no-model."""
+    return os.environ.get("OBSERVER_MODEL_DISABLED") == "1"
+
+
 class ObserverAgent:
-    def __init__(self, init: dict):
+    def __init__(self, init: dict, rules_only: bool = False):
         started = time.monotonic()
         self.planner = Planner(init, log=log)
-        self.client = LLMClient(log=log)
-        self.advisor = Advisor(self.client, log=log)
+        self.rules_only = rules_only
+        self.client = None if rules_only else LLMClient(log=log)
+        self.advisor = RulesOnly() if rules_only else Advisor(self.client, log=log)
         self.model_wait = 0.0                    # wall seconds spent waiting for the model (not planning cost)
         self.fault_likely = None                 # tonight's model estimate that an instrument fault is active
         self.scale_hours: dict = {}              # hour -> [planner.scale samples] (for the model's fault table)
@@ -111,7 +133,7 @@ class ObserverAgent:
         self.sim_step_ema = None
         self.last_now = None
         log(f"pro: {len(self.planner.ids)} targets, {sum(self.planner.required)} required, "
-            f"{len(self.planner.nights)} nights; init {time.monotonic() - started:.2f}s; model {self.client.model}")
+            f"{len(self.planner.nights)} nights; init {time.monotonic() - started:.2f}s; model {self.client.model if self.client else 'none (rules only)'}")
 
     # --- decision loop ------------------------------------------------------------------------------
 
@@ -427,7 +449,10 @@ class ObserverAgent:
 
 def main() -> int:
     load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
-    if not api_key():
+    rules_only = model_disabled()
+    if rules_only:
+        log("pro: OBSERVER_MODEL_DISABLED=1, running rules only (no model calls)")
+    elif not api_key():
         print("missing API key: set OPENAI_API_KEY", file=sys.stderr, flush=True)
         return 2
     agent = None
@@ -439,14 +464,14 @@ def main() -> int:
         if message.get("protocol_version") != PROTOCOL:
             log(f"pro: unexpected protocol {message.get('protocol_version')!r}")
         if kind == "initialize":
-            agent = ObserverAgent(message["payload"])
+            agent = ObserverAgent(message["payload"], rules_only=rules_only)
         elif kind == "decision_request":
             try:
                 action = agent.respond(message["payload"])
             except Exception as exc:  # noqa: BLE001 - never crash the run: wait one slot instead
                 log(f"pro: error {type(exc).__name__}: {exc}; waiting one slot")
                 action = {"action": "wait", "duration_seconds": 900, "reason": "internal error"}
-            action.setdefault("decision_source", "llm-advised")
+            action.setdefault("decision_source", "rules" if rules_only else "llm-advised")
             print(json.dumps({"protocol_version": PROTOCOL, "message_type": "decision_response",
                               "decision_sequence": message["decision_sequence"], **action}, separators=(",", ":")), flush=True)
         elif kind == "finish":

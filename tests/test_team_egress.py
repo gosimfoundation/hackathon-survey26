@@ -448,6 +448,60 @@ def test_engine_job_injects_team_variables_and_joins_only_the_team_network(monke
     assert "sk-team-secret-1234" in started["redactions"]
 
 
+@pytest.mark.parametrize("team", [True, False])
+def test_engine_job_without_a_model_sets_the_flag_and_no_model_settings(monkeypatch, tmp_path, team):
+    """本次不提供模型: the database already left out the team's model variables; the runtime adds
+    OBSERVER_MODEL_DISABLED=1 and never the platform model proxy's settings (team egress on or off)."""
+    import uuid
+    from project_platform import job_runner
+    from project_platform.docker_runtime import DockerWorkspace
+
+    events, started = [], {}
+
+    class Stop(Exception):
+        pass
+
+    real_start = DockerWorkspace.start
+
+    def start(self, environment, **kwargs):
+        transport = real_start(self, environment, **kwargs)
+        started.update(env=dict(transport.environment))
+        raise Stop()
+
+    run = str(uuid.uuid4())
+    manifest = {"schema_version": "observer-project-v1", "image": "python@sha256:" + "e" * 64, "run": ["python3"]}
+    participant = {"run_credential": f"obs_{run}." + "p" * 43, "model_base_url": "https://platform.test/m/v1",
+                   "source_digest": "d" * 64, "manifest": manifest}
+    (tmp_path / "project").mkdir()
+    monkeypatch.setattr(job_runner, "TeamEgress", _fake_egress(events))
+    monkeypatch.setattr(job_runner, "_participant_runtime", lambda payload, p, root, http, sealed=None: (
+        DockerWorkspace(tmp_path / "project", job_runner.ProjectManifest.parse(manifest), manifest["image"]),
+        {"OBSERVER_API_URL": "https://platform.test/s", "OBSERVER_RUN_TOKEN": p["run_credential"],
+         "OBSERVER_RUN_ID": run, "OPENAI_BASE_URL": p["model_base_url"], "OPENAI_API_KEY": p["run_credential"],
+         "ANTHROPIC_BASE_URL": "https://platform.test/m", "ANTHROPIC_API_KEY": p["run_credential"]}))
+    monkeypatch.setattr(job_runner, "download_project", lambda *a: ())
+    monkeypatch.setattr(job_runner, "extract_project", lambda files, root: root.mkdir(parents=True))
+    monkeypatch.setattr(job_runner, "is_v4_bundle", lambda root: True)
+    monkeypatch.setattr(DockerWorkspace, "pull", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "build", lambda self: None)
+    monkeypatch.setattr(DockerWorkspace, "start", start)
+    payload = {"run_id": run, "run_credential": f"obs_{run}." + "e" * 43, "session_url": "https://platform.test/s",
+               "scenario_url": "https://platform.test/c", "scenario_digest": "c" * 64, "runtime_seconds": 900,
+               "archive_url": "https://platform.test/a", "colocated": participant, "model_disabled": True,
+               **({"team_egress": {"environment": {"STRATEGY": "rules"}, "secrets": [], "domains": [], "open": True}}
+                  if team else {})}
+    with pytest.raises(job_runner.ProjectJobFailure):
+        job_runner.engine_job(payload, tmp_path, job_runner.Http(local=False))
+    env = started["env"]
+    assert env["OBSERVER_MODEL_DISABLED"] == "1"
+    assert not {"OPENAI_API_KEY", "OPENAI_BASE_URL", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL"} & set(env)
+    assert env["OBSERVER_RUN_ID"] == run
+    if team:
+        assert env["STRATEGY"] == "rules"
+    # Without the flag nothing changes.
+    assert job_runner._without_model({}, {"OPENAI_API_KEY": "k"}) == {"OPENAI_API_KEY": "k"}
+
+
 def test_docker_start_merges_team_variables_over_the_manifest_and_redacts_secrets(tmp_path):
     from project_platform.docker_runtime import DockerWorkspace
     from project_platform.manifest import ProjectManifest, ProjectError

@@ -187,6 +187,14 @@
   "en": "Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
   "zh": "变量名或值不符合要求：变量名使用大写字母、数字和下划线，不能使用平台保留的名称；值不能为空且不超过 8 KB。"
  },
+ "no_model_not_available": {
+  "en": "\"Without a model\" (--no-model) is only for project evaluations in the online competition and practice, not the hidden final.",
+  "zh": "「本次不提供模型」（--no-model）只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。"
+ },
+ "team_variable_not_found": {
+  "en": "No team variable with this name. See survey26 env show.",
+  "zh": "没有这个名称的队伍变量，可用 survey26 env show 查看。"
+ },
  "team_variable_limit": {
   "en": "The variable limit has been reached; delete a variable you no longer use first.",
   "zh": "变量数量已达上限，请先删除不再使用的变量。"
@@ -226,6 +234,10 @@
  "upload_not_finished": {
   "en": "The file has not finished uploading yet. Wait a moment and try again.",
   "zh": "文件还没有上传完成，请稍等再试一次。"
+ },
+ "zip_has_no_code": {
+  "en": "No code files were found in the ZIP. Make sure you zipped the folder that contains your program, or start from an official example (the examples include observer.project.json).",
+  "zh": "压缩包里没有找到代码文件。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。"
  },
  "portal_unavailable": {
   "en": "Could not reach the server. Check your connection and try again.",
@@ -414,9 +426,5 @@
  "user_not_found": {
   "en": "No such person.",
   "zh": "找不到这个人。"
- },
- "zip_has_no_code": {
-  "en": "No code files were found in the ZIP. Make sure you zipped the folder that contains your program, or start from an official example (the examples include observer.project.json).",
-  "zh": "压缩包里没有找到代码文件。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。"
  }
 }

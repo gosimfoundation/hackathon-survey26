@@ -148,6 +148,7 @@ Coding Plan (see https://www.kimi.com/code/docs/en/):
   `https://api.kimi.ai/coding/v1` for the overseas endpoint).
 - `OPENAI_API_KEY` -- credential for that endpoint (`KIMI_API_KEY` also accepted).
 - `OPENAI_MODEL` -- defaults to `k3`.
+- `OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): the agent needs no key and runs on its rules only, so you can compare with and without an LLM.
 
 To try it locally:
 

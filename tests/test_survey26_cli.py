@@ -198,7 +198,7 @@ def test_evaluate_again_needs_yes_and_sends_confirm_repeat(gw, capsys):
     assert code == 2 and "portal:evaluate" not in gw.ops()
     code, doc = run_json(capsys, "eval", "start", "33339", "--yes")
     assert code == 0 and doc["data"] == {"batch_id": BATCH, "phase_id": PHASE, "phase": "practice-projects",
-                                         "revision_id": REV2, "repeat": True}
+                                         "revision_id": REV2, "repeat": True, "model_disabled": False}
     sent = [r["body"]["fields"] for r in gw.requests if r["body"]["op"] == "portal"][-1]
     assert sent == {"action": "evaluate", "phase_id": PHASE, "revision_id": REV2, "confirm_repeat": True}
 
@@ -253,7 +253,10 @@ def test_download_all_orders_cards_flattens_and_reports_failures(gw, capsys, tmp
     code, doc = run_json(capsys, "results", "download-all", "latest", "-o", "all.zip")
     assert code == 0 and doc["data"]["errors"] == ["2-practice-beta: result_not_ready"]
     with zipfile.ZipFile(tmp_path / "all.zip") as z:
-        assert sorted(z.namelist()) == ["1-practice-alpha/decisions.csv", "1-practice-alpha/result.json", "errors.txt"]
+        assert sorted(z.namelist()) == ["1-practice-alpha/decisions.csv", "1-practice-alpha/result.json", "errors.txt",
+                                        "evaluation.json"]
+        meta = json.loads(z.read("evaluation.json"))
+        assert meta["model_provided"] is True and meta["model_disabled"] is False and meta["evaluation_id"] == BATCH
 
 
 def test_single_result_and_agent_log(gw, capsys, tmp_path):

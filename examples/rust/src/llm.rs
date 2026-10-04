@@ -58,11 +58,15 @@ impl LlmClient {
     /// callers are expected to log it and exit rather than start a run that
     /// cannot plan.
     pub fn from_env() -> Result<LlmClient, String> {
+        // OBSERVER_MODEL_DISABLED=1 (an evaluation without a model): no key needed, every
+        // question takes the rule-based path (no calls allowed).
+        let disabled = env::var("OBSERVER_MODEL_DISABLED").map(|v| v == "1").unwrap_or(false);
         let api_key = env::var("OPENAI_API_KEY")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .or_else(|| env::var("KIMI_API_KEY").ok().filter(|s| !s.trim().is_empty()))
             .map(|s| s.trim().to_string())
+            .or_else(|| if disabled { Some(String::new()) } else { None })
             .ok_or_else(|| "missing API key: set OPENAI_API_KEY".to_string())?;
         let base_url = env::var("OPENAI_BASE_URL")
             .ok()
@@ -84,6 +88,7 @@ impl LlmClient {
             .and_then(|s| s.trim().parse().ok())
             .filter(|&n| n > 0)
             .unwrap_or(100);
+        let max_calls = if disabled { 0 } else { max_calls };
         Ok(LlmClient {
             base_url,
             api_key,

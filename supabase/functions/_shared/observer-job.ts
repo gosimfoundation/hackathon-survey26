@@ -157,6 +157,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "run_credential",
       "model_base_url",
       "team_egress",
+      "model_disabled",
     ],
     engine: [
       "kind",
@@ -174,6 +175,7 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
       "restricted_egress",
       "result_key",
       "team_egress",
+      "model_disabled",
     ],
     // The independent rescore: the scenario and the run's stored result, no
     // session capability (a score job can never publish or finish a session).
@@ -286,6 +288,11 @@ export function validateJobPayload(payload: unknown, expected: WorkflowIdentity,
     if (kind === "engine" && value.colocated === undefined) throw new ProxyError(503, "invalid_job_payload");
     validateTeamEgress(value.team_egress);
   }
+  // An evaluation without a model: only `true`, and only where a participant container runs.
+  if (
+    value.model_disabled !== undefined &&
+    (value.model_disabled !== true || (kind === "engine" && value.colocated === undefined))
+  ) throw new ProxyError(503, "invalid_job_payload");
   // Model-proxy-only egress for the colocated participant container.
   if (kind === "engine" && value.restricted_egress !== undefined && value.restricted_egress !== true) {
     throw new ProxyError(503, "invalid_job_payload");

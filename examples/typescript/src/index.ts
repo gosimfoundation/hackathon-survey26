@@ -28,7 +28,7 @@ import {
 } from "./protocol";
 import { AgentState } from "./state";
 import { Planner } from "./planner";
-import { LLMAdvisor, configError } from "./llmClient";
+import { LLMAdvisor, configError, modelDisabled } from "./llmClient";
 import { RunMemory } from "./memory";
 import { deterministicFallback, validateAction } from "./validate";
 import { formatUtc, parseUtc } from "./skymath";
@@ -244,6 +244,7 @@ async function main(): Promise<number> {
     log(`agent: ${configProblem}`);
     return 1;
   }
+  if (modelDisabled()) log("agent: OBSERVER_MODEL_DISABLED=1, running rules only (no model calls)");
 
   const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   let agent: Agent | null = null;

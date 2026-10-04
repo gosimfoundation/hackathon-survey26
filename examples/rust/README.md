@@ -119,6 +119,7 @@ Configuration (see `.env.example`):
 - **Key**: `OPENAI_API_KEY`, or `KIMI_API_KEY` as an alternative name for a
   Kimi-only key. Neither set -> the agent logs `missing API key: set
   OPENAI_API_KEY` and exits before reading anything from stdin.
+- `OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): the agent needs no key and runs on its rules only, so you can compare with and without an LLM.
 - **Endpoint/model**: default to the Kimi Coding Plan
   (https://www.kimi.com/code/docs/en/), an OpenAI-compatible chat-completions
   API: base URL `https://api.kimi.com/coding/v1`, model `k3`. Set
