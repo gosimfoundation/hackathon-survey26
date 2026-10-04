@@ -4,7 +4,7 @@ import { boundedJson, decryptCredential, encryptCredential, ProxyError } from ".
 import { publicBase, type Resolver } from "./observer-public-base.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { sourceRepository } from "./observer-github.ts";
-import { fetchArchive, resultDownloadPath, resultWithAgentLog } from "./observer-agent-log.ts";
+import { fetchArchive, resultCopy, type ResultStorage, storedAgentLog } from "./observer-agent-log.ts";
 import { validTeamDomain, validTeamVariableName } from "./observer-job.ts";
 
 type Dependencies = {
@@ -363,62 +363,58 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
       failure(error);
       if (!data?.result_path) throw new ProxyError(404, "result_not_ready");
       const path: string = data.result_path;
-      let url: string;
-      if (path.startsWith("github:")) {
-        if (!d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
-        url = await d.artifactDownload(path);
-      } else {
-        const signed = await staging.createSignedUrl(path, 120, { download: "observer-result.zip" });
-        failure(signed.error);
-        url = signed.data!.signedUrl;
-      }
-      try {
-        const combined = await resultWithAgentLog(
-          run,
-          async () => {
-            if (path.startsWith("github:")) return await fetchArchive(url, d.fetchArchive);
-            const stored = await staging.download(path);
-            if (stored.error || !stored.data) throw new Error("result_download_failed");
-            return new Uint8Array(await stored.data.arrayBuffer());
-          },
-          {
-            download: async (name) => {
-              const { data, error } = await staging.download(name);
-              return error || !data ? null : new Uint8Array(await data.arrayBuffer());
-            },
-            upload: async (name, bytes) => {
-              const { error } = await staging.upload(name, bytes, { contentType: "application/zip", upsert: true });
-              if (error) throw new Error("result_upload_failed");
-            },
-            sign: async (name) => {
-              const { data, error } = await staging.createSignedUrl(name, 120, { download: "observer-result.zip" });
-              if (error || !data) throw new Error("result_sign_failed");
-              return data.signedUrl;
-            },
-          },
-        );
-        if (combined) return { url: combined };
-      } catch {
-        // The log is a convenience; the trusted result stays downloadable.
-        console.warn("observer-portal: agent.log could not be added to the result download");
-      }
-      if (path.startsWith("github:")) {
-        // codeload.github.com only allows cross-origin reads from GitHub's own
-        // origins, so the site's "download all results (ZIP)" cannot fetch() it.
-        // Serve the same bytes from our storage, whose signed URLs allow CORS.
+      const github = path.startsWith("github:");
+      if (github && !d.artifactDownload) throw new ProxyError(503, "artifact_service_unavailable");
+      const sign = async (name: string) => {
+        const { data, error } = await staging.createSignedUrl(name, 120, { download: "observer-result.zip" });
+        return error || !data ? null : data.signedUrl;
+      };
+      // The GitHub URL is looked up only when no stored copy exists yet; a copy is
+      // keyed by run + result reference + agent.log, so repeat downloads (and the
+      // site's "download all results") never re-fetch from GitHub.
+      let githubUrl: Promise<string> | undefined;
+      const githubLink = () => githubUrl ??= d.artifactDownload!(path);
+      let source: Promise<Uint8Array> | undefined;
+      const result = () =>
+        source ??= (async () => {
+          if (github) return await fetchArchive(await githubLink(), d.fetchArchive);
+          const stored = await staging.download(path);
+          if (stored.error || !stored.data) throw new Error("result_download_failed");
+          return new Uint8Array(await stored.data.arrayBuffer());
+        })();
+      const storage: ResultStorage = {
+        download: async (name) => {
+          const { data, error } = await staging.download(name);
+          return error || !data ? null : new Uint8Array(await data.arrayBuffer());
+        },
+        upload: async (name, bytes) => {
+          const { error } = await staging.upload(name, bytes, { contentType: "application/zip", upsert: true });
+          if (error) throw new Error("result_upload_failed");
+        },
+        sign,
+      };
+      const log = await storedAgentLog(run, storage).catch(() => null);
+      // The log is a convenience: without it the same result is served. codeload.github.com
+      // only allows cross-origin reads from GitHub's own origins, so a GitHub result is
+      // served from our storage, whose signed URLs allow CORS.
+      if (log) {
         try {
-          const copy = resultDownloadPath(run);
-          const archive = await fetchArchive(url, d.fetchArchive);
-          const { error } = await staging.upload(copy, archive, { contentType: "application/zip", upsert: true });
-          if (error) throw error;
-          const signed = await staging.createSignedUrl(copy, 120, { download: "observer-result.zip" });
-          if (signed.error || !signed.data) throw signed.error;
-          return { url: signed.data.signedUrl };
+          return { url: await resultCopy(run, path, log, result, storage) };
+        } catch {
+          console.warn("observer-portal: agent.log could not be added to the result download");
+        }
+      }
+      if (github) {
+        try {
+          return { url: await resultCopy(run, path, null, result, storage) };
         } catch {
           console.warn("observer-portal: result could not be copied to storage; serving the GitHub URL");
         }
+        return { url: await githubLink() };
       }
-      return { url };
+      const signed = await staging.createSignedUrl(path, 120, { download: "observer-result.zip" });
+      failure(signed.error);
+      return { url: signed.data!.signedUrl };
     }
     case "accept_csv": {
       const run = uuid(body.run_id);

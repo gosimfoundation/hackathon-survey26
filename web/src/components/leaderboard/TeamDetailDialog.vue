@@ -3,7 +3,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
 import type { BoardCard, LeaderboardEntry } from '../../lib/data'
-import { fmtUtc, num, pct } from '../../lib/format'
+import { fmtUtc, githubHandle, num, pct } from '../../lib/format'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // One team's line on the board, opened from the chart or the table. Only what the board already
@@ -14,7 +14,7 @@ const emit = defineEmits<{ close: [] }>()
 const { t, tf, pick, locale } = useI18n()
 const closeBtn = ref<HTMLButtonElement | null>(null)
 
-const handle = computed(() => (props.entry?.leader_github || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\/.*$/, ''))
+const handle = computed(() => githubHandle(props.entry?.leader_github))
 const parts = computed(() => {
   const e = props.entry
   if (!e) return []

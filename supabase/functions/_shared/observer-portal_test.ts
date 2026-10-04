@@ -145,6 +145,7 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
   const encode = (s: string) => new TextEncoder().encode(s);
   const objects = new Map<string, Uint8Array>();
   const signed: string[] = [];
+  let github = 0;
   const result = await singleFileZip("decisions.csv", encode("night,action\n"));
   const client = (visible: boolean) =>
     ({
@@ -179,8 +180,10 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
               objects.set(path, data);
               return Promise.resolve({ data: { path }, error: null });
             },
+            // Like Supabase Storage: signing a missing object is an error.
             createSignedUrl: (path: string, seconds: number) => {
               assert(seconds <= 120);
+              if (!objects.has(path)) return Promise.resolve({ data: null, error: { message: "Object not found" } });
               signed.push(path);
               return Promise.resolve({ data: { signedUrl: "https://storage.test/" + path }, error: null });
             },
@@ -203,6 +206,7 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
         httpBases: [],
         artifactDownload: (reference) => {
           assert(reference.startsWith("github:"));
+          github++;
           return Promise.resolve("https://codeload.github.com/result.zip");
         },
         fetchArchive: (url) => {
@@ -211,25 +215,36 @@ Deno.test("result download adds the team's stored agent.log, or falls back to th
         },
       },
     );
+  const copies = () => [...objects.keys()].filter((k) => k.includes("/observer-result-"));
+  const stored = (response: unknown) =>
+    objects.get((response as { url: string }).url.replace("https://storage.test/", ""))!;
   // Another team's run is invisible before any service storage read.
   await assertRejects(() => download(false), ProxyError, "result_not_ready");
-  assertEquals(signed, []);
+  assertEquals([signed, github], [[], 0]);
   // No stored log (local session, older run): the original result, unchanged, but served
   // from storage so the browser may read it cross-origin (codeload.github.com refuses CORS).
-  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
-  assertEquals(objects.get("agent-logs/" + run + "/observer-result.zip"), result);
+  const plain = await download();
+  assert((plain as { url: string }).url.startsWith("https://storage.test/agent-logs/" + run + "/observer-result-"));
+  assertEquals(stored(plain), result);
+  assertEquals(github, 1);
+  // A repeat download reuses the stored copy without asking GitHub again.
+  assertEquals(await download(), plain);
+  assertEquals([github, copies().length], [1, 1]);
   objects.set(
     "agent-logs/" + run + "/agent-log.zip",
     await singleFileZip("agent.log", encode("[platform] project stderr\nhello\n")),
   );
-  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
-  const combined = objects.get("agent-logs/" + run + "/observer-result.zip")!;
+  const withLog = await download();
+  assert(withLog !== plain);
+  const combined = stored(withLog);
   assertEquals(new TextDecoder().decode((await readZipEntry(combined, "agent.log", 1000))!).endsWith("hello\n"), true);
   assertEquals(new TextDecoder().decode((await readZipEntry(combined, "decisions.csv", 1000))!), "night,action\n");
+  assertEquals(await download(), withLog);
+  assertEquals(github, 2);
   // A damaged stored log never blocks the trusted result.
   objects.set("agent-logs/" + run + "/agent-log.zip", encode("damaged"));
-  assertEquals(await download(), { url: "https://storage.test/agent-logs/" + run + "/observer-result.zip" });
-  assertEquals(objects.get("agent-logs/" + run + "/observer-result.zip"), result);
+  assertEquals(await download(), plain);
+  assertEquals(github, 2);
 });
 
 Deno.test("the final version is set or cleared through the caller's team RPC", async () => {

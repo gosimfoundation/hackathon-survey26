@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../src/lib/projectText.ts'
+import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../src/lib/projectText.ts'
+import { bytes, githubHandle } from '../src/lib/format.ts'
 
 test('dates follow the page language instead of the browser default', () => {
   const value = '2026-09-26T11:00:37Z'
@@ -63,4 +64,42 @@ test('a combined-results ZIP folder name is ascii-safe and never collides with a
   assert.equal(cardFolderName('', 'run-1'), 'run-1')
   assert.equal(cardFolderName('练习卡 α', 'run-1'), 'run-1')
   assert.equal(cardFolderName('scenario/with slashes', 'run-1'), 'scenario-with-slashes')
+})
+
+test('the combined results ZIP keeps card order and drops the runner repository folder', () => {
+  assert.deepEqual(['practice-alpha', 'practice-beta', 'practice-gamma', 'practice-delta'].map((f, i) => orderedCardFolder(i, 4, f)),
+    ['1-practice-alpha', '2-practice-beta', '3-practice-gamma', '4-practice-delta'])
+  assert.equal(orderedCardFolder(0, 12, 'a'), '01-a')
+  const wrapped = { 'org-runner-abc123/': 'dir', 'org-runner-abc123/decisions.csv': 'csv', 'org-runner-abc123/replay/frames.json': 'frames', 'agent.log': 'log' }
+  assert.deepEqual(flattenResultEntries(wrapped), { 'decisions.csv': 'csv', 'replay/frames.json': 'frames', 'agent.log': 'log' })
+  assert.deepEqual(flattenResultEntries({ 'org-runner-abc123/decisions.csv': 'csv', 'org-runner-abc123/agent.log': 'log' }),
+    { 'decisions.csv': 'csv', 'agent.log': 'log' })
+  // Already flat, or several top-level entries: unchanged.
+  const flat = { 'decisions.csv': 'csv', 'replay/frames.json': 'frames', 'agent.log': 'log' }
+  assert.deepEqual(flattenResultEntries(flat), flat)
+  const two = { 'a/x.csv': 'x', 'b/y.csv': 'y' }
+  assert.deepEqual(flattenResultEntries(two), two)
+})
+
+test('the review hides the internally normalised interface version', () => {
+  const manifest = { schema_version: 1, protocol: 'jsonl-v2', run: ['python', 'agent.py'] }
+  assert.deepEqual(manifestForDisplay(manifest), { schema_version: 1, run: ['python', 'agent.py'] })
+  assert.equal(JSON.stringify(manifestForDisplay(manifest)).includes('jsonl'), false)
+  assert.equal(manifest.protocol, 'jsonl-v2')
+  assert.equal(manifestForDisplay(null), null)
+})
+
+test('file sizes use readable units', () => {
+  assert.equal(bytes(512), '512 B')
+  assert.equal(bytes(44 * 1024), '44.0 KB')
+  assert.equal(bytes(3 * 1024 * 1024), '3.0 MB')
+})
+
+test('only valid GitHub usernames are used for avatars', () => {
+  for (const [input, handle] of [['octocat', 'octocat'], ['@octo-cat', 'octo-cat'], ['https://github.com/octocat/repo', 'octocat'], ['  octocat ', 'octocat']]) {
+    assert.equal(githubHandle(input), handle)
+  }
+  for (const input of ['张三', 'John Smith', '-bad', 'a'.repeat(40), 'name_with_underscore', '', null, undefined]) {
+    assert.equal(githubHandle(input), '')
+  }
 })

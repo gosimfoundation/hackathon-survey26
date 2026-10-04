@@ -11,7 +11,8 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition } from '../../stores/competition'
 import { canChooseFinal, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
-import { canPrepareAgain, cardFolderName, formatDailyReset, formatDateTime, revisionErrorText } from '../../lib/projectText'
+import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
+import { bytes } from '../../lib/format'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 const { pick, t, tf, locale } = useI18n()
 const { team, refreshMeCached } = useAuth()
@@ -379,17 +380,17 @@ function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
   return [...runs].sort((a, b) => scenarioOrder(scenarioNames.value[a.scenario_id]?.slug ?? '') - scenarioOrder(scenarioNames.value[b.scenario_id]?.slug ?? ''))
 }
 async function downloadAllResults(batch: { id: string; observer_runs: { id: string; scenario_id: string; result_path: string | null }[] }) {
-  const runs = batch.observer_runs.filter(r => r.result_path)
+  const runs = sortedRuns(batch.observer_runs.filter(r => r.result_path))
   if (!runs.length || zipProgress.value[batch.id]) return
   const outcome = (text: string, failed: boolean) => { zipOutcome.value = { ...zipOutcome.value, [batch.id]: { text, failed } } }
   const cleared = { ...zipOutcome.value }; delete cleared[batch.id]; zipOutcome.value = cleared
   zipProgress.value = { ...zipProgress.value, [batch.id]: { done: 0, total: runs.length } }
   try {
     const { unzipSync, zipSync, strToU8 } = await import('fflate')
-    const files: Record<string, Uint8Array> = {}
-    const errors: string[] = []
-    for (const run of runs) {
-      const folder = cardFolder(run)
+    // Cards download in parallel; each one counts as soon as it arrives. The combined ZIP
+    // still lists them in card order (α β γ δ / A B C D), one numbered folder per card.
+    const cards = await Promise.all(runs.map(async (run, index) => {
+      const folder = orderedCardFolder(index, runs.length, cardFolder(run))
       try {
         // One retry with a fresh signed URL: a single dropped connection (seen as
         // "Failed to fetch" / QUIC errors on flaky networks) should not lose a card.
@@ -399,14 +400,19 @@ async function downloadAllResults(batch: { id: string; observer_runs: { id: stri
           if (!res.ok) throw new Error(`http_${res.status}`)
           return new Uint8Array(await res.arrayBuffer())
         }
-        const inner = unzipSync(await fetchCard().catch(fetchCard))
-        for (const [name, bytes] of Object.entries(inner)) { if (!name.endsWith('/')) files[`${folder}/${name}`] = bytes }
+        return { folder, entries: flattenResultEntries(unzipSync(await fetchCard().catch(fetchCard))) }
       } catch (e) {
-        errors.push(`${folder}: ${e instanceof Error ? e.message : 'download_failed'}`)
+        return { folder, error: e instanceof Error ? e.message : 'download_failed' }
       } finally {
         const prev = zipProgress.value[batch.id]
         zipProgress.value = { ...zipProgress.value, [batch.id]: { done: (prev?.done ?? 0) + 1, total: runs.length } }
       }
+    }))
+    const files: Record<string, Uint8Array> = {}
+    const errors: string[] = []
+    for (const card of cards) {
+      if ('error' in card) { errors.push(`${card.folder}: ${card.error}`); continue }
+      for (const [name, content] of Object.entries(card.entries)) files[`${card.folder}/${name}`] = content
     }
     if (!Object.keys(files).length) { outcome(words.value.downloadAllFailed, true); return }
     if (errors.length) files['errors.txt'] = strToU8(errors.join('\n') + '\n')
@@ -525,7 +531,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <label class="check"><input v-model="form.kind" type="radio" value="zip">{{ words.zip }}</label>
         <label v-if="form.kind === 'repository'" class="field"><span>{{ words.repository }}</span><input v-model="form.url" type="url" required placeholder="https://github.com/owner/project" data-testid="project-url"></label>
         <label v-else class="field border border-dashed border-border-subtle p-5"><span>{{ words.file }}</span><input type="file" accept=".zip,application/zip" required data-testid="project-zip" @change="selectedFile = ($event.target as HTMLInputElement).files?.[0] ?? null"></label>
-        <p v-if="form.kind === 'zip' && selectedFile" class="help mt-2" data-testid="project-zip-selected">{{ words.fileSelected }}: {{ selectedFile.name }} · {{ (selectedFile.size / 1048576).toFixed(1) }} MB</p>
+        <p v-if="form.kind === 'zip' && selectedFile" class="help mt-2" data-testid="project-zip-selected">{{ words.fileSelected }}: {{ selectedFile.name }} · {{ bytes(selectedFile.size) }}</p>
         <p v-if="uploadPercent != null" class="help mt-2" role="status" data-testid="project-upload-progress">
           {{ words.uploading.replace('{n}', String(uploadPercent)) }}
           <progress class="upload-progress" :value="uploadPercent" max="100"></progress>
@@ -561,7 +567,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </div>
         <p class="mt-4">{{ words.explain }}: {{ review.explanation }}</p>
         <p class="help break-all">{{ words.original }}: {{ review.source_digest }}</p>
-        <h3 class="mt-5">{{ words.manifest }}</h3><pre>{{ JSON.stringify(review.manifest, null, 2) }}</pre>
+        <h3 class="mt-5">{{ words.manifest }}</h3><pre>{{ JSON.stringify(manifestForDisplay(review.manifest), null, 2) }}</pre>
         <h3 class="mt-5">{{ words.changes }}</h3><p v-if="!Object.keys(review.adapter_files).length" class="help">{{ words.unchanged }}</p>
         <div v-for="(code, path) in review.adapter_files" :key="path"><h4 class="break-all">{{ path }}</h4><pre>{{ code }}</pre></div>
         <template v-if="review.status === 'reviewable' && !review.archived_at"><label class="check mt-4"><input v-model="confirmed" type="checkbox" data-testid="project-confirm">{{ words.check }}</label>
