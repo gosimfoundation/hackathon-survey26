@@ -3,14 +3,14 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 
 // Competition numbers as configured for the phases (scripts/configure-v4-phases.py) and stated on the Rules page:
-// online cards A–D, 900 s per card, 12 evaluations per team per day; final ranking = mean over the hidden cards E–H.
+// online cards A–D, 900 s per card, 40 evaluations per team per day; final ranking = mean over the hidden cards E–H.
 const load = (locale: string) => JSON.parse(readFileSync(new URL(`../src/i18n/${locale}.json`, import.meta.url), 'utf8'))
 const get = (o: any, path: string) => path.split('.').reduce((v, k) => v?.[k], o)
 const KEYS = ['leaderboard.public_board', 'leaderboard.final_board', 'leaderboard.mean_note', 'leaderboard.detail.board_mean',
   'home.leaderboard.lede', 'home.submission.items.1.desc', 'faq.items.5.a', 'faq.items.7.a', 'faq.items.8.a']
 
-test('competition copy describes cards A-D, 900 s, 12 evaluations a day and the hidden cards E-H', () => {
-  for (const [locale, perDay] of [['en', /12 evaluations per team per day/], ['zh', /每队每天 12 次评测/]] as const) {
+test('competition copy describes cards A-D, 900 s, 40 evaluations a day and the hidden cards E-H', () => {
+  for (const [locale, perDay] of [['en', /40 evaluations per team per day/], ['zh', /每队每天 40 次评测/]] as const) {
     const m = load(locale)
     const text = KEYS.map(k => String(get(m, k))).join('\n')
     assert.match(get(m, 'leaderboard.public_board'), /A–D/)
