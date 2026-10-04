@@ -13,34 +13,57 @@ function run(value: string) {
 }
 /** Written only by the job API for the executor's own claimed run. */
 export const agentLogPath = (id: string) => "agent-logs/" + run(id) + "/agent-log.zip";
-/** A service-written copy of the result with agent.log, served by short signed URL. */
-export const resultDownloadPath = (id: string) => "agent-logs/" + run(id) + "/observer-result.zip";
 
 export type ResultStorage = {
   download: (path: string) => Promise<Uint8Array | null>;
   upload: (path: string, data: Uint8Array) => Promise<void>;
-  sign: (path: string) => Promise<string>;
+  /** Short signed URL for an existing object, or null when there is none. */
+  sign: (path: string) => Promise<string | null>;
 };
 
-/**
- * Returns a signed URL for the result with agent.log added, or null when the
- * run has no stored log (local sessions, older runs) so the caller keeps the
- * original result URL. The result bytes come from trusted storage only.
- */
-export async function resultWithAgentLog(
-  id: string,
-  result: () => Promise<Uint8Array>,
-  storage: ResultStorage,
-): Promise<string | null> {
+/** The team's stored agent.log for a run, or null (local sessions, older runs, damaged log). */
+export async function storedAgentLog(id: string, storage: ResultStorage): Promise<Uint8Array | null> {
   const stored = await storage.download(agentLogPath(id));
   if (!stored || stored.length > AGENT_LOG_BYTES + 65536) return null;
-  const log = await readZipEntry(stored, "agent.log", AGENT_LOG_BYTES * 3);
-  if (!log) return null;
+  return await readZipEntry(stored, "agent.log", AGENT_LOG_BYTES * 3).catch(() => null);
+}
+
+/**
+ * Name of the service-written, downloadable copy of one run's result. It is keyed by
+ * the result reference (a GitHub commit or storage path) and the exact agent.log
+ * added, so a copy found under this name is the current one and is reused as is.
+ */
+export async function resultCopyPath(id: string, reference: string, log: Uint8Array | null): Promise<string> {
+  const head = new TextEncoder().encode(reference + (log ? "\0log\0" : "\0none"));
+  const input = new Uint8Array(head.length + (log?.length ?? 0));
+  input.set(head);
+  if (log) input.set(log, head.length);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", input));
+  const key = Array.from(digest.slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
+  return "agent-logs/" + run(id) + "/observer-result-" + key + ".zip";
+}
+
+/**
+ * Signed URL of the result copy (with agent.log when given). An existing copy is
+ * signed straight away; otherwise the result is read once from trusted storage or
+ * GitHub, completed and stored. Signed storage URLs are readable cross-origin.
+ */
+export async function resultCopy(
+  id: string,
+  reference: string,
+  log: Uint8Array | null,
+  result: () => Promise<Uint8Array>,
+  storage: ResultStorage,
+): Promise<string> {
+  const copy = await resultCopyPath(id, reference, log);
+  const existing = await storage.sign(copy);
+  if (existing) return existing;
   const archive = await result();
-  if (archive.length > RESULT_ARCHIVE_BYTES) return null;
-  const merged = await appendZipEntry(archive, "agent.log", log);
-  await storage.upload(resultDownloadPath(id), merged);
-  return await storage.sign(resultDownloadPath(id));
+  if (archive.length > RESULT_ARCHIVE_BYTES) throw new Error("result_too_large");
+  await storage.upload(copy, log ? await appendZipEntry(archive, "agent.log", log) : archive);
+  const url = await storage.sign(copy);
+  if (!url) throw new Error("result_sign_failed");
+  return url;
 }
 
 /** Bounded GET of a signed archive URL, without forwarding credentials or following redirects. */

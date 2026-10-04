@@ -93,3 +93,35 @@ export function cardFolderName(slug: string | null | undefined, fallback: string
   const folder = String(slug ?? '').replace(/^v4-/, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
   return folder || fallback
 }
+
+/** Folder for the card at `index` (0-based, in card order) of `total`: a numeric prefix keeps
+ * α β γ δ / A B C D in card order in every file manager, which sorts folders by name. */
+export function orderedCardFolder(index: number, total: number, folder: string): string {
+  return `${String(index + 1).padStart(String(total).length, '0')}-${folder}`
+}
+
+/** One card's result files for the combined ZIP. A result kept on GitHub arrives wrapped in a
+ * single long "<runner repository>-<commit>/" folder; that level is dropped so the files sit
+ * directly in the card folder. Contents are untouched; other layouts are returned as they are. */
+export function flattenResultEntries<T>(entries: Record<string, T>): Record<string, T> {
+  const names = Object.keys(entries).filter(name => !name.endsWith('/'))
+  const nested = names.filter(name => name.includes('/'))
+  const tops = new Set(nested.map(name => name.slice(0, name.indexOf('/') + 1)))
+  // agent.log may sit at the root beside the wrapped files; anything else at the root means no wrapper.
+  const wrapped = tops.size === 1 && names.every(name => name.includes('/') || name === 'agent.log')
+  const top = wrapped ? [...tops][0]! : ''
+  const out: Record<string, T> = {}
+  for (const name of names) {
+    const flat = top && name.startsWith(top) ? name.slice(top.length) : name
+    if (!(flat in out) || name === flat) out[flat] = entries[name]!
+  }
+  return out
+}
+
+/** Execution settings as shown in the review. The platform normalises the declared interface
+ * version internally, so that field is left out rather than shown as a different value. */
+export function manifestForDisplay(manifest: unknown): unknown {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return manifest
+  const { protocol: _internal, ...shown } = manifest as Record<string, unknown>
+  return shown
+}

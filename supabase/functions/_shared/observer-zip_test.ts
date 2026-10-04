@@ -1,6 +1,6 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { appendZipEntry, crc32, readZipEntry, singleFileZip, ZipError } from "./observer-zip.ts";
-import { agentLogPath, resultWithAgentLog } from "./observer-agent-log.ts";
+import { agentLogPath, resultCopy, resultCopyPath, storedAgentLog } from "./observer-agent-log.ts";
 
 const encode = (s: string) => new TextEncoder().encode(s);
 const decode = (b: Uint8Array | null) => new TextDecoder().decode(b!);
@@ -84,16 +84,19 @@ Deno.test("flat archives get agent.log at the root; malformed archives are refus
   await assertRejects(() => appendZipEntry(truncated, "agent.log", encode("x")), ZipError);
 });
 
-Deno.test("the result download is completed only when a stored log exists", async () => {
+Deno.test("the result copy is completed with a stored log and reused for the same result and log", async () => {
   const run = "00000000-0000-4000-8000-000000000002";
+  const reference = "github:ORG/runner@" + "a".repeat(40);
   const objects = new Map<string, Uint8Array>();
+  const uploads: string[] = [];
   const storage = {
     download: (path: string) => Promise.resolve(objects.get(path) ?? null),
     upload: (path: string, data: Uint8Array) => {
+      uploads.push(path);
       objects.set(path, data);
       return Promise.resolve();
     },
-    sign: (path: string) => Promise.resolve("https://storage.test/sign/" + path),
+    sign: (path: string) => Promise.resolve(objects.has(path) ? "https://storage.test/sign/" + path : null),
   };
   const result = await singleFileZip("decisions.csv", encode("night,action\n"));
   let fetched = 0;
@@ -101,12 +104,26 @@ Deno.test("the result download is completed only when a stored log exists", asyn
     fetched++;
     return Promise.resolve(result);
   };
-  assertEquals(await resultWithAgentLog(run, source, storage), null);
-  assertEquals(fetched, 0);
+  assertEquals(await storedAgentLog(run, storage), null);
+  objects.set(agentLogPath(run), encode("damaged"));
+  assertEquals(await storedAgentLog(run, storage), null);
   objects.set(agentLogPath(run), await singleFileZip("agent.log", encode("stderr line\n")));
-  const url = await resultWithAgentLog(run, source, storage);
-  assertEquals(url, "https://storage.test/sign/agent-logs/" + run + "/observer-result.zip");
-  const combined = objects.get("agent-logs/" + run + "/observer-result.zip")!;
+  const log = await storedAgentLog(run, storage);
+  assertEquals(decode(log), "stderr line\n");
+  const copy = await resultCopyPath(run, reference, log);
+  assert(copy.startsWith("agent-logs/" + run + "/observer-result-") && copy.endsWith(".zip"));
+  // Keyed by the result and the exact log: another commit or a newer log gets its own copy.
+  assert(copy !== await resultCopyPath(run, reference, null));
+  assert(copy !== await resultCopyPath(run, "github:ORG/runner@" + "b".repeat(40), log));
+  assert(copy !== await resultCopyPath(run, reference, encode("stderr line\nmore\n")));
+  assertEquals(await resultCopy(run, reference, log, source, storage), "https://storage.test/sign/" + copy);
+  const combined = objects.get(copy)!;
   assertEquals(decode(await readZipEntry(combined, "agent.log", 100)), "stderr line\n");
   assertEquals(decode(await readZipEntry(combined, "decisions.csv", 100)), "night,action\n");
+  // Downloading again signs the stored copy without reading the result again.
+  assertEquals(await resultCopy(run, reference, log, source, storage), "https://storage.test/sign/" + copy);
+  assertEquals([fetched, uploads.length], [1, 1]);
+  // Without a log the copy is the original result, unchanged.
+  const plain = await resultCopy(run, reference, null, source, storage);
+  assertEquals(objects.get(plain.replace("https://storage.test/sign/", "")), result);
 });

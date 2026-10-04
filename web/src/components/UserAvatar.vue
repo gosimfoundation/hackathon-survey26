@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { teamAvatar } from '../lib/format'
+import { githubHandle, teamAvatar } from '../lib/format'
 
 // Uploaded avatar first, then a GitHub photo, then a colored letter disc
-// when there is no handle/upload or the image 404s.
+// when there is no valid handle/upload or the image 404s.
 const props = defineProps<{ name: string; github?: string | null; avatarUrl?: string | null }>()
 const uploadFailed = ref(false)
 const githubFailed = ref(false)
-const handle = computed(() => (props.github || '')
-  .trim()
-  .replace(/^@/, '')
-  .replace(/^https?:\/\/(www\.)?github\.com\//i, '')
-  .replace(/\/.*$/, ''))
+// Only a valid GitHub username is looked up on github.com; anything else uses the letter disc.
+const handle = computed(() => githubHandle(props.github))
 </script>
 
 <template>

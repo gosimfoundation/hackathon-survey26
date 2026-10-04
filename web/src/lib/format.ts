@@ -36,6 +36,15 @@ export function bytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** A GitHub username from a profile field ("@name", "name" or a github.com link), or ''
+ * when it cannot be one (e.g. a Chinese name or a phrase with spaces), so no request is
+ * made to github.com for a handle that does not exist. */
+export function githubHandle(value: string | null | undefined): string {
+  const handle = String(value ?? '').trim().replace(/^@/, '')
+    .replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\/.*$/, '')
+  return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(handle) ? handle : ''
+}
+
 export function teamAvatar(name: string): { initial: string; hue: number } {
   const trimmed = (name || '?').trim()
   let hash = 0
