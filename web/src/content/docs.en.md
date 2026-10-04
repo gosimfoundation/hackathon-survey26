@@ -295,7 +295,7 @@ Whenever the agent needs to make a decision, the system sends a `decision_reques
     "survey_end_utc": "2026-10-08T08:45:00Z",
     "observe_action_index": 0,
     "running_total": 0.0,
-    "wallclock": {"elapsed_seconds": 0.045, "remaining_seconds": 899.955, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002, "wall_remaining_seconds": 1799.95, "clock_mode": "cpu"},
+    "wallclock": {"elapsed_seconds": 0.045, "remaining_seconds": 899.955, "remaining_real_cpu_seconds": 899.955, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002, "wall_remaining_seconds": 1799.95, "clock_mode": "cpu"},
     "latest_bulletin": {
       "record_type": "bulletin",
       "slot_id": "N20261001-S001",
@@ -342,7 +342,7 @@ The meaning of each field is as follows:
 - `now_utc` and `survey_end_utc`: the current simulated time and the end time of the observing period, both in UTC. The example runs one week of observing (October 1 to 8).
 - `observe_action_index`: the number of `observe` actions executed so far.
 - `running_total`: the sum of each target's best score so far; it excludes the `required` penalty, the uniformity penalty, observation-request rewards, and `report` rewards/penalties, so it is not equal to the final score if the run stopped at this instant.
-- `wallclock`: the agent's time budget (see "Time limit" below). `elapsed_seconds` and `remaining_seconds` are the normalized CPU budget used and left; `speed_factor` is the current speed factor; `cpu_seconds` and `wait_seconds` are the real CPU and waiting seconds measured inside the agent's turns so far; `wall_remaining_seconds` is the real time left before the per-card cap; `clock_mode` names the timing rule (`cpu`). CPU time you measure yourself becomes budget seconds after dividing by `speed_factor`.
+- `wallclock`: the agent's time budget (see "Time limit" below). `elapsed_seconds` and `remaining_seconds` are the normalized CPU budget used and left; `speed_factor` is the current speed factor; `cpu_seconds` and `wait_seconds` are the real CPU and waiting seconds measured inside the agent's turns so far; `wall_remaining_seconds` is the real time left before the per-card cap; `clock_mode` names the timing rule (`cpu`). CPU time you measure yourself becomes budget seconds after dividing by `speed_factor`; `remaining_real_cpu_seconds` already gives the remaining budget as real CPU seconds of this machine, comparable with your own CPU-time measurements.
 - `latest_bulletin` and `latest_forecast`: the most recently issued bulletin and the weather/event forecast as of the current moment.
 - `active_requests`: currently issued, not-yet-expired observation requests and their real-time progress; an empty array when there are no active requests.
 - `new_messages`: the complete message objects newly delivered since the last decision request, including bulletins, weather/event forecasts, observation requests, and, when applicable, request settlements, report results, or state resynchronizations. If one action spans multiple issuance times, these messages all arrive together in the next request.

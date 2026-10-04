@@ -296,7 +296,7 @@ $$
     "survey_end_utc": "2026-10-08T08:45:00Z",
     "observe_action_index": 0,
     "running_total": 0.0,
-    "wallclock": {"elapsed_seconds": 0.045, "remaining_seconds": 899.955, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002, "wall_remaining_seconds": 1799.95, "clock_mode": "cpu"},
+    "wallclock": {"elapsed_seconds": 0.045, "remaining_seconds": 899.955, "remaining_real_cpu_seconds": 899.955, "speed_factor": 1.0, "cpu_seconds": 0.045, "wait_seconds": 0.002, "wall_remaining_seconds": 1799.95, "clock_mode": "cpu"},
     "latest_bulletin": {
       "record_type": "bulletin",
       "slot_id": "N20261001-S001",
@@ -343,7 +343,7 @@ $$
 - `now_utc` 和 `survey_end_utc`：当前模拟时间和观测周期结束时间，均使用 UTC。示例中进行了一周观测（10月1日至8日）。
 - `observe_action_index`：截至当前已执行的观测动作数。
 - `running_total`：截至当前各目标最佳得分之和；它不包含 `required` 罚分、均匀度罚分、限时观测请求奖励或 `report` 奖惩，因此不等于此刻停止时的最终总分。
-- `wallclock`：智能体的时间预算（见下文「时间限制」）。`elapsed_seconds`、`remaining_seconds` 是已用和剩余的标准化 CPU 预算；`speed_factor` 是当前速度系数；`cpu_seconds`、`wait_seconds` 是到目前为止在智能体回合内测得的实际 CPU 秒数和等待秒数；`wall_remaining_seconds` 是距每卡实际时间上限的剩余秒数；`clock_mode` 是计时规则（`cpu`）。自行测得的 CPU 时间除以 `speed_factor` 即为预算秒数。
+- `wallclock`：智能体的时间预算（见下文「时间限制」）。`elapsed_seconds`、`remaining_seconds` 是已用和剩余的标准化 CPU 预算；`speed_factor` 是当前速度系数；`cpu_seconds`、`wait_seconds` 是到目前为止在智能体回合内测得的实际 CPU 秒数和等待秒数；`wall_remaining_seconds` 是距每卡实际时间上限的剩余秒数；`clock_mode` 是计时规则（`cpu`）。自行测得的 CPU 时间除以 `speed_factor` 即为预算秒数；`remaining_real_cpu_seconds` 直接给出换算成本机实际 CPU 秒数的剩余预算，可与自己测得的 CPU 时间直接比较。
 - `latest_bulletin` 和 `latest_forecast`：截至当前时刻最新发布的一条公告以及天气和时间预报。
 - `active_requests`：当前已经发布、尚未到期的限时观测请求及其实时进度；没有活动请求时为空数组。
 - `new_messages`：自上次决策请求以来新送达的完整消息对象，包括公告、天气和事件预报、限时观测请求，以及适用时的请求结算、举报结果或状态更正。一次动作若跨过多个发布时间，这些消息会在下次请求中一起送达。
