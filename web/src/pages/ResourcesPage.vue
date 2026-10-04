@@ -8,6 +8,7 @@ import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards
 import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
 import { useFlash } from '../stores/flash'
 import PageHead from '../components/layout/PageHead.vue'
+import { assetUrl } from '../composables/api'
 
 const { t, tf, locale } = useI18n()
 const flash = useFlash()
@@ -26,6 +27,24 @@ const exampleProjects = [
   { lang: 'typescript', name: 'TypeScript', descKey: 'resources.example_typescript_desc', available: true },
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
 ] as const
+
+// Talk recordings are hosted on Bilibili (fast in mainland China) rather than on our own servers.
+// Each player is a click-to-load facade: nothing from bilibili.com loads until the visitor presses play.
+const talks = [
+  {
+    id: 'yifei-luo', date: '2026-10-02', poster: '/media/talks/talk-yifei-luo-20261002.jpg', bvid: 'BV1Q7Hz6SE39',
+    titleKey: 'resources.talk1_title', speakersKey: 'resources.talk1_speakers',
+    extra: { labelKey: 'resources.talk_tencent_replay', href: 'https://voovmeeting.com/crm/8mB9JZwe16' },
+  },
+  {
+    id: 'wang-li', date: '2026-10-03', poster: '/media/talks/talk-wang-li-20261003.jpg', bvid: 'BV18nHz6mEPf',
+    titleKey: 'resources.talk2_title', speakersKey: 'resources.talk2_speakers',
+    extra: null,
+  },
+] as const
+const playingTalks = ref<Record<string, boolean>>({})
+const bilibiliPage = (bvid: string) => `https://www.bilibili.com/video/${bvid}/`
+const bilibiliPlayer = (bvid: string) => `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1`
 
 const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
@@ -101,6 +120,32 @@ onMounted(async () => {
         </div>
       </div>
 
+      <div id="talks" class="flow-band reveal mt-16">
+        <div class="flow-head"><div><h2>{{ t('resources.flow_talks') }}</h2><p>{{ t('resources.flow_talks_hint') }}</p></div></div>
+        <div class="talk-list">
+          <article v-for="talk in talks" :key="talk.id" class="talk-item" :data-testid="`talk-${talk.id}`">
+            <span class="label accent">{{ talk.date }}</span>
+            <h3 class="mt-2">{{ t(talk.titleKey) }}</h3>
+            <p class="talk-speakers">{{ t(talk.speakersKey) }}</p>
+            <div class="talk-player">
+              <iframe v-if="playingTalks[talk.id]" :src="bilibiliPlayer(talk.bvid)" :title="t(talk.titleKey)"
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin" scrolling="no" frameborder="0"></iframe>
+              <button v-else type="button" class="talk-facade" :aria-label="`${t('resources.talk_play')} · ${t(talk.titleKey)}`"
+                :data-testid="`talk-play-${talk.id}`" @click="playingTalks[talk.id] = true">
+                <img :src="assetUrl(talk.poster)" alt="" loading="lazy" decoding="async">
+                <span class="talk-play-icon" aria-hidden="true"></span>
+                <span class="talk-play-text">{{ t('resources.talk_play') }}</span>
+              </button>
+            </div>
+            <p class="talk-links">
+              <a :href="bilibiliPage(talk.bvid)" target="_blank" rel="noopener">{{ t('resources.talk_open_bilibili') }} ↗</a>
+              <a v-if="talk.extra" :href="talk.extra.href" target="_blank" rel="noopener">{{ t(talk.extra.labelKey) }} ↗</a>
+            </p>
+          </article>
+        </div>
+      </div>
+
       <div class="flow-band reveal mt-16">
         <div class="flow-head"><div><h2>{{ t('resources.flow2') }}</h2><p>{{ t('resources.flow2_hint') }}</p></div></div>
         <div class="cards cards-1 reveal-stagger">
@@ -135,4 +180,18 @@ onMounted(async () => {
 .hidden-cards-note p { font-size: .875rem; line-height: 1.5; color: rgba(245,247,255,.78); margin-top: .4rem; }
 .example-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .examples-bundle-cta { margin-bottom: 1.25rem; }
+.talk-list { display: grid; gap: 1rem; }
+.talk-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
+.talk-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
+.talk-speakers { margin-top: .3rem; font-size: .85rem; color: #aeb6c8; }
+.talk-player { position: relative; margin-top: 1rem; width: 100%; max-width: 56rem; aspect-ratio: 16 / 9; background: #05070f; }
+.talk-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.talk-facade { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; background: #05070f; overflow: hidden; }
+.talk-facade img { width: 100%; height: 100%; object-fit: contain; opacity: .82; transition: opacity .2s; }
+.talk-facade:hover img, .talk-facade:focus-visible img { opacity: 1; }
+.talk-play-icon { position: absolute; left: 50%; top: 50%; width: 4rem; height: 4rem; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(13,18,36,.78); border: 1px solid rgba(185,197,255,.7); }
+.talk-play-icon::after { content: ''; position: absolute; left: 54%; top: 50%; transform: translate(-50%, -50%); border-style: solid; border-width: .7rem 0 .7rem 1.15rem; border-color: transparent transparent transparent #f5f7ff; }
+.talk-play-text { position: absolute; left: 50%; top: calc(50% + 2.6rem); transform: translateX(-50%); font-size: .8rem; color: #f5f7ff; background: rgba(13,18,36,.78); padding: .15rem .55rem; white-space: nowrap; }
+.talk-links { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin-top: .6rem; font-size: .85rem; }
+.talk-links a { color: #b9c5ff; }
 </style>
