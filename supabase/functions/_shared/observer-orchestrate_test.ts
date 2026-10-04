@@ -488,3 +488,47 @@ Deno.test("no runner configuration schedules no score job", async () => {
   });
   assertEquals(output, []);
 });
+
+Deno.test("open egress sends no domain list and the job API accepts only open:true with no domains", async () => {
+  const { decodeTeamEgress } = await import("./observer-orchestrate.ts");
+  const variable = crypto.randomUUID();
+  const cipher = await encryptCredential("sk-team-key-0123456789", variable, key);
+  const value = {
+    enabled: true,
+    open: true,
+    variables: [{ id: variable, name: "OPENAI_API_KEY", secret: true, encrypted_value: cipher, plain_value: null }],
+    domains: ["api.kimi.com"],
+  };
+  const team = await decodeTeamEgress(value, key);
+  assertEquals(team, {
+    environment: { OPENAI_API_KEY: "sk-team-key-0123456789" },
+    secrets: ["OPENAI_API_KEY"],
+    domains: [],
+    open: true,
+  });
+  assertEquals((await decodeTeamEgress({ ...value, open: false }, key))?.domains, ["api.kimi.com"]);
+  assertEquals(await decodeTeamEgress({ ...value, enabled: false }, key), null);
+  const run = crypto.randomUUID();
+  const base = {
+    kind: "execute",
+    job_id: "11111111-1111-4111-8111-111111111111",
+    run_id: run,
+    archive_url: "https://codeload.github.com/x.zip",
+    source_digest: "d".repeat(64),
+    manifest: { schema_version: "observer-project-v1", image: "python@sha256:" + "a".repeat(64), run: ["python3"] },
+    session_url: "https://platform.test/functions/v1/observer-session",
+    run_credential: "obs_" + run + "." + "p".repeat(43),
+    model_base_url: "https://platform.test/functions/v1/observer-model/v1",
+  };
+  const expected = {
+    organization: "AGENTIC-OBSERVER26-runner-9",
+    organizationId: "101",
+    repositoryId: "303",
+    approvedSha: "e".repeat(40),
+    workflow: "observer-execute.yml" as const,
+  };
+  validateJobPayload({ ...base, team_egress: team }, expected, base.job_id);
+  for (const bad of [{ ...team, open: false }, { ...team, domains: ["api.kimi.com"] }, { ...team, open: "yes" }]) {
+    assertThrows(() => validateJobPayload({ ...base, team_egress: bad }, expected, base.job_id));
+  }
+});

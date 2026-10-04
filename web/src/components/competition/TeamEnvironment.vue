@@ -3,13 +3,15 @@ import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { portal, type TeamEnvironment } from '../../lib/observerPortal'
 
-// Keys and network: the team's variables (environment of its program) and the
-// domains the program may reach on port 443. Secret values are write-only here.
+// Keys and network: the team's variables (environment of its program). With open
+// egress the program may reach any public address, so there is no domain list;
+// otherwise (rollback) the domains it may reach on port 443. Secret values are write-only.
 const props = defineProps<{ environment: TeamEnvironment | null | undefined; busy: boolean }>()
 const emit = defineEmits<{ act: [work: () => Promise<void>, success: string] }>()
 const { t, tf } = useI18n()
 const variables = computed(() => props.environment?.variables ?? [])
 const domains = computed(() => props.environment?.domains ?? [])
+const open = computed(() => props.environment?.open === true)
 const limits = computed(() => props.environment?.limits ?? { variables: 20, domains: 10, value_bytes: 8192 })
 const form = ref({ name: '', value: '', secret: true })
 const domain = ref('')
@@ -36,7 +38,7 @@ function addDomain() {
 
 <template>
   <div data-testid="team-environment">
-    <p class="help mt-3">{{ t('submit.team_env.intro') }}</p>
+    <p class="help mt-3">{{ open ? t('submit.team_env.intro_open') : t('submit.team_env.intro') }}</p>
     <p v-if="environment?.relay_key_missing" class="errors" role="alert" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }}</p>
     <p class="help" data-testid="team-env-final-note">{{ t('submit.team_env.final_note') }}</p>
 
@@ -57,6 +59,7 @@ function addDomain() {
       <p><button class="btn sm" :disabled="busy || variables.length >= limits.variables && !variables.some(v => v.name === form.name.trim().toUpperCase())" data-testid="team-env-save">{{ t('submit.team_env.save') }}</button></p>
     </form>
 
+    <template v-if="!open">
     <h3 class="mt-4">{{ t('submit.team_env.domains_title') }}</h3>
     <p class="help">{{ tf('submit.team_env.domains_help', { domains: limits.domains }) }}</p>
     <ul v-if="domains.length" class="team-env-list" data-testid="team-env-domains">
@@ -71,6 +74,12 @@ function addDomain() {
       <p><button class="btn sm" :disabled="busy || domains.length >= limits.domains" data-testid="team-env-add-domain">{{ t('submit.team_env.add_domain') }}</button></p>
     </form>
     <p class="help mt-3">{{ t('submit.team_env.proxy_note') }}</p>
+    </template>
+    <template v-else>
+    <h3 class="mt-4">{{ t('submit.team_env.network_title') }}</h3>
+    <p class="help" data-testid="team-env-network-open">{{ t('submit.team_env.network_open') }}</p>
+    <p class="help">{{ t('submit.team_env.network_log') }}</p>
+    </template>
   </div>
 </template>
 

@@ -27,7 +27,7 @@ export async function teamEgress(deps: Pick<RunScheduler, "rpc" | "masterKey">, 
 
 /** The job-input form of observer_run_team_egress / observer_preparation_team_egress (null while off). */
 export async function decodeTeamEgress(
-  value: { enabled?: boolean; variables?: Record<string, unknown>[]; domains?: string[] } | null,
+  value: { enabled?: boolean; open?: boolean; variables?: Record<string, unknown>[]; domains?: string[] } | null,
   masterKey: string,
 ) {
   if (value?.enabled !== true) return null;
@@ -38,6 +38,8 @@ export async function decodeTeamEgress(
       : String(variable.plain_value ?? "");
     if (variable.secret) secrets.push(String(variable.name));
   }
+  // Open egress: any public destination (the domain list is not used then).
+  if (value?.open === true) return { environment, secrets, domains: [] as string[], open: true as const };
   return { environment, secrets, domains: [...(value?.domains ?? [])] as string[] };
 }
 

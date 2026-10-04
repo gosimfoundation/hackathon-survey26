@@ -67,7 +67,7 @@ class DockerWorkspace:
                            if key in os.environ}
 
     def _command(self, *, name: str, environment: Mapping[str, str], network: str = "bridge",
-                 hosts: tuple[str, ...] = ()) -> list[str]:
+                 hosts: tuple[str, ...] = (), dns: str | None = None) -> list[str]:
         lim = self.limits
         args = [
             "docker", "run", "--rm", "--interactive", "--name", name,
@@ -83,6 +83,7 @@ class DockerWorkspace:
             "--read-only", "--tmpfs", "/tmp:rw,nosuid,size=256m",
             "--network", network, "--log-driver", "none",
             *[arg for host in hosts for arg in ("--add-host", host)],
+            *(("--dns", dns) if dns else ()),
             "--mount", f"type=bind,src={self.root},dst=/workspace",
             "--workdir", "/workspace" + ("" if self.manifest.working_directory == "." else "/" + self.manifest.working_directory),
             "--entrypoint", "/bin/sh",
@@ -135,7 +136,7 @@ class DockerWorkspace:
             transport.close(force=True)
 
     def start(self, run_environment: Mapping[str, str], *, team: Mapping | None = None,
-              hosts: tuple[str, ...] = ()) -> JsonlTransport:
+              hosts: tuple[str, ...] = (), dns: str | None = None) -> JsonlTransport:
         """``team`` (team egress only): {"environment": {NAME: value}, "secrets": [NAME]}, already
         validated by project_platform.team_egress; ``hosts`` maps its allowed domains to the sidecar."""
         allowed = _RUNTIME_ENV | (_PROXY_ENV if team is not None else set())
@@ -147,6 +148,9 @@ class DockerWorkspace:
             raise ProjectError("Only a per-run restricted egress network may be selected.")
         if hosts and (team is None or self.network is None or not all(_HOST_ENTRY.fullmatch(h) for h in hosts)):
             raise ProjectError("Host entries are only for team egress.")
+        if dns is not None and (team is None or self.network is None or
+                                not re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", dns)):
+            raise ProjectError("A DNS server is only for team egress.")
         team_env = dict(team["environment"]) if team is not None else {}
         if set(team_env) & (_RUNTIME_ENV | _PROXY_ENV) - {"OPENAI_BASE_URL", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL",
                                                            "ANTHROPIC_API_KEY"}:
@@ -154,7 +158,8 @@ class DockerWorkspace:
         # The team's own variables override the project's manifest defaults; the
         # platform's run identity and proxy settings override both.
         env = {**dict(self.manifest.environment), **team_env, **run_environment}
-        command = self._command(name=self.name, environment=env, network=self.network or "bridge", hosts=hosts)
+        command = self._command(name=self.name, environment=env, network=self.network or "bridge", hosts=hosts,
+                                dns=dns)
         command += [self.image, "-c", "exec " + shlex.join(self.manifest.run)]
         secrets = tuple(value for key, value in run_environment.items() if key.endswith(("TOKEN", "KEY")))
         if team is not None:

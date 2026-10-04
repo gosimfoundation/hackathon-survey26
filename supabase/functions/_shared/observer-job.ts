@@ -349,7 +349,10 @@ function validateTeamEgress(value: unknown) {
   const invalid = () => new ProxyError(503, "invalid_job_payload");
   if (
     !egress || typeof egress !== "object" || Array.isArray(egress) ||
-    Object.keys(egress).sort().join(",") !== "domains,environment,secrets"
+    !["domains,environment,secrets", "domains,environment,open,secrets"].includes(
+      Object.keys(egress).sort().join(","),
+    ) ||
+    (egress.open !== undefined && (egress.open !== true || !Array.isArray(egress.domains) || egress.domains.length))
   ) throw invalid();
   const environment = egress.environment as Record<string, unknown> | null;
   if (!environment || typeof environment !== "object" || Array.isArray(environment)) throw invalid();

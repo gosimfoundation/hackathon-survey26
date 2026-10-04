@@ -115,3 +115,53 @@ def test_pilot_teams_get_team_egress_before_the_global_switch(setup):
     assert env(uri, s['user'])['enabled'] is True
     query(uri, "update private.observer_hardening set team_egress_teams='{}', team_egress=true where id")
     assert rpc(uri, 'observer_run_team_egress', run)['enabled'] is True
+
+
+def test_open_egress_switch_and_pilot_teams(setup):
+    s = setup; uri = s['uri']
+    run, _, _ = session(s)
+    assert rpc(uri, 'observer_run_team_egress', run)['open'] is False
+    assert env(uri, s['user'])['open'] is False
+    query(uri, 'update private.observer_hardening set open_egress_teams=array[%s]::uuid[] where id', (s['team'],))
+    assert rpc(uri, 'observer_run_team_egress', run)['open'] is True
+    assert env(uri, s['user'])['open'] is True
+    query(uri, "update private.observer_hardening set open_egress_teams='{}', open_egress=true where id")
+    assert rpc(uri, 'observer_run_team_egress', run)['open'] is True
+    assert rpc(uri, 'observer_hardening')['open_egress'] is True
+    # Rollback: one statement.
+    query(uri, "update private.observer_hardening set open_egress=false, open_egress_teams='{}' where id")
+    assert rpc(uri, 'observer_run_team_egress', run)['open'] is False
+
+
+def test_job_receipts_store_the_egress_record_for_organizers_and_the_team(setup):
+    s = setup; uri = s['uri']
+    teammate, _ = identity(uri, team=s['team'])
+    outsider, _ = identity(uri)
+    run, _, _ = session(s)
+    job = uuid.uuid4()
+    query(uri, """insert into private.observer_installations(organization,organization_id,installation_id,repository_id,
+        approved_sha) values('AGENTIC-OBSERVER26-runner-36','1','1','1',%s) on conflict do nothing""", ('a' * 40,))
+    query(uri, """insert into private.observer_jobs(id,kind,run_id,organization,repository_id,organization_id,
+        workflow_sha,nonce_hash,encrypted_nonce,encrypted_input,status)
+        select %s,'engine',%s,organization,repository_id,organization_id,approved_sha,'h','n','i','claimed'
+        from private.observer_installations where organization='AGENTIC-OBSERVER26-runner-36'""", (job, run))
+    assert query(uri, 'select count(*) from private.observer_jobs where id=%s', (job,)) == [(1,)]
+    import json
+    egress = [{"host": "api.kimi.com", "port": 443, "connections": 3, "refused": 0, "bytes_up": 100,
+               "bytes_down": 900, "first": "2026-10-04T01:00:00Z", "last": "2026-10-04T01:02:00Z"},
+              {"host": "localtest.me", "port": 443, "connections": 0, "refused": 2, "bytes_up": 0, "bytes_down": 0,
+               "first": "2026-10-04T01:00:00Z", "last": "2026-10-04T01:00:01Z"},
+              {"host": "bad host; drop", "port": 1}, {"host": "x.com", "port": "nan"}, "junk"]
+    query(uri, "update private.observer_jobs set result=%s::jsonb, status='succeeded' where id=%s",
+          (json.dumps({"run_id": str(run), "egress": egress}), job))
+    rows = query(uri, 'select host,port,connections,refused,bytes_up,bytes_down from private.observer_run_egress '
+                      'where run_id=%s order by host', (run,))
+    assert rows == [('api.kimi.com', 443, 3, 0, 100, 900), ('localtest.me', 443, 0, 2, 0, 0)]
+    log = rpc(uri, 'observer_run_egress_log', run, role='authenticated', user=teammate)
+    assert [(e['host'], e['bytes_down']) for e in log] == [('api.kimi.com', 900), ('localtest.me', 0)]
+    assert rpc(uri, 'observer_run_egress_log', run, role='authenticated', user=outsider) == []
+    with pytest.raises(psycopg.Error, match='permission denied'):
+        query(uri, 'select * from private.observer_run_egress', role='authenticated', user=s['user'])
+    # A receipt without an egress record changes nothing.
+    query(uri, "update private.observer_jobs set result='{\"x\":1}'::jsonb where id=%s", (job,))
+    assert len(query(uri, 'select 1 from private.observer_run_egress where run_id=%s', (run,))) == 2

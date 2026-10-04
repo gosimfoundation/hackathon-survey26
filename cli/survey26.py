@@ -876,7 +876,13 @@ def _print_env(out: Out, env: dict) -> None:
                 "updated_at": v.get("updated_at")} for v in env.get("variables") or []],
               [(out.t("Name", "名称"), "name"), (out.t("Kind", "类型"), "kind"), (out.t("Value", "值"), "value"),
                (out.t("Updated", "更新时间"), "updated_at")])
-    out.line(out.t("Allowed domains: ", "允许访问的域名：") + (", ".join(env.get("domains") or []) or out.t("(none)", "（无）")))
+    if env.get("open"):
+        out.line(out.t("Network: any public address over HTTPS (443) and HTTP (80); private and metadata addresses "
+                       "are unreachable; every destination is logged (no content). No domain list is needed.",
+                       "网络：可访问公网上的任何地址（HTTPS 443、HTTP 80 端口），内网和元数据地址不可访问；"
+                       "每个访问地址都会被记录（不含内容），无需登记域名。"))
+    else:
+        out.line(out.t("Allowed domains: ", "允许访问的域名：") + (", ".join(env.get("domains") or []) or out.t("(none)", "（无）")))
 
 
 def _env_view(env: dict) -> dict:
@@ -1591,7 +1597,7 @@ def build_parser() -> argparse.ArgumentParser:
     es.add_argument("--from-env", metavar="VAR", help="take the value from this environment variable")
     es.add_argument("--plain", action="store_true", help="not secret: the value stays readable")
     add(env, "unset", cmd_env_unset, "delete a variable").add_argument("name")
-    dom = add(env, "domains", cmd_env_domains, "allowed domains for your agent's outbound HTTPS")
+    dom = add(env, "domains", cmd_env_domains, "allowed domains (not used while the platform allows any public address)")
     dsub = dom.add_subparsers(dest="domains_cmd", metavar="ACTION")
     add(dsub, "list", cmd_env_domains, "list domains")
     add(dsub, "set", cmd_env_domains, "replace the list (at most 10)").add_argument("hosts", nargs="+")

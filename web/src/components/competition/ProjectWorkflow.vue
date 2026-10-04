@@ -455,7 +455,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <details class="panel mb-6 model-api" data-testid="model-api-settings" :open="modelOpen" @toggle="modelOpen = ($event.target as HTMLDetailsElement).open">
         <summary class="model-api-summary" data-testid="model-api-toggle">
           <span id="model-api" class="model-api-title" role="heading" aria-level="2">{{ teamEgress ? t('submit.team_env.title') : t('submit.model_api.title') }}</span>
-          <span class="help model-api-hint" data-testid="model-api-hint">{{ teamEgress ? t('submit.team_env.collapsed_hint') : t('submit.model_api.collapsed_hint') }}</span>
+          <span class="help model-api-hint" data-testid="model-api-hint">{{ teamEgress ? (data?.team_environment?.open ? t('submit.team_env.collapsed_hint_open') : t('submit.team_env.collapsed_hint')) : t('submit.model_api.collapsed_hint') }}</span>
         </summary>
         <div v-if="teamEgress" class="model-api-body">
           <TeamEnvironment :environment="data?.team_environment" :busy="busy" @act="(work, success) => action(work, success)" />

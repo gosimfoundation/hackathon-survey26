@@ -1821,10 +1821,15 @@
     "pick_folder": "Choose a folder (we zip it for you)",
     "packed": "Packed {n} file(s) in the browser",
     "team_env": {
+      "intro_open": "No model credits are provided. If your program calls a model or another external service, save the variables it needs here (API keys, endpoints, model names). During evaluation these variables are provided to your program as environment variables. You may use several providers, protocols and models at the same time; their cost is your team's.",
+      "network_title": "Network access",
+      "network_open": "During evaluation your program can reach any public address over HTTPS (port 443) and HTTP (port 80); no domain needs to be listed. Other ports, private and internal addresses, the local host and cloud metadata addresses are unreachable. The platform sets HTTPS_PROXY, so common SDKs need no extra configuration; programs that ignore proxy settings can connect by host name directly as well.",
+      "network_log": "The platform records every address your program connects to during an evaluation (host and port, number of connections, bytes sent and received, first and last time), never any content. The record is attached to your team's run log and result files, and the organizers can see it as well. Every decision must be made by your program; no human may take part.",
+      "collapsed_hint_open": "Model keys, endpoints and other environment variables",
       "title": "Keys and network (optional)",
       "collapsed_hint": "Model keys, endpoints and the domains your program may reach",
       "intro": "No model credits are provided. If your program calls a model or another external service, save the variables it needs here (API keys, endpoints, model names) and list the domains it must reach. During evaluation these variables are provided to your program as environment variables, and the program can reach only the domains listed below, over HTTPS (port 443); all other network access is unavailable. You may use several providers, protocols and models at the same time; their cost is your team's.",
-      "relay_banner": "Your team previously chose not to save its key. Evaluations now use the variables saved here: please save the keys you need below and add your provider's domain, otherwise model calls will fail during evaluation.",
+      "relay_banner": "Your team previously chose not to save its key. Evaluations now use the variables saved here: please save the keys you need below, otherwise model calls will fail during evaluation.",
       "final_note": "The hidden final uses the variables saved here as well; no page needs to stay open. Saved keys are deleted automatically after the hidden final results are published and verified, and you can delete or replace them at any time.",
       "vars_title": "Environment variables",
       "vars_help": "Use upper-case letters, digits and underscores for names, e.g. OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL. Values marked \"Save encrypted as a secret\" are stored encrypted and afterwards only their last 4 characters are shown; leave endpoints and model names unmarked so they stay visible. Saving a name again replaces it. Up to {variables} variables of at most 8 KB each; names starting with OBSERVER_ or SAC_ and proxy settings are reserved by the platform.",
@@ -2110,7 +2115,7 @@
       },
       {
         "q": "Can I use an LLM or a commercial API?",
-        "a": "Yes, and awards require agent (LLM-driven) techniques in at least two stages. Bring your own API and quota. In the \"Keys and network\" section of Participate, save your keys and other variables and add your provider's domain; during evaluation the variables are provided to your program as environment variables and it can reach only the listed domains. Keys are stored encrypted, used only for evaluation and verification, and deleted after the hidden final results are verified; the hidden final uses them as well, with no page open."
+        "a": "Yes, and awards require agent (LLM-driven) techniques in at least two stages. Bring your own API and quota. In the \"Keys and network\" section of Participate, save your keys and other variables; during evaluation they are provided to your program as environment variables, and the program can reach any public address over HTTPS and HTTP (never private or metadata addresses); the platform records the addresses it connects to (never content). Keys are stored encrypted, used only for evaluation and verification, and deleted after the hidden final results are verified; the hidden final uses them as well, with no page open."
       },
       {
         "q": "What is the time limit per card?",
@@ -2158,7 +2163,7 @@
       },
       {
         "q": "Can my agent use several models or several providers at once?",
-        "a": "Yes. In \"Keys and network\", save a key for each provider (e.g. KIMI_API_KEY, DEEPSEEK_API_KEY) and add each provider's domain (e.g. api.kimi.com, api.deepseek.com). Your program can then call several providers at the same time, over any protocol (OpenAI-compatible, Anthropic Messages or the provider's own API), and choose the model for each request, for example a fast, inexpensive model for simple steps and a stronger one for key decisions. Model calls are paid for by your team. See the example projects' READMEs for code."
+        "a": "Yes. In \"Keys and network\", save a key for each provider (e.g. KIMI_API_KEY, DEEPSEEK_API_KEY). Your program can then call several providers at the same time, over any protocol (OpenAI-compatible, Anthropic Messages or the provider's own API), with no domain to list, and choose the model for each request, for example a fast, inexpensive model for simple steps and a stronger one for key decisions. Model calls are paid for by your team. See the example projects' READMEs for code."
       },
       {
         "q": "Can I do everything from the command line or let a coding agent do it?",
@@ -2167,6 +2172,10 @@
       {
         "q": "What can a personal API token do, and how do I protect it?",
         "a": "A token acts as your account, with exactly your permissions, daily limits and quotas; organizer functions are never available with a token, and tokens cannot create or revoke other tokens. Anyone who has the token can act as you, so do not put it in repositories, project ZIPs, logs or chats. The profile page shows when each token was last used; revoke a token there when it is no longer needed or may have been exposed, and it stops working immediately."
+      },
+      {
+        "q": "Which network addresses can my program reach during evaluation? Is it recorded?",
+        "a": "Any public address over HTTPS (port 443) and HTTP (port 80); other ports, private and internal addresses, the local host and cloud metadata addresses are unreachable. The platform records every address your program connects to in each evaluation (host and port, number of connections, bytes sent and received, first and last time), never any content; the record is attached to your team's run log (agent.log) and result files (egress.json), and the organizers can see it as well. Every decision must be made by your program; external services must not be used to bring a human into the decisions."
       }
     ]
   },
@@ -2374,7 +2383,7 @@
       "hidden": "hidden",
       "locked": "locked",
       "final_title": "Final versions",
-      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run; it uses the variables and domains each team saved under Keys and network.",
+      "final_help": "Each team’s version for the hidden final evaluation on cards E–H: its choice, else the version of its best scored evaluation. Nobody keeps a page open during that run; it uses the variables each team saved under Keys and network.",
       "final_phase": "Phase",
       "final_version": "Version",
       "final_source": "Source",

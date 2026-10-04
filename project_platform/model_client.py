@@ -129,6 +129,9 @@ def _observer_error(exc: urllib.error.HTTPError) -> dict:
             "provider_status":status if isinstance(status,int) and 100<=status<=599 else None}
 
 
+from .team_egress import valid_domain  # noqa: E402
+
+
 # --- Direct model access (team variables; no platform model proxy) -------------------------
 # Preparation's automatic adaptation can call the team's own provider with the team's
 # variables (OPENAI_* or ANTHROPIC_*), exactly as the team's program does during an
@@ -153,10 +156,13 @@ def team_model_client(team: dict, *, timeout: float = DIRECT_TIMEOUT, allow_loca
         base=(environment.get(prefix+"_BASE_URL") or default).rstrip("/")
         parsed=urllib.parse.urlsplit(base)
         local=allow_local and parsed.scheme=="http" and parsed.hostname in ("localhost","127.0.0.1")
+        host=(parsed.hostname or "").lower()
+        # Open egress: any public DNS name (no IP literal or internal name); otherwise the allowed domains.
+        reachable=valid_domain(host) if team.get("open") is True else host in domains
         if not local and (parsed.scheme!="https" or parsed.username or parsed.password or parsed.query
-                          or parsed.fragment or (parsed.hostname or "").lower() not in domains):
-            raise ProjectError("Automatic adaptation calls "+prefix+"_BASE_URL directly: it must be an https address "
-                               "on one of your team's allowed domains (Keys and network).")
+                          or parsed.fragment or parsed.port not in (None,443) or not reachable):
+            raise ProjectError("Automatic adaptation calls "+prefix+"_BASE_URL directly: it must be a public https "
+                               "address (Keys and network).")
         return DirectModelClient(protocol,base,key,timeout=timeout),model
     raise ProjectError("Automatic adaptation uses your team's model: save OPENAI_API_KEY (or ANTHROPIC_API_KEY) with "
                        "its _BASE_URL and _MODEL under Keys and network, or add observer.project.json so no "

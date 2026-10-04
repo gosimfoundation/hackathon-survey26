@@ -55,7 +55,6 @@ survey26 whoami
 
 ```bash
 survey26 env set OPENAI_API_KEY --value-stdin < key.txt     # 密文保存，只显示末 4 位
-survey26 env domains set api.kimi.com
 survey26 project upload agent.zip --title "my agent"        # 占用每天 10 次上传中的 1 次
 survey26 project wait 1a2b3c4d                              # 等待准备和公开场景测试；失败时退出码为 9
 survey26 project logs 1a2b3c4d                              # 构建日志与公开测试的 agent.log

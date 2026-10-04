@@ -211,6 +211,11 @@ the plain canary and the secret one redacted; inside the container there were no
 `GITHUB_*` variables, no runner files, only the project's own process, and none of
 the probed addresses was reachable. Public runs started 13–25 s after dispatch.
 
+**2026-10-04: open egress runtime** (hackathon-survey26 #262) approved on all 13
+public repositories (`6adf43a`, previous `e49c8db`) and all 13 private
+`observer-control` repositories (`ops/github-installations.json`). Queued public
+jobs were moved to the new commit in the same transaction as the approval.
+
 ## Updating the runtime
 
 1. `python scripts/build-observer-control.py --public <new dir>` from the
