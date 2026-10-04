@@ -28,28 +28,23 @@ const exampleProjects = [
   { lang: 'rust', name: 'Rust', descKey: 'resources.example_rust_desc', available: true },
 ] as const
 
-// Talk recordings are too large for the repo/site tarball (two exceed GitHub's 100 MB file cap),
-// so they live as assets on the talks-2026-10 release. That release is a prerelease on purpose:
-// the shared publisher deploys whatever release is "latest" and refuses anything not tagged site-*.
-const TALKS_BASE_URL = 'https://github.com/gosimfoundation/hackathon-survey26/releases/download/talks-2026-10/'
+// Talk recordings are hosted on Bilibili (fast in mainland China) rather than on our own servers.
+// Each player is a click-to-load facade: nothing from bilibili.com loads until the visitor presses play.
 const talks = [
   {
-    id: 'yifei-luo', date: '2026-10-02', poster: '/media/talks/talk-yifei-luo-20261002.jpg',
+    id: 'yifei-luo', date: '2026-10-02', poster: '/media/talks/talk-yifei-luo-20261002.jpg', bvid: 'BV1Q7Hz6SE39',
     titleKey: 'resources.talk1_title', speakersKey: 'resources.talk1_speakers',
-    parts: [
-      { labelKey: 'resources.talk_part_lecture', file: 'talk1-yifei-luo-20261002-part1-lecture.mp4' },
-      { labelKey: 'resources.talk_part_qa', file: 'talk1-yifei-luo-20261002-part2-qa.mp4' },
-    ],
+    extra: { labelKey: 'resources.talk_tencent_replay', href: 'https://voovmeeting.com/crm/8mB9JZwe16' },
   },
   {
-    id: 'wang-li', date: '2026-10-03', poster: '/media/talks/talk-wang-li-20261003.jpg',
+    id: 'wang-li', date: '2026-10-03', poster: '/media/talks/talk-wang-li-20261003.jpg', bvid: 'BV18nHz6mEPf',
     titleKey: 'resources.talk2_title', speakersKey: 'resources.talk2_speakers',
-    parts: [
-      { labelKey: 'resources.talk_part_1', file: 'talk2-wang-li-20261003-part1.mp4' },
-      { labelKey: 'resources.talk_part_2', file: 'talk2-wang-li-20261003-part2.mp4' },
-    ],
+    extra: null,
   },
 ] as const
+const playingTalks = ref<Record<string, boolean>>({})
+const bilibiliPage = (bvid: string) => `https://www.bilibili.com/video/${bvid}/`
+const bilibiliPlayer = (bvid: string) => `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1`
 
 const hiddenCards = ['E', 'F', 'G', 'H']
 const kit = computed(() => [
@@ -132,17 +127,21 @@ onMounted(async () => {
             <span class="label accent">{{ talk.date }}</span>
             <h3 class="mt-2">{{ t(talk.titleKey) }}</h3>
             <p class="talk-speakers">{{ t(talk.speakersKey) }}</p>
-            <div class="talk-parts">
-              <figure v-for="part in talk.parts" :key="part.file" class="talk-part">
-                <video controls preload="none" playsinline :poster="assetUrl(talk.poster)">
-                  <source :src="TALKS_BASE_URL + part.file" type="video/mp4">
-                </video>
-                <figcaption>
-                  <span>{{ t(part.labelKey) }}</span>
-                  <a :href="TALKS_BASE_URL + part.file" target="_blank" rel="noopener">{{ t('resources.talk_download') }} ↓</a>
-                </figcaption>
-              </figure>
+            <div class="talk-player">
+              <iframe v-if="playingTalks[talk.id]" :src="bilibiliPlayer(talk.bvid)" :title="t(talk.titleKey)"
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin" scrolling="no" frameborder="0"></iframe>
+              <button v-else type="button" class="talk-facade" :aria-label="`${t('resources.talk_play')} · ${t(talk.titleKey)}`"
+                :data-testid="`talk-play-${talk.id}`" @click="playingTalks[talk.id] = true">
+                <img :src="assetUrl(talk.poster)" alt="" loading="lazy" decoding="async">
+                <span class="talk-play-icon" aria-hidden="true"></span>
+                <span class="talk-play-text">{{ t('resources.talk_play') }}</span>
+              </button>
             </div>
+            <p class="talk-links">
+              <a :href="bilibiliPage(talk.bvid)" target="_blank" rel="noopener">{{ t('resources.talk_open_bilibili') }} ↗</a>
+              <a v-if="talk.extra" :href="talk.extra.href" target="_blank" rel="noopener">{{ t(talk.extra.labelKey) }} ↗</a>
+            </p>
           </article>
         </div>
       </div>
@@ -185,9 +184,14 @@ onMounted(async () => {
 .talk-item { border: 1px solid rgba(158,173,255,.22); background: rgba(13,18,36,.7); padding: 1.1rem 1.2rem; min-width: 0; }
 .talk-item h3 { font-size: 1rem; line-height: 1.4; color: #f5f7ff; }
 .talk-speakers { margin-top: .3rem; font-size: .85rem; color: #aeb6c8; }
-.talk-parts { display: grid; gap: 1rem; margin-top: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
-.talk-part { margin: 0; min-width: 0; }
-.talk-part video { display: block; width: 100%; aspect-ratio: 2 / 1; background: #05070f; object-fit: contain; }
-.talk-part figcaption { display: flex; justify-content: space-between; gap: .5rem; margin-top: .45rem; font-size: .8rem; color: #aeb6c8; }
-.talk-part figcaption a { color: #b9c5ff; }
+.talk-player { position: relative; margin-top: 1rem; width: 100%; max-width: 56rem; aspect-ratio: 16 / 9; background: #05070f; }
+.talk-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.talk-facade { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer; background: #05070f; overflow: hidden; }
+.talk-facade img { width: 100%; height: 100%; object-fit: contain; opacity: .82; transition: opacity .2s; }
+.talk-facade:hover img, .talk-facade:focus-visible img { opacity: 1; }
+.talk-play-icon { position: absolute; left: 50%; top: 50%; width: 4rem; height: 4rem; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(13,18,36,.78); border: 1px solid rgba(185,197,255,.7); }
+.talk-play-icon::after { content: ''; position: absolute; left: 54%; top: 50%; transform: translate(-50%, -50%); border-style: solid; border-width: .7rem 0 .7rem 1.15rem; border-color: transparent transparent transparent #f5f7ff; }
+.talk-play-text { position: absolute; left: 50%; top: calc(50% + 2.6rem); transform: translateX(-50%); font-size: .8rem; color: #f5f7ff; background: rgba(13,18,36,.78); padding: .15rem .55rem; white-space: nowrap; }
+.talk-links { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin-top: .6rem; font-size: .85rem; }
+.talk-links a { color: #b9c5ff; }
 </style>
