@@ -176,6 +176,10 @@ This zips the project with `observer.project.json` at the root
 folder to a GitHub repository. No third-party packages are required; if you add one,
 list it in `requirements.txt` **and** add a matching `build` step to
 `observer.project.json` -- dependencies are not installed automatically otherwise.
+The system directories are read-only, so install into the project folder, e.g.
+`"build": [["pip", "install", "--no-cache-dir", "--target", ".deps", "-r", "requirements.txt"]]`
+with `"PYTHONPATH": "/workspace/.deps"` under `"environment"`. The build step has
+internet access; the agent run has none except the model API.
 
 ## Safety properties
 

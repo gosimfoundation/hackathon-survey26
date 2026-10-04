@@ -154,6 +154,10 @@ python3 pack_agent.py --out ../python-agent.zip
 `__pycache__`、`run_output/`。把 ZIP 作为完整项目上传,或把本目录推到 GitHub 仓库。
 不需要任何第三方包;如果你加了依赖,请同时写进 `requirements.txt` **并**在
 `observer.project.json` 里加一个匹配的 `build` 步骤——否则依赖不会被自动安装。
+系统目录只读,请把依赖装进项目目录,例如
+`"build": [["pip", "install", "--no-cache-dir", "--target", ".deps", "-r", "requirements.txt"]]`,
+并在 `"environment"` 中设置 `"PYTHONPATH": "/workspace/.deps"`。构建步骤可以联网;
+智能体运行期间除模型 API 外无法联网。
 
 ## 安全属性
 
