@@ -219,6 +219,11 @@ jobs were moved to the new commit in the same transaction as the approval.
 **2026-10-04: egress route runtime** (hackathon-survey26 #301) approved on all 13
 public repositories (`266caa0`, previous `6adf43a`); see `ops/egress-routes.md`.
 
+**2026-10-05 (16:08 UTC 2026-10-04): evaluations without a model** (hackathon-survey26 #319,
+`OBSERVER_MODEL_DISABLED`) approved on all 13 public repositories (`aa0faa6`, previous `266caa0`) and all 13
+private `observer-control` repositories (`ops/github-installations.json`), after a canary on runner-1
+(private and public) whose engine and score jobs succeeded.
+
 ## Updating the runtime
 
 1. `python scripts/build-observer-control.py --public <new dir>` from the
