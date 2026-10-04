@@ -27,7 +27,11 @@ export async function schedulePreparations(deps: {
       if (repository.full_name !== organization + "/" + privateRepository) throw new GitHubError("invalid_repository");
       let source: Record<string, unknown>;
       if (revision.source_kind === "repository") {
-        const fork = await deps.app.forkPublicSource(revision.owner_id, revision.source_location);
+        const fork = await deps.app.forkPublicSource(
+          revision.owner_id,
+          revision.source_location,
+          revision.submitted_commit ?? null,
+        );
         source = { archive_ref: "github:" + fork.repository.full_name + "@" + fork.sourceCommit };
       } else if (revision.source_kind === "zip") {
         source = { archive_storage_ref: { bucket: "observer-staging", path: revision.source_location } };
