@@ -20,7 +20,14 @@ What happens (same engine the platform uses):
   * your agent starts as its own process, speaking participant-agent-protocol-v4 (one JSON
     object per line on stdin/stdout; stderr goes to <out>/agent.log);
   * it gets one `initialize`, then `decision_request` after `decision_request`, and answers each one;
-  * one global wall clock (default: the card's own limit, capped at 900s) starts at the first request;
+  * one time budget (default: the card's own limit, capped at 900) starts at the first request. As on the
+    platform it is a FAIR CLOCK (challenge/fair_clock.py): it counts only your agent's own time (from each
+    decision_request until your response, plus anything it computes in the background), never the engine's;
+    computing seconds are divided by this machine's speed factor (measured with a fixed calibration
+    workload; 1.0 = the median GitHub evaluation runner), waiting seconds (e.g. a model call) count 1:1.
+    On a fast laptop the factor is below 1, so you get FEWER real seconds than 900 -- e.g. factor 0.4
+    means about 360 real seconds of computing. Each request's `wallclock.remaining_seconds` already says
+    how many real seconds of computing you have left on this machine; rely on it;
   * at the end it gets one `finish` message, stdin is closed, and it has 30 grace seconds to exit.
 
 --agent takes a full shell command (quoted), not just a Python script, so any language works:
@@ -60,6 +67,7 @@ CARDS_ROOT = KIT_ROOT.parent
 if str(KIT_ROOT) not in sys.path:
     sys.path.insert(0, str(KIT_ROOT))
 
+from challenge.fair_clock import ProcessAgent  # noqa: E402
 from challenge.v4_workflow import PROTOCOL_VERSION, V4Workflow, V4_SCENARIO_PATH  # noqa: E402
 from project_platform.transport import JsonlTransport, ExecutionError, GlobalDeadlineExpired  # noqa: E402,F401
 
@@ -158,7 +166,8 @@ def main(argv=None) -> int:
     scratch.mkdir(exist_ok=True)
     env, dotenv_keys = agent_environment(agent_cwd, scratch, card, budget, args.inherit_env)
     say = (lambda text: None) if args.quiet else (lambda text: print(text, file=sys.stderr, flush=True))
-    say(f"[run_local] card={card['card_id']} agent={args.agent!r} cwd={agent_cwd} wallclock={budget:g}s dotenv_keys={dotenv_keys}")
+    say(f"[run_local] card={card['card_id']} agent={args.agent!r} cwd={agent_cwd} budget={budget:g} normalized s "
+        f"(fair clock; speed factor measured at start) dotenv_keys={dotenv_keys}")
 
     transport = JsonlTransport(command, cwd=agent_cwd, environment=env, initialization_seconds=args.init_timeout)
     transport.protocol_version = PROTOCOL_VERSION  # same line project_platform.trusted_engine.run_v4_session runs
@@ -180,7 +189,8 @@ def main(argv=None) -> int:
     startup_error = None
     result = None
     try:
-        result = workflow.run(decide, out, wallclock_seconds=budget, initialize=initialize)
+        result = workflow.run(decide, out, wallclock_seconds=budget, initialize=initialize,
+                              agent_hooks=ProcessAgent(transport))
         result.pop("initialization_error", None)
         if initialization_error[0] is not None:
             # Same as the platform: a failed startup fails the run rather than publishing a score.
@@ -226,6 +236,8 @@ def main(argv=None) -> int:
         "decision_requests": result["decision_requests"],
         "termination_detail": result["termination_detail"],
         "wall_seconds": result["accounted_wallclock_seconds"],
+        "speed_factor": result["speed_factor"],
+        "fair_clock": result["fair_clock"],
         "runner_seconds": round(time.monotonic() - started, 3),
         "note": "Local scores are for debugging; official results come from the platform. "
                 "本地分数用来调试，正式成绩以平台为准。",

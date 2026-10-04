@@ -242,23 +242,7 @@ def agent_hooks(transport):
         client = {key: os.environ[key] for key in ("PATH", "HOME", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT",
                                                     "DOCKER_CONFIG") if key in os.environ}
         return DockerAgent(name, client)
-    return _TransportProcess(transport)
-
-
-class _TransportProcess(ProcessAgent):
-    """ProcessAgent over a JsonlTransport that starts its process lazily."""
-
-    def __init__(self, transport):
-        super().__init__(None)
-        self.transport = transport
-
-    @property
-    def process(self):
-        return getattr(self.transport, "process", None)
-
-    @process.setter
-    def process(self, _value):
-        pass
+    return ProcessAgent(transport)
 
 
 def last_committed_sequence(result: dict) -> int:
