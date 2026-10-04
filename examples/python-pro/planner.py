@@ -12,7 +12,7 @@ Per decision (plan):
    duration; the winner maximises  total gain - lambda * T  (lambda = time price, scaled by the card's
    time scarcity), and is then refined by small pointing shifts.
 4. Program: the one with the largest expected score, using a band level fitted to saturated hits.
-5. The command is the chosen centre minus the learned pointing offset (stress cards).
+5. The command is the chosen centre minus the learned pointing offset (Hard-mode cards).
 
 Learning from results: unsaturated hits give the quality level (scale); saturated hits show the program
 multiplier exactly and so bracket the band level; E = quality level / band level is the instrument-fault
@@ -50,7 +50,7 @@ def _env(name: str, default):
 # --- search -------------------------------------------------------------------------------------------
 LAMBDA_FRAC = _env("LAMBDA_FRAC", 0.6)        # price of telescope time, as a share of the recent best gain rate
 LAMBDA_EMA = _env("LAMBDA_EMA", 0.03)
-SCARCITY_REF = _env("SCARCITY_REF", 0.86)     # scarcity of the standard 38-night practice cards
+SCARCITY_REF = _env("SCARCITY_REF", 0.86)     # tuning constant: scarcity at which time is priced fully
 SCARCITY_POWER = _env("SCARCITY_POWER", 1.0)  # time price x min(1, scarcity / SCARCITY_REF) ** power
 TYPICAL_Q = 0.6
 N_ANCHORS = _env("N_ANCHORS", 12)             # targets tried as field centres per decision (full speed)
@@ -90,9 +90,9 @@ PLAN_Q = _env("PLAN_Q", 0.7)                  # typical quality for the season p
 KAPPA = _env("KAPPA", 1.0)                    # convex shaping of science value (1 = linear)
 REQUIRED_SAFE_FACTOR = 0.62                   # a required target counts as safe at this estimated factor
 DONE_FACTOR = 0.95                            # other targets are done at this factor
-# --- pointing offset (stress cards) ---
-OFFSET_RANGE_DEG = 0.8
-OFFSET_GRID = [(0.05 * i, 0.05 * j) for i in range(-16, 17) for j in range(-16, 17)]
+# --- pointing offset (Hard-mode cards: a fixed, unannounced offset; its size is not published) ---
+OFFSET_STEPS = 16                             # coarse grid half-width in steps of pitch/12 (about a third of the field);
+                                              # the grid widens by half whenever the best offset sits on its edge
 OFFSET_MIN_MISSES = 6                         # start estimating after this many assigned-but-missed targets
 OFFSET_REFINE_EVERY = 10                      # observes between fine searches
 OFFSET_FINE_EVIDENCE = 150                    # observes used by the fine search
@@ -108,7 +108,7 @@ BAND_CONT = _env("BAND_CONT", 0)              # tie-break the band fit towards t
 CLOSED_KINDS = {"rain", "storm"}
 SKY_WEATHER_KINDS = {"rain", "storm", "overcast", "haze", "cold_snap"}
 WEATHER_GATE = _env("WEATHER_GATE", 0)        # no fault evidence from hours with announced all-sky weather
-NEUTRAL_KINDS = {"earthquake"}                # announced, but does not change the sky
+NEUTRAL_KINDS = {"earthquake"}                # announced; per the guide it lowers instrument efficiency, not the sky
 BLOCKING_KINDS = {"terrain_obstruction", "rocket_launch"}
 DIRECTION_AZ = {"N": 0.0, "NE": 45.0, "E": 90.0, "SE": 135.0, "S": 180.0, "SW": 225.0, "W": 270.0, "NW": 315.0}
 
@@ -194,6 +194,9 @@ class Planner:
         self.offset = (0.0, 0.0)                 # learned pointing offset (deg): actual = command + offset
         self.offset_evidence: deque = deque(maxlen=400)   # (command, [(alt, az, fiber, hit)]) per observe
         self.offset_scores = None
+        self.offset_step = self.grid.pitch / 12.0
+        self.offset_steps = OFFSET_STEPS
+        self.offset_grid = self._make_offset_grid()
         self.offset_misses = 0
         self.offset_updates = 0
         self.band_level = None
@@ -413,10 +416,10 @@ class Planner:
         self.pending = {}
         self.update_scale(hours)
 
-    # --- pointing offset (stress cards) ----------------------------------------------------------------
+    # --- pointing offset (Hard-mode cards) ----------------------------------------------------------------
 
     def _offset_evidence(self, hits: dict) -> None:
-        """Stress cards add a hidden constant offset to every pointing (public runner: actual = command +
+        """Hard-mode cards add a hidden fixed offset to every pointing (participant guide: actual = command +
         (d_alt, d_az)). Each assigned target's hit or miss is evidence; keep a score for each candidate offset
         on a grid and adopt the best one once it clearly explains the misses better than no offset."""
         if not self.pending or self.pending_cmd is None:
@@ -430,9 +433,7 @@ class Planner:
         if self.offset_misses < OFFSET_MIN_MISSES:
             return
         if self.offset_scores is None:
-            self.offset_scores = [0] * len(OFFSET_GRID)
-            for cmd, past in self.offset_evidence:
-                self._score_offsets(cmd, past)
+            self._rescore_offsets(list(self.offset_evidence))
         else:
             self._score_offsets(self.pending_cmd, rows)
         self.offset_updates += 1
@@ -448,19 +449,39 @@ class Planner:
             ok += (fib == fiber) == hit
         return ok
 
+    def _make_offset_grid(self) -> list:
+        n, step = self.offset_steps, self.offset_step
+        return [(step * i, step * j) for i in range(-n, n + 1) for j in range(-n, n + 1)]
+
+    def _rescore_offsets(self, evidence) -> None:
+        self.offset_scores = [0] * len(self.offset_grid)
+        for cmd, past in evidence:
+            self._score_offsets(cmd, past)
+
     def _score_offsets(self, cmd, rows) -> None:
-        for k, (d_alt, d_az) in enumerate(OFFSET_GRID):
+        for k, (d_alt, d_az) in enumerate(self.offset_grid):
             self.offset_scores[k] += self._consistent(cmd, rows, d_alt, d_az)
 
     def _refine_offset(self) -> None:
-        k = max(range(len(OFFSET_GRID)), key=lambda n: self.offset_scores[n])
-        base_alt, base_az = OFFSET_GRID[k]
+        k = max(range(len(self.offset_grid)), key=lambda n: self.offset_scores[n])
+        base_alt, base_az = self.offset_grid[k]
+        n = self.offset_steps
+        edge = max(abs(base_alt), abs(base_az)) >= (n - 0.5) * self.offset_step
+        if edge and (n + 1) * self.offset_step < self.grid.fov / 2.0:
+            # the best candidate sits on the edge of the grid: the offset may be larger, widen the search
+            self.offset_steps = int(n * 1.5) + 1
+            self.offset_grid = self._make_offset_grid()
+            self._rescore_offsets(list(self.offset_evidence)[-100:])
+            self.log(f"pointing offset: search widened to +-{self.offset_steps * self.offset_step:.2f} deg")
+            k = max(range(len(self.offset_grid)), key=lambda m: self.offset_scores[m])
+            base_alt, base_az = self.offset_grid[k]
         evidence = list(self.offset_evidence)[-OFFSET_FINE_EVIDENCE:]
         zero = sum(self._consistent(cmd, rows, 0.0, 0.0) for cmd, rows in evidence)
         scored = []
+        fine = self.offset_step / 5.0
         for i in range(-6, 7):
             for j in range(-6, 7):
-                d_alt, d_az = base_alt + 0.01 * i, base_az + 0.01 * j
+                d_alt, d_az = base_alt + fine * i, base_az + fine * j
                 scored.append((sum(self._consistent(cmd, rows, d_alt, d_az) for cmd, rows in evidence), d_alt, d_az))
         top = max(score for score, _, _ in scored)
         if top - zero < OFFSET_MARGIN:

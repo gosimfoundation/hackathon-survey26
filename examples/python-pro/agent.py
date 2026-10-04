@@ -94,10 +94,10 @@ class ObserverAgent:
         self.episode_blocked = False
         self.blocked_at_hour = -1
         # pace state
-        self.cost_ema = [0.0, 0.0, 0.0, 0.0]
+        self.cost_ema = [0.0, 0.0, 0.0, 0.0]     # CPU seconds per observe decision at each search level
+        self.wall_ema = [0.0, 0.0, 0.0, 0.0]     # real seconds per observe decision (own turn, model waits excluded)
+        self.turn_end = None
         self.decisions = 0
-        self.prev_remaining = None
-        self.prev_cost = 0.0
         self.engine_ema = None
         self.sim_step_ema = None
         self.last_now = None
@@ -108,18 +108,26 @@ class ObserverAgent:
 
     def respond(self, payload: dict) -> dict:
         started = time.monotonic()
+        cpu_started = time.process_time()
+        if self.turn_end is not None:   # engine time between our turns (charged only by the old real-time clock)
+            gap = started - self.turn_end
+            if 0.0 <= gap < 5.0:
+                self.engine_ema = gap if self.engine_ema is None else 0.95 * self.engine_ema + 0.05 * gap
         model_before = self.model_wait
         level = self.planner.fast_level
         action = self._respond(payload)
-        # waiting for the model is not planning cost: keep it out of the pace estimate
-        cost = time.monotonic() - started - (self.model_wait - model_before)
-        self.prev_cost = cost
+        # the platform charges CPU time inside our turns; waiting for the model is free of CPU, so keep it
+        # out of the real-time estimate as well
+        cpu = time.process_time() - cpu_started
+        wall = time.monotonic() - started - (self.model_wait - model_before)
         if action.get("action") == "observe" and level < 4:
-            c = self.cost_ema[level]
-            self.cost_ema[level] = cost if c == 0.0 else 0.9 * c + 0.1 * cost
-            for k in range(level + 1, 4):   # cheaper levels not measured yet: a third of the level above
-                if self.cost_ema[k] == 0.0 or self.cost_ema[k] > self.cost_ema[k - 1]:
-                    self.cost_ema[k] = self.cost_ema[k - 1] / 3.0
+            for ema, cost in ((self.cost_ema, cpu), (self.wall_ema, wall)):
+                c = ema[level]
+                ema[level] = cost if c == 0.0 else 0.9 * c + 0.1 * cost
+                for k in range(level + 1, 4):   # cheaper levels not measured yet: a third of the level above
+                    if ema[k] == 0.0 or ema[k] > ema[k - 1]:
+                        ema[k] = ema[k - 1] / 3.0
+        self.turn_end = time.monotonic()
         return action
 
     def _respond(self, payload: dict) -> dict:
@@ -180,36 +188,47 @@ class ObserverAgent:
 
     # --- pace ---------------------------------------------------------------------------------------
 
+    def _clock(self, payload: dict):
+        """(CPU seconds left, real seconds left, fair clock?) from the request's wallclock block.
+
+        Fair clock (current platform): the budget is normalized CPU time inside our turns, and
+        remaining_real_cpu_seconds converts it to this machine's CPU seconds; a separate real-time cap
+        (wall_remaining_seconds) only guards against runaway runs. Older runners count real time only."""
+        wall = payload.get("wallclock") or {}
+        if "remaining_real_cpu_seconds" in wall:
+            return (float(wall["remaining_real_cpu_seconds"]), float(wall.get("wall_remaining_seconds", 1e9)), True)
+        remaining = float(wall.get("remaining_seconds", 1e9))
+        return remaining, remaining, False
+
+    def _decisions_left(self, now) -> float:
+        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
+        return max(1.0, night_seconds / (self.sim_step_ema or 900.0))   # daytime waits cost nothing
+
     def _pace(self, payload: dict, now) -> None:
         """Pick the search level from the measured cost per decision and the decisions still to come."""
-        wall = payload.get("wallclock") or {}
-        remaining_wall = float(wall.get("remaining_seconds", 1e9))
-        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
-        decisions_left = max(1.0, night_seconds / (self.sim_step_ema or 900.0))   # daytime waits cost nothing
-        # the wall clock also runs while the engine simulates: measure that share and leave it out
-        if self.prev_remaining is not None:
-            engine = (self.prev_remaining - remaining_wall) - self.prev_cost
-            if 0.0 <= engine < 5.0:
-                self.engine_ema = engine if self.engine_ema is None else 0.95 * self.engine_ema + 0.05 * engine
-        self.prev_remaining = remaining_wall
-        budget = PACE_SAFETY * remaining_wall / decisions_left - (self.engine_ema or 0.0)
+        cpu_left, wall_left, fair = self._clock(payload)
+        decisions_left = self._decisions_left(now)
+        engine = self.engine_ema or 0.0
+        cpu_budget = PACE_SAFETY * cpu_left / decisions_left if fair else 1e9
+        wall_budget = PACE_SAFETY * wall_left / decisions_left - engine
         # estimates of levels not used for a while decay, so the agent climbs back up and re-measures them
         self.decisions += 1
         if self.decisions % 50 == 0:
             for k in range(4):
                 if k != self.planner.fast_level:
                     self.cost_ema[k] *= 0.85
-        level = 0
+                    self.wall_ema[k] *= 0.85
         if FIXED_LEVEL >= 0:
             self.planner.fast_level = FIXED_LEVEL
             return
-        while level < 3 and self.cost_ema[level] > budget:
+        level = 0
+        while level < 3 and (self.cost_ema[level] > cpu_budget or self.wall_ema[level] > wall_budget):
             level += 1
-        if remaining_wall < 15.0:
+        if min(cpu_left, wall_left) < 15.0:
             level = 4
         if level != self.planner.fast_level:
-            log(f"pro: pace level {level} (budget {budget * 1000:.0f} ms, costs {[round(c * 1000) for c in self.cost_ema]} ms, "
-                f"{decisions_left:.0f} decisions left)")
+            log(f"pro: pace level {level} (cpu budget {min(cpu_budget, 99) * 1000:.0f} ms, wall budget {wall_budget * 1000:.0f} ms, "
+                f"cpu costs {[round(c * 1000) for c in self.cost_ema]} ms, {decisions_left:.0f} decisions left)")
             self.planner.fast_level = level
 
     # --- model stages (advisor.py): night plan and fault review at every night start --------------------
@@ -223,7 +242,7 @@ class ObserverAgent:
         self.planner.bad_forecast = any(n.get("direction") == "ALL" and n.get("event_kind") in BAD_KINDS for n in tonight)
         self.planner.extra_avoid = set()
         self.fault_likely = None
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        left = self._clock(payload)[1]
         started = time.monotonic()
         answers = self.advisor.start_night(night_date, tonight, bulletin, self._fault_table(hours), left,
                                            self._model_wait_budget(payload))
@@ -231,15 +250,13 @@ class ObserverAgent:
         self._apply_advice(*answers)
 
     def _model_wait_budget(self, payload: dict) -> float:
-        """How long the agent can afford to wait for the model at a night start: half of the wall clock the
-        planner will not need, spread over the nights left (0 on a tight clock: answers then arrive later)."""
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        """How long a night start may wait for the model. Waiting costs no CPU budget, only real time: use half
+        of the real time the planner and the engine will not need, spread over the nights left."""
+        _, wall_left, _ = self._clock(payload)
         now = self.last_now
         nights_left = max(1, sum(1 for _, end in self.planner.nights if end > now))
-        night_seconds = sum(max(0.0, (end - max(start, now)).total_seconds()) for start, end in self.planner.nights if end > now)
-        decisions_left = night_seconds / (self.sim_step_ema or 900.0)
-        per_decision = max(self.cost_ema[self.planner.fast_level], 0.05) + (self.engine_ema or 0.01)
-        spare = left - 1.3 * decisions_left * per_decision - 30.0
+        per_decision = max(self.wall_ema[self.planner.fast_level], 0.05) + (self.engine_ema or 0.02)
+        spare = wall_left - 1.5 * self._decisions_left(now) * per_decision - 60.0
         return max(0.0, min(MODEL_WAIT_MAX, 0.5 * spare / nights_left))
 
     def _apply_advice(self, plan, fault) -> None:
@@ -266,7 +283,9 @@ class ObserverAgent:
             v = sorted(self.scale_hours[hour])
             stamp = (self.start + timedelta(hours=hour)).strftime("%m-%dT%H")
             rows.append([stamp, round(e_by_hour[hour], 2) if hour in e_by_hour else None, round(v[len(v) // 2], 2)])
+        notices = sorted({f"{kind} {direction}" for kind, direction in self.planner.notices})
         return {"columns": ["utc_hour", "E", "scale"], "rows": rows, "ref": round(self._scale_ref(), 2),
+                "notices_now": notices,
                 "free_false_reports_left": max(0, self.free_left()), "paid_false_reports_so_far": self.paid_false,
                 "correct_reports_so_far": self.correct_reports,
                 "hours_since_last_report": None if self.reports == 0 else round(hours - self.last_report_hours, 1)}
@@ -348,7 +367,7 @@ class ObserverAgent:
         evidence = {"hourly_E_last_24h": [round(e, 2) for _, e in rows], "fault_table": self._fault_table(hours),
                     "paid_false_reports_so_far": self.paid_false, "correct_reports_so_far": self.correct_reports}
         started = time.monotonic()
-        left = float((payload.get("wallclock") or {}).get("remaining_seconds", 0))
+        left = self._clock(payload)[1]
         verdict = self.advisor.confirm_report(evidence, left, min(30.0, 2.0 * self._model_wait_budget(payload)))
         self.model_wait += time.monotonic() - started
         if verdict is False:

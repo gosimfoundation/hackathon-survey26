@@ -33,24 +33,28 @@ NIGHT_PLAN_SYSTEM = (
 )
 
 FAULT_REVIEW_SYSTEM = (
-    "You watch the data quality of a robotic telescope. An instrument fault is never announced: from a sudden onset it "
-    "multiplies every exposure's quality by roughly 0.4-0.8 and stays until someone reports it. Weather also lowers "
-    "quality, but it also lowers the program band, and it varies from hour to hour and recovers.\n"
-    "Columns per hour: E = measured quality / quality the program bands allow (about 1 when healthy; it stays low "
-    "during a fault; in a very clear sky it can stay near 1 even during a fault), scale = measured sky quality relative "
-    "to the clear-sky model, ref = the usual clear-sky scale since the last repair.\n"
-    "Signs of a fault: a step down in scale to a flat lower level that does not recover, E below about 0.85 for many "
-    "hours, low values on consecutive nights. Signs of weather: gradual changes, quick recoveries, an announced event.\n"
-    "Reporting: a correct report earns 100 and repairs the instrument at once (each fault night costs far more than "
-    "100); false reports are free while free_false_reports_left > 0, afterwards each costs 150.\n"
+    "You watch the data quality of a robotic telescope. An instrument fault is never announced: it lowers the "
+    "instrument efficiency, and so the quality of every exposure, until someone reports it; a correct report "
+    "repairs it at once. An earthquake (it appears in the bulletin) also lowers instrument efficiency, and that loss "
+    "fades night by night; a report does not repair it. Weather lowers quality too, but it also lowers the program "
+    "band, which the instrument does not affect.\n"
+    "Columns per hour: E = measured quality / quality the program bands allow (about 1 when healthy; low when the "
+    "instrument is the cause; in a very clear sky the bands bound it only loosely, so it can stay near 1), scale = "
+    "measured sky quality relative to the clear-sky model, ref = the usual scale since the last repair. "
+    "notices_now lists the current bulletin.\n"
+    "Signs of a fault: quality that drops and stays down without recovering, E low for many hours across nights, "
+    "not explained by announced weather or by a recent earthquake whose effect is fading.\n"
+    "Reporting: a correct report earns 100 and repairs the instrument; false reports are free while "
+    "free_false_reports_left > 0, afterwards each costs 150.\n"
     'Reply with one JSON object only: {"fault_likely": <0..1>, "reason": "<15 words"}'
 )
 
 CONFIRM_SYSTEM = (
     "You check the evidence for an unannounced instrument fault on a robotic telescope before a paid report. A false "
-    "report costs 150 points; a correct one earns 100 and repairs the instrument, which is worth much more for the "
-    "rest of the season. E per hour = measured quality / quality the program bands allow: about 1 when healthy, it "
-    "stays low while a fault is active; weather lowers both and recovers.\n"
+    "report costs 150 points; a correct one earns 100 and repairs the instrument. E per hour = measured quality / "
+    "quality the program bands allow: about 1 when healthy, low while the instrument is the cause. Weather lowers both "
+    "quality and band; an earthquake lowers instrument efficiency in a way that fades night by night and that a "
+    "report does not repair.\n"
     'Reply with one JSON object only: {"report": true|false, "reason": "<15 words"}'
 )
 
