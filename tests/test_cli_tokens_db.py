@@ -1,4 +1,4 @@
-"""Personal API tokens for the survey26 CLI (20261004120000): real PostgreSQL."""
+"""Personal API tokens for the survey26 CLI (20261004130000): real PostgreSQL."""
 import hashlib
 import re
 
