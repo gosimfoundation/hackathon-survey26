@@ -2699,5 +2699,56 @@
   },
   "about_page": {
     "kicker": "Organizer · Sponsor · Committee"
+  },
+  "friends": {
+    "title": "Friends",
+    "my_uid": "Your UID",
+    "uid_hint": "Give it to people who want to add you as a friend or invite you to their team. Only you can see it here.",
+    "add_label": "Add a friend by UID",
+    "add_placeholder": "9-digit UID",
+    "add": "Send request",
+    "daily_note": "Up to {n} requests a day.",
+    "incoming_title": "Friend requests",
+    "outgoing_title": "Waiting for an answer",
+    "friends_title": "Your friends",
+    "none": "No friends yet. Share your UID to get started.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "block": "Block",
+    "unblock": "Unblock",
+    "remove": "Remove",
+    "cancel": "Withdraw",
+    "invite_team": "Invite to team",
+    "no_team": "No team yet",
+    "blocked_title": "Blocked",
+    "remove_confirm": "Remove this friend?",
+    "block_confirm": "Block this person? They will not be told, and you will no longer see their requests.",
+    "invited": "Invitation sent. They can accept it on their Notifications page.",
+    "invalid_uid": "A UID has 9 digits.",
+    "invite_uid_title": "Invite by UID",
+    "invite_uid_lede": "Ask the person for their UID (shown on their profile page). They join after accepting your invitation.",
+    "invite_uid_send": "Send invitation",
+    "pending": "pending",
+    "result": {
+      "sent": "Friend request sent.",
+      "accepted": "You are now friends.",
+      "already_friends": "You are already friends."
+    },
+    "errors": {
+      "self": "That is your own UID.",
+      "uid_unavailable": "No one can receive a request at this UID.",
+      "daily_limit": "You have reached today's limit. Try again tomorrow.",
+      "blocked_by_you": "You have blocked this person. Unblock them first.",
+      "request_not_found": "This request is not available.",
+      "request_finished": "This request has already been handled.",
+      "not_friends": "You are not friends.",
+      "user_not_found": "This person is not available.",
+      "not_in_team": "Create or join a team first.",
+      "leader_only": "Only the team captain can invite.",
+      "locked": "Your team is locked.",
+      "full": "Your team is full.",
+      "uid_not_found": "No participant has this UID.",
+      "recipient_in_team": "This person is already on a team."
+    }
   }
 }

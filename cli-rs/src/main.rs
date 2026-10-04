@@ -38,9 +38,10 @@ const EXIT_FAILED: i32 = 9;
 const AUTH_CODES: &[&str] = &["invalid_token", "cli_tokens_disabled", "account_banned", "account_unavailable", "login_required",
     "no_token", "banned", "not_authenticated"];
 const LIMIT_CODES: &[&str] = &["daily_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
-    "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left"];
+    "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"];
 const NOT_FOUND_CODES: &[&str] = &["revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
-    "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found"];
+    "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
+    "uid_unavailable", "request_not_found", "user_not_found"];
 const UNAVAILABLE_CODES: &[&str] = &["network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
     "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"];
 
@@ -670,7 +671,7 @@ fn time_hms() -> String {
 // Commands: account and profile
 
 fn public_me(me: &Value) -> Value {
-    let keys = ["id", "email", "name", "nickname", "github", "affiliation", "role", "locale", "city", "contact", "blurb",
+    let keys = ["id", "uid", "email", "name", "nickname", "github", "affiliation", "role", "locale", "city", "contact", "blurb",
         "show_on_wall", "looking_for_team", "seeking", "seeking_count", "astro_level", "ai_level", "avatar_url"];
     let mut result = Map::new();
     for k in keys {
@@ -735,6 +736,9 @@ fn cmd_whoami(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
     let me = public_me(&whoami(api)?);
     let display = if truthy(&me["nickname"]) { py_str(&me["nickname"]) } else { py_none_str(&me["name"]) };
     out.line(&format!("{}  {}", display, py_none_str(&me["email"])));
+    if truthy(&me["uid"]) {
+        out.line(&format!("UID {}", py_str(&me["uid"])));
+    }
     let team = &me["team"];
     let tail = if truthy(team) {
         format!("{} ({})", py_none_str(&team["name"]), if truthy(&team["is_captain"]) { out.t("captain", "队长") } else { out.t("member", "队员") })
@@ -1055,6 +1059,91 @@ fn cmd_invites_respond(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
 fn cmd_invites_cancel(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let result = api.rpc("cancel_team_invite", true, json!({"p_invitation": a.str("invitation_id")}))?;
     out.line(out.t("Cancelled.", "已撤回。"));
+    Ok(result)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Commands: friends and invitations by UID
+
+fn parse_uid(text: Option<String>) -> R<i64> {
+    let text = py_strip(&text.unwrap_or_default());
+    let ok = text.len() == 9 && text.chars().all(|c| c.is_ascii_digit()) && !text.starts_with('0');
+    if !ok {
+        return Err(CliError::exit("invalid_uid", "", EXIT_USAGE));
+    }
+    Ok(text.parse().unwrap())
+}
+
+/// The by-UID actions answer {"error": code} instead of failing; the CLI reports those as its errors.
+fn uid_result(result: Value) -> R<Value> {
+    let result = if result.is_object() { result } else { json!({}) };
+    if truthy(&result["error"]) {
+        let code = py_str(&result["error"]);
+        let code = match code.as_str() { "self" => "uid_self".to_string(), "daily_limit" => "uid_daily_limit".to_string(), _ => code };
+        return Err(CliError::new(&code));
+    }
+    Ok(result)
+}
+
+fn cmd_friends_list(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
+    let data = or_empty(api.rpc("my_friends", false, json!({}))?);
+    out.line(&format!("{}{}", out.t("Your UID: ", "你的 UID："), or_blank(&g(&data, "uid"))));
+    let sections: [(&str, &str, Vec<(&str, &str)>); 4] = [
+        (out.t("Friends", "好友"), "friends", vec![("UID", "uid"), (out.t("Name", "名字"), "name"), (out.t("Team", "队伍"), "team_name"), ("USER_ID", "user_id")]),
+        (out.t("Requests to you", "收到的请求"), "incoming", vec![("ID", "id"), (out.t("Name", "名字"), "name"), ("USER_ID", "user_id"), (out.t("Sent", "时间"), "created_at")]),
+        (out.t("Your pending requests", "你发出的请求"), "outgoing", vec![("ID", "id"), ("UID", "uid"), (out.t("Sent", "时间"), "created_at")]),
+        (out.t("Blocked", "已屏蔽"), "blocked", vec![("USER_ID", "user_id"), (out.t("Name", "名字"), "name")]),
+    ];
+    for (title, key, columns) in sections.iter() {
+        out.line("");
+        out.line(title);
+        out.table(&arr(&g(&data, key)), columns);
+    }
+    Ok(data)
+}
+
+fn cmd_friends_add(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let uid = parse_uid(a.str("uid"))?;
+    let result = uid_result(api.rpc("send_friend_request", true, json!({"p_uid": uid}))?)?;
+    let status = s_or(&result["status"]);
+    out.line(match status.as_str() {
+        "accepted" => out.t("You are now friends.", "你们已成为好友。"),
+        "already_friends" => out.t("You are already friends.", "你们已经是好友了。"),
+        _ => out.t("Friend request sent.", "好友请求已发送。"),
+    });
+    Ok(result)
+}
+
+fn cmd_friends_respond(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let accept = a.command.last().map(|c| c == "accept").unwrap_or(false);
+    let result = api.rpc("respond_friend_request", true, json!({"p_request": a.str("request_id"), "p_accept": accept}))?;
+    out.line(if accept { out.t("Accepted.", "已接受。") } else { out.t("Declined.", "已拒绝。") });
+    Ok(result)
+}
+
+fn cmd_friends_cancel(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let result = api.rpc("cancel_friend_request", true, json!({"p_request": a.str("request_id")}))?;
+    out.line(out.t("Cancelled.", "已撤回。"));
+    Ok(result)
+}
+
+fn cmd_friends_remove(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let result = api.rpc("remove_friend", true, json!({"p_user": a.str("user_id")}))?;
+    out.line(out.t("Removed from your friends.", "已删除好友。"));
+    Ok(result)
+}
+
+fn cmd_friends_block(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let block = a.command.last().map(|c| c == "block").unwrap_or(false);
+    let result = api.rpc(if block { "block_user" } else { "unblock_user" }, true, json!({"p_user": a.str("user_id")}))?;
+    out.line(if block { out.t("Blocked.", "已屏蔽。") } else { out.t("Unblocked.", "已解除屏蔽。") });
+    Ok(result)
+}
+
+fn cmd_team_invite_uid(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let uid = parse_uid(a.str("uid"))?;
+    let result = uid_result(api.rpc("send_team_invite_by_uid", true, json!({"p_uid": uid}))?)?;
+    out.line(out.t("Invitation sent.", "邀请已发送。"));
     Ok(result)
 }
 
@@ -1958,6 +2047,13 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_invites_list" => cmd_invites_list,
         "cmd_invites_respond" => cmd_invites_respond,
         "cmd_invites_cancel" => cmd_invites_cancel,
+        "cmd_team_invite_uid" => cmd_team_invite_uid,
+        "cmd_friends_list" => cmd_friends_list,
+        "cmd_friends_add" => cmd_friends_add,
+        "cmd_friends_respond" => cmd_friends_respond,
+        "cmd_friends_cancel" => cmd_friends_cancel,
+        "cmd_friends_remove" => cmd_friends_remove,
+        "cmd_friends_block" => cmd_friends_block,
         "cmd_env_show" => cmd_env_show,
         "cmd_env_set" => cmd_env_set,
         "cmd_env_unset" => cmd_env_unset,

@@ -4,7 +4,7 @@
 
 ## 1. 安装
 
-工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.1.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
+工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.2.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
 
 ```bash
 # 方式 A：安装 survey26 命令
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/SHA256SUMS)。
+**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/SHA256SUMS)。
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-arm64) |
-| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-macos-x86_64) |
-| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64) |
-| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-windows-x86_64.exe) |
+| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-macos-arm64) |
+| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-macos-x86_64) |
+| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-x86_64) |
+| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.1.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.1.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.2.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.2.0
 ```
 
 在 macOS 上，用浏览器下载的程序需先解除隔离：`xattr -d com.apple.quarantine survey26`。在 Windows 上，请在 PowerShell 或命令提示符中运行 `survey26-windows-x86_64.exe`。
@@ -55,7 +55,8 @@ survey26 whoami
 | --- | --- |
 | 账号与个人资料 | `whoami`、`profile show`、`profile set --nickname … --github …`、`profile avatar set 文件`、`profile avatar clear` |
 | 找队友 | `teammates list [--looking]`、`teammates visibility show\|on\|off [--blurb … --contact … --seeking …]`、`teammates contact 用户ID`、`teammates invite 用户ID` |
-| 队伍 | `team show`、`team members`、`team create 队名 [--max-size N]`、`team join 邀请码`、`team leave`、`team code [--regenerate]`、`team set --name … --max-size … --lock/--unlock`、`team transfer 用户ID`、`team kick 用户ID`、`team disband`、`team directory`、`team request 队伍ID` |
+| 队伍 | `team show`、`team members`、`team create 队名 [--max-size N]`、`team join 邀请码`、`team leave`、`team code [--regenerate]`、`team set --name … --max-size … --lock/--unlock`、`team transfer 用户ID`、`team kick 用户ID`、`team disband`、`team directory`、`team request 队伍ID`、`team invite-uid UID`（队长） |
+| 好友 | `friends list`（你的 UID、好友、请求、已屏蔽）、`friends add UID`、`friends accept ID`、`friends decline ID`、`friends cancel ID`、`friends remove 用户ID`、`friends block 用户ID`、`friends unblock 用户ID` |
 | 消息通知 | `invites list`、`invites accept ID`、`invites decline ID`、`invites cancel ID` |
 | 密钥与网络 | `env show`、`env set 名称 --value-stdin [--plain]`、`env set 名称 --from-env 变量`、`env unset 名称`、`env domains set 域名…`、`env domains clear` |
 | 第 1 步 · 上传项目 | `project upload 文件.zip [--title …]`、`project submit-repo https://github.com/OWNER/REPO [--title …]` |
@@ -105,7 +106,7 @@ survey26 final set 1a2b3c4d
 | 5 | 请求过于频繁，请等待一分钟 |
 | 6 | 网络或服务器暂时不可用，请稍后重试 |
 | 7 | `wait` 命令达到 `--timeout` |
-| 8 | 达到每日或队伍上限（评测次数、上传次数、已有进行中的评测、队伍人数） |
+| 8 | 达到每日或队伍上限（评测次数、上传次数、已有进行中的评测、队伍人数、每天 20 次 UID 操作） |
 | 9 | 所等待的准备或评测未能成功完成 |
 
 网站上会弹出确认框的操作（再次评测同一版本、评测 3 次取平均、撤回版本、取消最终版本选择、退出队伍、转让队长、移出队员、解散队伍、几分钟内重复提交同一项目），在交互式终端中同样需要确认。使用 `--json` 或没有终端时，工具从不等待输入：这些操作必须加 `--yes`，否则以退出码 2 结束。`project wait` 和 `eval wait` 默认每 15 秒和 20 秒查询一次（`--interval`，最少 5 秒），超过 `--timeout` 秒后停止。
