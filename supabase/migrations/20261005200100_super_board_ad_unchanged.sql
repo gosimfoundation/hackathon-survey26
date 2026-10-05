@@ -129,7 +129,7 @@ begin
 end $$;
 revoke all on function private.observer_settle_score_check(uuid,text,jsonb) from public,anon,authenticated;
 
-create or replace function public.observer_card_board(p_phase uuid, p_scenario_slug text DEFAULT NULL::text, p_limit integer DEFAULT 100)
+create or replace function private.observer_card_board_live(p_phase uuid, p_scenario_slug text DEFAULT NULL::text, p_limit integer DEFAULT 100)
  RETURNS jsonb
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
