@@ -77,9 +77,9 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
         assert board_state(page) == ['总榜', '任务卡 A', '任务卡 B', '任务卡 C', '任务卡 D',
                                      '超级总榜', '任务卡 A1', '任务卡 B1', '任务卡 C1', '任务卡 D1']
         assert texts(page.get_by_test_id('lb-row')) == before_rows                       # nothing moved
-        # The super board's own tab sits right after 正式赛; the debug board (if any) stays far right.
+        # The super board is a card tab inside 正式赛, never a top-level board tab; the debug board stays far right.
         phase_tabs = [t.get_attribute('data-testid') for t in page.locator('.tabs a').all()]
-        assert phase_tabs[phase_tabs.index('board-tab-online') + 1] == 'board-tab-super'
+        assert 'board-tab-super' not in phase_tabs
         assert 'board-tab-practice' not in phase_tabs or phase_tabs[-1] == 'board-tab-practice'
         expect(page.get_by_test_id('board-tab-online')).to_have_class(re.compile(r'(^|\s)active(\s|$)'))
         page.close()
@@ -107,8 +107,8 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
 
             page = shoot('4-super', '/leaderboard/online?lang=zh&scenario=super', view)
             expect(page.get_by_test_id('board-card-super')).to_have_attribute('aria-pressed', 'true')
-            expect(page.get_by_test_id('board-tab-super')).to_have_class(re.compile(r'(^|\s)active(\s|$)'))
-            expect(page.get_by_test_id('board-tab-online')).not_to_have_class(re.compile(r'(^|\s)active(\s|$)'))
+            expect(page.get_by_test_id('board-tab-super')).to_have_count(0)
+            expect(page.get_by_test_id('board-tab-online')).to_have_class(re.compile(r'(^|\s)active(\s|$)'))
             rows = page.get_by_test_id('lb-row')
             expect(rows).to_have_count(2)                                                  # only complete 8-card evaluations
             expect(rows.nth(0)).to_contain_text('Spiky ' + tag)                            # 240000
