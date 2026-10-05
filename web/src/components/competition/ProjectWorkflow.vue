@@ -29,6 +29,10 @@ const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
 const emit = defineEmits<{ phase: [phase: { name_en: string; name_zh: string } | null] }>()
 const { pick, t, tf, locale } = useI18n()
+// The "keys are read from Secrets & network" note can be dismissed for good on this browser.
+const RELAY_DISMISS_KEY = 'sac.relay-banner-dismissed'
+const relayDismissed = ref((() => { try { return localStorage.getItem(RELAY_DISMISS_KEY) === '1' } catch { return false } })())
+function dismissRelay() { relayDismissed.value = true; try { localStorage.setItem(RELAY_DISMISS_KEY, '1') } catch { /* private mode */ } }
 const { team, refreshMeCached } = useAuth()
 const personal=usePersonalModel()
 const data = ref<PortalData | null>(null)
@@ -672,6 +676,8 @@ function showUpload() {
 }
 function openFailure2() { v2Tab.value = 'progress'; openFailure() }
 function openReview2(r: ProjectRevision) {
+  // The review panel lives under its version row on the progress tab: switch there first, or the click does nothing.
+  v2Tab.value = 'progress'
   openReview(r)
   void nextTick(() => document.querySelector('[data-testid="project-review"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
 }
@@ -725,7 +731,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <div class="cw-alerts" data-testid="compete-todo">
         <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
         <p v-if="notice" role="status" class="cw-notice">{{ notice }}</p>
-        <p v-if="data?.team_environment?.relay_key_missing" class="errors" role="alert" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }}</p>
+        <p v-if="data?.team_environment?.relay_key_missing && !relayDismissed" role="status" class="cw-notice" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }} <button type="button" class="underline underline-offset-2" data-testid="team-env-relay-dismiss" @click="dismissRelay">{{ t('submit.team_env.relay_banner_dismiss') }}</button></p>
       </div>
 
       <section class="cw-progress" data-testid="progress-panel" aria-labelledby="cw-progress-title">

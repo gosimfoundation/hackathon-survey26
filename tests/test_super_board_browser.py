@@ -64,7 +64,7 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
             return page
 
         online(True)
-        before = shoot('1-before-switch-overall', '/leaderboard/online?lang=zh')
+        before = shoot('1-before-switch-overall', '/leaderboard/online?lang=zh&scenario=overall')
         assert board_state(before) == ['总榜', '任务卡 A', '任务卡 B', '任务卡 C', '任务卡 D']
         before_rows = texts(before.get_by_test_id('lb-row'))
         expect(before.get_by_test_id('board-tab-super')).to_have_count(0)
@@ -72,7 +72,7 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
 
         # Switch on: A1-D1 join the phase (staging-like version suffix); evaluations now run 8 cards.
         extra = [card(uri, phase, f'v4-{c}1-v1', f'Card {c.upper()}1 v1') for c in 'abcd']
-        page = shoot('2-after-switch-overall', '/leaderboard/online?lang=zh')
+        page = shoot('2-after-switch-overall', '/leaderboard/online?lang=zh&scenario=overall')
         online(False)
         assert board_state(page) == ['总榜', '任务卡 A', '任务卡 B', '任务卡 C', '任务卡 D',
                                      '超级总榜', '任务卡 A1', '任务卡 B1', '任务卡 C1', '任务卡 D1']
@@ -96,7 +96,7 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
         online(True)
 
         for view in VIEWS:
-            page = shoot('3-overall', '/leaderboard/online?lang=zh', view)
+            page = shoot('3-overall', '/leaderboard/online?lang=zh&scenario=overall', view)
             rows = page.get_by_test_id('lb-row')
             expect(rows).to_have_count(4)
             expect(rows.nth(0)).to_contain_text('A1 crashed ' + tag)                       # 32000
