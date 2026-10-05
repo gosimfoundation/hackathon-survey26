@@ -1,10 +1,12 @@
 import { computed, reactive, readonly } from 'vue'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { browserStorage } from '../lib/quest'
-import { entryPhaseId, initialEntryChoice, parseCompetition, rememberEntryChoice, type EntryChoice } from '../lib/entryPhase'
+import { entryPhaseId, initialEntryChoice, offersExtraSwitch, parseCompetition, rememberEntryChoice, type EntryChoice } from '../lib/entryPhase'
 const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: null as string|null, betaPhaseId: null as string|null, projectPhaseId: null as string|null,
   // Competition mode only: the practice board that stays open next to the online phase.
-  practicePhaseId: null as string|null })
+  practicePhaseId: null as string|null,
+  // Optional extra (unscored) phase organizers may offer, in either mode.
+  extraPhaseId: null as string|null })
 let fetched = 0, pending: Promise<void>|null = null
 export const competition = readonly(state)
 // 线上赛 / 练习赛 on the 参赛 page during the competition, remembered per user in this browser.
@@ -13,7 +15,7 @@ export const entryChoice = computed(() => entry.choice)
 export const entryPhase = computed(() => entryPhaseId(state, entry.choice))
 export function useEntryFor(userId: string|null|undefined, onlineEnded = false) {
   entry.userId = userId ?? null
-  entry.choice = initialEntryChoice(browserStorage(), userId, onlineEnded)
+  entry.choice = initialEntryChoice(browserStorage(), userId, onlineEnded, offersExtraSwitch(state))
 }
 export function chooseEntry(choice: EntryChoice) {
   entry.choice = choice

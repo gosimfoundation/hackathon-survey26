@@ -205,3 +205,56 @@ def test_practice_board_keeps_taking_evaluations_during_the_competition(database
         query(uri,'delete from public.phase_scenarios where phase_id=%s',(board,))
         query(uri,'delete from public.observer_phase_settings where phase_id=%s',(board,))
         query(uri,'delete from public.phases where id=%s',(board,))
+
+
+def test_extra_phase_is_offered_when_configured_and_open_and_only_to_its_access_team_while_restricted(database):
+    uri=database;member,team=identity(uri);other,_=identity(uri);admin,_=identity(uri)
+    query(uri,'update public.profiles set is_admin=true where id=%s',(admin,))
+    extra=uuid.uuid4()
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'extra-phase','Extra','加赛')",(extra,))
+    query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,daily_batches) values(%s,true,5)',(extra,))
+    sql='select public.current_competition()::text'
+    anon=lambda: query(uri,sql,role='anon')[0][0]
+    as_user=lambda u: query(uri,sql,role='authenticated',user=u)[0][0]
+    viewers=lambda: (anon(),as_user(member),as_user(other),as_user(admin))
+    try:
+        for mode in ('practice','competition'):
+            query(uri,'update private.observer_site_mode set mode=%s,phase_id=null',(mode,))
+            base=anon()  # nothing configured: the answer as before, for everyone
+            assert viewers()==(base,)*4
+            query(uri,'insert into private.observer_extra_phase(id,phase_id) values(true,%s) on conflict (id) do update set phase_id=excluded.phase_id',(extra,))
+            assert rpc(uri,'current_competition',role='anon')['extra_phase_id']==str(extra)
+            assert query(uri,"select (public.current_competition()-'extra_phase_id')::text")[0][0]==base
+            # Restricted to a team: only its members see it; everyone else (admins included) byte for byte as before.
+            query(uri,'update public.observer_phase_settings set access_team_id=%s where phase_id=%s',(team,extra))
+            assert rpc(uri,'current_competition',role='authenticated',user=member)['extra_phase_id']==str(extra)
+            assert query(uri,"select (public.current_competition()-'extra_phase_id')::text",role='authenticated',user=member)[0][0]==base
+            assert (anon(),as_user(other),as_user(admin))==(base,)*3
+            query(uri,'update public.profiles set is_banned=true where id=%s',(member,))
+            assert as_user(member)==base
+            query(uri,'update public.profiles set is_banned=false where id=%s',(member,))
+            query(uri,'update public.observer_phase_settings set access_team_id=null where phase_id=%s',(extra,))
+            # Inactive, ended, not yet started or without projects: unchanged for everyone, byte for byte.
+            for change,undo in (
+                    ('update public.phases set is_active=false where id=%s','update public.phases set is_active=true where id=%s'),
+                    ("update public.phases set ends_at=now()-interval '1 minute' where id=%s",'update public.phases set ends_at=null where id=%s'),
+                    ("update public.phases set starts_at=now()+interval '1 hour' where id=%s",'update public.phases set starts_at=null where id=%s'),
+                    ('update public.observer_phase_settings set projects_enabled=false where phase_id=%s',
+                     'update public.observer_phase_settings set projects_enabled=true where phase_id=%s')):
+                for restricted in (None,team):
+                    query(uri,'update public.observer_phase_settings set access_team_id=%s where phase_id=%s',(restricted,extra))
+                    query(uri,change,(extra,))
+                    assert viewers()==(base,)*4
+                    query(uri,undo,(extra,))
+                query(uri,'update public.observer_phase_settings set access_team_id=null where phase_id=%s',(extra,))
+            assert rpc(uri,'current_competition',role='authenticated',user=other)['extra_phase_id']==str(extra)
+            # Turned off by hand: unchanged again.
+            query(uri,'update private.observer_extra_phase set phase_id=null')
+            assert viewers()==(base,)*4
+        with pytest.raises(psycopg.Error,match='permission denied'):
+            query(uri,'select * from private.observer_extra_phase',role='anon')
+    finally:
+        query(uri,"update private.observer_site_mode set mode='practice',phase_id=null")
+        query(uri,'delete from private.observer_extra_phase')
+        query(uri,'delete from public.observer_phase_settings where phase_id=%s',(extra,))
+        query(uri,'delete from public.phases where id=%s',(extra,))
