@@ -51,6 +51,17 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 3. A token acts as you. It cannot do anything that your account cannot do on the website, and organizer functions are never available with a token. Each account may have up to 5 active tokens; the profile page shows when each token was created and last used. Revoke a token there as soon as it is no longer needed or may have been exposed: it stops working immediately. Requests are limited to 120 per minute per account.
 4. Anyone who has your token can act as you. Do not put tokens in repositories, project ZIPs, logs, screenshots or chats. A token cannot be used to create or revoke tokens; this is done only on the profile page.
 
+### Temporary Kimi relay (local development)
+
+This is a temporary Kimi allowance from the organizers to help with local development and debugging. It's limited and may change or end at any time. Platform evaluations and the final use the model service each team saves in 'Keys and network' — please make sure yours is set up.
+
+Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 200 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay**. Please do not save it as your evaluation model service.
+
+```bash
+export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
+export OPENAI_API_KEY=$SURVEY26_TOKEN
+```
+
 ## 3. Commands
 
 | Website | Command |
@@ -187,6 +198,17 @@ survey26 whoami
 
 3. 令牌代表你本人。凡是你的账号在网站上不能做的操作，令牌同样不能做；任何账号都不能通过令牌使用主办方功能。每个账号最多同时持有 5 个有效令牌，个人资料页会显示每个令牌的创建时间和最近使用时间。令牌不再需要或可能泄露时，请立即在该页撤销，撤销后立即失效。每个账号每分钟最多 120 次请求。
 4. 任何拿到令牌的人都能以你的身份操作。请勿把令牌写入仓库、项目 ZIP、日志、截图或聊天记录。令牌不能用来创建或撤销令牌，这只能在个人资料页完成。
+
+### 临时 Kimi 中转（本地开发用）
+
+这是组委会临时提供的 Kimi 额度，方便大家本地开发调试，额度有限，可能随时调整或结束。正式评测和决赛会使用各队在「密钥与网络」里保存的模型服务，记得提前配置好哦。
+
+已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 200 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**。请不要把它保存为评测用的模型服务。
+
+```bash
+export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
+export OPENAI_API_KEY=$SURVEY26_TOKEN
+```
 
 ## 3. 命令一览
 

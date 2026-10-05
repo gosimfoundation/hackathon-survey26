@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { fmtUtc } from '../../lib/format'
 import { useAdmin } from '../../composables/useAdmin'
 import DashShell from '../../components/layout/DashShell.vue'
+import KimiRelayAdminPanel from '../../components/dashboard/KimiRelayAdminPanel.vue'
 import SkeletonRows from '../../components/layout/SkeletonRows.vue'
 import StatusPill from '../../components/layout/StatusPill.vue'
 import { guessCodeColumn, maskCode, readSheets, type Sheet } from '../../lib/sheetImport'
@@ -274,6 +275,7 @@ onMounted(async () => { try { await Promise.all([reload(), loadTeams()]) } catch
         </table>
       </div>
     </div>
+    <KimiRelayAdminPanel />
   </DashShell>
 </template>
 

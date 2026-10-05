@@ -49,6 +49,17 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 3. A token acts as you. It cannot do anything that your account cannot do on the website, and organizer functions are never available with a token. Each account may have up to 5 active tokens; the profile page shows when each token was created and last used. Revoke a token there as soon as it is no longer needed or may have been exposed: it stops working immediately. Requests are limited to 120 per minute per account.
 4. Anyone who has your token can act as you. Do not put tokens in repositories, project ZIPs, logs, screenshots or chats. A token cannot be used to create or revoke tokens; this is done only on the profile page.
 
+### Temporary Kimi relay (local development)
+
+This is a temporary Kimi allowance from the organizers to help with local development and debugging. It's limited and may change or end at any time. Platform evaluations and the final use the model service each team saves in 'Keys and network' — please make sure yours is set up.
+
+Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 200 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay**. Please do not save it as your evaluation model service.
+
+```bash
+export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
+export OPENAI_API_KEY=$SURVEY26_TOKEN
+```
+
 ## 3. Commands
 
 | Website | Command |
