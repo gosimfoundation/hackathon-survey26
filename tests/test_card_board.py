@@ -1,7 +1,11 @@
 """Per-card boards (public.observer_card_board): one best complete batch per team,
 the same visibility as observer_board, and no change for phases left on 'overall'."""
+import json
 import uuid
 
+import psycopg
+import pytest
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from test_project_database import database, identity, query, rpc, setup  # noqa: F401
@@ -164,3 +168,59 @@ def test_nested_component_layout_is_read_too(setup):
     batch(uri, s['phase'], s['user'], {sid: 7 for sid in cards.values()}, v4_nested_summary)
     slug = query(uri, 'select slug from public.scenarios where id=%s', (cards['b'],))[0][0]
     assert board(uri, s['phase'], slug)['rows'][0]['components'] == {'sum_best_scores': 8, 'required_penalty': -1}
+
+
+def cached_board(uri, phase, slug=None, role='anon', user=None, read_only=False):
+    """observer_card_board with the production cache on (the test databases turn it off)."""
+    with psycopg.connect(uri) as conn:
+        if read_only:
+            conn.execute('set transaction read only')
+        conn.execute("select set_config('observer.card_board_cache_seconds', '45', true)")
+        conn.execute(sql.SQL('set local role {}').format(sql.Identifier(role)))
+        conn.execute("select set_config('request.jwt.claims', %s, true)",
+                     (json.dumps({'role': role, 'sub': str(user) if user else None}),))
+        return conn.execute('select public.observer_card_board(%s,%s,100)', (phase, slug)).fetchone()[0]
+
+
+def test_non_admin_reads_share_a_short_cache_admins_and_visibility_changes_bypass_it(setup):
+    s = setup; uri = s['uri']
+    cards = v4_phase(s)
+    slug = query(uri, 'select slug from public.scenarios where id=%s', (cards['a'],))[0][0]
+    batch(uri, s['phase'], s['user'], {sid: 5 for sid in cards.values()})
+    first = cached_board(uri, s['phase'])
+    assert first == board(uri, s['phase']) and first['rows'][0]['total_score'] == 5
+    assert cached_board(uri, s['phase'], slug) == board(uri, s['phase'], slug)
+    # A newly scored evaluation shows up for non-admins once the entry expires; admins see it at once.
+    admin, _ = identity(uri)
+    query(uri, 'update public.profiles set is_admin=true where id=%s', (admin,))
+    batch(uri, s['phase'], s['user'], {sid: 9 for sid in cards.values()})
+    assert cached_board(uri, s['phase']) == first
+    assert cached_board(uri, s['phase'], role='authenticated', user=s['user']) == first
+    assert cached_board(uri, s['phase'], role='authenticated', user=admin)['rows'][0]['total_score'] == 9
+    query(uri, "update private.observer_card_board_cache set computed_at=now()-interval '1 minute'")
+    fresh = cached_board(uri, s['phase'])
+    assert fresh == board(uri, s['phase']) and fresh['rows'][0]['total_score'] == 9
+    assert cached_board(uri, s['phase'], slug)['rows'][0]['total_score'] == 9
+    # Board mode, sealing and access-team changes apply immediately.
+    query(uri, "update public.phases set leaderboard_mode='frozen' where id=%s", (s['phase'],))
+    assert cached_board(uri, s['phase'])['rows'] == []
+    query(uri, "update public.phases set leaderboard_mode='live' where id=%s", (s['phase'],))
+    assert cached_board(uri, s['phase'])['rows'][0]['total_score'] == 9
+    query(uri, 'update public.observer_phase_settings set sealed=true where phase_id=%s', (s['phase'],))
+    assert cached_board(uri, s['phase']) == board(uri, s['phase']) == {'layout': 'cards_overall', 'cards': [], 'scenario': None, 'rows': []}
+    query(uri, 'update public.observer_phase_settings set sealed=false,access_team_id=%s where phase_id=%s', (s['team'], s['phase']))
+    assert cached_board(uri, s['phase'])['rows'] == []
+    outsider, _ = identity(uri)
+    assert cached_board(uri, s['phase'], role='authenticated', user=outsider)['rows'] == []
+    assert cached_board(uri, s['phase'], role='authenticated', user=s['user'])['rows'][0]['total_score'] == 9
+    query(uri, 'update public.observer_phase_settings set access_team_id=null where phase_id=%s', (s['phase'],))
+    # Unknown cards are never stored; read-only transactions still get the board.
+    assert cached_board(uri, s['phase'], 'no-such-card')['rows'] == []
+    assert query(uri, "select count(*) from private.observer_card_board_cache where scenario_slug='no-such-card'") == [(0,)]
+    query(uri, 'delete from private.observer_card_board_cache')
+    assert cached_board(uri, s['phase'], read_only=True) == board(uri, s['phase'])
+    # The cache and the uncached computation are not reachable from the API roles.
+    for statement in ('select * from private.observer_card_board_cache',
+                      'select private.observer_card_board_live(gen_random_uuid(), null, 1)'):
+        with pytest.raises(psycopg.Error, match='permission denied'):
+            query(uri, statement, role='anon')

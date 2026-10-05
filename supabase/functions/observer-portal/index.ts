@@ -9,6 +9,8 @@ const cors = {
   "access-control-allow-origin": "*",
   "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
   "access-control-allow-methods": "POST, OPTIONS",
+  // Browsers reuse the preflight instead of sending OPTIONS before every POST (Chrome caps this at 2 h).
+  "access-control-max-age": "86400",
   "cache-control": "no-store",
 };
 const list = (name: string) =>

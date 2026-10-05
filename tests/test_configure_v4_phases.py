@@ -1,5 +1,6 @@
 """scripts/configure-v4-phases.py against the local PostgreSQL harness: the v3 -> v4
 switch, its refusals, hidden-card privacy and an exact reverse."""
+import re
 import importlib.util
 import json
 import secrets
@@ -150,7 +151,19 @@ CARD_FILES = PRACTICE_FILES + FORMAL_FILES + V3_FILES
 
 
 def readable(uri, role='anon', user=None):
-    return {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role, user=user)}
+    names = {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role, user=user)}
+    assert_card_files_match(uri, names, role, user)
+    return names
+
+
+def assert_card_files_match(uri, names, role, user):
+    """public.observer_card_files (the website's file list) returns exactly the readable card files."""
+    slugs = {r[0] for r in query(uri, "select distinct split_part(name,'/',1) from storage.objects where bucket_id='scenarios'")}
+    for slug in slugs:
+        expected = sorted(n.split('/', 1)[1] for n in names
+                          if re.fullmatch(re.escape(slug) + r'/(config|public|truth)/[^/]+', n))
+        got = [r[0] for r in query(uri, 'select public.observer_card_files(%s)', (slug,), role=role, user=user)]
+        assert got == expected, (slug, role, got, expected)
 
 
 FORWARD = ('--practice', 'v4-alpha,v4-beta', '--formal', 'v4-a,v4-b,v4-c,v4-d', '--final', 'v4-e,v4-f,v4-g,v4-h')

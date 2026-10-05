@@ -7,9 +7,9 @@ import { triggerDownload } from './storage'
 import { cached } from './requestCache'
 import { CARD_FOLDERS, PRACTICE_CARDS, cardPagePath, cardTitle, cardZipEntry, practiceCardsWithPages, type CardLanguage, type TaskCard } from './taskCards'
 
-// Listing a card's bucket folders is expensive (storage.list scans the bucket), and the resources
-// and task-card pages list every visible card on mount. Released files rarely change within a
-// visit, so cache the listing in sessionStorage for a while instead of re-listing on every mount.
+// The file list comes from public.observer_card_files, which applies the bucket's read policies in one
+// cheap query (listing the bucket itself evaluates those policies row by row and takes seconds under load).
+// Released files rarely change within a visit, so the list is also kept in sessionStorage for a while.
 const RELEASED_FILES_CACHE_MS = 10 * 60 * 1000
 const sessionCache = typeof window !== 'undefined' ? window.sessionStorage : undefined
 
@@ -30,13 +30,20 @@ export function bundledCardTitle(card: TaskCard, language: CardLanguage): string
 /** Released files of a card as `<folder>/<file>`; empty while the bucket withholds them. */
 export async function releasedCardFiles(card: TaskCard): Promise<string[]> {
   return cached(`card-files:${card.slug}`, RELEASED_FILES_CACHE_MS, async () => {
-    const lists = await Promise.all(CARD_FOLDERS.map(async folder => {
-      const { data, error } = await supabase.storage.from('scenarios').list(`${card.slug}/${folder}`, { limit: 1000 })
-      if (error || !data) return []
-      return data.filter(item => item.id || item.metadata).map(item => `${folder}/${item.name}`)
-    }))
-    return lists.flat().filter(key => cardZipEntry(card, key)).sort()
+    const { data, error } = await supabase.rpc('observer_card_files', { p_slug: card.slug })
+    const keys = !error && Array.isArray(data) ? data.map(String) : await listedCardFiles(card)
+    return keys.filter(key => cardZipEntry(card, key)).sort()
   }, sessionCache)
+}
+
+/** The same list read by listing the bucket folders (used only if the RPC is unavailable). */
+async function listedCardFiles(card: TaskCard): Promise<string[]> {
+  const lists = await Promise.all(CARD_FOLDERS.map(async folder => {
+    const { data, error } = await supabase.storage.from('scenarios').list(`${card.slug}/${folder}`, { limit: 1000 })
+    if (error || !data) return []
+    return data.filter(item => item.id || item.metadata).map(item => `${folder}/${item.name}`)
+  }))
+  return lists.flat()
 }
 
 /** The card page in the requested language (falling back to the other one), or null while it is not released. */

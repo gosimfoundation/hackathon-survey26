@@ -5,6 +5,7 @@ import pytest
 import psycopg
 
 from test_project_database import database, identity, query  # noqa: F401
+from test_configure_v4_phases import assert_card_files_match
 
 
 def test_formal_sources_never_reopen_at_start_or_with_public_weather(database):
@@ -28,7 +29,10 @@ def test_formal_sources_never_reopen_at_start_or_with_public_weather(database):
         for path in paths:
             query(uri, "insert into storage.objects(bucket_id,name) values('scenarios',%s)", (str(sid)+'/'+path,))
     def visible(role, user=None):
-        return {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role,user=user)}
+        names = {r[0] for r in query(uri, "select name from storage.objects where bucket_id='scenarios'", role=role,user=user)}
+        if role != 'service_role':
+            assert_card_files_match(uri, names, role, user)
+        return names
     for start, end in (("now()+interval '1 day'", 'null'),
                        ("now()-interval '1 day'", "now()+interval '1 day'"),
                        ("now()-interval '2 days'", "now()-interval '1 day'")):
