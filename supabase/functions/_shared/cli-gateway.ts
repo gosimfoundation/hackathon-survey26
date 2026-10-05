@@ -54,6 +54,7 @@ export const ALLOWED_RPCS = new Set([
   "my_redeem_codes",
   "claim_redeem_code",
   "observer_create_repeat_batches",
+  "observer_cancel_batch",
   "observer_evaluation_quota",
   "observer_final_versions",
   "observer_board",

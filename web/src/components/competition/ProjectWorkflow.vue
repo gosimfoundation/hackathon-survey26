@@ -18,9 +18,10 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
 import { competition, entryPhase } from '../../stores/competition'
 import { entryPhaseIds, offersExtraSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
 import { tabFromQuery } from '../../lib/deepLink'
-import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canCancel, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
+import { cancelEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
@@ -311,6 +312,7 @@ function errorMessage(e: unknown) {
     upload_not_found: pick('The upload session expired or could not be found. Choose the file again and retry.', '上传会话已过期或找不到，请重新选择文件后再试一次。'),
     upload_not_finished: pick('The file has not finished uploading yet. Wait a moment and try again.', '文件还没有上传完成，请稍等再试一次。'),
     portal_unavailable: pick('Could not reach the server. Check your connection and try again.', '无法连接服务器，请检查网络后重试。'),
+    ...Object.fromEntries(CANCEL_ERRORS.map(c => [c, t('dash.cancel_eval.' + c)])),
   }
   return code === 'cancelled' ? '' : messages[code] ?? words.value.failed
 }
@@ -414,6 +416,11 @@ function evaluate(revision_id: string) {
     }
     noModel.value = false
   }, words.value.queued, 'evaluate:' + revision_id)
+}
+// 取消排队: only while none of its cards has started; a self-check member cancels its set's members that have not started.
+function cancelBatch(b: { id: string; status: string; repeat_group?: string | null }) {
+  if (!window.confirm(t(cancelConfirmKey(b)))) return
+  void action(async () => { await cancelEvaluation(b.id) }, t('dash.cancel_eval.done'), 'cancel:' + b.id)
 }
 // The self-check: SELF_CHECK_RUNS evaluations of one version, run one after another (observer_create_repeat_batches).
 function selfCheck(revision_id: string) {
@@ -874,7 +881,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span class="pill ml-2" :class="b.status">{{ statuses[b.status] ?? b.status }}</span>
                 <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
                 <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
-                <span v-if="b.score != null" class="cw-score ml-2">{{ words.average }}: {{ b.score.toFixed(2) }}</span></p>
+                <span v-if="b.score != null" class="cw-score ml-2">{{ words.average }}: {{ b.score.toFixed(2) }}</span>
+                <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
               <div class="cw-cards">
                 <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
                   <span class="meta">{{ scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : '—' }}</span>
@@ -921,6 +929,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
               <span class="cw-score" :class="{ best: best && b.score === best.score }">{{ b.score != null ? b.score.toFixed(2) : '—' }}</span>
             </button>
+            <p v-if="canCancel(b)" class="cw-batch-cancel"><button type="button" class="btn sm" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
             <div v-if="openBatches.has(b.id)" class="cw-batch-body">
               <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3">
                 <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
@@ -1199,7 +1208,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="failure?.batch.id === b.id" class="pill failed ml-2" data-testid="batch-latest-failed">{{ words.latestPill }}</span>
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
             <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
-            <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></p>
+            <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span>
+            <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
@@ -1280,6 +1290,7 @@ pre { max-height: 24rem; overflow: auto; padding: 1rem; margin-top: .5rem; backg
 .cw-tab { padding: .55rem 1rem; color: #858585; background: none; border: 1px solid transparent; border-bottom: 0; white-space: nowrap; cursor: pointer; font-size: .95rem; }
 .cw-tab.on { color: #fff; background: #0d0f17; border-color: #2a2f45; margin-bottom: -1px; }
 .cw-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; }
+.cw-batch-cancel { margin: 0 0 .5rem 1.6rem; }
 .cw-link { background: none; border: 0; padding: 0; color: #78a6ff; cursor: pointer; font: inherit; }
 .cw-link:disabled { opacity: .5; cursor: default; }
 .cw-upload { border: 1px dashed #2d3450; padding: 1rem 1.1rem; margin-top: 1rem; }

@@ -1630,6 +1630,18 @@
           "action": "View score and replay"
         }
       }
+    },
+    "cancel_eval": {
+      "button": "Cancel",
+      "working": "Cancelling…",
+      "confirm": "Cancel this queued evaluation? It has not started yet. It will not count toward today’s evaluations and will not appear on any leaderboard.",
+      "confirm_set": "Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; evaluations already running or finished are kept.",
+      "done": "Evaluation cancelled. It does not count toward today’s evaluations.",
+      "evaluation_started": "This evaluation has already started and can no longer be cancelled.",
+      "evaluation_finished": "This evaluation has already finished.",
+      "evaluation_not_found": "This evaluation was not found. Refresh the page.",
+      "evaluation_not_cancellable": "This evaluation is run by the organizers and cannot be cancelled.",
+      "failed": "Could not cancel the evaluation. Refresh and try again."
     }
   },
   "credits": {

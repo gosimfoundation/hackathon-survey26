@@ -44,7 +44,7 @@ const LIMIT_CODES: &[&str] = &["daily_limit", "repeat_daily_limit", "preparation
 const NOT_FOUND_CODES: &[&str] = &["revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
     "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
     "uid_unavailable", "request_not_found", "user_not_found", "repository_not_found",
-    "source_ref_not_found", "source_subdir_not_found"];
+    "source_ref_not_found", "source_subdir_not_found", "evaluation_not_found"];
 const UNAVAILABLE_CODES: &[&str] = &["network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
     "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"];
 
@@ -2226,6 +2226,28 @@ fn cmd_final_set(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     Ok(final_result(result))
 }
 
+const CANCEL_QUESTION: (&str, &str) = ("Cancel this queued evaluation? It has not started yet. It will not count toward today’s evaluations and will not appear on any leaderboard.",
+    "取消这次排队中的评测？它还没有开始。取消后不计入今日评测次数，也不会出现在任何排行榜上。");
+const CANCEL_SET_QUESTION: (&str, &str) = ("Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; evaluations already running or finished are kept.",
+    "取消这组「评测 3 次取平均」？其中尚未开始的评测会被取消，不计入今日评测次数；已在运行或已完成的评测保留。");
+
+fn cmd_results_cancel(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
+    let data = portal_list(api)?;
+    let batch = find_batch(&data, &a.str("batch").unwrap_or_default())?;
+    let (en, zh) = if truthy(&batch["repeat_group"]) { CANCEL_SET_QUESTION } else { CANCEL_QUESTION };
+    confirm(a, out, en, zh)?;
+    let result = or_empty(api.rpc("observer_cancel_batch", true, json!({"p_batch": batch["id"]}))?);
+    let cancelled: Vec<String> = arr(&g(&result, "cancelled")).iter().map(s).collect();
+    if cancelled.is_empty() {
+        out.line(out.t("This evaluation was already cancelled.", "这个评测已经取消过了。"));
+    } else {
+        let short: Vec<String> = cancelled.iter().map(|c| c.chars().take(8).collect()).collect();
+        out.line(&out.t("Cancelled: %s. Not counted toward today’s evaluations.", "已取消：%s。不计入今日评测次数。").replacen("%s", &short.join(", "), 1));
+    }
+    Ok(obj(vec![("batch_id", batch["id"].clone()), ("status", json!("cancelled")),
+        ("cancelled", Value::Array(cancelled.into_iter().map(Value::String).collect()))]))
+}
+
 fn cmd_final_clear(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
     let fin = final_for(&data).ok_or_else(|| CliError::new("no_team_version"))?;
@@ -2525,6 +2547,7 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_results_log" => cmd_results_log,
         "cmd_results_download" => cmd_results_download,
         "cmd_results_download_all" => cmd_results_download_all,
+        "cmd_results_cancel" => cmd_results_cancel,
         "cmd_final_show" => cmd_final_show,
         "cmd_final_set" => cmd_final_set,
         "cmd_final_clear" => cmd_final_clear,

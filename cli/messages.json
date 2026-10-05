@@ -87,6 +87,22 @@
   "en": "Your team already has an active evaluation.",
   "zh": "本队已有正在进行的评测。"
  },
+ "evaluation_started": {
+  "en": "This evaluation has already started and can no longer be cancelled.",
+  "zh": "该评测已经开始运行，无法再取消。"
+ },
+ "evaluation_finished": {
+  "en": "This evaluation has already finished.",
+  "zh": "该评测已经结束。"
+ },
+ "evaluation_not_found": {
+  "en": "No such evaluation of your team.",
+  "zh": "找不到本队的这个评测。"
+ },
+ "evaluation_not_cancellable": {
+  "en": "This evaluation is run by the organizers and cannot be cancelled.",
+  "zh": "该评测由主办方发起，不能取消。"
+ },
  "preparation_limit": {
   "en": "Your team already has three projects being prepared.",
   "zh": "本队已有三个项目正在准备，请等待完成。"

@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.7.0"
+__version__ = "1.8.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -55,7 +55,7 @@ LIMIT_CODES = {"daily_limit", "repeat_daily_limit", "preparation_limit", "prepar
 NOT_FOUND_CODES = {"revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
                    "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
                    "uid_unavailable", "request_not_found", "user_not_found", "repository_not_found",
-                   "source_ref_not_found", "source_subdir_not_found"}
+                   "source_ref_not_found", "source_subdir_not_found", "evaluation_not_found"}
 UNAVAILABLE_CODES = {"network_error", "gateway_unavailable", "portal_unavailable", "session_unavailable",
                      "source_snapshot_unavailable", "artifact_service_unavailable", "request_failed"}
 
@@ -87,6 +87,10 @@ MESSAGES = {
     "team_required": ("Join or create a team first.", "请先加入或创建队伍。"),
     "stale_approval": ("The version changed. Reopen the review before confirming.", "版本已变化，请重新打开并检查。"),
     "batch_already_active": ("Your team already has an active evaluation.", "本队已有正在进行的评测。"),
+    "evaluation_started": ("This evaluation has already started and can no longer be cancelled.", "该评测已经开始运行，无法再取消。"),
+    "evaluation_finished": ("This evaluation has already finished.", "该评测已经结束。"),
+    "evaluation_not_found": ("No such evaluation of your team.", "找不到本队的这个评测。"),
+    "evaluation_not_cancellable": ("This evaluation is run by the organizers and cannot be cancelled.", "该评测由主办方发起，不能取消。"),
     "preparation_limit": ("Your team already has three projects being prepared.", "本队已有三个项目正在准备，请等待完成。"),
     "preparation_daily_limit": ("Your team has used today’s project preparations (the daily number follows the evaluation quota; see survey26 quota). The count resets at 00:00 UTC (08:00 Beijing time).",
                                 "本队今天的项目准备次数已用完（每天的次数与评测次数相同，可用 survey26 quota 查看），每天北京时间 8 点（UTC 0 点）重置。"),
@@ -1581,6 +1585,26 @@ def cmd_eval_wait(api: Api, args, out: Out):
         _sleep(max(5, args.interval))
 
 
+CANCEL_QUESTION = ("Cancel this queued evaluation? It has not started yet. It will not count toward today’s evaluations and will not appear on any leaderboard.",
+                   "取消这次排队中的评测？它还没有开始。取消后不计入今日评测次数，也不会出现在任何排行榜上。")
+CANCEL_SET_QUESTION = ("Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; "
+                       "evaluations already running or finished are kept.",
+                       "取消这组「评测 3 次取平均」？其中尚未开始的评测会被取消，不计入今日评测次数；已在运行或已完成的评测保留。")
+
+
+def cmd_results_cancel(api: Api, args, out: Out):
+    data = portal_list(api)
+    batch = find_batch(data, args.batch)
+    confirm(args, out, *(CANCEL_SET_QUESTION if batch.get("repeat_group") else CANCEL_QUESTION))
+    result = api.rpc("observer_cancel_batch", write=True, p_batch=batch["id"]) or {}
+    cancelled = [str(x) for x in result.get("cancelled") or []]
+    if cancelled:
+        out.line(out.t("Cancelled: %s. Not counted toward today’s evaluations.", "已取消：%s。不计入今日评测次数。") % ", ".join(c[:8] for c in cancelled))
+    else:
+        out.line(out.t("This evaluation was already cancelled.", "这个评测已经取消过了。"))
+    return {"batch_id": batch["id"], "status": "cancelled", "cancelled": cancelled}
+
+
 def cmd_results_log(api: Api, args, out: Out):
     data = portal_list(api)
     _, run = find_run(data, args.run)
@@ -2134,6 +2158,8 @@ def build_parser() -> argparse.ArgumentParser:
     ra.add_argument("batch", nargs="?", default="latest")
     ra.add_argument("-o", "--output")
     ra.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
+    rc = yes(add(res, "cancel", cmd_results_cancel, "cancel a queued evaluation that has not started (not counted toward today's evaluations)"))
+    rc.add_argument("batch")
 
     fin = sub.add_parser("final", help="the version used for the hidden final").add_subparsers(dest="cmd", metavar="ACTION")
     add(fin, "show", cmd_final_show, "show the final version (chosen, or the default best evaluation)")
