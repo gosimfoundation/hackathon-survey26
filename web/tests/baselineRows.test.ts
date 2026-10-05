@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isBaseline, parseBaselineRows, toLeaderboardEntry, withBaselines, type BoardRow } from '../src/lib/cardBoard.ts'
+import { SUPER_TAB, isBaseline, parseBaselineRows, toLeaderboardEntry, withBaselines, type BoardRow } from '../src/lib/cardBoard.ts'
 
 const team = (rank: number, score: number, cards: Record<string, number> = {}) =>
   toLeaderboardEntry({ rank, team_id: `t${rank}-${score}`, team_name: `T${score}`, total_score: score, card_scores: cards, overall_score: score }, rank - 1)
@@ -39,4 +39,8 @@ test('card tabs use the per-card averages; a card without one has no baseline ro
   assert.equal((a.find(isBaseline) as any).overall_score, 29700)
   assert.deepEqual(shape(withBaselines(entries, baselines, 'v4-b')), ['B:basic', '1:30000', '2:20000', '3:10000'])
   assert.deepEqual(shape(withBaselines(entries, baselines, 'v4-c')), ['1:30000', '2:20000', '3:10000'])
+})
+
+test('the super tab places baselines by their total', () => {
+  assert.deepEqual(shape(withBaselines([team(1, 31000), team(2, 5)], baselines, SUPER_TAB)), ['1:31000', 'B:pro', 'B:basic', '2:5'])
 })

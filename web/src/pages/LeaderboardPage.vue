@@ -4,7 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadSuperBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
@@ -110,7 +110,9 @@ async function loadBoard() {
       const [board, refs] = await Promise.all([loadCardBoard(phase.value.id, wanted),
         phase.value.slug === 'online' ? loadBaselineRows(phase.value.id) : Promise.resolve([])])
       cardBoard.value = board
-      baselines.value = refs
+      // The super board shows its own reference rows (a separate set from the A-D ones).
+      const wantsSuper = board.scenario === SUPER_TAB
+      baselines.value = wantsSuper ? await loadSuperBaselineRows(phase.value.id).catch(() => []) : refs
       entries.value = board.rows
     } else {
       cardBoard.value = null
@@ -180,7 +182,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           </div>
           <template v-else>
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
-            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :baselines="superMode ? [] : baselines" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" />
+            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :baselines="superMode && cardTab !== SUPER_TAB ? [] : baselines" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" />
             <template v-else>
             <ScoreBars v-if="!isExtra" class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
