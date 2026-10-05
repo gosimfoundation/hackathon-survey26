@@ -2,7 +2,7 @@ import { parseCompeteUi, type CompeteUiSetting } from './competeUi'
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { normalizeQuotaResetNotice, type QuotaResetNotice } from './quotaReset'
-import { parseBaselineRows, parseCardBoard, pickCardTab, toLeaderboardEntry, type BaselineRow, type CardBoard } from './cardBoard'
+import { parseBaselineRows, parseCardBoard, parseRows, pickCardTab, SUPER_TAB, toLeaderboardEntry, type BaselineRow, type CardBoard } from './cardBoard'
 import { cached, invalidatePrefix } from './requestCache'
 import { scenarioOrder } from './scenarioLabels'
 
@@ -245,7 +245,7 @@ export async function loadLeaderboard(phaseSlug: string | null, limit = 500, sce
   return rows.map(toLeaderboardEntry)
 }
 
-export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, withBaselines, isBaseline, type BoardLayout, type BoardCard, type CardBoard, type BaselineRow, type BoardRow } from './cardBoard'
+export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, withBaselines, isBaseline, isSuperTab, superCards, SUPER_TAB, type BoardLayout, type BoardCard, type CardBoard, type BaselineRow, type BoardRow } from './cardBoard'
 
 /** The official-example baseline reference rows of a complete-project board (aggregates only); none on any error. */
 export async function loadBaselineRows(phaseId: string): Promise<BaselineRow[]> {
@@ -267,15 +267,25 @@ async function fetchCardBoard(phaseId: string, scenarioSlug: string | null, limi
   return cached(key, BOARD_CACHE_MS, async () => {
     const { data, error } = await supabase.rpc('observer_card_board', { p_phase: phaseId, p_scenario_slug: scenarioSlug, p_limit: limit })
     // Until the card-board migration is deployed, complete-project phases keep the existing board.
-    if (error) return { layout: 'overall', cards: [], scenario: null, rows: await loadLeaderboard(null, limit, null, phaseId) }
+    if (error) return { layout: 'overall', cards: [], extraCards: [], scenario: null, rows: await loadLeaderboard(null, limit, null, phaseId) }
     return parseCardBoard(data)
   })
 }
 
-/** A complete-project board, on the requested card tab when the phase has cards (see pickCardTab). */
+/** The super board's rows (sum over A-D and A1-D1, migration 20261005110000); none on any error. */
+async function fetchSuperRows(phaseId: string, limit: number): Promise<LeaderboardEntry[]> {
+  return cached(`card_board:super:${phaseId}:${limit}`, BOARD_CACHE_MS, async () => {
+    const { data, error } = await supabase.rpc('observer_super_board', { p_phase: phaseId, p_scenario_slug: null, p_limit: limit })
+    return error ? [] : parseRows(data?.rows)
+  })
+}
+
+/** A complete-project board, on the requested card tab when the phase has cards (see pickCardTab). The super
+ * board's tab (SUPER_TAB) exists only where the phase has added cards; their own tabs come from the card board. */
 export async function loadCardBoard(phaseId: string, wanted: string | null = null, limit = 500): Promise<CardBoard> {
-  const board = await fetchCardBoard(phaseId, wanted, limit)
+  const board = await fetchCardBoard(phaseId, wanted === SUPER_TAB ? null : wanted, limit)
   const tab = pickCardTab(board, wanted)
+  if (tab === SUPER_TAB) return { ...board, scenario: SUPER_TAB, rows: await fetchSuperRows(phaseId, limit) }
   return board.layout !== 'overall' && tab !== (wanted ?? null) ? fetchCardBoard(phaseId, tab, limit) : board
 }
 

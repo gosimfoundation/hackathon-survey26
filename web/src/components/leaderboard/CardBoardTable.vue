@@ -2,20 +2,23 @@
 import { computed } from 'vue'
 import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
-import { isBaseline, withBaselines, type BaselineRow, type BoardCard, type BoardLayout, type LeaderboardEntry } from '../../lib/data'
+import { isBaseline, SUPER_TAB, withBaselines, type BaselineRow, type BoardCard, type BoardLayout, type LeaderboardEntry } from '../../lib/data'
 import { num } from '../../lib/format'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // The table of a card board. Overall tab: the mean and one column per card. Card tab: the card score, the
 // team's overall score where the phase has one, and whatever numeric score components the runs report.
-const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null; baselines?: BaselineRow[] }>()
+// Super board (superBoard): its tab (SUPER_TAB) is laid out like the overall tab with the 8-card total and every
+// card, A-D then A1-D1; an added card's tab shows the 8-card total in place of the overall score.
+const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null; baselines?: BaselineRow[]; superBoard?: boolean }>()
 // Unranked reference rows (official examples' averages) placed among the teams by score; ranks stay the database's.
 const rows = computed(() => withBaselines(props.entries, props.baselines ?? [], props.tab))
 const hasBaselines = computed(() => rows.value.some(isBaseline))
 const emit = defineEmits<{ select: [entry: LeaderboardEntry] }>()
 const { t, tf, locale } = useI18n()
 
-const overallTab = computed(() => props.tab === null)
+const overallTab = computed(() => props.tab === null || props.tab === SUPER_TAB)
+const totalLabel = computed(() => props.superBoard ? t('leaderboard.super_total') : t('leaderboard.overall'))
 const componentKeys = computed(() => {
   if (overallTab.value) return []
   const keys: string[] = []
@@ -48,9 +51,9 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
     <table class="data-table">
       <thead><tr>
         <th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th>
-        <th class="r">{{ overallTab ? t('leaderboard.overall') : t('leaderboard.score') }}</th>
+        <th class="r">{{ overallTab ? totalLabel : t('leaderboard.score') }}</th>
         <template v-if="overallTab"><th v-for="c in cards" :key="c.slug" class="r" :data-testid="`card-col-${c.slug}`">{{ scenarioLabel(c.slug, c.name, locale) }}</th></template>
-        <th v-if="showOverall" class="r">{{ t('leaderboard.overall') }}</th>
+        <th v-if="showOverall" class="r">{{ totalLabel }}</th>
         <th v-for="k in componentKeys" :key="k" class="r">{{ componentLabel(k) }}</th>
         <th v-if="showTiles" class="r">{{ t('leaderboard.tiles') }}</th>
         <th v-if="showTargets" class="r">{{ t('leaderboard.targets_observed') }}</th>

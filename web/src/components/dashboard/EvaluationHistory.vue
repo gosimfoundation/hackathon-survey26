@@ -36,7 +36,7 @@ onUnmounted(()=>window.clearInterval(timer))
 <template>
   <section v-if="!(props.hideEmpty && !error && !rows.length)" class="panel mb-6" data-testid="evaluation-history">
     <div class="hd"><h2>{{ props.allPhases ? pick('Complete-project evaluations','完整项目评测记录') : pick('Evaluations','评测记录') }}</h2><button class="btn sm" @click="load">{{ pick('Refresh','刷新') }}</button></div>
-    <p v-if="props.allPhases" class="help">{{ pick('Each evaluation runs every scenario of its phase once; its score is the average. Evaluations that failed because of the platform are not counted toward the daily limit.','每次评测把该赛程全部场景各跑一遍，分数是这些场景的平均分；因平台原因失败的评测不计入每日次数。') }}</p>
+    <p v-if="props.allPhases" class="help">{{ pick('Each evaluation runs every scenario of its phase once; its score is the average (in the competition: the mean of cards A–D; A1–D1 count only on the super board). Evaluations that failed because of the platform are not counted toward the daily limit.','每次评测把该赛程全部场景各跑一遍，分数是这些场景的平均分（正式比赛为任务卡 A–D 的平均分，A1–D1 只计入超级总榜）；因平台原因失败的评测不计入每日次数。') }}</p>
     <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" role="alert">{{ pick('Could not load evaluations. Please refresh.','无法加载评测记录，请刷新重试。') }}</p>
     <p v-else-if="!rows.length" class="text2">{{ pick('No evaluations yet.','还没有评测记录。') }}</p>

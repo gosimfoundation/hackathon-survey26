@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { scenarioLabel, scenarioOrder } from '../src/lib/scenarioLabels.ts'
+import { isExtraCard, scenarioLabel, scenarioOrder } from '../src/lib/scenarioLabels.ts'
 
 test('practice cards are localized from the slug, never the DB name', () => {
   assert.equal(scenarioLabel('v4-practice-alpha', 'Practice card α', 'en'), 'Practice card α')
@@ -33,6 +33,25 @@ test('scenarioOrder sorts practice cards alpha/beta/gamma/delta, not slug text (
 test('scenarioOrder sorts hackathon cards A, B, C, D', () => {
   const slugs = ['v4-c', 'v4-a', 'v4-d', 'v4-b']
   assert.deepEqual([...slugs].sort((a, b) => scenarioOrder(a) - scenarioOrder(b)), ['v4-a', 'v4-b', 'v4-c', 'v4-d'])
+})
+
+test('added cards A1-D1 are labelled from the slug in every locale, whatever their version suffix', () => {
+  for (const slug of ['v4-a1', 'v4-a1-v1', 'v4-a1-v2', 'v4-a1-v13']) {
+    assert.equal(scenarioLabel(slug, 'Card A1 v1', 'zh'), '任务卡 A1')
+    assert.equal(scenarioLabel(slug, 'Card A1 v1', 'en'), 'Card A1')
+    assert.equal(scenarioLabel(slug, 'Card A1 v1', 'ja'), 'Card A1')
+    assert.equal(scenarioLabel(slug, 'Card A1 v1', 'fr'), 'Card A1')
+  }
+  assert.equal(scenarioLabel('v4-d1-v2', 'x', 'zh'), '任务卡 D1')
+  // Not an added card: unchanged fallback to the DB name.
+  for (const slug of ['v4-e1', 'v4-a2', 'v4-a1-x', 'v4-a1-v']) assert.equal(scenarioLabel(slug, 'DB name', 'zh'), 'DB name')
+  assert.ok(isExtraCard('v4-b1-v3') && !isExtraCard('v4-b') && !isExtraCard('v4-b1-v'))
+})
+
+test('scenarioOrder sorts A, B, C, D, A1, B1, C1, D1', () => {
+  const slugs = ['v4-d1-v2', 'v4-a1-v2', 'v4-c', 'v4-b1-v2', 'v4-a', 'v4-d', 'v4-c1-v2', 'v4-b']
+  assert.deepEqual([...slugs].sort((a, b) => scenarioOrder(a) - scenarioOrder(b)),
+    ['v4-a', 'v4-b', 'v4-c', 'v4-d', 'v4-a1-v2', 'v4-b1-v2', 'v4-c1-v2', 'v4-d1-v2'])
 })
 
 test('scenarioOrder keeps unrecognized slugs in their original relative order (stable sort, all tie at Infinity)', () => {
