@@ -54,6 +54,11 @@ export const GUIDE_STEPS: GuideStep[] = [
     en: { title: '⑤ Settings: keys and network', body: 'Add your model key under “Add a model service” (Kimi, for example). Evaluations use it automatically; no page needs to stay open. Personal API tokens for the command line are here too.' },
   },
   {
+    id: 'kimi-relay', tab: 'settings', targets: [tid('kimi-relay-hint')],
+    zh: { title: '临时 Kimi 中转（开发用）', body: '已上榜的队伍可以在自己电脑上用组委会临时提供的 Kimi 做开发调试，用个人 API 令牌当 key。额度有限；评测和决赛用的是上面保存的模型服务。' },
+    en: { title: 'Temporary Kimi relay (development)', body: 'Teams on the board can use a temporary Kimi allowance from the organizers on their own machines, with a personal API token as the key. It is limited; evaluations and the final use the model service saved above.' },
+  },
+  {
     id: 'final', tab: 'settings', targets: [tid('final-version'), tid('compete-tab-settings')],
     zh: { title: '⑥ 最终版本', body: '线上赛截止前选好最终版本。不选的话，默认用本队最高分的版本。' },
     en: { title: '⑥ Final version', body: 'Choose your final version before the online deadline. If you don’t, your best-scoring version is used.' },
