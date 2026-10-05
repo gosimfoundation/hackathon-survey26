@@ -9,7 +9,6 @@ import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS }
 import { isExtraCard, scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { competition, loadCompetition } from '../stores/competition'
-import { supabase } from '../lib/supabase'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
 import ScoreBars from '../components/leaderboard/ScoreBars.vue'
@@ -18,6 +17,7 @@ import BoardScenarioTabs from '../components/leaderboard/BoardScenarioTabs.vue'
 import TeamDetailDialog from '../components/leaderboard/TeamDetailDialog.vue'
 import BoardCardTabs from '../components/leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
+import SophonBoards from '../components/leaderboard/SophonBoards.vue'
 
 const { t, tf, locale, pick } = useI18n()
 const route = useRoute()
@@ -54,15 +54,9 @@ const phase = computed<Phase | null>(() => {
   return defaultPhases.value.find(p => p.counts_for_final && (p.status === 'open' || p.status === 'closed')) ?? defaultPhases.value.find(p => p.status === 'open') ?? defaultPhases.value[0] ?? null
 })
 const tabLabel = (p: Phase) => LEADERBOARD_TAB_LABEL_KEYS[p.slug] ? t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]!) : (locale.value === 'zh' ? p.name_zh : p.name_en) || p.slug
-// Extra phase board: scores don't matter; the solvers list sits above the rows.
+// Extra phase board: scores don't matter; the Sophon boards sit above the rows.
 const isExtra = computed(() => !!phase.value && phase.value.id === competition.extraPhaseId)
-const solvers = ref<{ team_name: string; solved_at: string }[]>([])
-async function loadSolvers() {
-  if (!isExtra.value) { solvers.value = []; return }
-  const { data, error } = await supabase.rpc('sophon_solvers')
-  solvers.value = !error && Array.isArray(data) ? data : []
-}
-watch(isExtra, () => { void loadSolvers() })
+
 // One short plain line replaces all status badges: no extra wording beyond these two cases.
 const statusLine = computed(() => {
   if (!phase.value) return null
@@ -130,10 +124,10 @@ async function loadBoard() {
 }
 
 watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario, visible.value], () => { void loadBoard() })
-function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && document.visibilityState === 'visible') { void loadBoard(); void loadSolvers() } }
+function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && document.visibilityState === 'visible') { void loadBoard() } }
 onMounted(async () => {
   await Promise.all([reload(), loadCompetition()])
-  await Promise.all([loadBoard(), loadSolvers()])
+  await loadBoard()
   timer = window.setInterval(pollBoard, 60_000)
   document.addEventListener('visibilitychange', pollBoard)
 })
@@ -172,13 +166,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
         <div class="min-w-0">
           <template v-if="isExtra">
             <p class="notice mb-6" data-testid="board-extra-note">{{ pick('Scores on this board are for reference only and do not count toward any ranking or award. Sophon is about discovering the easter egg hidden within.', '本榜分数仅供参考，不计入任何排名或奖项。Sophon 的重点在于发现其中隐藏的彩蛋。') }}</p>
-            <div class="mb-8" data-testid="board-solvers">
-              <p class="label mb-3">{{ pick('Solvers', '解谜名单') }}</p>
-              <ol v-if="solvers.length" class="text-sm">
-                <li v-for="(s, i) in solvers" :key="s.team_name + s.solved_at" class="py-1" data-testid="board-solver"><span class="m text3">{{ i + 1 }}.</span> {{ s.team_name }} <span class="m text3 ml-2">{{ fmtUtc(s.solved_at) }} UTC</span></li>
-              </ol>
-              <p v-else class="text3 text-sm" data-testid="board-solvers-empty">{{ pick('Nobody has solved it yet.', '还没有人解开。') }}</p>
-            </div>
+            <SophonBoards class="mb-8" />
           </template>
           <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
