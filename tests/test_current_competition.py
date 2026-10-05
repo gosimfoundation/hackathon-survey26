@@ -258,3 +258,33 @@ def test_extra_phase_is_offered_when_configured_and_open_and_only_to_its_access_
         query(uri,'delete from private.observer_extra_phase')
         query(uri,'delete from public.observer_phase_settings where phase_id=%s',(extra,))
         query(uri,'delete from public.phases where id=%s',(extra,))
+
+
+def test_sophon_solvers_list_names_and_times_only_where_the_extra_phase_is_offered(database):
+    uri=database;member,team=identity(uri);other,other_team=identity(uri);admin,_=identity(uri)
+    query(uri,'update public.profiles set is_admin=true where id=%s',(admin,))
+    extra=uuid.uuid4()
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'overlook-test','Overlook','Overlook')",(extra,))
+    query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,daily_batches) values(%s,true,5)',(extra,))
+    solvers=lambda role,user=None: query(uri,'select team_name,solved_at::text from public.sophon_solvers()',role=role,user=user)
+    try:
+        query(uri,"insert into private.sophon_solves(team_id,run_id,solved_at,key) values(%s,gen_random_uuid(),now()-interval '1 hour','k1'),(%s,gen_random_uuid(),now(),'k2')",(other_team,team))
+        names=[r[0] for r in query(uri,'select name from public.teams where id in (%s,%s) order by array_position(array[%s,%s]::uuid[],id)',(other_team,team,other_team,team))]
+        # Not offered: nobody but organizers sees the list.
+        assert solvers('anon')==[] and solvers('authenticated',other)==[]
+        assert [r[0] for r in solvers('authenticated',admin)]==names
+        query(uri,'insert into private.observer_extra_phase(id,phase_id) values(true,%s)',(extra,))
+        assert [r[0] for r in solvers('anon')]==names  # in solve order
+        query(uri,'update public.observer_phase_settings set access_team_id=%s where phase_id=%s',(team,extra))
+        assert solvers('anon')==[] and [r[0] for r in solvers('authenticated',member)]==names
+        query(uri,'update public.observer_phase_settings set access_team_id=null where phase_id=%s',(extra,))
+        query(uri,'update public.teams set is_hidden=true where id=%s',(team,))
+        assert [r[0] for r in solvers('anon')]==names[:1]
+        assert [r[0] for r in solvers('authenticated',admin)]==names
+        with pytest.raises(psycopg.Error,match='permission denied'):
+            query(uri,'select * from private.sophon_solves',role='anon')
+    finally:
+        query(uri,'delete from private.sophon_solves')
+        query(uri,'delete from private.observer_extra_phase')
+        query(uri,'delete from public.observer_phase_settings where phase_id=%s',(extra,))
+        query(uri,'delete from public.phases where id=%s',(extra,))
