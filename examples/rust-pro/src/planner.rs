@@ -708,7 +708,8 @@ impl Planner {
         }
         self.active = (0..self.ids.len()).filter(|&i| self.hmax[i] > 0.0).collect();
         self.vcache = None;
-        self.pending.clear();
+        // Keep self.pending: the result of the observe that ended at the trigger arrives with
+        // this message and on_result (called next) still applies it.
         log(&format!("state_resync: {} targets keep a score; plan rebuilt", best.len()));
     }
 

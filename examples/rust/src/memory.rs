@@ -242,8 +242,18 @@ impl Memory {
             self.factor[i] = if score > 0.0 { (score / (target.science_weight.max(1e-9) * top)).min(1.0) } else { 0.0 };
         }
         self.active = config.targets.iter().enumerate().filter(|(_, t)| t.hmax_deg > 0.0).map(|(i, _)| i).collect();
-        self.pending.clear();
-        self.pending_action_index = None;
+        // The resync arrives together with the result of the observe that ended at the
+        // trigger (on_result runs after this). That observe counts in N and is invalidated
+        // only if its index falls inside the window; otherwise keep it pending so its
+        // result still lands in the ledger.
+        let invalidated = match (self.pending_action_index, start, end) {
+            (Some(index), Some(start), Some(end)) => index >= start && index < end,
+            _ => true,
+        };
+        if invalidated {
+            self.pending.clear();
+            self.pending_action_index = None;
+        }
         log(&format!(
             "memory: applied state_resync, {} ledger entr{} survived, {} best_score fallback(s)",
             exact.len(),
