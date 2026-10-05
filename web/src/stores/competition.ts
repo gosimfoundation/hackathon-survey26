@@ -9,7 +9,7 @@ const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: 
   extraPhaseId: null as string|null })
 let fetched = 0, pending: Promise<void>|null = null
 export const competition = readonly(state)
-// 线上赛 / 练习赛 on the 参赛 page during the competition, remembered per user in this browser.
+// 正式赛 / 练习赛 on the 参赛 page during the competition, remembered per user in this browser.
 const entry = reactive({ userId: null as string|null, choice: 'online' as EntryChoice })
 export const entryChoice = computed(() => entry.choice)
 export const entryPhase = computed(() => entryPhaseId(state, entry.choice))

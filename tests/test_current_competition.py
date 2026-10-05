@@ -135,7 +135,7 @@ def test_playground_project_board_is_offered_only_in_practice_mode(database):
         online=query(uri,"select id from public.phases where slug='online'")
         created=not online
         if created:
-            query(uri,"insert into public.phases(slug,name_en,name_zh,counts_for_final) values('online','Online','线上赛',true)")
+            query(uri,"insert into public.phases(slug,name_en,name_zh,counts_for_final) values('online','Online','正式赛',true)")
             online=query(uri,"select id from public.phases where slug='online'")
         online=online[0][0]
         ends=query(uri,'select ends_at from public.phases where id=%s',(online,))[0][0]
