@@ -152,7 +152,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
         </div>
         <div class="min-w-0">
           <template v-if="isExtra">
-            <p class="notice mb-6" data-testid="board-extra-note">{{ pick("Scores on this board don't matter — the point is the easter egg.", '这个榜的分数不重要，重点在彩蛋。') }}</p>
+            <p class="notice mb-6" data-testid="board-extra-note">{{ pick('Scores on this board are for reference only and do not count toward any ranking or award. Sophon is about discovering the easter egg hidden within.', '本榜分数仅供参考，不计入任何排名或奖项。Sophon 的重点在于发现其中隐藏的彩蛋。') }}</p>
             <div class="mb-8" data-testid="board-solvers">
               <p class="label mb-3">{{ pick('Solvers', '解谜名单') }}</p>
               <ol v-if="solvers.length" class="text-sm">
