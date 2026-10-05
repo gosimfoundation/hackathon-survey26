@@ -593,7 +593,7 @@ const w2 = computed(() => pick({
   latest: 'Latest evaluation', allEvaluations: 'All evaluations', expandHint: 'Newest first; click a row for the cards, downloads and logs.',
   keys: 'Keys and network', keysNote: 'Evaluations and the hidden final use these variables; no page needs to stay open.',
   relayNote: 'For local development only, the organizers temporarily offer a limited Kimi relay (see your profile page); evaluations use the model service saved here.', relayLink: 'Temporary Kimi relay',
-  tokens: 'Personal API tokens (command line)', classic: 'Classic layout',
+  tokens: 'Personal API tokens (command line)', classic: 'Classic layout', newLayout: 'Back to the new layout',
   nClosed: 'Project evaluation is not open for the current competition.', nFirst: 'Upload your first project to get started.',
   nFailed: 'The latest evaluation failed ({what}).', nFixUpload: 'Upload a fixed version',
   nReview: '“{title}” is ready. Review the settings and adapter code, then confirm it.', nPreparing: '“{title}” is being prepared (usually 1–3 minutes).',
@@ -615,7 +615,7 @@ const w2 = computed(() => pick({
   latest: '最近一次评测', allEvaluations: '全部评测记录', expandHint: '最新在上；点一行展开各卡分数、下载与日志。',
   keys: '密钥与网络', keysNote: '评测和隐藏决赛都使用这里的变量，无需开着页面。',
   relayNote: '本地开发调试可以先用组委会临时提供的 Kimi 中转（额度有限，见个人资料页）；评测和决赛使用这里保存的模型服务。', relayLink: '临时 Kimi 中转',
-  tokens: '个人 API 令牌（命令行）', classic: '旧版布局',
+  tokens: '个人 API 令牌（命令行）', classic: '旧版布局', newLayout: '回到新版布局',
   nClosed: '当前比赛尚未开放项目评测。', nFirst: '上传你的第一个项目，开始参赛。',
   nFailed: '最近一次评测失败（{what}）。', nFixUpload: '上传修正版',
   nReview: '「{title}」已准备好：核对运行设置和适配代码后确认版本。', nPreparing: '「{title}」正在准备（通常 1–3 分钟）。',
@@ -970,6 +970,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         · <a href="?ui=v1" data-testid="compete-classic-link">{{ w2.classic }}</a></p>
     </template>
     <template v-else>
+      <p v-if="layout === 'classic'" class="help mb-3"><a href="?ui=auto" data-testid="compete-new-layout-link">{{ w2.newLayout }}</a></p>
       <p v-if="error" class="errors" role="alert" data-testid="project-error">{{ error }}</p>
       <p v-if="notice" role="status" class="mb-4">{{ notice }}</p>
       <p v-if="failure" class="latest-failure mb-5" role="status" data-testid="latest-failure">
