@@ -303,12 +303,13 @@ def test_a_waiting_self_check_evaluation_never_expires_and_a_platform_failure_is
     reconcile()
     assert status(third) == 'queued'
     # A run the dispatcher is retrying (it has a lease) follows the lease budget, not this timer.
-    query(uri, "update public.observer_batches set finished_at=now()-interval '40 minutes' where id=%s", (second,))
+    query(uri, "update public.observer_runs set created_at=now()-interval '13 hours' where batch_id=%s", (third,))
+    query(uri, "update public.observer_batches set finished_at=now()-interval '12 hours 10 minutes' where id=any(%s)", ([first, second],))
     run = query(uri, 'select id from public.observer_runs where batch_id=%s', (third,))[0][0]
     query(uri, "insert into private.observer_run_leases(run_id,lease,expires_at) values(%s,gen_random_uuid(),now()-interval '1 minute')", (run,))
     reconcile()
     assert status(third) == 'queued'
-    # Never taken by the dispatcher 30 minutes after it could start: expired (platform), refunded and replaced.
+    # Never taken by the dispatcher 12 hours after it could start: expired (platform), refunded and replaced.
     query(uri, 'delete from private.observer_run_leases where run_id=%s', (run,))
     reconcile()
     assert status(third) == 'failed'
@@ -326,8 +327,11 @@ def test_a_waiting_self_check_evaluation_never_expires_and_a_platform_failure_is
         query(uri, "update public.observer_runs set status='failed',error='evaluation_expired',finished_at=now() where batch_id=%s", (last,))
         query(uri, 'select private.observer_finalize_batch(%s)', (last,))
     assert query(uri, 'select count(*) from public.observer_batches where repeat_group=%s', (group['repeat_group'],)) == [(5,)]
-    # An ordinary queued run that could start 31 minutes ago and was never taken still expires.
+    # An ordinary queued run waiting 11 hours is not expired; 12 hours after it could start it is.
     other = query(uri, 'select public.observer_create_batch(%s,%s,true)', (s['phase'], rev), role='authenticated', user=s['user'])[0][0]
-    query(uri, "update public.observer_runs set created_at=now()-interval '31 minutes' where batch_id=%s", (other,))
+    query(uri, "update public.observer_runs set created_at=now()-interval '11 hours' where batch_id=%s", (other,))
+    reconcile()
+    assert status(other) == 'queued'
+    query(uri, "update public.observer_runs set created_at=now()-interval '12 hours 1 minute' where batch_id=%s", (other,))
     reconcile()
     assert status(other) == 'failed'
