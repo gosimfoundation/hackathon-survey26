@@ -53,13 +53,13 @@ test('the walkthrough uses current project guidance and preserves the submission
     // The starter-kit download was retired; new participants use the docs and example projects.
     assert.doesNotMatch([...flatten(messages[locale]!.start3)].join(' '), /local_runner\.py|agent-observer-starter-kit/)
   }
-  assert.match(messages.zh!.start3.practice.s3_points.join(' '), /40 次/)
-  assert.match(messages.zh!.start3.competition.s3_points.join(' '), /每队每天 40 次评测/)
+  assert.match(messages.zh!.start3.practice.s3_points.join(' '), /50 次/)
+  assert.match(messages.zh!.start3.competition.s3_points.join(' '), /每队每天 50 次评测/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /A–D.*900 秒/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /隐藏任务卡 E–H/)
-  assert.match(messages.en!.start3.practice.s3_points.join(' '), /40 per team per day/)
-  assert.match(messages.en!.start3.competition.s3_points.join(' '), /40 evaluations per team per day/)
-  assert.match(messages.en!.start3.competition.s3_points.join(' '), /A–D, 900 s per card/)
+  assert.match(messages.en!.start3.practice.s3_points.join(' '), /50 per team per day/)
+  assert.match(messages.en!.start3.competition.s3_points.join(' '), /50 evaluations per team per day/)
+  assert.match(messages.en!.start3.competition.s3_points.join(' '), /A–D and A1–D1, 900 s per card/)
   assert.match(messages.en!.start3.competition.s3_points.join(' '), /hidden cards E–H/)
   for (const locale of LOCALES) assert.doesNotMatch(messages[locale]!.start3.competition.s3_points.join(' '), /three|三个|3 つ|trois|10 (batches|批|バッチ|lots)/)
 })

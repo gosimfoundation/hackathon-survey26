@@ -421,7 +421,7 @@
     "leaderboard": {
       "kicker": "Leaderboard",
       "title": "Live standings",
-      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D). Both are feedback only; the final ranking uses only the hidden cards E–H.",
+      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D), and the super board the total over all 8 cards (A–D and A1–D1). All are feedback only; the final ranking uses only the hidden cards E–H.",
       "signal_live": "Board live",
       "signal_waiting": "Awaiting benchmark signal",
       "feed": "Live evaluation feed"
@@ -462,7 +462,7 @@
         },
         {
           "term": "Results and ranking",
-          "desc": "An evaluation's result is the mean over cards A–D, and the online board is feedback only. The final ranking uses only the final version's results on the hidden cards E–H: each card is evaluated 3 times (at the same time) and averaged, then the four cards are averaged."
+          "desc": "An evaluation's result is the mean over cards A–D (A1–D1 count only on the super board), and the online boards are feedback only. The final ranking uses only the final version's results on the hidden cards E–H: each card is evaluated 3 times (at the same time) and averaged, then the four cards are averaged."
         }
       ],
       "link": "Read the full rules"
@@ -477,7 +477,7 @@
         },
         {
           "title": "Limits",
-          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 50 evaluations per team per day, each running cards A–D, with a budget of 900 s of normalized CPU time and a 30-minute real-time cap per card."
+          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 50 evaluations per team per day, each running cards A–D and A1–D1, with a budget of 900 s of normalized CPU time and a 30-minute real-time cap per card."
         }
       ],
       "link": "Submission docs"
@@ -606,7 +606,7 @@
         },
         {
           "title": "Enter the online competition",
-          "desc": "October 5–7: submit a complete project, evaluate it on the task cards A–D and choose your final version; the hidden cards E–H decide the ranking.",
+          "desc": "October 5–7: submit a complete project, evaluate it on the task cards A–D and A1–D1 and choose your final version; the hidden cards E–H decide the ranking.",
           "time": "Oct 5",
           "to": "/compete"
         }
@@ -1255,7 +1255,7 @@
     "published": "Final results published.",
     "live": "Live",
     "tie": "Ties keep the earlier submission ahead.",
-    "mean_note": "Competition score = the mean of cards A–D in the same completed evaluation. Each team keeps its best complete evaluation; each card tab shows that evaluation’s score on the card.",
+    "mean_note": "Competition score = the mean of cards A–D (not A1–D1) in the same completed evaluation. Each team keeps its best complete evaluation; each card tab shows that evaluation’s score on the card.",
     "download_csv": "Download CSV",
     "json": "JSON",
     "n_entries": "{n} teams",
@@ -1313,7 +1313,7 @@
     "calibrated_score": "Calibrated score",
     "raw_score": "Raw score",
     "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
-    "public_board": "Online board: each team’s best complete evaluation on the task cards A–D (900 s per card); the Overall tab is the mean over A–D and each card has its own tab. It is live, but it does not decide the final ranking — after the online phase ends, each team’s final version is evaluated 3 times on each of the hidden cards E–H, each card is the mean of its 3 evaluations, and only the mean over E–H ranks.",
+    "public_board": "Online board: each team’s best complete evaluation on the task cards A–D (900 s per card); the Overall tab is the mean over A–D and each card has its own tab. The Super board is the total over all 8 cards (A–D and A1–D1) of one evaluation, counting only evaluations where all 8 cards completed. Boards are live, but they do not decide the final ranking or any award — after the online phase ends, each team’s final version is evaluated 3 times on each of the hidden cards E–H, each card is the mean of its 3 evaluations, and only the mean over E–H ranks.",
     "final_board": "Final ranking: each team’s final version evaluated 3 times on each of the hidden cards E–H after the online phase ended; each card shows the mean of its 3 evaluations and the Overall tab is the mean over E–H. A card not completed in an evaluation because of the team itself scores 0 there and still counts in the mean.",
     "overall": "Overall",
     "unfinished": "Unfinished",
@@ -1335,6 +1335,10 @@
     "cards": "Cards",
     "overall_note": "Overall = the mean of a team's card scores in its best complete evaluation (a scored run on every card). Each card tab shows the run on that card from the same evaluation.",
     "card_note": "This board ranks each team's run on this card, taken from its best complete evaluation (the one with the highest mean over all cards).",
+    "super_board": "Super board",
+    "super_total": "8-card total",
+    "super_note": "Super board = the sum of the scores on all 8 cards (A–D and A1–D1) of one evaluation; only evaluations that completed all 8 cards count, and each team keeps its highest total. The super board does not decide any award; the overall board (mean of A–D) and its rules are unchanged.",
+    "super_card_note": "This board ranks each team’s run on this card, taken from its super-board evaluation (the one with the highest 8-card total).",
     "targets_observed": "Targets",
     "components": {
       "sum_best_scores": "Best scores",
@@ -2129,7 +2133,7 @@
     "title": "Resources",
     "lede": "Task cards, example projects and reference material.",
     "flow_cards": "Task cards",
-    "flow_cards_hint": "Cards A–D are for debugging during the main competition.",
+    "flow_cards_hint": "Cards A–D and A1–D1 are for debugging during the main competition.",
     "card_view": "Read the card",
     "card_zip": "Download ZIP",
     "card_pending": "files not online yet",
@@ -2207,7 +2211,7 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 50 complete-project evaluations per team per day (separate board). Competition: 50 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. The Practice board ranks each card separately."
+        "a": "Practice: 50 complete-project evaluations per team per day (separate board). Competition: 50 evaluations per team per day, each running once on every card A–D and A1–D1 (900 s per card), and the online board keeps your complete evaluation with the best A–D mean. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. The Practice board ranks each card separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2759,7 +2763,7 @@
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [
-        "50 evaluations per team per day; each runs your agent on the task cards A–D, 900 s per card, and the board shows the mean over A–D.",
+        "50 evaluations per team per day; each runs your agent on the task cards A–D and A1–D1, 900 s per card; the Overall board shows the mean over A–D and the Super board the total over all 8 cards.",
         "Choose your final version before the competition ends.",
         "The final ranking uses only that version's score on the hidden cards E–H (3 evaluations per card, averaged, then the mean over E–H)."
       ],

@@ -70,29 +70,51 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
  */
 export type BoardLayout = 'overall' | 'cards' | 'cards_overall'
 export interface BoardCard { slug: string; name: string }
-export interface CardBoard { layout: BoardLayout; cards: BoardCard[]; scenario: string | null; rows: LeaderboardEntry[] }
+/** cards: the cards of the board's score (A-D); extraCards: the added cards A1-D1 (migration 20261005200100), which
+ * count only on the super board. The super board's tab is SUPER_TAB; an added card's tab is its slug. */
+export interface CardBoard { layout: BoardLayout; cards: BoardCard[]; extraCards: BoardCard[]; scenario: string | null; rows: LeaderboardEntry[] }
+type TabSource = Pick<CardBoard, 'layout' | 'cards'> & Partial<Pick<CardBoard, 'extraCards'>>
 
-/** The tabs of a board, in order; null is the overall tab. Boards without cards have none. */
-export function cardBoardTabs(board: Pick<CardBoard, 'layout' | 'cards'> | null): (string | null)[] {
+/** The super board's tab (超级总榜): the sum over all cards, A-D and A1-D1. No card slug is ever this. */
+export const SUPER_TAB = 'super'
+
+/** The tabs of a board, in order; null is the overall tab. Boards without cards have none. Where the phase has
+ * added cards: overall, A-D, then the super board and A1-D1. */
+export function cardBoardTabs(board: TabSource | null): (string | null)[] {
   if (!board || board.layout === 'overall' || !board.cards.length) return []
-  return [...(board.layout === 'cards_overall' ? [null] : []), ...board.cards.map(c => c.slug)]
+  const extra = board.extraCards ?? []
+  return [...(board.layout === 'cards_overall' ? [null] : []), ...board.cards.map(c => c.slug),
+    ...(extra.length ? [SUPER_TAB, ...extra.map(c => c.slug)] : [])]
 }
 
+/** Whether a tab belongs to the super board (the super tab or an added card's tab). */
+export const isSuperTab = (board: Partial<Pick<CardBoard, 'extraCards'>> | null, tab: string | null) =>
+  tab === SUPER_TAB || (tab !== null && !!board?.extraCards?.some(c => c.slug === tab))
+
 /** The requested tab when the board has it, else the first one (overall where there is one). */
-export function pickCardTab(board: Pick<CardBoard, 'layout' | 'cards'> | null, wanted: string | null | undefined): string | null {
+export function pickCardTab(board: TabSource | null, wanted: string | null | undefined): string | null {
   const tabs = cardBoardTabs(board)
   const want = wanted ?? null
   return tabs.includes(want) ? want : tabs[0] ?? null
 }
 
-export function parseCardBoard(data: any): CardBoard {
-  const layout: BoardLayout = data?.layout === 'cards' || data?.layout === 'cards_overall' ? data.layout : 'overall'
-  const cards = Array.isArray(data?.cards)
-    ? (data.cards as any[]).filter(c => c && c.slug).map(c => ({ slug: String(c.slug), name: String(c.name ?? c.slug) }))
+function parseCards(value: unknown): BoardCard[] {
+  return Array.isArray(value)
+    ? (value as any[]).filter(c => c && c.slug).map(c => ({ slug: String(c.slug), name: String(c.name ?? c.slug) }))
       .sort((a, b) => scenarioOrder(a.slug) - scenarioOrder(b.slug))
     : []
-  return { layout, cards, scenario: data?.scenario ? String(data.scenario) : null, rows: (Array.isArray(data?.rows) ? data.rows : []).map(toLeaderboardEntry) }
 }
+
+export function parseCardBoard(data: any): CardBoard {
+  const layout: BoardLayout = data?.layout === 'cards' || data?.layout === 'cards_overall' ? data.layout : 'overall'
+  return { layout, cards: parseCards(data?.cards), extraCards: layout === 'overall' ? [] : parseCards(data?.extra_cards),
+    scenario: data?.scenario ? String(data.scenario) : null, rows: parseRows(data?.rows) }
+}
+
+export const parseRows = (rows: unknown): LeaderboardEntry[] => (Array.isArray(rows) ? rows : []).map(toLeaderboardEntry)
+
+/** The cards of a super-board row, in order: A-D then A1-D1. */
+export const superCards = (board: Pick<CardBoard, 'cards' | 'extraCards'>): BoardCard[] => [...board.cards, ...board.extraCards]
 
 /**
  * Baseline reference rows (migration 20261005100000, public.observer_baseline_rows): the average scores of the

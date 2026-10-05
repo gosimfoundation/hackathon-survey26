@@ -9,7 +9,8 @@ import { scenarioLabel } from '../../lib/scenarioLabels'
 // One team's line on the board, opened from the chart or the table. Only what the board already
 // publishes is shown: team names, scores and ranks are public; member details are not.
 // Card boards pass their cards and the current tab's label; their rows carry numeric score components.
-const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null }>()
+// superBoard: a row of the super board (超级总榜) or of an added card's tab; its total is the 8-card sum.
+const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null; superBoard?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, tf, pick, locale } = useI18n()
 const closeBtn = ref<HTMLButtonElement | null>(null)
@@ -18,6 +19,8 @@ const handle = computed(() => githubHandle(props.entry?.leader_github))
 const parts = computed(() => {
   const e = props.entry
   if (!e) return []
+  // Super-board totals carry no score parts (they are a sum over cards, shown per card below).
+  if (props.superBoard && !e.components) return []
   if (e.components && Object.keys(e.components).length) return Object.entries(e.components).map(([key, value]) => {
     const label = t(`leaderboard.components.${key}`)
     return { key, label: typeof label === 'string' && label !== `leaderboard.components.${key}` ? label : key.replace(/_/g, ' '), value }
@@ -75,7 +78,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
 
       <dl class="team-detail-stats">
         <div v-for="c in cardScores" :key="c.slug" data-testid="team-detail-card"><dt>{{ c.label }}</dt><dd>{{ num(c.score) }}<small v-if="c.unfinished" :title="t('leaderboard.unfinished_help')"> · {{ t('leaderboard.unfinished') }}</small></dd></div>
-        <div v-if="entry.overall_score != null && entry.scenario_slug"><dt>{{ t('leaderboard.overall') }}</dt><dd>{{ num(entry.overall_score) }}<template v-if="entry.overall_rank"> · #{{ entry.overall_rank }}</template></dd></div>
+        <div v-if="entry.overall_score != null && entry.scenario_slug"><dt>{{ superBoard ? t('leaderboard.super_total') : t('leaderboard.overall') }}</dt><dd>{{ num(entry.overall_score) }}<template v-if="entry.overall_rank"> · #{{ entry.overall_rank }}</template></dd></div>
         <div v-if="entry.completed_tiles != null || !entry.components"><dt>{{ t('leaderboard.tiles') }}</dt><dd>{{ entry.completed_tiles ?? '—' }}</dd></div>
         <div v-if="entry.targets_observed != null"><dt>{{ t('leaderboard.targets_observed') }}</dt><dd>{{ entry.targets_observed }}</dd></div>
         <div><dt>{{ t('leaderboard.required_missing') }}</dt><dd :class="{ neg: Number(entry.required_missing) > 0 }">{{ entry.required_missing ?? '—' }}</dd></div>

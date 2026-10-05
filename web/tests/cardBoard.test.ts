@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cardBoardTabs, parseCardBoard, pickCardTab, toLeaderboardEntry } from '../src/lib/cardBoard.ts'
+import { cardBoardTabs, isSuperTab, parseCardBoard, pickCardTab, superCards, SUPER_TAB, toLeaderboardEntry } from '../src/lib/cardBoard.ts'
 
 const cards = [{ slug: 'card-a', name: 'Card A' }, { slug: 'card-b', name: 'Card B' }]
 
@@ -106,4 +106,21 @@ test('the leaderboard page adds the final tab last; the home board keeps the thr
   assert.deepEqual([...LEADERBOARD_SLUGS], ['practice-projects', 'practice', 'online'])
   assert.deepEqual([...LEADERBOARD_PAGE_SLUGS], ['practice-projects', 'practice', 'online', 'final-hidden'])
   assert.equal(LEADERBOARD_TAB_LABEL_KEYS['final-hidden'], 'leaderboard.tabs.final')
+})
+
+test('added cards A1-D1: the super board tab and their tabs come after A-D, only where the phase has them', () => {
+  const ad = ['v4-a', 'v4-b', 'v4-c', 'v4-d'].map(slug => ({ slug, name: slug }))
+  const board = parseCardBoard({ layout: 'cards_overall', cards: ad, scenario: null, rows: [],
+    extra_cards: ['v4-d1-v2', 'v4-a1-v2', 'v4-c1-v2', 'v4-b1-v2'].map(slug => ({ slug, name: slug })) })
+  assert.deepEqual(board.extraCards.map(c => c.slug), ['v4-a1-v2', 'v4-b1-v2', 'v4-c1-v2', 'v4-d1-v2'])
+  assert.deepEqual(cardBoardTabs(board), [null, 'v4-a', 'v4-b', 'v4-c', 'v4-d', SUPER_TAB, 'v4-a1-v2', 'v4-b1-v2', 'v4-c1-v2', 'v4-d1-v2'])
+  assert.equal(pickCardTab(board, SUPER_TAB), SUPER_TAB)
+  assert.equal(pickCardTab(board, 'v4-c1-v2'), 'v4-c1-v2')
+  assert.ok(isSuperTab(board, SUPER_TAB) && isSuperTab(board, 'v4-a1-v2') && !isSuperTab(board, 'v4-a') && !isSuperTab(board, null))
+  assert.deepEqual(superCards(board).map(c => c.slug), [...ad.map(c => c.slug), 'v4-a1-v2', 'v4-b1-v2', 'v4-c1-v2', 'v4-d1-v2'])
+  // Without added cards (before the switch, or an older database without extra_cards) nothing new appears.
+  const plain = parseCardBoard({ layout: 'cards_overall', cards: ad })
+  assert.deepEqual(plain.extraCards, [])
+  assert.deepEqual(cardBoardTabs(plain), [null, 'v4-a', 'v4-b', 'v4-c', 'v4-d'])
+  assert.equal(pickCardTab(plain, SUPER_TAB), null)
 })

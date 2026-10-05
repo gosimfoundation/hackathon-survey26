@@ -4,9 +4,9 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
-import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
+import { isExtraCard, scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { competition, loadCompetition } from '../stores/competition'
 import { supabase } from '../lib/supabase'
@@ -87,8 +87,19 @@ const cardBoard = ref<CardBoard | null>(null)
 const baselines = ref<BaselineRow[]>([])
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
+// The super board (超级总榜) and the added cards' tabs (A1-D1): every card's column, no baselines.
+const superMode = computed(() => isSuperTab(cardBoard.value, cardTab.value))
+const tableCards = computed(() => cardBoard.value ? (superMode.value ? superCards(cardBoard.value) : cardBoard.value.cards) : [])
+const allCards = computed(() => cardBoard.value ? superCards(cardBoard.value) : [])
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
-  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
+  : cardTab.value === SUPER_TAB ? tf('leaderboard.detail.board_card', { card: t('leaderboard.super_board') })
+  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, allCards.value.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
+const boardNote = computed(() => cardTab.value === null ? t('leaderboard.overall_note') : cardTab.value === SUPER_TAB ? t('leaderboard.super_note')
+  : superMode.value ? t('leaderboard.super_card_note') : t('leaderboard.card_note'))
+// The super board's own tab next to 正式赛 (before the debug board, which stays far right): only where the online
+// phase lists the added cards A1-D1. It opens the online board on its super-board view.
+const superTabShown = (p: Phase) => p.slug === 'online' && p.scenarios.some(s => isExtraCard(s.slug))
+const onSuper = computed(() => phase.value?.slug === 'online' && superMode.value)
 function pickCard(slug: string | null) {
   const { scenario: _drop, ...rest } = route.query
   void router.replace({ query: slug === null ? rest : { ...rest, scenario: slug } })
@@ -134,7 +145,10 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
-        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+        <template v-for="p in visiblePhases" :key="p.id">
+          <router-link :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id && !(p.slug === 'online' && onSuper), 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+          <router-link v-if="superTabShown(p)" :to="{ path: `/leaderboard/${p.slug}`, query: { scenario: SUPER_TAB } }" :class="{ active: onSuper }" data-testid="board-tab-super">{{ t('leaderboard.super_board') }}</router-link>
+        </template>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
@@ -148,11 +162,11 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <dl class="kv mt-8">
             <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
-            <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in cardBoard!.cards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
+            <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in allCards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
             <dd v-else class="flex flex-wrap gap-2"><span v-for="s in sortedScenarios" :key="s.id" class="pill" :title="s.slug">{{ scenarioLabel(s.slug, s.name, locale) }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
             <dt>{{ t('common.updated') }}</dt><dd class="m text-sm">{{ updatedAt ? fmtUtc(updatedAt.toISOString(), { seconds: true }) : '—' }} UTC</dd>
           </dl>
-          <p class="text3 mt-8 text-sm">{{ t('leaderboard.tie') }} <template v-if="cardMode">{{ cardTab === null ? t('leaderboard.overall_note') : t('leaderboard.card_note') }}</template><template v-else-if="scenarioTabs.length">{{ t('leaderboard.per_scenario_note') }}</template><template v-else-if="phase.scenarios.length > 1">{{ t('leaderboard.mean_note') }}</template></p>
+          <p class="text3 mt-8 text-sm">{{ t('leaderboard.tie') }} <template v-if="cardMode">{{ boardNote }}</template><template v-else-if="scenarioTabs.length">{{ t('leaderboard.per_scenario_note') }}</template><template v-else-if="phase.scenarios.length > 1">{{ t('leaderboard.mean_note') }}</template></p>
           <p class="mt-6"><button type="button" class="btn sm" :disabled="boardLoading" @click="loadBoard">↻ {{ t('leaderboard.refresh') }}</button></p>
         </div>
         <div class="min-w-0">
@@ -169,7 +183,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
-          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :model-value="cardTab" @update:model-value="pickCard" />
+          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="visible && !cardMode" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <p v-if="!visible" class="text2 py-12">{{ t('leaderboard.hidden') }}</p>
           <SkeletonRows v-else-if="boardLoading && !entries.length" :rows="8" :cols="6" :label="t('common.loading')" />
@@ -179,7 +193,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           </div>
           <template v-else>
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
-            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :baselines="baselines" :team-id="team?.id ?? null" @select="selected = $event" />
+            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :baselines="superMode ? [] : baselines" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" />
             <template v-else>
             <ScoreBars v-if="!isExtra" class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
@@ -207,7 +221,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
         </div>
       </div>
     </div></section>
-    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? cardBoard!.cards : undefined" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
+    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? tableCards : undefined" :super-board="cardMode && superMode" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
   </main>
 </template>
 
