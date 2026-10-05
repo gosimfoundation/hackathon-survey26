@@ -41,3 +41,8 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 grant all on all tables in schema storage to anon, authenticated, service_role;
+-- Tests change data between reads, so the shared observer_card_board cache (45 s in production) is off
+-- here; tests/test_card_board.py turns it on for its own sessions.
+do $$ begin
+  execute format('alter database %I set observer.card_board_cache_seconds = %L', current_database(), '0');
+end $$;

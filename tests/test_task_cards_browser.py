@@ -1,6 +1,6 @@
 """Task cards in the browser: the practice cards are readable now; the hackathon cards A-D stay locked until
 the scenarios bucket releases their files (the bucket policy of migration 20260928004400, emulated here
-by routing the storage API); the hidden cards E-H never appear. The rules and resources pages point at them."""
+by routing the card file list RPC and the storage API); the hidden cards E-H never appear. The rules and resources pages point at them."""
 import io
 import json
 import os
@@ -44,6 +44,16 @@ def storage(released, requests):
     return handle
 
 
+def card_files(released, requests):
+    """Route public.observer_card_files like the bucket policy: '<folder>/<file>' of the released files of one card."""
+    def handle(route):
+        requests.append(route.request.url)
+        slug = json.loads(route.request.post_data or '{}').get('p_slug', '')
+        return route.fulfill(json=sorted(f"{prefix.split('/', 1)[1]}/{n}" for prefix, names in released.items()
+                                         if prefix.split('/', 1)[0] == slug for n in names))
+    return handle
+
+
 def test_practice_cards_now_formal_cards_at_the_start_hidden_cards_never(portal_site, edge_stack):
     uri = edge_stack['harness'].db_uri
     query(uri, "update private.observer_site_mode set mode='practice'")
@@ -54,11 +64,12 @@ def test_practice_cards_now_formal_cards_at_the_start_hidden_cards_never(portal_
         page.on('pageerror', lambda e: errors.append(str(e)))
         released = {}
         page.route('**/storage/v1/object/**', storage(released, requests))
+        page.route('**/rest/v1/rpc/observer_card_files*', card_files(released, requests))
 
         # Before any release: the practice pages ship with the site, A-D are locked, E-H do not exist.
         page.goto(portal_site + '/cards?lang=zh', wait_until='domcontentloaded')
         expect(page.get_by_test_id('card-tab-alpha')).to_have_attribute('aria-current', 'page')
-        expect(page.locator('main h1').last).to_have_text('任务卡 α（alpha）：初见星光')
+        expect(page.locator('main h1').last).to_have_text('练习卡 α')
         expect(page.get_by_test_id('card-files')).to_contain_text('卡片文件尚未上线')
         for card in ('alpha', 'beta', 'a', 'b', 'c', 'd'):
             expect(page.get_by_test_id(f'card-tab-{card}')).to_be_visible()
@@ -69,7 +80,7 @@ def test_practice_cards_now_formal_cards_at_the_start_hidden_cards_never(portal_
         expect(page.get_by_test_id('card-zip-a')).to_have_count(0)
         page.goto(portal_site + '/cards/e?lang=en', wait_until='domcontentloaded')
         expect(page).to_have_url(portal_site + '/cards?lang=en')
-        expect(page.locator('main h1').last).to_have_text('Task card α (alpha): First light')
+        expect(page.locator('main h1').last).to_have_text('Practice card α')
         assert not [u for u in requests if 'v4-e' in u or 'v4-f' in u or 'v4-g' in u or 'v4-h' in u]
 
         # Resources: the v4 kit, the cards and (kept for the CSV warm-up) the v3 kit.
@@ -84,6 +95,7 @@ def test_practice_cards_now_formal_cards_at_the_start_hidden_cards_never(portal_
 
         # The bucket releases the practice files and, at the competition start, A's public files.
         released.update(RELEASED)
+        page.evaluate('sessionStorage.clear()')   # a later visit: the file lists are cached per tab session
         page.goto(portal_site + '/cards/alpha?lang=en', wait_until='domcontentloaded')
         with page.expect_download() as download:
             page.get_by_test_id('card-zip-alpha').click()
@@ -110,3 +122,6 @@ def test_practice_cards_now_formal_cards_at_the_start_hidden_cards_never(portal_
         expect(page.locator('main')).to_contain_text('Hidden cards E, F, G, H')
         browser.close()
     assert not errors, errors
+    # File lists come from the RPC; the bucket itself is never listed.
+    assert any('/rpc/observer_card_files' in u for u in requests)
+    assert not [u for u in requests if '/object/list/' in u]

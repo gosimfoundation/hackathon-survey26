@@ -21,6 +21,7 @@ import { tabFromQuery } from '../../lib/deepLink'
 import { activeEvaluations, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
+import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
@@ -70,6 +71,8 @@ watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
 const when = (value: string | null | undefined) => formatDateTime(value, locale.value)
 const sentences = (...parts: string[]) => parts.join(['zh', 'ja'].includes(locale.value) ? '' : ' ')
 let timer: ReturnType<typeof setInterval> | undefined
+// When the last portal load started (the periodic refresh waits 30 s or 60 s from it, see dashboardRefresh).
+let lastLoadAt = 0
 const words = computed(() => pick({
   title: 'Agent projects', intro: 'Submit a complete project, test its interface, then confirm the exact version for evaluation.',
   localInfo: 'Local run instructions', runner: 'Download local runner', credential: 'Temporary run credential', copy: 'Copy credential',
@@ -321,6 +324,7 @@ async function loadScenarioNames() {
   scenarioNames.value = { ...scenarioNames.value, ...Object.fromEntries((rows ?? []).map(row => [row.id, { slug: row.slug, name: row.name }])) }
 }
 async function reload() {
+  lastLoadAt = Date.now()
   data.value = await portal<PortalData>('list')
   void loadScenarioNames().catch(() => {})
   locked.value = new Set()
@@ -579,7 +583,7 @@ function toggleBatch(id: string) { const next = new Set(openBatches.value); if (
 // A successful upload closes the form; the new version appears in the table.
 watch(notice, text => { if (text === words.value.prepared) uploadOpen.value = false })
 const w2 = computed(() => pick({
-  todo: 'Needs your attention', progress: 'My progress', autoRefresh: 'Refreshes every 15 s', refreshNow: 'Refresh now', nextStep: 'Next step',
+  todo: 'Needs your attention', progress: 'My progress', autoRefresh: 'Refreshes every 30 s while something runs, otherwise every minute', refreshNow: 'Refresh now', nextStep: 'Next step',
   s1: 'Upload', s2: 'Review and confirm', s3: 'Evaluate', s4: 'Results',
   s1None: 'Nothing uploaded yet', s1Some: '{n} versions · latest {when}',
   s2Some: '{a} confirmed · {r} to review · {p} preparing', s3Some: 'Running {a}/{l} · {q} left today', s4None: 'No score yet', s4Best: 'Best {score} · {title}',
@@ -601,7 +605,7 @@ const w2 = computed(() => pick({
   nBest: 'Best score {score} ({title}). Improve and upload a new version, or check stability with “Evaluate 3 times and average”.',
   nUpload: 'Upload a new version.', viewLogs: 'View logs', viewEvaluations: 'View evaluations',
 }, {
-  todo: '待处理事项', progress: '我的进度', autoRefresh: '每 15 秒自动刷新', refreshNow: '立即刷新', nextStep: '下一步',
+  todo: '待处理事项', progress: '我的进度', autoRefresh: '运行中每 30 秒、其余时间每分钟自动刷新', refreshNow: '立即刷新', nextStep: '下一步',
   s1: '上传', s2: '检查并确认', s3: '评测', s4: '结果',
   s1None: '还没有上传', s1Some: '{n} 个版本 · 最近 {when}',
   s2Some: '已确认 {a} · 待确认 {r} · 准备中 {p}', s3Some: '运行中 {a}/{l} · 今天还剩 {q} 次', s4None: '还没有成绩', s4Best: '最佳 {score} · {title}',
@@ -698,7 +702,9 @@ onMounted(async () => {
     targetBatch.value = location.hash.slice(7)
     void nextTick(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'center' }))
   }
-  timer = setInterval(() => { if (!busy.value && team.value && !document.hidden) void reload().catch(() => {}) }, 15000)
+  timer = setInterval(() => {
+    if (!busy.value && team.value && !document.hidden && refreshDue(data.value, lastLoadAt, Date.now())) void reload().catch(() => {})
+  }, REFRESH_TICK_MS)
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
