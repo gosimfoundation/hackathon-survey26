@@ -10,7 +10,7 @@ A full season at Paranal with only the weather to handle.
 | Survey | 2026-10-04 to 2026-11-10, 38 nights. You observe when the sun is below −18°. |
 | Targets | 10,000 targets on 2,000 deg² of sky, in 3 regions. 500 are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. The fibre count and layout are those sent in `initialize`. |
-| Time limit | 900 s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 30-minute real-time cap). |
+| Time limit | 900 s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 60-minute real-time cap). |
 | Weather | Not public. During a run the agent receives a briefing every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). |
 

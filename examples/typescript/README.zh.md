@@ -99,7 +99,7 @@ npm start             # node dist/index.js（从 stdin 读取 JSON Lines，写�
 ## 时间预算（公平计时）
 
 每张卡的预算是 900 秒**标准化 CPU 时间**：只计本程序在自己回合内用掉的 CPU 时间，并除以机器的
-`speed_factor`。等待（模型 API、网络、空闲）和引擎时间都不计；另有 30 分钟实际时间上限，防止程序挂住。
+`speed_factor`。等待（模型 API、网络、空闲）和引擎时间都不计；另有 60 分钟实际时间上限，防止程序挂住。
 每条 `decision_request` 都带 `payload.wallclock`，本示例用到的字段（见 `src/clock.ts`）：
 
 - `remaining_real_cpu_seconds`：剩余预算，换算成**本机**的实际 CPU 秒；

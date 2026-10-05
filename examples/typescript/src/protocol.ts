@@ -209,7 +209,7 @@ export interface Wallclock {
   elapsed_seconds: number;
   remaining_seconds: number; // budget left, normalized CPU seconds
   remaining_real_cpu_seconds?: number; // the same budget in real CPU seconds of this machine
-  wall_remaining_seconds?: number; // real time left before the 30-minute cap
+  wall_remaining_seconds?: number; // real time left before the 60-minute cap
   speed_factor?: number;
   cpu_seconds?: number;
   wait_seconds?: number;
