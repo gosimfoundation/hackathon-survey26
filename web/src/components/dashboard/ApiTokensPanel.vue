@@ -17,6 +17,7 @@ const enabled = ref(false), limit = ref(5), tokens = ref<Token[]>([]), loaded = 
 const name = ref(''), busy = ref(false), created = ref<{ name: string; token: string } | null>(null), copied = ref(false)
 const w = computed(() => pick({
   title: 'Personal API tokens', kicker: 'Command line',
+  purpose: 'What it is for: sign in the survey26 command-line tool, and use it as the API key for the temporary Kimi relay.',
   lede: 'For the survey26 command-line tool and coding agents. A token acts as you, with exactly your permissions, daily limits and quotas; organizer functions are not available with a token. Anyone who has a token can act as you: keep it out of repositories, logs and chats, and revoke it when you no longer need it.',
   guide: 'Command-line guide', name: 'Token name (e.g. laptop, agent)', create: 'Create token', working: 'Working…',
   once: 'Copy this token now. It is shown only once; the website keeps only a fingerprint of it.', copy: 'Copy', copied: 'Copied',
@@ -28,6 +29,7 @@ const w = computed(() => pick({
   failed: 'This request could not be completed. Refresh and try again.',
 }, {
   title: '个人 API 令牌', kicker: '命令行',
+  purpose: '用途：登录 survey26 命令行工具；也作为平台临时 Kimi 中转的 API key。',
   lede: '供 survey26 命令行工具和编程智能体使用。令牌以你的身份操作，权限、每日次数和配额与网站完全相同；令牌不能使用主办方功能。任何拿到令牌的人都能以你的身份操作：请勿把令牌写进仓库、日志或聊天记录，不再使用时请及时撤销。',
   guide: '命令行使用指南', name: '令牌名称（如 laptop、agent）', create: '创建令牌', working: '处理中…',
   once: '请立即复制这个令牌。它只显示这一次，网站只保存它的指纹。', copy: '复制', copied: '已复制',
@@ -82,6 +84,7 @@ onMounted(() => { void load().catch(() => { loaded.value = true }) })
 <template>
   <div v-if="loaded && (enabled || tokens.length)" id="api-tokens" class="panel mt-6" data-testid="api-tokens-panel">
     <div class="hd"><h2>{{ w.title }}</h2><span class="label">{{ w.kicker }}</span></div>
+    <p class="mb-2 text-sm font-semibold text-text-primary" data-testid="api-tokens-purpose">{{ w.purpose }}</p>
     <p class="text2 text-sm">{{ w.lede }} <RouterLink to="/cli" class="accent-l">{{ w.guide }} →</RouterLink></p>
     <div v-if="created" class="mt-4" data-testid="api-token-created">
       <p class="text-sm"><strong>{{ created.name }}</strong> · {{ w.once }}</p>

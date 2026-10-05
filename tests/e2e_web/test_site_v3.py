@@ -52,6 +52,7 @@ def test_submission_detail_v3_and_replay(page: Page, site):
     shot(page, "01a-submission-v3-scenario", full=False)
     ev.locator("[data-testid=replay-frame]").scroll_into_view_if_needed()
     ev.locator("[data-testid=replay-frame]").screenshot(path=str(SHOTS_V3 / "01b-replay-frame.png"))
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)
 
@@ -127,5 +128,6 @@ def test_admin_scenarios_v3(page: Page, site):
     page.click("[data-testid=save-dev-fortnight]")
     expect(page.locator("[data-testid=flash]")).to_be_visible(timeout=10000)
     shot(page, "07-admin-scenarios-v3")
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)

@@ -130,6 +130,7 @@ def test_participant_journey(page: Page, site, tmp_path):
     page.fill("[data-testid=profile-name]", "Ada K. Lovelace")
     page.click("[data-testid=profile-save]")
     expect(page.locator("[data-testid=flash]")).to_be_visible(timeout=10000)
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)
 

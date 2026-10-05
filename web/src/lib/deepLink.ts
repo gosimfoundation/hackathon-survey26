@@ -24,6 +24,8 @@ export const DEEP_LINKS: Record<string, Record<string, DeepLink>> = {
     uid: { targets: ['.friends-uid', tid('my-uid'), tid('friends-panel')] },
     friends: { targets: ['#friends', tid('friends-panel')] },
     'wechat-qr': { targets: ['#wechat-qr', tid('wechat-qr-panel')] },
+    'api-tokens': { targets: [tid('api-tokens-panel'), '#api-tokens'] },
+    'kimi-relay': { targets: [tid('kimi-relay-panel'), '#kimi-relay'] },
   },
   '/team': {
     'invite-uid': { targets: ['#invite-uid', tid('team-invite-uid')] },

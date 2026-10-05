@@ -11,11 +11,13 @@ import { usePhaseClock } from '../../composables/usePhaseClock'
 import { isFullMoonToday } from '../../lib/eggs'
 import { mainNavItems, maxFold, moreNavItems, participateItem, type NavItem } from '../../lib/nav'
 import { computed } from 'vue'
+import { accountMenuItems } from '../../lib/accountLinks'
+import UserAvatar from '../UserAvatar.vue'
 
 const { t, pick, toggleLocale, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn, isAdmin, signOut } = useAuth()
+const { isLoggedIn, isAdmin, signOut, me } = useAuth()
 let notificationTimer: ReturnType<typeof setInterval> | undefined
 function pollNotifications() { if (isLoggedIn.value && document.visibilityState === 'visible') void refreshTeamNotifications() }
 watch(isLoggedIn, logged => { if (logged) void refreshTeamNotifications(); else clearTeamNotifications() }, {immediate:true})
@@ -80,10 +82,20 @@ const seriesItems = computed(() => t('nav.series.items') as SeriesItem[])
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`)
 const moreActive = () => [...more, ...foldedItems.value].some(item => isActive(item.to))
 const dashActive = () => ['/dashboard', '/team', '/compete', '/submissions', '/profile'].some(p => route.path.startsWith(p))
-watch(() => route.fullPath, () => { mobileOpen.value = false; moreOpen.value = false; seriesOpen.value = false })
+// Account menu (avatar, top right): dashboard, team, profile, API tokens, sign out.
+const accountOpen = ref(false)
+const accountEl = ref<HTMLElement | null>(null)
+const accountName = computed(() => me.value?.nickname || me.value?.name || me.value?.email || '')
+function closeAccountOnOutside(event: Event) {
+  if (accountOpen.value && accountEl.value && !accountEl.value.contains(event.target as Node)) accountOpen.value = false
+}
+onMounted(() => document.addEventListener('click', closeAccountOnOutside))
+onUnmounted(() => document.removeEventListener('click', closeAccountOnOutside))
+watch(() => route.fullPath, () => { mobileOpen.value = false; moreOpen.value = false; seriesOpen.value = false; accountOpen.value = false })
 
 async function logout() {
   mobileOpen.value = false
+  accountOpen.value = false
   await signOut()
   flash.success(t('auth.logout_done'))
   router.push('/')
@@ -138,12 +150,12 @@ async function logout() {
             <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="nav-drop-item" data-testid="nav-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
           </div>
         </div>
-        <router-link v-if="isLoggedIn" to="/dashboard" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="dashActive() ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.dashboard') }}<span v-if="pendingAll" class="nav-count" data-testid="nav-dashboard-count">{{ badgeText(pendingAll) }}</span></router-link>
         <router-link v-if="isAdmin" to="/admin" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="route.path.startsWith('/admin') ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.admin') }}</router-link>
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
         <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
+        <router-link v-if="isLoggedIn" to="/dashboard" class="dash-btn hidden h-10 shrink-0 items-center justify-center whitespace-nowrap border px-3 text-sm font-semibold sm:inline-flex" :class="{ active: dashActive() }" data-testid="nav-dashboard">{{ t('nav.dashboard') }}<span v-if="pendingAll" class="nav-count" data-testid="nav-dashboard-count">{{ badgeText(pendingAll) }}</span></router-link>
         <router-link v-if="isLoggedIn" :to="bellTarget(badge)" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80"
           :aria-label="bellText" :title="bellText" data-testid="team-notifications">
           <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
@@ -153,7 +165,18 @@ async function logout() {
         <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center whitespace-nowrap border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
           {{ nextLocaleLabel }}
         </button>
-        <button v-if="isLoggedIn" data-testid="nav-logout" type="button" @click="logout" class="ml-1 hidden h-10 items-center whitespace-nowrap border border-white/35 px-4 font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5] transition-colors hover:border-[#315efb] hover:text-[#78a6ff] md:inline-flex">{{ t('nav.logout') }}</button>
+        <div v-if="isLoggedIn" ref="accountEl" class="relative">
+          <button type="button" class="account-trigger flex h-10 shrink-0 items-center gap-1 pl-1 text-white/70 hover:text-white" :aria-expanded="accountOpen" aria-haspopup="menu"
+            :aria-label="pick('Account menu', '账号菜单')" :title="accountName" data-testid="account-menu" @click="accountOpen = !accountOpen">
+            <UserAvatar :name="accountName || '?'" :github="me?.github" :avatar-url="me?.avatar_url" />
+            <span aria-hidden="true" class="hidden text-[.6rem] sm:inline" :class="{ 'rotate-180': accountOpen }">▾</span>
+          </button>
+          <div v-show="accountOpen" class="account-panel" role="menu" data-testid="account-panel">
+            <p class="account-head">{{ accountName }}</p>
+            <router-link v-for="item in accountMenuItems" :key="item.to" :to="item.to" role="menuitem" class="account-item" :data-testid="item.testid">{{ pick(item.en, item.zh) }}<span v-if="item.to === '/team' && pendingTeamActions" class="nav-count">{{ badgeText(pendingTeamActions) }}</span></router-link>
+            <button type="button" role="menuitem" class="account-item account-logout" data-testid="nav-logout" @click="logout">{{ t('nav.logout') }}</button>
+          </div>
+        </div>
         <router-link v-else-if="registrationOpen" data-testid="nav-register" to="/register" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.register') }}</router-link>
         <router-link v-else data-testid="nav-register" to="/register?mode=login" class="cosmos-register-link ml-1 hidden h-10 items-center whitespace-nowrap border px-4 font-mono text-xs font-semibold uppercase tracking-widest md:inline-flex">{{ t('nav.login') }}</router-link>
         <button class="relative ml-1 lg:hidden" type="button" @click="mobileOpen = !mobileOpen" :aria-label="t('nav.menu')" :aria-expanded="mobileOpen">
@@ -164,10 +187,15 @@ async function logout() {
     </div>
 
     <div v-if="mobileOpen" class="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/20 bg-[#070708] px-5 pb-20 pt-4 lg:hidden" data-testid="mobile-menu">
+      <div v-if="isLoggedIn" class="mobile-account" data-testid="mobile-account">
+        <router-link to="/dashboard" class="mobile-dash" data-testid="mobile-dashboard">{{ t('nav.dashboard') }}<span v-if="pendingAll" class="nav-count">{{ badgeText(pendingAll) }}</span><span aria-hidden="true" class="ml-auto">→</span></router-link>
+        <div class="mobile-account-links">
+          <router-link v-for="item in accountMenuItems.slice(1)" :key="item.to" :to="item.to" :data-testid="`mobile-${item.testid}`">{{ pick(item.en, item.zh) }}</router-link>
+        </div>
+      </div>
       <p v-if="nextLine" class="mb-2 font-mono text-[.68rem] leading-relaxed tracking-[.06em] text-white/60" data-testid="menu-next-phase">{{ nextLine }}</p>
       <router-link v-for="item in items" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
       <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
-      <router-link v-if="isLoggedIn" to="/dashboard" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.dashboard') }}</router-link>
       <router-link v-if="isLoggedIn" to="/teammates#find-uid" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-find-uid">{{ t('nav.find_uid') }}</router-link>
       <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
       <router-link v-if="isLoggedIn && pendingTeamActions" to="/team#requests" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-team-requests">{{ pick('Team requests waiting for you', '待处理的组队请求') }} <span class="nav-count">{{ badgeText(pendingTeamActions) }}</span></router-link>
@@ -192,4 +220,20 @@ async function logout() {
 .nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.1rem; height: 1.1rem; margin-left: .35rem; padding: 0 .3rem;
   border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; line-height: 1; letter-spacing: 0; }
 @media (max-width: 1279px) { .main-link { letter-spacing: .02em; } }
+.dash-btn { border-color: rgba(120,166,255,.7); color: #cfe0ff; background: rgba(49,94,251,.12); transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.dash-btn:hover, .dash-btn.active { border-color: #78a6ff; color: #fff; background: rgba(49,94,251,.28); }
+.account-panel { position: absolute; top: 100%; right: 0; min-width: 18rem; padding: .35rem 0; z-index: 60;
+  border: 1px solid rgba(148,163,255,.25); background: rgba(6,9,18,.97); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.account-head { padding: .55rem 1.1rem .5rem; border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: .25rem;
+  font-size: .78rem; color: rgba(255,255,255,.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 18rem; }
+.account-item { display: flex; align-items: center; width: 100%; padding: .6rem 1.1rem; text-align: left; font-size: .86rem; color: rgba(255,255,255,.78);
+  transition: color .15s ease, background .15s ease; }
+.account-item:hover { color: #fff; background: rgba(49,94,251,.18); }
+.account-item.router-link-exact-active { color: #78a6ff; }
+.account-logout { border-top: 1px solid rgba(255,255,255,.12); margin-top: .25rem; color: rgba(255,255,255,.55); }
+.mobile-account { margin-bottom: .75rem; border: 1px solid rgba(120,166,255,.45); background: rgba(49,94,251,.1); }
+.mobile-dash { display: flex; align-items: center; padding: .8rem 1rem; font-size: 1rem; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(120,166,255,.3); }
+.mobile-account-links { display: grid; grid-template-columns: 1fr; }
+.mobile-account-links a { padding: .65rem 1rem; font-size: .92rem; color: rgba(255,255,255,.72); border-bottom: 1px solid rgba(255,255,255,.08); }
+.mobile-account-links a:last-child { border-bottom: 0; }
 </style>
