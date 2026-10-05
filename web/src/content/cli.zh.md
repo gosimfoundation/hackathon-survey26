@@ -53,7 +53,7 @@ survey26 whoami
 
 这是组委会临时提供的 Kimi 额度，方便大家本地开发调试，额度有限，可能随时调整或结束。正式评测和决赛会使用各队在「密钥与网络」里保存的模型服务，记得提前配置好哦。
 
-已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 1000 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**，也可以运行 `survey26 relay status` 查看。请不要把它保存为评测用的模型服务。
+已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 20000 次请求、4000 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**，也可以运行 `survey26 relay status` 查看。请不要把它保存为评测用的模型服务。
 
 ```bash
 export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
