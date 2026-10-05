@@ -6,7 +6,7 @@ import { pickPopup, rememberSeenList } from '../src/lib/popupRules.ts'
 const step = (id: string) => GUIDE_STEPS.find(s => s.id === id)!
 
 test('the tour covers the workspace in order, every step in zh and en', () => {
-  assert.deepEqual(GUIDE_STEPS.map(s => s.id), ['entry', 'upload', 'confirm', 'evaluate', 'results', 'settings', 'final'])
+  assert.deepEqual(GUIDE_STEPS.map(s => s.id), ['entry', 'upload', 'confirm', 'evaluate', 'results', 'settings', 'kimi-relay', 'final'])
   for (const s of GUIDE_STEPS) {
     assert.ok(s.targets.length > 0)
     for (const lang of ['zh', 'en'] as const) assert.ok(s[lang].title && s[lang].body, `${s.id} ${lang}`)
@@ -25,7 +25,7 @@ test('a step uses its first target on the page and is skipped when none is there
   // Skipping keeps the order of the remaining steps.
   const onPage = new Set(GUIDE_STEPS.filter(s => s.id !== 'confirm' && s.id !== 'entry').map(s => s.targets.at(-1)!))
   const resolved = GUIDE_STEPS.map(s => resolveStep(s, sel => onPage.has(sel))).filter(Boolean).map(r => r!.step.id)
-  assert.deepEqual(resolved, ['upload', 'evaluate', 'results', 'settings', 'final'])
+  assert.deepEqual(resolved, ['upload', 'evaluate', 'results', 'settings', 'kimi-relay', 'final'])
 })
 
 test('during practice the final-version step explains it comes with the online phase', () => {
