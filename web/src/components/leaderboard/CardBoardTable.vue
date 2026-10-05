@@ -98,6 +98,8 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
 .unfinished { margin-left: .4em; font-size: .75em; color: #ff9b6b; white-space: nowrap; }
 /* Baseline reference rows: muted, not clickable, no rank. */
 .baseline td { color: #9aa0a6; font-style: italic; background: rgba(154,160,166,.06); }
+.baseline .team-cell { max-width: 13rem; }
+.baseline .team-name { white-space: normal; line-height: 1.3; }
 .baseline-tag { display: inline-block; margin-right: .5em; padding: 0 .45em; border: 1px solid rgba(154,160,166,.5); border-radius: 4px; font-size: .72em; font-style: normal; line-height: 1.6; color: #9aa0a6; white-space: nowrap; }
 .baseline-note { margin-top: .75rem; font-size: .8rem; color: #9aa0a6; }
 /* Secondary lines under the score: wrap inside the cell instead of widening the table on phones. */
