@@ -143,3 +143,7 @@ Actions that the website confirms with a dialog (evaluating a version again, the
 - Organizer functions: never available with a token, also for organizer accounts.
 - The former team model API settings and the in-browser model relay: superseded by **Keys and network** (`survey26 env`).
 - The local CSV session and the CSV submission history of the earlier practice round: these formats are no longer accepted.
+
+## 8. Contacts
+
+- Night caretaker Johnny: `POST https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/contact-johnny` with `{"token": "$SOPHON_RUN_TOKEN"}` (only works inside a running evaluation).
