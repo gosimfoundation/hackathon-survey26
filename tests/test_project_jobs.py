@@ -215,3 +215,19 @@ def test_a_still_active_job_still_blocks_a_second_enqueue_for_the_same_run_and_k
     with pytest.raises(psycopg.Error,match="duplicate key value violates unique constraint"):
         rpc(uri,"observer_enqueue_job",second,"engine",s["run"],None,"AGENTIC-OBSERVER26-runner-1",nonce,"encrypted job payload","encrypted nonce")
     assert query(uri,"select count(*) from private.observer_jobs where run_id=%s",(s["run"],))==[(1,)]
+
+
+def test_a_run_requeued_after_a_platform_failure_can_open_a_new_session(job):
+    # The failed attempt's session must not block the next scheduling pass
+    # (it used to hit observer_sessions_pkey and stay 'queued' forever).
+    s=job;uri=s["uri"]
+    query(uri,"insert into private.observer_messages(run_id,sequence,observation) values(%s,1,'{}')",(s["run"],))
+    query(uri,"update private.observer_sessions set ready_at=now(),next_sequence=2 where run_id=%s",(s["run"],))
+    claim(s)
+    rpc(uri,"observer_finish_job",s["job"],"404","1",{"diagnostics":{"code":"job_http_503","stage":"engine"}},"engine_job_failed")
+    assert query(uri,"select status from public.observer_runs where id=%s",(s["run"],))==[("queued",)]
+    participant,engine=secrets.token_urlsafe(32),secrets.token_urlsafe(32)
+    rpc(uri,"observer_open_session",s["run"],participant,engine)
+    assert query(uri,"select status from public.observer_runs where id=%s",(s["run"],))==[("starting",)]
+    assert query(uri,"select ready_at,next_sequence from private.observer_sessions where run_id=%s",(s["run"],))==[(None,1)]
+    assert query(uri,"select count(*) from private.observer_messages where run_id=%s",(s["run"],))==[(0,)]
