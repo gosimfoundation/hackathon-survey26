@@ -375,7 +375,7 @@ pub struct Wallclock {
     /// Absent on older local runners.
     #[serde(default)]
     pub remaining_real_cpu_seconds: Option<f64>,
-    /// Real time left before the 60-minute cap.
+    /// Real time left before the 30-minute cap.
     #[serde(default)]
     pub wall_remaining_seconds: Option<f64>,
 }
