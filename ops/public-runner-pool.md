@@ -224,6 +224,11 @@ public repositories (`266caa0`, previous `6adf43a`); see `ops/egress-routes.md`.
 private `observer-control` repositories (`ops/github-installations.json`), after a canary on runner-1
 (private and public) whose engine and score jobs succeeded.
 
+**2026-10-05 14:33 UTC: optional practice-card flicker schedule** (hackathon-survey26 #336, a no-op for
+ordinary cards) approved on all 13 public repositories (`3bedfde`, previous `33315a6`) and all 13 private
+`observer-control` repositories (`ops/github-installations.json`), after a canary on runner-1 public: two score
+jobs and one engine job on the new runtime succeeded. Queued public jobs were moved to the new commit in the same transaction.
+
 **2026-10-04 21:07 UTC: transient-error backoff** (hackathon-survey26 #330: job API calls,
 the sealed result PUT and signed downloads ride out network/429/5xx for about a minute; run
 b9285236 had failed on a Storage 520) approved on all 13 public repositories (`33315a6`, previous
