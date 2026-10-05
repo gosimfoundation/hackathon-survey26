@@ -4,7 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadCardBoard, loadLeaderboard, phaseCopy, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, loadBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
@@ -64,6 +64,8 @@ const scenarioSlug = computed<string | null>(() => {
 function pickScenario(slug: string) { void router.replace({ query: { ...route.query, scenario: slug } }) }
 // Complete-project phases whose board_layout is 'cards' / 'cards_overall' rank per card (?scenario=<card>) and overall.
 const cardBoard = ref<CardBoard | null>(null)
+// The online board also shows the official examples' average scores as unranked reference rows.
+const baselines = ref<BaselineRow[]>([])
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
@@ -81,15 +83,19 @@ async function loadBoard() {
   try {
     if (isProjectBoard(phase.value)) {
       const wanted = typeof route.query.scenario === 'string' ? route.query.scenario : null
-      cardBoard.value = await loadCardBoard(phase.value.id, wanted)
-      entries.value = cardBoard.value.rows
+      const [board, refs] = await Promise.all([loadCardBoard(phase.value.id, wanted),
+        phase.value.slug === 'online' ? loadBaselineRows(phase.value.id) : Promise.resolve([])])
+      cardBoard.value = board
+      baselines.value = refs
+      entries.value = board.rows
     } else {
       cardBoard.value = null
+      baselines.value = []
       entries.value = await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value)
     }
     updatedAt.value = new Date()
   }
-  catch { entries.value = []; cardBoard.value = null }
+  catch { entries.value = []; cardBoard.value = null; baselines.value = [] }
   finally { boardLoading.value = false }
 }
 
@@ -144,7 +150,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           </div>
           <template v-else>
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
-            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :team-id="team?.id ?? null" @select="selected = $event" />
+            <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :baselines="baselines" :team-id="team?.id ?? null" @select="selected = $event" />
             <template v-else>
             <ScoreBars class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
