@@ -124,7 +124,7 @@ function addDomain() {
 <template>
   <div data-testid="team-environment">
     <p class="help mt-3">{{ open ? t('submit.team_env.intro_open') : t('submit.team_env.intro') }}</p>
-    <p v-if="environment?.relay_key_missing" class="errors" role="alert" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }}</p>
+    <p v-if="environment?.relay_key_missing" class="help" data-testid="team-env-relay-banner">{{ t('submit.team_env.relay_banner') }}</p>
     <p class="help" data-testid="team-env-final-note">{{ t('submit.team_env.final_note') }}</p>
 
     <section class="svc-panel mt-4" data-testid="model-service">

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { boardScenarios, isProjectBoard, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
+import { boardScenarios, isProjectBoard, isSuperTab, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, superCards, SUPER_TAB, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
 import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 import { useAuth } from '../../stores/auth'
@@ -32,17 +32,21 @@ const scenarioSlug = ref<string | null>(null)
 const scenarioTabs = computed(() => boardScenarios(phase.value))
 // Card boards (complete-project phases with board_layout 'cards' / 'cards_overall'): null is the overall tab.
 const cardBoard = ref<CardBoard | null>(null)
-const cardWanted = ref<string | null>(null)
+// Like the full board: the super board opens by default where the phase has one; null (总榜) once picked.
+const cardWanted = ref<string | null>(SUPER_TAB)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
+const superMode = computed(() => isSuperTab(cardBoard.value, cardTab.value))
+const tableCards = computed(() => cardBoard.value ? (superMode.value ? superCards(cardBoard.value) : cardBoard.value.cards) : [])
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
-  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, cardBoard.value?.cards.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
+  : cardTab.value === SUPER_TAB ? tf('leaderboard.detail.board_card', { card: t('leaderboard.super_board') })
+  : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, (cardBoard.value ? superCards(cardBoard.value) : []).find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
 let timer: number | undefined
 
 const top = computed(() => entries.value.slice(0, 10))
 const scoredRuns = computed(() => entries.value.reduce((sum, row) => sum + row.submission_count, 0))
 const boardLink = computed(() => {
-  const scenario = cardMode.value ? cardTab.value : scenarioSlug.value
+  const scenario = cardMode.value ? (cardTab.value ?? 'overall') : scenarioSlug.value
   return phase.value ? { path: `/leaderboard/${phase.value.slug}`, query: scenario ? { scenario } : {} } : '/leaderboard'
 })
 
@@ -116,7 +120,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :model-value="cardTab" @update:model-value="pickCard" />
+          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="!hidden && !cardMode" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <div v-if="loading" class="py-6"><SkeletonRows :rows="6" :cols="5" :label="t('leaderboard.loading')" /></div>
           <div v-else-if="!entries.length" class="grid min-h-80 place-items-center py-16 text-center">
@@ -128,7 +132,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <div v-else-if="cardMode" class="py-6"><CardBoardTable :entries="top" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :team-id="team?.id ?? null" @select="selected = $event" /></div>
+          <div v-else-if="cardMode" class="py-6"><CardBoardTable :entries="top" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" /></div>
           <template v-else>
             <div class="py-6"><ScoreBars :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" /></div>
             <div class="table-wrap">
@@ -154,7 +158,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
         </div>
       </div>
     </div>
-    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? cardBoard!.cards : undefined" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
+    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? tableCards : undefined" :super-board="cardMode && superMode" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
   </section>
 </template>
 

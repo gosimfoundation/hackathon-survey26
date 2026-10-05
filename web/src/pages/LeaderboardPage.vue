@@ -91,9 +91,10 @@ const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.
 const boardNote = computed(() => cardTab.value === null ? t('leaderboard.overall_note') : cardTab.value === SUPER_TAB ? t('leaderboard.super_note')
   : superMode.value ? t('leaderboard.super_card_note') : t('leaderboard.card_note'))
 // The super board (超级总榜) is a card tab inside the 正式赛 board, not a top-level board tab.
+const OVERALL_QUERY = 'overall'
 function pickCard(slug: string | null) {
   const { scenario: _drop, ...rest } = route.query
-  void router.replace({ query: slug === null ? rest : { ...rest, scenario: slug } })
+  void router.replace({ query: { ...rest, scenario: slug ?? OVERALL_QUERY } })
 }
 // The coverage term only exists where the scenario's score_config sets a weight, so keep the column out of practice phases.
 const showCoverage = computed(() => entries.value.some(e => (e.coverage_bonus ?? 0) !== 0))
@@ -103,7 +104,9 @@ async function loadBoard() {
   boardLoading.value = true
   try {
     if (isProjectBoard(phase.value)) {
-      const wanted = typeof route.query.scenario === 'string' ? route.query.scenario : null
+      // No card chosen: open the super board where the phase has one (else the first tab); ?scenario=overall picks 总榜.
+      const query = typeof route.query.scenario === 'string' ? route.query.scenario : null
+      const wanted = query === OVERALL_QUERY ? null : query ?? SUPER_TAB
       const [board, refs] = await Promise.all([loadCardBoard(phase.value.id, wanted),
         phase.value.slug === 'online' ? loadBaselineRows(phase.value.id) : Promise.resolve([])])
       cardBoard.value = board

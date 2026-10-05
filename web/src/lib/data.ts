@@ -285,10 +285,11 @@ async function fetchSuperRows(phaseId: string, limit: number): Promise<Leaderboa
 /** A complete-project board, on the requested card tab when the phase has cards (see pickCardTab). The super
  * board's tab (SUPER_TAB) exists only where the phase has added cards; their own tabs come from the card board. */
 export async function loadCardBoard(phaseId: string, wanted: string | null = null, limit = 500): Promise<CardBoard> {
-  const board = await fetchCardBoard(phaseId, wanted === SUPER_TAB ? null : wanted, limit)
+  const fetched = wanted === SUPER_TAB ? null : wanted
+  const board = await fetchCardBoard(phaseId, fetched, limit)
   const tab = pickCardTab(board, wanted)
   if (tab === SUPER_TAB) return { ...board, scenario: SUPER_TAB, rows: await fetchSuperRows(phaseId, limit) }
-  return board.layout !== 'overall' && tab !== (wanted ?? null) ? fetchCardBoard(phaseId, tab, limit) : board
+  return board.layout !== 'overall' && tab !== (fetched ?? null) ? fetchCardBoard(phaseId, tab, limit) : board
 }
 
 /** Whether a phase ranks complete projects (the observer boards) rather than CSV submissions. */
