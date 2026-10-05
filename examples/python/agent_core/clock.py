@@ -2,12 +2,12 @@
 
 Each card has a budget of 900 *normalized CPU seconds*. Only the CPU time the agent uses
 inside its own turns is charged, divided by the machine's `speed_factor`; waiting for a
-model, the network or the engine is free. A real-time cap (30 minutes) ends hung runs.
+model, the network or the engine is free. A real-time cap (60 minutes) ends hung runs.
 Every `decision_request` carries `payload.wallclock` with, among others:
 
     remaining_seconds            budget left, normalized seconds
     remaining_real_cpu_seconds   the same budget in real CPU seconds of THIS machine
-    wall_remaining_seconds       real time left before the 30-minute cap
+    wall_remaining_seconds       real time left before the 60-minute cap
 
 Pace compute on `remaining_real_cpu_seconds` and measure your own work with process CPU
 time (`time.process_time()`), so both numbers are in the same unit. A wall clock
@@ -20,7 +20,7 @@ from __future__ import annotations
 import time
 
 # Leave a fifth of the real time for the engine, model waits and safety: on a slow
-# machine (speed_factor 2) the CPU budget alone would fill the whole 30-minute cap.
+# machine (speed_factor 2) the CPU budget alone would fill the whole 60-minute cap.
 WALL_SHARE = 0.8
 
 

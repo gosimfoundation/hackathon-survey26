@@ -19,7 +19,7 @@ once a week."
 | Survey | {{START_DATE}} to {{END_DATE}}, {{NIGHTS}} nights. You observe when the sun is below −18°. |
 | Targets | {{TARGETS}} targets on {{AREA_DEG2}} deg² of sky, in {{COMPONENTS}} regions. {{REQUIRED}} are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. The fibre count and layout are those sent in `initialize`. |
-| Time limit | {{WALLCLOCK}} s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 30-minute real-time cap). |
+| Time limit | {{WALLCLOCK}} s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 60-minute real-time cap). |
 | Weather | {{WEATHER}} |
 | Extra messages | {{EXTRA_MESSAGES}} |
 

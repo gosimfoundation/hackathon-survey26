@@ -10,7 +10,7 @@ A larger share of the targets is required, and part of your recent data can be l
 | Survey | 2026-10-24 to 2026-11-30, 38 nights. You observe when the sun is below −18°. |
 | Targets | 9,400 targets on 1,880 deg² of sky, in 3 regions. 564 are required. |
 | Instrument | 16 contiguous fibre assignment cells in a 4 × 4 grid. The field covers 6.4 deg² and is about 2.53° across. The fibre count and layout are those sent in `initialize`. |
-| Time limit | 900 s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 30-minute real-time cap). |
+| Time limit | 900 s of normalized CPU time for the whole survey (only CPU inside the agent's turns; waiting and platform processing not counted; 60-minute real-time cap). |
 | Weather | Not public. During a run the agent receives a briefing every 15 minutes and a forecast about once a week. |
 | Extra messages | Time-limited observation requests (`observation_request`) and their results (`observation_request_result`). Possibly one `state_resync` message. It means part of your recent data was lost. It lists the targets that still count and their best scores. Rebuild your list of finished targets from it. The time already spent is not returned. |
 

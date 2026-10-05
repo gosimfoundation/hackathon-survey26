@@ -88,7 +88,7 @@ python3 run_local.py --card L3 --agent "./rust-agent" --agent-cwd /path/to/rust-
 
 The budget (900 by default) uses the platform's timing rule: only the CPU time your agent uses during its
 turns (from each `decision_request` until its response) counts, divided by this machine's speed factor.
-Waiting (e.g. on a model) and the engine's time are free; a real-time cap (30 minutes for 900) ends hung
+Waiting (e.g. on a model) and the engine's time are free; a real-time cap (60 minutes for 900) ends hung
 runs. The factor is 1.0 on the median GitHub evaluation runner; a fast laptop typically has a factor below
 1 and therefore gets **less** real CPU time than 900 s. The summary prints `speed_factor` and a
 `fair_clock` breakdown; each request's `wallclock.remaining_seconds` is the budget left, and
