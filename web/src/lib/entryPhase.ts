@@ -52,8 +52,11 @@ export function rememberEntryChoice(storage: StorageLike | null, userId: string 
 export function entryPhaseId(s: CompetitionState, choice: EntryChoice): string | null {
   if (offersExtraSwitch(s) && choice === 'extra') return s.extraPhaseId
   if (offersPracticeSwitch(s) && choice === 'practice') return s.practicePhaseId
-  if (s.mode === 'competition') return s.betaPhaseId ?? s.phaseId ?? s.projectPhaseId
-  return s.betaPhaseId ?? s.projectPhaseId ?? s.phaseId
+  // A team-restricted extra phase is also its team's beta entry (my_observer_phase); it is reached through the
+  // extra choice only, so the other choices bind as for everyone else.
+  const beta = s.betaPhaseId && s.betaPhaseId === s.extraPhaseId ? null : s.betaPhaseId
+  if (s.mode === 'competition') return beta ?? s.phaseId ?? s.projectPhaseId
+  return beta ?? s.projectPhaseId ?? s.phaseId
 }
 
 /** Phases the workspace may evaluate in (the workflow still keeps only the open ones). */

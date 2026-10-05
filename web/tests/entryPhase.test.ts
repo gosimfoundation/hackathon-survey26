@@ -84,3 +84,12 @@ test('an offered extra phase is a third choice, remembered only while it is offe
   assert.equal(entryPhaseId(none, 'extra'), 'online')
   assert.deepEqual(entryPhaseIds(none), ['online', 'pp'])
 })
+
+test('a team-restricted extra phase answered as the beta entry binds only through the extra choice', () => {
+  const s = state({ mode: 'competition', phase_id: 'online', practice_phase_id: 'pp', extra_phase_id: 'ex' }, 'ex')
+  assert.equal(entryPhaseId(s, 'extra'), 'ex')
+  assert.equal(entryPhaseId(s, 'online'), 'online')
+  assert.equal(entryPhaseId(s, 'practice'), 'pp')
+  // Another beta entry still binds as before.
+  assert.equal(entryPhaseId(state({ mode: 'competition', phase_id: 'online', extra_phase_id: 'ex' }, 'beta'), 'online'), 'beta')
+})

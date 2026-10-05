@@ -1,7 +1,8 @@
 -- Optional extra entry next to the online competition: an unscored evaluation phase organizers can offer.
 -- Organizers name it by hand in private.observer_extra_phase (no row by default). While that phase is active,
--- open, projects-enabled and unrestricted, the RPC also answers extra_phase_id; otherwise it answers exactly
--- as before.
+-- open and projects-enabled, the RPC also answers extra_phase_id: to everyone once it is unrestricted, and only
+-- to (non-banned) members of its access team while access_team_id is set. Everyone else gets exactly the
+-- answer as before.
 create table private.observer_extra_phase (
   id boolean primary key default true check(id),
   phase_id uuid references public.phases(id),
@@ -19,7 +20,9 @@ returns jsonb language sql stable security definer set search_path=public,pg_tem
       and (p.starts_at is null or now()>=p.starts_at) and (p.ends_at is null or now()<p.ends_at)),
   extra as (select p.id from private.observer_extra_phase x join public.phases p on p.id=x.phase_id
       join public.observer_phase_settings s on s.phase_id=p.id
-    where x.id and p.is_active and s.projects_enabled and s.access_team_id is null
+    where x.id and p.is_active and s.projects_enabled
+      and (s.access_team_id is null or exists(select 1 from public.profiles u where u.id=auth.uid()
+        and not u.is_banned and u.team_id=s.access_team_id))
       and (p.starts_at is null or now()>=p.starts_at) and (p.ends_at is null or now()<p.ends_at))
   select jsonb_build_object('mode',m.mode,'phase_id',m.phase_id)
     || coalesce((select case when m.mode='practice' then jsonb_build_object('project_phase_id',p.id)
