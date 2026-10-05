@@ -2,13 +2,16 @@
 import { computed } from 'vue'
 import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
-import type { BoardCard, BoardLayout, LeaderboardEntry } from '../../lib/data'
+import { isBaseline, withBaselines, type BaselineRow, type BoardCard, type BoardLayout, type LeaderboardEntry } from '../../lib/data'
 import { num } from '../../lib/format'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 
 // The table of a card board. Overall tab: the mean and one column per card. Card tab: the card score, the
 // team's overall score where the phase has one, and whatever numeric score components the runs report.
-const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null }>()
+const props = defineProps<{ entries: LeaderboardEntry[]; layout: BoardLayout; cards: BoardCard[]; tab: string | null; teamId: string | null; baselines?: BaselineRow[] }>()
+// Unranked reference rows (official examples' averages) placed among the teams by score; ranks stay the database's.
+const rows = computed(() => withBaselines(props.entries, props.baselines ?? [], props.tab))
+const hasBaselines = computed(() => rows.value.some(isBaseline))
 const emit = defineEmits<{ select: [entry: LeaderboardEntry] }>()
 const { t, tf, locale } = useI18n()
 
@@ -55,7 +58,20 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
         <th class="r">{{ t('leaderboard.submissions') }}</th>
       </tr></thead>
       <tbody>
-        <tr v-for="row in entries" :key="row.team_id" data-testid="lb-row" class="lb-click" :class="{ me: teamId === row.team_id }" tabindex="0"
+        <template v-for="row in rows" :key="isBaseline(row) ? `baseline-${row.baseline}` : row.team_id">
+        <tr v-if="isBaseline(row)" class="baseline" data-testid="baseline-row" :title="t('leaderboard.baseline_help')">
+          <td class="m rank-cell">—</td>
+          <td><span class="team-cell"><span class="baseline-tag">{{ t('leaderboard.baseline_tag') }}</span><span class="team-name">{{ t(`leaderboard.baseline_${row.baseline}`) }}</span></span></td>
+          <td class="r m">{{ num(row.total_score) }}<small class="sub">{{ tf('leaderboard.baseline_runs', { n: row.runs }) }}</small></td>
+          <template v-if="overallTab"><td v-for="c in cards" :key="c.slug" class="r m">{{ row.card_scores?.[c.slug] == null ? '—' : num(row.card_scores[c.slug]!) }}</td></template>
+          <td v-if="showOverall" class="r m">{{ num(row.overall_score) }}</td>
+          <td v-for="k in componentKeys" :key="k" class="r m">—</td>
+          <td v-if="showTiles" class="r m">—</td>
+          <td v-if="showTargets" class="r m">—</td>
+          <td v-if="showMissing" class="r m">—</td>
+          <td class="r m">—</td>
+        </tr>
+        <tr v-else data-testid="lb-row" class="lb-click" :class="{ me: teamId === row.team_id }" tabindex="0"
             @click="emit('select', row)" @keydown.enter.prevent="emit('select', row)">
           <td class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
           <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="teamId === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
@@ -68,9 +84,11 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
           <td v-if="showMissing" class="r m" :class="{ 'text-[#ff6b6b]': Number(row.required_missing) > 0 }">{{ row.required_missing ?? '—' }}</td>
           <td class="r m">{{ row.submission_count }}</td>
         </tr>
+        </template>
       </tbody>
     </table>
   </div>
+  <p v-if="hasBaselines" class="baseline-note" data-testid="baseline-note"><span class="baseline-tag">{{ t('leaderboard.baseline_tag') }}</span>{{ t('leaderboard.baseline_help') }}</p>
 </template>
 
 <style scoped>
@@ -78,6 +96,10 @@ const signed = (value: number) => `${value < 0 ? '−' : ''}${num(Math.abs(value
 .lb-click:hover { background: rgba(49,94,251,.08); }
 .lb-click:focus-visible { outline: 2px solid #78a6ff; outline-offset: -2px; }
 .unfinished { margin-left: .4em; font-size: .75em; color: #ff9b6b; white-space: nowrap; }
+/* Baseline reference rows: muted, not clickable, no rank. */
+.baseline td { color: #9aa0a6; font-style: italic; background: rgba(154,160,166,.06); }
+.baseline-tag { display: inline-block; margin-right: .5em; padding: 0 .45em; border: 1px solid rgba(154,160,166,.5); border-radius: 4px; font-size: .72em; font-style: normal; line-height: 1.6; color: #9aa0a6; white-space: nowrap; }
+.baseline-note { margin-top: .75rem; font-size: .8rem; color: #9aa0a6; }
 /* Secondary lines under the score: wrap inside the cell instead of widening the table on phones. */
 .sub { display: block; margin-left: auto; max-width: 12em; font-size: .72em; line-height: 1.3; color: #9aa0a6; white-space: normal; }
 .sub.chosen { color: #78a6ff; }

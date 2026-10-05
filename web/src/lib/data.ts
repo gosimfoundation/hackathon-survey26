@@ -2,7 +2,7 @@ import { parseCompeteUi, type CompeteUiSetting } from './competeUi'
 import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { normalizeQuotaResetNotice, type QuotaResetNotice } from './quotaReset'
-import { parseCardBoard, pickCardTab, toLeaderboardEntry, type CardBoard } from './cardBoard'
+import { parseBaselineRows, parseCardBoard, pickCardTab, toLeaderboardEntry, type BaselineRow, type CardBoard } from './cardBoard'
 import { cached, invalidatePrefix } from './requestCache'
 import { scenarioOrder } from './scenarioLabels'
 
@@ -245,7 +245,15 @@ export async function loadLeaderboard(phaseSlug: string | null, limit = 500, sce
   return rows.map(toLeaderboardEntry)
 }
 
-export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, type BoardLayout, type BoardCard, type CardBoard } from './cardBoard'
+export { toLeaderboardEntry, cardBoardTabs, pickCardTab, parseCardBoard, withBaselines, isBaseline, type BoardLayout, type BoardCard, type CardBoard, type BaselineRow, type BoardRow } from './cardBoard'
+
+/** The official-example baseline reference rows of a complete-project board (aggregates only); none on any error. */
+export async function loadBaselineRows(phaseId: string): Promise<BaselineRow[]> {
+  return cached(`card_board:baseline:${phaseId}`, BOARD_CACHE_MS, async () => {
+    const { data, error } = await supabase.rpc('observer_baseline_rows', { p_phase: phaseId })
+    return error ? [] : parseBaselineRows(data)
+  })
+}
 
 /** Clear the leaderboard/card-board cache so a profile or team change the user just made shows up on their
  * own next visit instead of waiting out the shared BOARD_CACHE_MS window. */

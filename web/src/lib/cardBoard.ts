@@ -93,3 +93,36 @@ export function parseCardBoard(data: any): CardBoard {
     : []
   return { layout, cards, scenario: data?.scenario ? String(data.scenario) : null, rows: (Array.isArray(data?.rows) ? data.rows : []).map(toLeaderboardEntry) }
 }
+
+/**
+ * Baseline reference rows (migration 20261005100000, public.observer_baseline_rows): the average scores of the
+ * official examples run unmodified, basic and pro. They are not ranked: they sit where their score would place them
+ * and leave every team's rank number unchanged.
+ */
+export interface BaselineRow { group: 'basic' | 'pro'; overall_score: number; card_scores: Record<string, number> | null; runs: number; updated_at: string | null }
+export interface BaselineEntry { baseline: BaselineRow['group']; total_score: number; overall_score: number; card_scores: Record<string, number> | null; runs: number; updated_at: string | null }
+export type BoardRow = LeaderboardEntry | BaselineEntry
+export const isBaseline = (row: BoardRow): row is BaselineEntry => 'baseline' in row
+
+export function parseBaselineRows(data: unknown): BaselineRow[] {
+  if (!Array.isArray(data)) return []
+  return data.filter(r => r && (r.group === 'basic' || r.group === 'pro') && typeof r.overall_score === 'number').map(r => ({
+    group: r.group, overall_score: r.overall_score, card_scores: numberMap(r.card_scores),
+    runs: Number(r.runs ?? 0), updated_at: r.updated_at ? String(r.updated_at) : null,
+  }))
+}
+
+/** The board's rows with the baselines inserted after every team scoring at least as much (tab: null = overall). */
+export function withBaselines(entries: LeaderboardEntry[], baselines: BaselineRow[], tab: string | null): BoardRow[] {
+  const rows: BoardRow[] = [...entries]
+  const refs = baselines.map(b => ({ b, score: tab === null ? b.overall_score : b.card_scores?.[tab] }))
+    .filter((x): x is { b: BaselineRow; score: number } => typeof x.score === 'number')
+    .sort((x, y) => y.score - x.score)
+  for (const { b, score } of refs) {
+    const at = rows.findIndex(r => r.total_score < score && !isBaseline(r))
+    const entry: BaselineEntry = { baseline: b.group, total_score: score, overall_score: b.overall_score, card_scores: b.card_scores, runs: b.runs, updated_at: b.updated_at }
+    // Higher baselines go first, so a lower one always lands after them.
+    rows.splice(at === -1 ? rows.length : at, 0, entry)
+  }
+  return rows
+}
