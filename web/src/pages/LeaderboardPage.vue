@@ -181,22 +181,22 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             <p class="label mb-4">{{ tf('leaderboard.n_entries', { n: entries.length }) }}</p>
             <CardBoardTable v-if="cardMode" :entries="entries" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :tab="cardTab" :baselines="baselines" :team-id="team?.id ?? null" @select="selected = $event" />
             <template v-else>
-            <ScoreBars class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
+            <ScoreBars v-if="!isExtra" class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
               <table class="data-table">
-                <thead><tr><th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">{{ t('leaderboard.score') }}</th><th class="r">{{ t('leaderboard.base_science') }}</th><th class="r">{{ t('leaderboard.bonus') }}</th><th class="r">{{ t('leaderboard.requests') }}</th><th v-if="showCoverage" class="r">{{ t('leaderboard.coverage') }}</th><th class="r">{{ t('leaderboard.penalties') }}</th><th class="r">{{ t('leaderboard.tiles') }}</th><th class="r">{{ t('leaderboard.required_missing') }}</th><th class="r">{{ t('leaderboard.submissions') }}</th></tr></thead>
+                <thead><tr><th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">{{ t('leaderboard.score') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.base_science') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.bonus') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.requests') }}</th><th v-if="showCoverage && !isExtra" class="r">{{ t('leaderboard.coverage') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.penalties') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.tiles') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.required_missing') }}</th><th class="r">{{ t('leaderboard.submissions') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="row in entries" :key="row.team_id" data-testid="lb-row" class="lb-click" :class="{ me: team && team.id === row.team_id }" tabindex="0" @click="selected = row" @keydown.enter.prevent="selected = row">
                     <td class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
                     <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="team && team.id === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
                     <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}</td>
-                    <td class="r m">{{ num(row.base_science) }}</td>
-                    <td class="r m">{{ num(row.program_bonus) }}</td>
-                    <td class="r m">{{ num(row.request_reward) }}</td>
-                    <td v-if="showCoverage" class="r m">{{ row.coverage_bonus == null ? '—' : `+${num(row.coverage_bonus)}` }}</td>
-                    <td class="r m" :class="{ 'text-[#ff6b6b]': row.penalty_total > 0 }">−{{ num(row.penalty_total) }}</td>
-                    <td class="r m">{{ row.completed_tiles ?? '—' }}</td>
-                    <td class="r m" :class="{ 'text-[#ff6b6b]': Number(row.required_missing) > 0 }">{{ row.required_missing ?? '—' }}</td>
+                    <td v-if="!isExtra" class="r m">{{ num(row.base_science) }}</td>
+                    <td v-if="!isExtra" class="r m">{{ num(row.program_bonus) }}</td>
+                    <td v-if="!isExtra" class="r m">{{ num(row.request_reward) }}</td>
+                    <td v-if="showCoverage && !isExtra" class="r m">{{ row.coverage_bonus == null ? '—' : `+${num(row.coverage_bonus)}` }}</td>
+                    <td v-if="!isExtra" class="r m" :class="{ 'text-[#ff6b6b]': row.penalty_total > 0 }">−{{ num(row.penalty_total) }}</td>
+                    <td v-if="!isExtra" class="r m">{{ row.completed_tiles ?? '—' }}</td>
+                    <td v-if="!isExtra" class="r m" :class="{ 'text-[#ff6b6b]': Number(row.required_missing) > 0 }">{{ row.required_missing ?? '—' }}</td>
                     <td class="r m">{{ row.submission_count }}</td>
                   </tr>
                 </tbody>
