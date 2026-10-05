@@ -8,7 +8,7 @@ seeds before anything is generated. Output layout::
     <root>/config/{v4_scenario.json, v4_fiber_config.json, v4_score_config.json}
     <root>/public/{targets.csv, footprint.csv, v4_night_calendar.csv, v4_bulletins.jsonl, v4_forecasts.jsonl}
     <root>/truth/{v4_slots.csv, v4_weather_truth.csv, v4_events.csv, v4_earthquake_effects.csv,
-                  v4_observation_requests.jsonl[, v4_stress_events.csv]}
+                  v4_observation_requests.jsonl[, v4_stress_events.csv][, v4_sophon.jsonl]}
 
 No seed is written anywhere in the bundle. Pure standard library.
 """
@@ -23,6 +23,7 @@ from typing import Mapping
 
 from . import v4_catalog_generator, v4_observation_requests, v4_weather_simulator
 from .v4_config_check import cross_validate_generator_configs
+from .v4_sophon import generate_schedule, validate_config as validate_sophon_config
 
 REFERENCE = Path(__file__).resolve().parent / "reference" / "v4"
 PUBLIC = ("targets.csv", "footprint.csv", "v4_night_calendar.csv", "v4_bulletins.jsonl", "v4_forecasts.jsonl")
@@ -87,7 +88,8 @@ def build_spec_bundle(root: Path, spec_dir: Path) -> Path:
     ``spec_dir`` holds ``card.json`` (name, card_id, scenario_slug, phase, stress, wallclock_seconds,
     observation_requests) and the four generator configs (catalog, weather, fiber, score), used as
     they are: their own site, season, seeds and scoring. The scenario comes from the reference
-    template with the configs' site. Returns ``root``.
+    template with the configs' site. An optional ``card.json.sophon`` block enables
+    the private practice-card schedule; ordinary cards are unchanged. Returns ``root``.
     """
     root, spec_dir = Path(root), Path(spec_dir)
     if root.exists():
@@ -100,8 +102,18 @@ def build_spec_bundle(root: Path, spec_dir: Path) -> Path:
     scenario["minimum_altitude_deg"] = float(catalog["observability"]["minimum_altitude_deg"])
     fiber.pop("demo", None)
     cross_validate_generator_configs(catalog, weather, scenario, fiber)
+    sophon = card.get("sophon")
+    if sophon is not None:
+        validate_sophon_config(sophon, str(card["phase"]))
+        if int(fiber["field"]["n_fibers"]) != 25:
+            raise ValueError("Sophon requires 25 fibers")
+        scenario["sophon"] = {
+            "schedule_jsonl": "../truth/v4_sophon.jsonl",
+            "multiplier": sophon["multiplier"],
+            "reference": sophon["reference"],
+        }
     return _generate(root, int(catalog["seed"]), catalog, weather, scenario, fiber, spec_dir / "v4_score_config.json",
-                     card.get("observation_requests"), stress)
+                     card.get("observation_requests"), stress, sophon=sophon)
 
 
 def _scenario(spec: Mapping, stress: bool, *, site: Mapping | None) -> dict:
@@ -130,7 +142,7 @@ def _scenario(spec: Mapping, stress: bool, *, site: Mapping | None) -> dict:
 
 
 def _generate(root: Path, seed: int, catalog: dict, weather: dict, scenario: dict, fiber: dict, score_path: Path,
-              observation_requests: Mapping | None, stress: bool) -> Path:
+              observation_requests: Mapping | None, stress: bool, sophon: Mapping | None = None) -> Path:
     score = json.loads(Path(score_path).read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory(prefix="v4-card-") as temporary:
         work = Path(temporary)
@@ -163,6 +175,10 @@ def _generate(root: Path, seed: int, catalog: dict, weather: dict, scenario: dic
             min_duration_seconds=int(fiber["exposure"]["min_duration_seconds"]),
             max_duration_seconds=int(fiber["exposure"]["max_duration_seconds"]),
         )
+        if sophon is not None:
+            generate_schedule(sophon, work / "out" / "v4_night_calendar.csv",
+                              work / "out" / "v4_slots.csv", work / "out" / "v4_weather_truth.csv",
+                              work / "out" / "v4_sophon.jsonl", seed)
         for name in ("config", "public", "truth"):
             (root / name).mkdir(parents=True)
         (root / "config" / "v4_scenario.json").write_text(json.dumps(scenario, indent=2, sort_keys=True) + "\n")
@@ -172,4 +188,6 @@ def _generate(root: Path, seed: int, catalog: dict, weather: dict, scenario: dic
             shutil.copyfile(work / "out" / name, root / "public" / name)
         for name in TRUTH + (("v4_stress_events.csv",) if stress else ()):
             shutil.copyfile(work / "out" / name, root / "truth" / name)
+        if sophon is not None:
+            shutil.copyfile(work / "out" / "v4_sophon.jsonl", root / "truth" / "v4_sophon.jsonl")
     return root

@@ -69,6 +69,7 @@ from .v4_scorer import (
     uniformity_penalty,
     validate_lunar_model,
 )
+from .v4_sophon import load_schedule, reference_score, validate_config as validate_sophon_config, window_fully_open
 
 
 PROGRAMS = ("DARK", "BRIGHT", "BACKUP")
@@ -172,6 +173,7 @@ class Scenario:
     forecasts: list[dict]
     observation_requests: list[dict]
     stress_rows: list[dict[str, str]]
+    sophon_schedule: Mapping[str, tuple[datetime, frozenset[int]]]
     survey_start: datetime
     survey_end: datetime
 
@@ -188,6 +190,8 @@ def load_scenario(path: Path) -> Scenario:
     config = json.loads(path.read_text(encoding="utf-8"))
     if config.get("schema_version") != "v4-scenario-v1":
         raise ValueError("unsupported scenario schema_version")
+    if "sophon" in config:
+        validate_sophon_config(config["sophon"], str(config.get("task_card", {}).get("phase", "")))
     base = path.parent
     fiber_config = json.loads(_resolve(base, config["fiber_config"]).read_text(encoding="utf-8"))
     score_config = json.loads(_resolve(base, config["score_config"]).read_text(encoding="utf-8"))
@@ -293,6 +297,8 @@ def load_scenario(path: Path) -> Scenario:
         forecasts=_read_jsonl(_resolve(base, products["forecasts_jsonl"])),
         observation_requests=observation_requests,
         stress_rows=stress_rows,
+        sophon_schedule=(load_schedule(_resolve(base, config["sophon"]["schedule_jsonl"]), slots,
+                                       int(fiber_config["field"]["n_fibers"])) if "sophon" in config else {}),
         survey_start=slots[0].start_utc if slots else None,
         survey_end=slots[-1].end_utc if slots else None,
     )
@@ -782,6 +788,13 @@ def run_scenario(
                 target_altaz_at,
                 site,
             )
+            flash = scenario.sophon_schedule.get(night_id) if slot_index >= 0 else None
+            if (flash is not None and start >= flash[0] and fiber_id in flash[1]
+                    and window_fully_open(segments, active_directional, start, end, target_altaz_at)):
+                # A physically valid assignment is still required; any full or partial
+                # closure keeps the ordinary score for this practice-card exposure.
+                scored, mult = reference_score(target, duration, program, score_config,
+                                               scenario.config["sophon"])
             hit_rows.append((target, fiber_id, scored, mult))
             ledger.record(observe_index, target_id, scored.factor, scored.score, start, end)
 

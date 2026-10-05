@@ -18,7 +18,8 @@ Bundle contract (one task card, ``V4_SCENARIO_PATH`` marks a v4 bundle)::
 
 Optional scenario keys read here: ``task_card`` (object, copied to initialize),
 ``site.sun_altitude_limit_deg`` (default -18) and ``limits.global_wallclock_seconds``
-(the per-card cap; the platform may only lower it).
+(the per-card cap; the platform may only lower it). A private ``sophon`` block is
+read by the runner and its truth path is checked here, but is never published.
 """
 
 from __future__ import annotations
@@ -84,6 +85,8 @@ def validate_bundle(root: Path):
     paths = [config["fiber_config"], config["score_config"], *config["products"].values()]
     if config.get("stress", {}).get("enabled"):
         paths.append(config["stress"]["stress_events_csv"])
+    if "sophon" in config:
+        paths.append(config["sophon"]["schedule_jsonl"])
     for value in paths:
         resolved = (base / str(value)).resolve()
         if root not in resolved.parents or not resolved.is_file():
