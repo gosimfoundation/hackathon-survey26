@@ -5,21 +5,26 @@ import { fmtUtc } from '../../lib/format'
 import { useAdmin } from '../../composables/useAdmin'
 import DashShell from '../../components/layout/DashShell.vue'
 
-interface AnnForm { id: string | null; title_en: string; title_zh: string; body_en: string; body_zh: string; level: string; is_pinned: boolean; is_published: boolean; created_at?: string; notify_version?: number }
+interface AnnForm { id: string | null; title_en: string; title_zh: string; body_en: string; body_zh: string; title_ja: string; body_ja: string; title_fr: string; body_fr: string; level: string; is_pinned: boolean; is_published: boolean; created_at?: string; notify_version?: number }
 const LEVELS = ['info', 'warning', 'success']
 const { t, busy, run, flash } = useAdmin()
 const rows = ref<AnnForm[]>([])
 const fresh = ref<AnnForm>(blank())
+// ja/fr columns come from a later migration: only send them once the table has them (or someone filled one in).
+const EXTRA = ['title_ja', 'body_ja', 'title_fr', 'body_fr'] as const
+const hasExtra = ref(false)
 
-function blank(): AnnForm { return { id: null, title_en: '', title_zh: '', body_en: '', body_zh: '', level: 'info', is_pinned: false, is_published: true } }
+function blank(): AnnForm { return { id: null, title_en: '', title_zh: '', body_en: '', body_zh: '', title_ja: '', body_ja: '', title_fr: '', body_fr: '', level: 'info', is_pinned: false, is_published: true } }
 async function load() {
   const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false })
   if (error) throw error
-  rows.value = ((data ?? []) as any[]).map(a => ({ id: a.id, title_en: a.title_en ?? '', title_zh: a.title_zh ?? '', body_en: a.body_en ?? '', body_zh: a.body_zh ?? '', level: a.level ?? 'info', is_pinned: Boolean(a.is_pinned), is_published: Boolean(a.is_published), created_at: a.created_at, notify_version: Number(a.notify_version) || 1 }))
+  hasExtra.value = (data ?? []).some(a => 'title_ja' in a)
+  rows.value = ((data ?? []) as any[]).map(a => ({ id: a.id, title_en: a.title_en ?? '', title_zh: a.title_zh ?? '', body_en: a.body_en ?? '', body_zh: a.body_zh ?? '', title_ja: a.title_ja ?? '', body_ja: a.body_ja ?? '', title_fr: a.title_fr ?? '', body_fr: a.body_fr ?? '', level: a.level ?? 'info', is_pinned: Boolean(a.is_pinned), is_published: Boolean(a.is_published), created_at: a.created_at, notify_version: Number(a.notify_version) || 1 }))
 }
 async function save(form: AnnForm) {
   if (!form.title_en.trim() && !form.title_zh.trim()) { flash.error(t('auth.errors.name_required')); return }
-  const payload = { title_en: form.title_en.trim() || form.title_zh.trim(), title_zh: form.title_zh.trim() || form.title_en.trim(), body_en: form.body_en, body_zh: form.body_zh, level: form.level, is_pinned: form.is_pinned, is_published: form.is_published }
+  const payload = { title_en: form.title_en.trim() || form.title_zh.trim(), title_zh: form.title_zh.trim() || form.title_en.trim(), body_en: form.body_en, body_zh: form.body_zh, level: form.level, is_pinned: form.is_pinned, is_published: form.is_published } as Record<string, unknown>
+  if (hasExtra.value || EXTRA.some(k => form[k].trim())) for (const k of EXTRA) payload[k] = form[k].trim() ? (k.startsWith('title') ? form[k].trim() : form[k]) : null
   const ok = await run(async () => {
     const { error } = form.id ? await supabase.from('announcements').update(payload).eq('id', form.id) : await supabase.from('announcements').insert(payload)
     if (error) throw error
@@ -53,8 +58,13 @@ onMounted(() => load().catch(e => flash.error(String(e?.message ?? e))))
           <label class="field"><span>{{ t('admin.announcements.title_zh') }}</span><input :data-testid="form.id ? undefined : 'ann-title-zh'" v-model="form.title_zh" type="text"></label>
           <label class="field"><span>{{ t('admin.announcements.body_en') }}</span><textarea v-model="form.body_en"></textarea></label>
           <label class="field"><span>{{ t('admin.announcements.body_zh') }}</span><textarea v-model="form.body_zh"></textarea></label>
+          <label class="field"><span>{{ t('admin.announcements.title_ja') }}</span><input v-model="form.title_ja" type="text"></label>
+          <label class="field"><span>{{ t('admin.announcements.title_fr') }}</span><input v-model="form.title_fr" type="text"></label>
+          <label class="field"><span>{{ t('admin.announcements.body_ja') }}</span><textarea v-model="form.body_ja"></textarea></label>
+          <label class="field"><span>{{ t('admin.announcements.body_fr') }}</span><textarea v-model="form.body_fr"></textarea></label>
           <label class="field"><span>{{ t('admin.announcements.level') }}</span><select v-model="form.level"><option v-for="l in LEVELS" :key="l" :value="l">{{ l }}</option></select></label>
         </div>
+        <p class="text3 mt-2 text-xs">{{ t('admin.announcements.syntax_hint') }}</p>
         <label class="check"><input :data-testid="form.id ? undefined : 'ann-pinned'" v-model="form.is_pinned" type="checkbox"> {{ t('admin.announcements.pinned') }}</label>
         <label class="check"><input v-model="form.is_published" type="checkbox"> {{ t('admin.announcements.published') }}</label>
         <div class="actions-inline">

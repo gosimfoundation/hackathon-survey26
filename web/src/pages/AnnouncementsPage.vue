@@ -4,10 +4,11 @@ import { useI18n } from '../composables/useI18n'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../lib/data'
 import { fmtUtc } from '../lib/format'
+import { announcementText as annText } from '../lib/announcementText'
 import AnnouncementBody from '../components/content/AnnouncementBody.vue'
 import PageHead from '../components/layout/PageHead.vue'
 
-const { t, pick } = useI18n()
+const { t, locale } = useI18n()
 const rows = ref<Announcement[]>([])
 const loading = ref(true)
 onMounted(async () => {
@@ -31,8 +32,8 @@ onMounted(async () => {
           <span class="label">{{ fmtUtc(a.created_at) }} UTC <template v-if="a.is_pinned">· <span class="accent-l">{{ t('ann.pinned') }}</span></template></span>
           <span class="pill" :class="a.level">{{ t(`ann.levels.${a.level}`) }}</span>
         </div>
-        <h2 class="mt-3 text-2xl font-semibold tracking-[-.03em] text-text-primary">{{ pick(a.title_en, a.title_zh) || a.title_en }}</h2>
-        <AnnouncementBody class="text2 mt-3" :text="pick(a.body_en, a.body_zh) || a.body_en" />
+        <h2 class="mt-3 text-2xl font-semibold tracking-[-.03em] text-text-primary">{{ annText(a, 'title', locale) }}</h2>
+        <AnnouncementBody class="text2 mt-3" :text="annText(a, 'body', locale)" />
       </article>
     </div></section>
   </main>

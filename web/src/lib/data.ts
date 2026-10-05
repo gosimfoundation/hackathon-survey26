@@ -54,6 +54,8 @@ export interface Phase {
 }
 export interface Announcement {
   id: string; title_en: string; title_zh: string; body_en: string | null; body_zh: string | null
+  /** Optional ja/fr text (columns added later; empty falls back to English). */
+  title_ja?: string | null; body_ja?: string | null; title_fr?: string | null; body_fr?: string | null
   level: 'info' | 'warning' | 'success'; is_pinned: boolean; is_published: boolean; created_at: string
   /** Bumped by an organizer to pop the announcement up again for everyone (missing before the migration = 1). */
   notify_version?: number

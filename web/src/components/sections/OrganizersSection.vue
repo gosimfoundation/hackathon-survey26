@@ -4,9 +4,10 @@ import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../../lib/data'
 import { fmtUtc } from '../../lib/format'
+import { announcementText as annText } from '../../lib/announcementText'
 import OrganizersBody from './OrganizersBody.vue'
 
-const { t, pick } = useI18n()
+const { t, locale } = useI18n()
 
 const announcements = ref<Announcement[]>([])
 
@@ -30,7 +31,7 @@ onMounted(async () => {
           <router-link to="/announcements" class="label accent">{{ t('home.announcements.all') }} →</router-link>
         </div>
         <div v-for="a in announcements" :key="a.id" class="row-sweep flex flex-wrap items-center justify-between gap-3 border-b border-white/10 py-4 pl-3">
-          <span class="text-text-primary">{{ pick(a.title_en, a.title_zh) || a.title_en }}</span>
+          <span class="text-text-primary">{{ annText(a, 'title', locale) }}</span>
           <span class="label">{{ fmtUtc(a.created_at).slice(0, 10) }}</span>
         </div>
       </div>
