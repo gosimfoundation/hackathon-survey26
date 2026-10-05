@@ -13,7 +13,7 @@ sets or overrides the HTTP User-Agent header -- whatever Python's standard libra
 sends by default is left alone.
 
 Waiting for the model is not charged to the CPU budget (see clock.py), but it does use
-real time, and each card has a 60-minute real-time cap. So model use is bounded by real
+real time, and each card has a 30-minute real-time cap. So model use is bounded by real
 time: every attempt has a timeout (default 20 s), one question gives up after 60 s in
 total, no call starts in the last 5 minutes before the cap, and a run makes at most 100
 requests. HTTP 429 (rate limit) and 5xx answers, timeouts and network errors are retried

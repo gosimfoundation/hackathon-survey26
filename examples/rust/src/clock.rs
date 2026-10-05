@@ -3,13 +3,13 @@
 //! Each card has a budget of 900 *normalized CPU seconds*. Only the CPU time
 //! the agent uses inside its own turns is charged, divided by the machine's
 //! `speed_factor`; waiting for a model, the network or the engine is free. A
-//! real-time cap (60 minutes) ends hung runs. Every `decision_request` carries
+//! real-time cap (30 minutes) ends hung runs. Every `decision_request` carries
 //! `payload.wallclock` with, among others:
 //!
 //! ```text
 //! remaining_seconds            budget left, normalized seconds
 //! remaining_real_cpu_seconds   the same budget in real CPU seconds of THIS machine
-//! wall_remaining_seconds       real time left before the 60-minute cap
+//! wall_remaining_seconds       real time left before the 30-minute cap
 //! ```
 //!
 //! Pace compute on `remaining_real_cpu_seconds` and measure your own work with
@@ -22,7 +22,7 @@ use crate::protocol::Wallclock;
 
 /// Leave a fifth of the real time for the engine, model waits and safety: on
 /// a slow machine (speed_factor 2) the CPU budget alone would fill the whole
-/// 60-minute cap.
+/// 30-minute cap.
 const WALL_SHARE: f64 = 0.8;
 
 pub struct Clock {

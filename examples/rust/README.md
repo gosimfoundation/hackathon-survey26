@@ -157,11 +157,11 @@ Caps, all overridable via `.env`:
 
 Each card has a budget of 900 **normalized CPU seconds**: only the CPU time this program uses
 during its own turns is charged, divided by the machine's `speed_factor`. Waiting (model API,
-network, idle) and the engine's time are free; a 60-minute real-time cap ends hung runs. Every
+network, idle) and the engine's time are free; a 30-minute real-time cap ends hung runs. Every
 `decision_request` carries `payload.wallclock`; the fields this agent uses (`src/clock.rs`):
 
 - `remaining_real_cpu_seconds` -- the budget left, in real CPU seconds of *this* machine;
-- `wall_remaining_seconds` -- real time left before the 60-minute cap;
+- `wall_remaining_seconds` -- real time left before the 30-minute cap;
 - `remaining_seconds` -- the budget left in normalized seconds (fallback for older local runners).
 
 The agent measures its own cost per decision with process CPU time (`getrusage` (the `libc` crate)) and compares it
@@ -169,7 +169,7 @@ with `remaining_real_cpu_seconds` -- the same unit. Do not time yourself with a 
 `remaining_seconds`: on the platform's measurements such agents lost about 11% on a 2x slower
 machine, against about 3.6% when pacing this way. When the budget per remaining decision gets
 short, the planner searches less. As a sanity guard it never plans to use more than 80% of the
-real time left, since a slow machine could otherwise fill the 60-minute cap with CPU alone.
+real time left, since a slow machine could otherwise fill the 30-minute cap with CPU alone.
 
 Model calls only wait, so they cost real time, not budget. They are bounded by real time instead:
 a timeout per attempt (20 s), 60 s per question including retries, no new call in the last
