@@ -406,6 +406,22 @@ fn task_card(slug: &str) -> Option<char> {
     if chars.next().is_none() && ('a'..='h').contains(&c) { Some(c) } else { None }
 }
 
+/// A1-D1 cards: v4-a1 ... v4-d1, optionally with a -vN version suffix (listed after A-H).
+fn second_card(slug: &str) -> Option<char> {
+    let rest = slug.strip_prefix("v4-")?;
+    let mut chars = rest.chars();
+    let c = chars.next()?;
+    if !('a'..='d').contains(&c) || chars.next()? != '1' {
+        return None;
+    }
+    let tail: String = chars.collect();
+    if tail.is_empty() {
+        return Some(c);
+    }
+    let digits = tail.strip_prefix("-v")?;
+    if !digits.is_empty() && digits.chars().all(|d| d.is_ascii_digit()) { Some(c) } else { None }
+}
+
 fn scenario_label(slug: &str, name: &str, lang: &str) -> String {
     if let Some(i) = practice_card(slug) {
         let symbol = ["α", "β", "γ", "δ"][i];
@@ -413,6 +429,9 @@ fn scenario_label(slug: &str, name: &str, lang: &str) -> String {
     }
     if let Some(c) = task_card(slug) {
         return format!("{}{}", if lang == "zh" { "任务卡 " } else { "Card " }, c.to_ascii_uppercase());
+    }
+    if let Some(c) = second_card(slug) {
+        return format!("{}{}1", if lang == "zh" { "任务卡 " } else { "Card " }, c.to_ascii_uppercase());
     }
     if !name.is_empty() { name.to_string() } else { slug.to_string() }
 }
@@ -423,6 +442,9 @@ fn scenario_order(slug: &str) -> f64 {
     }
     if let Some(c) = task_card(slug) {
         return (c as u8 - b'a') as f64;
+    }
+    if let Some(c) = second_card(slug) {
+        return (8 + c as u8 - b'a') as f64;
     }
     f64::INFINITY
 }
@@ -610,25 +632,78 @@ fn competition_phase(api: &Api, data: &Value, wanted: Option<&str>) -> R<Value> 
             phases.push(q);
         }
     }
+    let comp = or_empty(api.rpc("current_competition", false, json!({}))?);
+    let extra = if truthy(&comp["extra_phase_id"]) { comp["extra_phase_id"].clone() } else { Value::Null };
+    let mut wanted = wanted.map(String::from);
+    if wanted.as_deref() == Some("extra") {
+        if !truthy(&extra) {
+            return Err(CliError::new("no_extra_phase"));
+        }
+        wanted = Some(s(&extra));
+    }
     if let Some(w) = wanted.filter(|w| !w.is_empty()) {
         return phases.into_iter().find(|p| s_or(&p["slug"]) == w || s_or(&p["phase_id"]) == w)
+            .map(|p| { let e = p["phase_id"] == extra; with(&p, "extra", Value::Bool(e)) })
             .ok_or_else(|| CliError::new("phase_closed"));
     }
-    let comp = api.rpc("current_competition", false, json!({}))?;
     let mut beta = Value::Null;
     if s_or(&comp["mode"]) == "competition" {
         beta = api.rpc("my_observer_phase", false, json!({})).unwrap_or(Value::Null);
     }
-    let allowed: Vec<Value> = [beta, comp["project_phase_id"].clone(), comp["phase_id"].clone()].into_iter().filter(truthy).collect();
+    // The optional extra (unscored) phase is only used when asked for (--phase extra or its slug).
+    let allowed: Vec<Value> = [beta, comp["project_phase_id"].clone(), comp["phase_id"].clone()].into_iter()
+        .filter(|x| truthy(x) && *x != extra).collect();
     for preferred in &allowed {
         if let Some(p) = phases.iter().find(|p| &p["phase_id"] == preferred) {
-            return Ok(p.clone());
+            return Ok(with(p, "extra", Value::Bool(false)));
         }
     }
     Err(CliError::new("no_open_phase"))
 }
 
-fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str) -> Value {
+/// The optional extra (unscored) phase of current_competition(), or None (also when the lookup fails).
+fn extra_phase_id(api: &Api) -> Value {
+    match api.rpc("current_competition", false, json!({})) {
+        Ok(comp) if comp.is_object() && truthy(&comp["extra_phase_id"]) => comp["extra_phase_id"].clone(),
+        _ => Value::Null,
+    }
+}
+
+/// --phase of the listing commands: a phase slug or ID of your team's phases, or 'extra'.
+fn phase_filter(api: &Api, data: &Value, wanted: Option<String>) -> R<Value> {
+    let Some(w) = wanted.filter(|w| !w.is_empty()) else { return Ok(Value::Null) };
+    if w == "extra" {
+        let comp = or_empty(api.rpc("current_competition", false, json!({}))?);
+        if !truthy(&comp["extra_phase_id"]) {
+            return Err(CliError::new("no_extra_phase"));
+        }
+        return Ok(comp["extra_phase_id"].clone());
+    }
+    for p in arr(&data["phases"]) {
+        if s_or(&p["phase_id"]) == w || s_or(&or_empty(g(&p, "phases"))["slug"]) == w {
+            return Ok(p["phase_id"].clone());
+        }
+    }
+    Err(CliError::exit("not_found", format!("no such phase: {}", w), EXIT_NOT_FOUND))
+}
+
+fn in_phase(data: &Value, phase_id: &Value) -> Value {
+    if !truthy(phase_id) {
+        return data.clone();
+    }
+    let batches: Vec<Value> = arr(&data["batches"]).into_iter().filter(|b| &g(b, "phase_id") == phase_id).collect();
+    with(data, "batches", Value::Array(batches))
+}
+
+fn phase_slugs(data: &Value) -> Vec<(Value, Value)> {
+    arr(&data["phases"]).iter().map(|p| (g(p, "phase_id"), g(&or_empty(g(p, "phases")), "slug"))).collect()
+}
+
+fn slug_of_phase(slugs: &[(Value, Value)], phase_id: &Value) -> Value {
+    slugs.iter().rev().find(|(id, _)| id == phase_id).map(|(_, s)| s.clone()).unwrap_or(Value::Null)
+}
+
+fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str, slugs: &[(Value, Value)]) -> Value {
     let mut runs: Vec<Value> = Vec::new();
     for run in arr(&batch["observer_runs"]) {
         let sc = names.get(&s_or(&run["scenario_id"])).cloned().unwrap_or(json!({}));
@@ -648,6 +723,7 @@ fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str) -> Value
         ("status", g(batch, "status")),
         ("score", g(batch, "score")),
         ("phase_id", g(batch, "phase_id")),
+        ("phase", slug_of_phase(slugs, &g(batch, "phase_id"))),
         ("revision_id", g(batch, "revision_id")),
         ("created_at", g(batch, "created_at")),
         ("quota_refunded", Value::Bool(truthy(&batch["quota_refunded"]))),
@@ -1713,6 +1789,10 @@ fn quota_for(data: &Value, phase_id: &Value) -> Option<Value> {
     arr(&data["quota"]).into_iter().find(|q| &g(q, "phase_id") == phase_id)
 }
 
+const EXTRA_NOTE: (&str, &str) = (
+    "Unscored phase: it does not count for any leaderboard and has its own daily evaluations.",
+    "不计分赛程：不计入任何排行榜，评测次数单独计算。");
+
 const NO_MODEL_NOTE: (&str, &str) = (
     "Without a model: your program gets none of the team variables marked model-related, and OBSERVER_MODEL_DISABLED=1.",
     "本次不提供模型：程序拿不到标记为模型相关的队伍变量，并会收到 OBSERVER_MODEL_DISABLED=1。");
@@ -1756,11 +1836,15 @@ fn cmd_eval_start(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let bid = py_none_str(&batch_id);
     out.line(&out.t("Evaluation queued: {0} (phase {1}). Wait with: survey26 eval wait {2}", "已加入评测队列：{0}（赛程 {1}）。可用 survey26 eval wait {2} 等待。")
         .replace("{0}", &bid).replace("{1}", &py_none_str(&phase["slug"])).replace("{2}", &bid.chars().take(8).collect::<String>()));
+    if truthy(&phase["extra"]) {
+        out.line(out.t(EXTRA_NOTE.0, EXTRA_NOTE.1));
+    }
     if no_model {
         out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
     }
     Ok(obj(vec![("batch_id", batch_id), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()),
-        ("revision_id", r["id"].clone()), ("repeat", Value::Bool(repeat)), ("model_disabled", Value::Bool(no_model))]))
+        ("revision_id", r["id"].clone()), ("repeat", Value::Bool(repeat)), ("model_disabled", Value::Bool(no_model)),
+        ("extra", phase["extra"].clone())]))
 }
 
 fn cmd_eval_selfcheck(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
@@ -1785,19 +1869,25 @@ fn cmd_eval_selfcheck(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     }
     let result = api.rpc("observer_create_repeat_batches", true, params)?;
     out.line(out.t("Queued: the 3 evaluations run one after another.", "已加入评测队列，3 次评测将依次进行。"));
+    if truthy(&phase["extra"]) {
+        out.line(out.t(EXTRA_NOTE.0, EXTRA_NOTE.1));
+    }
     if no_model {
         out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
     }
     Ok(obj(vec![("result", result), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()), ("revision_id", r["id"].clone()),
-        ("model_disabled", Value::Bool(no_model))]))
+        ("model_disabled", Value::Bool(no_model)), ("extra", phase["extra"].clone())]))
 }
 
 fn cmd_eval_list(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
+    let pid = phase_filter(api, &data, a.str("phase"))?;
+    let data = in_phase(&data, &pid);
     let names = scenario_names(api, &data)?;
+    let slugs = phase_slugs(&data);
     let limit = a.int("limit").unwrap_or(20);
     let batches = arr(&data["batches"]);
-    let rows: Vec<Value> = py_slice(&batches, limit).iter().map(|b| batch_summary(b, &names, &out.lang)).collect();
+    let rows: Vec<Value> = py_slice(&batches, limit).iter().map(|b| batch_summary(b, &names, &out.lang, &slugs)).collect();
     let titles: Map<String, Value> = all_revisions(&data).iter().map(|r| (s(&r["id"]), g(r, "title"))).collect();
     let table: Vec<Value> = rows.iter().map(|b| {
         let mut t = b.clone();
@@ -1811,7 +1901,7 @@ fn cmd_eval_list(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         o.insert("counted".into(), Value::String(if truthy(&b["quota_refunded"]) { out.t("not counted", "未计次").into() } else { String::new() }));
         t
     }).collect();
-    out.table(&table, &[("ID", "id"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
+    out.table(&table, &[("ID", "id"), (out.t("Phase", "赛程"), "phase"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
         (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"), ("", "counted"),
         (out.t("Created", "创建时间"), "created_at")]);
     Ok(Value::Array(rows))
@@ -1855,7 +1945,7 @@ fn repeat_summary(data: &Value, group: &Value) -> Value {
 
 fn show_batch(api: &Api, data: &Value, batch: &Value, out: &Out) -> R<Value> {
     let names = scenario_names(api, data)?;
-    let mut summary = batch_summary(batch, &names, &out.lang);
+    let mut summary = batch_summary(batch, &names, &out.lang, &phase_slugs(data));
     out.line(&format!("{}  {}  {} {}{}", py_none_str(&summary["batch_id"]), py_none_str(&summary["status"]), out.t("score", "分数"), fmt_score(&summary["score"]),
         if truthy(&summary["model_disabled"]) { out.t("  (no model)", "  （无模型）") } else { "" }));
     let rows: Vec<Value> = arr(&summary["runs"]).iter().map(|r| {
@@ -1880,7 +1970,8 @@ fn show_batch(api: &Api, data: &Value, batch: &Value, out: &Out) -> R<Value> {
 
 fn cmd_eval_show(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
-    let batch = find_batch(&data, &a.str("batch").unwrap_or_default())?;
+    let pid = phase_filter(api, &data, a.str("phase"))?;
+    let batch = find_batch(&in_phase(&data, &pid), &a.str("batch").unwrap_or_default())?;
     show_batch(api, &data, &batch, out)
 }
 
@@ -1888,10 +1979,14 @@ fn cmd_eval_wait(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let deadline = now() + a.int("timeout").unwrap_or(3600) as f64;
     let mut last: Option<Value> = None;
     let mut batch_id: Option<String> = None;
+    let mut pid = Value::Null;
     loop {
         let data = polled_list(api, deadline)?;
+        if batch_id.is_none() {
+            pid = phase_filter(api, &data, a.str("phase"))?;
+        }
         let target = batch_id.clone().unwrap_or_else(|| a.str("batch").unwrap_or_else(|| "latest".into()));
-        let batch = find_batch(&data, &target)?;
+        let batch = find_batch(&in_phase(&data, &pid), &target)?;
         batch_id = Some(s(&batch["id"]));
         let runs = arr(&batch["observer_runs"]);
         let state = json!([g(&batch, "status"), runs.iter().map(|r| json!([g(r, "status"), g(r, "score")])).collect::<Vec<_>>()]);
@@ -2027,7 +2122,8 @@ fn evaluation_metadata(batch: &Value, version: Value) -> Value {
 
 fn cmd_results_download_all(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
-    let batch = find_batch(&data, &a.str("batch").unwrap_or_else(|| "latest".into()))?;
+    let pid = phase_filter(api, &data, a.str("phase"))?;
+    let batch = find_batch(&in_phase(&data, &pid), &a.str("batch").unwrap_or_else(|| "latest".into()))?;
     let names = scenario_names(api, &data)?;
     let slug_of = |r: &Value| names.get(&s_or(&r["scenario_id"])).map(|n| s_or(&n["slug"])).unwrap_or_default();
     let mut runs: Vec<Value> = arr(&batch["observer_runs"]).into_iter().filter(|r| truthy(&r["result_path"])).collect();
@@ -2141,12 +2237,20 @@ fn cmd_final_clear(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
 
 fn cmd_quota(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
-    let phases: Vec<(Value, Value)> = arr(&data["phases"]).iter().map(|p| (p["phase_id"].clone(), g(&or_empty(g(p, "phases")), "slug"))).collect();
+    let extra = extra_phase_id(api);
+    let phases: Vec<(Value, Value)> = arr(&data["phases"]).iter().map(|p| (p["phase_id"].clone(), or_empty(g(p, "phases")))).collect();
     let rows: Vec<Value> = arr(&data["quota"]).iter().map(|q| {
-        let slug = phases.iter().rev().find(|(id, _)| *id == g(q, "phase_id")).map(|(_, s)| s.clone()).unwrap_or(Value::Null);
-        with(q, "phase", slug)
+        let info = phases.iter().rev().find(|(id, _)| *id == g(q, "phase_id")).map(|(_, s)| s.clone()).unwrap_or(json!({}));
+        let mut row = with(q, "phase", g(&info, "slug"));
+        row = with(&row, "name_en", g(&info, "name_en"));
+        row = with(&row, "name_zh", g(&info, "name_zh"));
+        with(&row, "extra", Value::Bool(truthy(&extra) && g(q, "phase_id") == extra))
     }).collect();
-    out.table(&rows, &[(out.t("Phase", "赛程"), "phase"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
+    let table: Vec<Value> = rows.iter().map(|q| {
+        let row = with(q, "name", g(q, if out.lang == "zh" { "name_zh" } else { "name_en" }));
+        with(&row, "note", Value::String(if truthy(&q["extra"]) { out.t("unscored", "不计分").into() } else { String::new() }))
+    }).collect();
+    out.table(&table, &[(out.t("Phase", "赛程"), "phase"), (out.t("Name", "名称"), "name"), ("", "note"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
         (out.t("Left", "剩余"), "remaining"), (out.t("Preparations/day", "每天可准备"), "preparations_daily"),
         (out.t("Preparations left", "剩余准备"), "preparations_remaining"), (out.t("Resets", "重置时间"), "resets_at")]);
     Ok(Value::Array(rows))
@@ -2156,11 +2260,27 @@ fn cmd_competition(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
     let comp = or_empty(api.rpc("current_competition", false, json!({}))?);
     let phases = arr(&api.call("phases", false, json!({}))?);
     let by_id = |id: &Value| phases.iter().rev().find(|p| &p["id"] == id).cloned().unwrap_or(Value::Null);
-    let listed: Vec<Value> = phases.iter().filter(|p| ["practice-projects", "practice", "online", "final-hidden"].contains(&s_or(&p["slug"]).as_str())).cloned().collect();
+    let extra_id = if truthy(&comp["extra_phase_id"]) { comp["extra_phase_id"].clone() } else { Value::Null };
+    let is_extra = |p: &Value| truthy(&extra_id) && g(p, "id") == extra_id;
+    let listed: Vec<Value> = phases.iter().filter(|p| ["practice-projects", "practice", "online", "final-hidden"].contains(&s_or(&p["slug"]).as_str())
+        || is_extra(p)).cloned().collect();
+    let extra = if truthy(&extra_id) { by_id(&extra_id) } else { Value::Null };
     let view = obj(vec![("mode", g(&comp, "mode")), ("phase", by_id(&g(&comp, "phase_id"))), ("project_phase", by_id(&g(&comp, "project_phase_id"))),
-        ("phases", Value::Array(listed.clone()))]);
+        ("extra_phase", extra.clone()), ("phases", Value::Array(listed.clone()))]);
     out.line(&format!("{}{}", out.t("Mode: ", "模式："), py_none_str(&view["mode"])));
-    out.table(&listed, &[("slug", "slug"), (out.t("Starts", "开始"), "starts_at"), (out.t("Ends", "结束"), "ends_at"), (out.t("Active", "启用"), "is_active")]);
+    let table: Vec<Value> = listed.iter().map(|p| {
+        let row = with(p, "name", g(p, if out.lang == "zh" { "name_zh" } else { "name_en" }));
+        with(&row, "note", Value::String(if is_extra(p) { out.t("unscored", "不计分").into() } else { String::new() }))
+    }).collect();
+    out.table(&table, &[("slug", "slug"), (out.t("Name", "名称"), "name"), ("", "note"), (out.t("Starts", "开始"), "starts_at"),
+        (out.t("Ends", "结束"), "ends_at"), (out.t("Active", "启用"), "is_active")]);
+    if truthy(&extra) {
+        let name = g(&extra, if out.lang == "zh" { "name_zh" } else { "name_en" });
+        let name = if truthy(&name) { name } else { g(&extra, "slug") };
+        out.line(&out.t("Extra phase: {0} (unscored, not on any leaderboard, own daily evaluations). Evaluate there with --phase {1} (or --phase extra).",
+            "额外赛程：{0}（不计分，不上任何排行榜，评测次数单独计算）。在该赛程评测请加 --phase {1}（或 --phase extra）。")
+            .replace("{0}", &py_none_str(&name)).replace("{1}", &py_none_str(&g(&extra, "slug"))));
+    }
     Ok(view)
 }
 
@@ -2183,6 +2303,7 @@ fn cmd_leaderboard(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     }
     let card_arg = a.str("card").map(Value::String).unwrap_or(Value::Null);
     let (rows, card, cards);
+    let mut baselines: Vec<Value> = Vec::new();
     if truthy(&settings["projects_enabled"]) {
         let board = or_empty(api.rpc("observer_card_board", false, json!({"p_phase": phase["id"], "p_scenario_slug": card_arg, "p_limit": a.int("limit")}))?);
         if board.is_object() {
@@ -2194,6 +2315,9 @@ fn cmd_leaderboard(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
             card = Value::Null;
             cards = Value::Null;
         }
+        if slug == "online" {
+            baselines = baseline_rows(api, &phase["id"]);
+        }
     } else {
         rows = api.rpc("leaderboard", false, json!({"p_phase_slug": slug, "p_limit": a.int("limit"), "p_scenario_slug": card_arg}))?;
         card = Value::Null;
@@ -2202,12 +2326,103 @@ fn cmd_leaderboard(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let rows = arr(&rows);
     let mine: Vec<Value> = rows.iter().filter(|r| truthy(&team_id) && g(r, "team_id") == team_id).cloned().collect();
     let shown = if a.flag("mine") { mine.clone() } else { rows.clone() };
-    let table: Vec<Value> = shown.iter().map(|r| with(r, "score_text", Value::String(fmt_score(&r["total_score"])))).collect();
+    let mut table: Vec<Value> = shown.iter().map(|r| with(r, "score_text", Value::String(fmt_score(&r["total_score"])))).collect();
+    let mut placed = 0;
+    if !a.flag("mine") {
+        placed = with_baselines(&mut table, &baselines, &card, out);
+    }
     out.table(&table, &[("#", "rank"), (out.t("Team", "队伍"), "team_name"), (out.t("Score", "分数"), "score_text"), (out.t("Evaluations", "评测次数"), "submission_count")]);
+    if placed > 0 {
+        out.line(out.t("Baseline: average score of the official examples run unmodified (with the organizers' model key). For reference only; not ranked.",
+            "基线：官方示例原样运行的平均分（使用组委会的模型 key），仅供参考，不参与排名。"));
+    }
+    let mut listed: Vec<String> = arr(&cards).iter().filter(|c| c.is_object() && truthy(&c["slug"])).map(|c| s(&c["slug"])).collect();
+    listed.sort_by(|x, y| scenario_order(x).partial_cmp(&scenario_order(y)).unwrap());
+    if !listed.is_empty() && !a.flag("mine") {
+        out.line(&format!("{}{}", out.t("Cards (--card): ", "任务卡（--card）："), listed.join(", ")));
+    }
     if a.flag("mine") && mine.is_empty() {
         out.line(out.t("Your team is not on this board yet.", "本队尚未出现在这个排行榜上。"));
     }
-    Ok(obj(vec![("phase", Value::String(slug)), ("card", card), ("cards", cards), ("rows", Value::Array(shown)), ("my_team_id", team_id)]))
+    Ok(obj(vec![("phase", Value::String(slug)), ("card", card), ("cards", cards), ("rows", Value::Array(shown)),
+        ("baselines", Value::Array(baselines)), ("my_team_id", team_id)]))
+}
+
+/// The online board's unranked reference rows (official examples' averages, basic and pro); none on any error.
+fn baseline_rows(api: &Api, phase_id: &Value) -> Vec<Value> {
+    let Ok(data) = api.rpc("observer_baseline_rows", false, json!({"p_phase": phase_id})) else { return Vec::new() };
+    arr(&data).iter().filter(|r| r.is_object() && ["basic", "pro"].contains(&r["group"].as_str().unwrap_or("")) && r["overall_score"].is_number())
+        .map(|r| obj(vec![("group", g(r, "group")), ("overall_score", g(r, "overall_score")),
+            ("card_scores", if r["card_scores"].is_object() { g(r, "card_scores") } else { Value::Null }),
+            ("runs", g(r, "runs")), ("updated_at", g(r, "updated_at"))]))
+        .collect()
+}
+
+/// As on the website: each baseline sits after every team scoring at least as much; ranks stay unchanged.
+fn with_baselines(table: &mut Vec<Value>, baselines: &[Value], tab: &Value, out: &Out) -> usize {
+    let mut refs: Vec<(Value, f64)> = Vec::new();
+    for b in baselines {
+        let score = if tab.is_null() { g(b, "overall_score") } else { b["card_scores"].get(s(tab)).cloned().unwrap_or(Value::Null) };
+        if let Some(sc) = score.as_f64().filter(|_| score.is_number()) {
+            refs.push((b.clone(), sc));
+        }
+    }
+    refs.sort_by(|x, y| y.1.partial_cmp(&x.1).unwrap());
+    for (b, score) in &refs {
+        let at = table.iter().position(|r| r.get("baseline").is_none()
+            && r["total_score"].as_f64().map_or(true, |t| t < *score)).unwrap_or(table.len());
+        let name = if s(&b["group"]) == "pro" { out.t("Baseline · official examples (pro)", "基线 · 官方示例（pro 版）") }
+            else { out.t("Baseline · official examples (basic)", "基线 · 官方示例（普通版）") };
+        table.insert(at, obj(vec![("baseline", g(b, "group")), ("rank", json!("—")), ("team_name", json!(name)),
+            ("score_text", Value::String(fmt_score(&json!(score)))), ("submission_count", g(b, "runs"))]));
+    }
+    refs.len()
+}
+
+const RELAY_BASE: &str = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1";
+const RELAY_MODEL: &str = "kimi-for-coding";
+
+fn relay_left(limit: &Value, used: &Value) -> Value {
+    if !limit.is_number() {
+        return Value::Null;
+    }
+    match (limit.as_i64(), if used.is_number() { used.as_i64() } else { Some(0) }) {
+        (Some(l), Some(u)) => json!(std::cmp::max(0, l - u)),
+        _ => json!((limit.as_f64().unwrap_or(0.0) - used.as_f64().unwrap_or(0.0)).max(0.0)),
+    }
+}
+
+fn cmd_relay_status(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
+    let relay = api.rpc("my_kimi_relay", false, json!({}))?;
+    let relay = if relay.is_object() { relay } else { json!({}) };
+    let mut view = obj(vec![("enabled", Value::Bool(truthy(&relay["enabled"]))), ("has_team", Value::Bool(truthy(&relay["has_team"]))),
+        ("eligible", Value::Bool(truthy(&relay["eligible"]))), ("base_url", json!(RELAY_BASE)), ("model", json!(RELAY_MODEL)),
+        ("remaining_requests", relay_left(&relay["daily_requests"], &relay["used_requests"])),
+        ("remaining_tokens", relay_left(&relay["daily_tokens"], &relay["used_tokens"]))]);
+    for k in ["daily_requests", "daily_tokens", "used_requests", "used_tokens", "max_concurrent", "max_tokens"] {
+        view = with(&view, k, g(&relay, k));
+    }
+    if !truthy(&view["enabled"]) {
+        out.line(out.t("The temporary Kimi relay is not available right now.", "平台临时 Kimi 中转目前未开放。"));
+    } else if !truthy(&view["has_team"]) {
+        out.line(&message_for("need_team", &out.lang, ""));
+    } else if !truthy(&view["eligible"]) {
+        out.line(out.t("Available once your team is on the leaderboard (one scored formal evaluation in the online phase).",
+            "上榜后即可使用（正式赛有一次成功评测）。"));
+    } else {
+        out.line(&format!("{}{}", out.t("Base URL: ", "接口地址："), RELAY_BASE));
+        out.line(&format!("{}{}{}", out.t("Model: ", "模型："), RELAY_MODEL,
+            out.t("   API key: your personal API token (s26_...)", "   API key：你的个人 API 令牌（s26_...）")));
+        out.line(&out.t("Your team's allowance today: {0} / {1} requests, {2} / {3} tokens", "本队今天剩余：{0} / {1} 次请求，{2} / {3} tokens")
+            .replace("{0}", &py_none_str(&view["remaining_requests"])).replace("{1}", &py_none_str(&view["daily_requests"]))
+            .replace("{2}", &py_none_str(&view["remaining_tokens"])).replace("{3}", &py_none_str(&view["daily_tokens"])));
+        out.line(&out.t("Up to {0} concurrent requests per team; max_tokens is capped at {1}. Resets daily at 00:00 UTC.",
+            "每队最多同时 {0} 个请求；max_tokens 上限 {1}。每天 UTC 0 点（北京时间 8 点）重置。")
+            .replace("{0}", &py_none_str(&view["max_concurrent"])).replace("{1}", &py_none_str(&view["max_tokens"])));
+    }
+    out.line(out.t("For local development only; evaluations use the model service saved under Keys and network (survey26 env).",
+        "仅供本地开发调试；正式评测使用「密钥与网络」中保存的模型服务（survey26 env）。"));
+    Ok(view)
 }
 
 fn cmd_kimi_status(api: &mut Api, _a: &Args, out: &Out) -> R<Value> {
@@ -2319,6 +2534,7 @@ fn command_for(func: &str) -> Option<Command> {
         "cmd_kimi_status" => cmd_kimi_status,
         "cmd_kimi_claim" => cmd_kimi_claim,
         "cmd_credits_list" => cmd_credits_list,
+        "cmd_relay_status" => cmd_relay_status,
         "cmd_credits_claim" => cmd_credits_claim,
         _ => return None,
     })

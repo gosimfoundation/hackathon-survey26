@@ -4,7 +4,7 @@
 
 ## 1. 安装
 
-工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.4.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
+工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.7.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
 
 ```bash
 # 方式 A：安装 survey26 命令
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/SHA256SUMS)。
+**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/SHA256SUMS)。
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-arm64) |
-| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-x86_64) |
-| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64) |
-| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-windows-x86_64.exe) |
+| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-arm64) |
+| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-x86_64) |
+| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64) |
+| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.4.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.7.0
 ```
 
 在 macOS 上，用浏览器下载的程序需先解除隔离：`xattr -d com.apple.quarantine survey26`。在 Windows 上，请在 PowerShell 或命令提示符中运行 `survey26-windows-x86_64.exe`。
@@ -53,7 +53,7 @@ survey26 whoami
 
 这是组委会临时提供的 Kimi 额度，方便大家本地开发调试，额度有限，可能随时调整或结束。正式评测和决赛会使用各队在「密钥与网络」里保存的模型服务，记得提前配置好哦。
 
-已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 200 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**。请不要把它保存为评测用的模型服务。
+已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 200 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**，也可以运行 `survey26 relay status` 查看。请不要把它保存为评测用的模型服务。
 
 ```bash
 export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
@@ -72,11 +72,14 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | 密钥与网络 | `env show`、`env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix 名称] [--replace]`（即「添加模型服务」）、`env set 名称 --value-stdin [--plain]`、`env set 名称 --from-env 变量`、`env unset 名称`、`env disable 名称` / `env enable 名称`（停用/启用，保留不删除）、`env tag 名称 model\|none`（是否模型相关）、`env domains set 域名…`、`env domains clear`、`env route [direct\|cn\|overseas] [--fallback\|--no-fallback]` |
 | 第 1 步 · 上传项目 | `project upload 文件.zip [--title …]`、`project submit-repo https://github.com/OWNER/REPO [--branch 分支] [--subdir 子目录] [--title …]`（也可以直接用 `…/tree/分支/子目录` 或 `…/commit/提交号` 链接；提交时记录具体 commit） |
 | 第 2 步 · 检查并确认版本 | `project list [--all]`、`project wait 版本`、`project show 版本 --files`、`project logs 版本`、`project confirm 版本`、`project withdraw 版本`、`project download 版本`、`project evidence 版本 --notes … --code-url …` |
-| 第 3 步 · 开始评测 | `quota`、`eval start 版本 [--no-model]`、`eval selfcheck 版本 [--no-model]`（评测 3 次取平均；`--no-model` 即「本次不提供模型」）、`eval list`、`eval show 评测`、`eval wait [评测]` |
-| 结果 | `results show 评测`、`results log 运行 [--tail N \| --full \| -o agent.log]`、`results download 运行`、`results download-all [评测]` |
+| 第 3 步 · 开始评测 | `quota`、`eval start 版本 [--no-model] [--phase …]`、`eval selfcheck 版本 [--no-model] [--phase …]`（评测 3 次取平均；`--no-model` 即「本次不提供模型」）、`eval list [--phase …]`、`eval show 评测`、`eval wait [评测]` |
+| 结果 | `results show 评测 [--phase …]`、`results log 运行 [--tail N \| --full \| -o agent.log]`、`results download 运行`、`results download-all [评测] [--phase …]` |
 | 最终版本 | `final show`、`final set 版本`、`final clear` |
 | 排行榜 | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`、`competition` |
 | Kimi Coding Plan 与兑换码 | `kimi status`、`kimi claim`（队长）、`credits list`、`credits claim 提供方` |
+| 临时 Kimi 中转 | `relay status`（接口地址、模型名和本队今天的剩余额度） |
+
+评测默认进入网站「评测」按钮所用的赛程：正式赛进行中为正式赛，结束后为练习赛。组委会另外开放可选的额外赛程时，`survey26 competition` 和 `survey26 quota` 会显示它的名称；它不计分（不上任何排行榜），评测次数单独计算。只有明确需要时才用 `--phase extra`（或该赛程的 slug）在其中评测；`eval list`、`eval show`、`eval wait`、`results show` 和 `results download-all` 也接受同样的 `--phase`，只列出该赛程的评测，或在其中取 `latest`。正式赛的 `leaderboard` 会像网站一样，把不参与排名的基线行（官方示例的平均分）显示在其分数对应的位置；`--json` 输出中位于 `baselines`。
 
 “版本”（项目版本）、“评测”（一次评测）和“运行”（一次评测中的一张任务卡）可以填写完整 ID，也可以填写至少 4 位、能唯一匹配的前缀，即 `project list`、`eval list`、`eval show` 输出中的 ID。`latest` 表示最近一次评测。
 

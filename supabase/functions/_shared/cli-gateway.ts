@@ -58,7 +58,9 @@ export const ALLOWED_RPCS = new Set([
   "observer_final_versions",
   "observer_board",
   "observer_card_board",
+  "observer_baseline_rows",
   "leaderboard",
+  "my_kimi_relay",
 ]);
 
 /** observer-portal actions of the website's competition workspace. */

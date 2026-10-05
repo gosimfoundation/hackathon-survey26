@@ -1,5 +1,5 @@
 {
- "version": "1.6.0",
+ "version": "1.7.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1633,7 +1633,7 @@
      "dest": "phase",
      "kind": "value",
      "type": "str",
-     "help": "phase slug (default: the one the website uses)"
+     "help": "a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase) (default: the one the website uses)"
     },
     {
      "flags": [
@@ -1677,7 +1677,7 @@
      "dest": "phase",
      "kind": "value",
      "type": "str",
-     "help": ""
+     "help": "a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase) (default: the one the website uses)"
     },
     {
      "flags": [
@@ -1708,6 +1708,15 @@
      "type": "int",
      "default": 20,
      "help": ""
+    },
+    {
+     "flags": [
+      "--phase"
+     ],
+     "dest": "phase",
+     "kind": "value",
+     "type": "str",
+     "help": "only this phase: a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
     }
    ]
   },
@@ -1726,7 +1735,17 @@
      "help": ""
     }
    ],
-   "options": []
+   "options": [
+    {
+     "flags": [
+      "--phase"
+     ],
+     "dest": "phase",
+     "kind": "value",
+     "type": "str",
+     "help": "'latest' within this phase: a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
+    }
+   ]
   },
   {
    "path": [
@@ -1745,6 +1764,15 @@
     }
    ],
    "options": [
+    {
+     "flags": [
+      "--phase"
+     ],
+     "dest": "phase",
+     "kind": "value",
+     "type": "str",
+     "help": "'latest' within this phase: a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
+    },
     {
      "flags": [
       "--timeout"
@@ -1793,7 +1821,17 @@
      "help": ""
     }
    ],
-   "options": []
+   "options": [
+    {
+     "flags": [
+      "--phase"
+     ],
+     "dest": "phase",
+     "kind": "value",
+     "type": "str",
+     "help": "'latest' within this phase: a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
+    }
+   ]
   },
   {
    "path": [
@@ -1902,6 +1940,15 @@
      "kind": "value",
      "type": "str",
      "help": ""
+    },
+    {
+     "flags": [
+      "--phase"
+     ],
+     "dest": "phase",
+     "kind": "value",
+     "type": "str",
+     "help": "'latest' within this phase: a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
     }
    ]
   },
@@ -2062,6 +2109,28 @@
    "help": "captain: claim the team's code",
    "group": false,
    "func": "cmd_kimi_claim",
+   "positionals": [],
+   "options": []
+  },
+  {
+   "path": [
+    "relay"
+   ],
+   "help": "temporary Kimi relay for local development (OpenAI-compatible; your API token is the key)",
+   "group": true,
+   "func": null,
+   "positionals": [],
+   "options": [],
+   "subcommand_dest": "cmd"
+  },
+  {
+   "path": [
+    "relay",
+    "status"
+   ],
+   "help": "base URL, model and your team's remaining relay allowance today",
+   "group": false,
+   "func": "cmd_relay_status",
    "positionals": [],
    "options": []
   },
