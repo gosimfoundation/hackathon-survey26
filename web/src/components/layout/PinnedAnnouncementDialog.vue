@@ -9,6 +9,7 @@ import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { loadAnnouncements, type Announcement } from '../../lib/data'
 import { fmtUtc } from '../../lib/format'
+import { announcementText as annText } from '../../lib/announcementText'
 import { PINNED_SEEN_KEY, pinnedRows, parseSeen } from '../../lib/pinnedPopup'
 import { announcementOffKey, announcementSnoozeKey, beijingDay, needsLegacySnooze, pickAnnouncement } from '../../lib/popupRules'
 import { markSeen, seenKeys, useSeenWhileOpen } from '../../stores/popupSeen'
@@ -16,7 +17,7 @@ import { overlayActive, releaseOverlay, requestOverlay } from '../../stores/over
 import AnnouncementBody from '../content/AnnouncementBody.vue'
 
 const OVERLAY = 'pinned-announcement'
-const { t, tf, pick } = useI18n()
+const { t, tf, locale } = useI18n()
 const route = useRoute()
 const dialog = ref<HTMLDialogElement | null>(null)
 const item = ref<Announcement | null>(null)
@@ -72,8 +73,8 @@ const others = computed(() => pinnedCount.value)
     <div class="pinned-panel">
       <button type="button" class="pinned-close" :aria-label="t('ann.popup_close')" data-testid="pinned-announcement-close" @click="dismiss">×</button>
       <span class="label accent">{{ t('ann.pinned') }} · {{ t('ann.kicker') }} · {{ fmtUtc(item.created_at) }} UTC</span>
-      <h2 :id="`pinned-title-${item.id}`" class="pinned-title">{{ pick(item.title_en, item.title_zh) || item.title_en }}</h2>
-      <AnnouncementBody class="text2 mt-3" :text="pick(item.body_en, item.body_zh) || item.body_en" poster />
+      <h2 :id="`pinned-title-${item.id}`" class="pinned-title">{{ annText(item, 'title', locale) }}</h2>
+      <AnnouncementBody class="text2 mt-3" :text="annText(item, 'body', locale)" poster />
       <div class="pinned-actions">
         <router-link class="btn sm" to="/announcements" data-testid="pinned-announcement-all" @click="dismiss">{{ t('ann.popup_all') }} →</router-link>
         <label class="check pinned-off" data-testid="pinned-announcement-off"><input v-model="dontShow" type="checkbox"> {{ t('ann.popup_dont_show') }}</label>
