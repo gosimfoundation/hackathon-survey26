@@ -1630,6 +1630,18 @@
           "action": "查看成绩与回放"
         }
       }
+    },
+    "cancel_eval": {
+      "button": "取消排队",
+      "working": "正在取消…",
+      "confirm": "取消这次排队中的评测？它还没有开始。取消后不计入今日评测次数，也不会出现在任何排行榜上。",
+      "confirm_set": "取消这组「评测 3 次取平均」？其中尚未开始的评测会被取消，不计入今日评测次数；已在运行或已完成的评测保留。",
+      "done": "评测已取消，不计入今日评测次数。",
+      "evaluation_started": "该评测已经开始运行，无法再取消。",
+      "evaluation_finished": "该评测已经结束。",
+      "evaluation_not_found": "找不到该评测，请刷新页面。",
+      "evaluation_not_cancellable": "该评测由主办方发起，不能取消。",
+      "failed": "取消失败，请刷新后重试。"
     }
   },
   "credits": {

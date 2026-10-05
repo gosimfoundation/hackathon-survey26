@@ -8,12 +8,14 @@ import { num } from '../../lib/format'
 import { formatDateTime } from '../../lib/projectText'
 import { useQuestFlags } from '../../composables/useQuestFlags'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
+import { cancelEvaluation } from '../../lib/cancelEvaluation'
+import { canCancel, cancelConfirmKey, cancelErrorKey } from '../../lib/projectEvaluation'
 // `quiet` keeps the new-submission button secondary while the dashboard quest leads.
 // `allPhases` is the records page: every complete-project evaluation with its scenario scores.
 const props=withDefaults(defineProps<{limit?:number;quiet?:boolean;allPhases?:boolean;hideEmpty?:boolean}>(),{limit:50,quiet:false,allPhases:false,hideEmpty:false})
 const {team}=useAuth(), {pick,t,locale}=useI18n(), {remember}=useQuestFlags()
 type Run={id:string;status:string;score:number|null;scenarios?:{slug:string;name:string}|null}
-type Batch={id:string;status:string;score:number|null;created_at:string;quota_refunded?:boolean
+type Batch={id:string;status:string;score:number|null;created_at:string;quota_refunded?:boolean;repeat_group?:string|null
   phases?:{name_en:string;name_zh:string}|null;observer_runs?:Run[]}
 const rows=ref<Batch[]>([]),loading=ref(true),error=ref(false)
 let timer:number|undefined
@@ -30,6 +32,15 @@ async function load(){
   if(!result.error)rows.value=(result.data??[]) as unknown as Batch[]
   loading.value=false
 }
+// 取消排队: the batch being cancelled, and the outcome shown above the table.
+const cancelling=ref(''),cancelNote=ref<{text:string;failed:boolean}|null>(null)
+async function cancel(row:Batch){
+  if(cancelling.value||!window.confirm(t(cancelConfirmKey(row))))return
+  cancelling.value=row.id;cancelNote.value=null
+  try{await cancelEvaluation(row.id);cancelNote.value={text:t('dash.cancel_eval.done'),failed:false}}
+  catch(e){cancelNote.value={text:t(cancelErrorKey(e instanceof Error?e.message:'')),failed:true}}
+  finally{cancelling.value='';await load()}
+}
 onMounted(()=>{void load();timer=window.setInterval(()=>{if(!document.hidden)void load()},15000)})
 onUnmounted(()=>window.clearInterval(timer))
 </script>
@@ -37,6 +48,7 @@ onUnmounted(()=>window.clearInterval(timer))
   <section v-if="!(props.hideEmpty && !error && !rows.length)" class="panel mb-6" data-testid="evaluation-history">
     <div class="hd"><h2>{{ props.allPhases ? pick('Complete-project evaluations','完整项目评测记录') : pick('Evaluations','评测记录') }}</h2><button class="btn sm" @click="load">{{ pick('Refresh','刷新') }}</button></div>
     <p v-if="props.allPhases" class="help">{{ pick('Each evaluation runs every scenario of its phase once; its score is the average (in the competition: the mean of cards A–D; A1–D1 count only on the super board). Evaluations that failed because of the platform are not counted toward the daily limit.','每次评测把该赛程全部场景各跑一遍，分数是这些场景的平均分（正式比赛为任务卡 A–D 的平均分，A1–D1 只计入超级总榜）；因平台原因失败的评测不计入每日次数。') }}</p>
+    <p v-if="cancelNote" :class="cancelNote.failed ? 'errors' : 'text2'" role="status" data-testid="batch-cancel-outcome">{{ cancelNote.text }}</p>
     <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" role="alert">{{ pick('Could not load evaluations. Please refresh.','无法加载评测记录，请刷新重试。') }}</p>
     <p v-else-if="!rows.length" class="text2">{{ pick('No evaluations yet.','还没有评测记录。') }}</p>
@@ -48,7 +60,8 @@ onUnmounted(()=>window.clearInterval(timer))
         <td>{{ statuses[row.status]??row.status }}<span v-if="row.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ pick('Not counted toward the daily limit','未计入次数') }}</span></td>
         <td class="m">{{ num(row.score) }}</td>
         <td v-if="props.allPhases" class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block">{{ run.scenarios ? scenarioLabel(run.scenarios.slug, run.scenarios.name, locale) : pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ run.score!=null ? num(run.score) : statuses[run.status]??run.status }}</span></td>
-        <td><router-link class="accent-l" :to="'/compete?track=project#batch-'+row.id" @click="remember('review','competition')">{{ pick('View progress and results','查看进度与结果') }}</router-link></td>
+        <td><router-link class="accent-l" :to="'/compete?track=project#batch-'+row.id" @click="remember('review','competition')">{{ pick('View progress and results','查看进度与结果') }}</router-link>
+          <button v-if="canCancel(row)" type="button" class="btn sm ml-2" :disabled="!!cancelling" :aria-busy="cancelling===row.id" data-testid="batch-cancel" @click="cancel(row)">{{ cancelling===row.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></td>
       </tr></tbody>
     </table></div>
     <p v-if="!props.allPhases" class="mt-5"><router-link class="btn sm" :class="{ primary: !props.quiet }" to="/compete">{{ t('dash.new_submission') }} →</router-link></p>

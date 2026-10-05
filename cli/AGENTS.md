@@ -6,7 +6,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.7.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.8.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -17,19 +17,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.7.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.8.0
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
@@ -55,7 +55,7 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 
 This is a temporary Kimi allowance from the organizers to help with local development and debugging. It's limited and may change or end at any time. Platform evaluations and the final use the model service each team saves in 'Keys and network' — please make sure yours is set up.
 
-Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 200 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay** and by `survey26 relay status`. Please do not save it as your evaluation model service.
+Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 1000 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay** and by `survey26 relay status`. Please do not save it as your evaluation model service.
 
 ```bash
 export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
@@ -75,13 +75,13 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--branch BRANCH] [--subdir FOLDER] [--title …]` (a `…/tree/BRANCH/FOLDER` or `…/commit/SHA` link works too; the exact commit is saved at submission) |
 | Step 2 · Review and confirm | `project list [--all]`, `project wait REV`, `project show REV --files`, `project logs REV`, `project confirm REV`, `project withdraw REV`, `project download REV`, `project evidence REV --notes … --code-url …` |
 | Step 3 · Evaluate | `quota`, `eval start REV [--no-model] [--phase …]`, `eval selfcheck REV [--no-model] [--phase …]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list [--phase …]`, `eval show BATCH`, `eval wait [BATCH]` |
-| Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]` |
+| Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]`, `results cancel BATCH` (cancel a queued evaluation that has not started) |
 | Final version | `final show`, `final set REV`, `final clear` |
 | Leaderboard | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`, `competition` |
 | Kimi Coding Plan and credits | `kimi status`, `kimi claim` (captain), `credits list`, `credits claim PROVIDER` |
 | Temporary Kimi relay | `relay status` (base URL, model and your team's remaining allowance today) |
 
-Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
+Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. `results cancel BATCH` cancels a queued evaluation of your team while none of its cards has started (also an evaluation the dispatcher is about to start but no runner has taken yet), as the website's **Cancel** button does: it is not counted toward today's evaluations and appears on no leaderboard. An evaluation that has started cannot be cancelled (`evaluation_started`). In an “evaluate 3 times” self-check, cancelling one evaluation cancels every evaluation of that set that has not started; those already running or finished are kept. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
 
 `REV` (a project version), `BATCH` (an evaluation) and `RUN` (one card of an evaluation) accept the full ID or a unique prefix of at least 4 characters, as printed by `project list`, `eval list` and `eval show`. `latest` refers to the most recent evaluation.
 
@@ -129,7 +129,7 @@ Every command accepts `--json` and then prints exactly one JSON object on standa
 | 8 | A daily or team limit was reached (evaluations, uploads, active evaluation, team size, 20 actions by UID per day) |
 | 9 | The awaited preparation or evaluation finished unsuccessfully |
 
-Actions that the website confirms with a dialog (evaluating a version again, the 3-evaluation self-check, withdrawing a version, clearing the final version, leaving, transferring, removing members, disbanding, submitting the same project again within a few minutes) ask for confirmation in an interactive terminal. With `--json` or without a terminal the tool never prompts: such actions fail with exit code 2 unless `--yes` is given. `project wait` and `eval wait` check the status every 15 and 20 seconds by default (`--interval`, at least 5) and stop after `--timeout` seconds.
+Actions that the website confirms with a dialog (evaluating a version again, the 3-evaluation self-check, cancelling a queued evaluation, withdrawing a version, clearing the final version, leaving, transferring, removing members, disbanding, submitting the same project again within a few minutes) ask for confirmation in an interactive terminal. With `--json` or without a terminal the tool never prompts: such actions fail with exit code 2 unless `--yes` is given. `project wait` and `eval wait` check the status every 15 and 20 seconds by default (`--interval`, at least 5) and stop after `--timeout` seconds.
 
 ## 6. Guidance for coding agents
 
@@ -161,7 +161,7 @@ Actions that the website confirms with a dialog (evaluating a version again, the
 
 ## 1. 安装
 
-工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.7.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
+工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.8.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
 
 ```bash
 # 方式 A：安装 survey26 命令
@@ -172,19 +172,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/SHA256SUMS)。
+**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/SHA256SUMS)。
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-arm64) |
-| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-x86_64) |
-| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64) |
-| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-windows-x86_64.exe) |
+| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-arm64) |
+| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-x86_64) |
+| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64) |
+| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.7.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.8.0
 ```
 
 在 macOS 上，用浏览器下载的程序需先解除隔离：`xattr -d com.apple.quarantine survey26`。在 Windows 上，请在 PowerShell 或命令提示符中运行 `survey26-windows-x86_64.exe`。
@@ -210,7 +210,7 @@ survey26 whoami
 
 这是组委会临时提供的 Kimi 额度，方便大家本地开发调试，额度有限，可能随时调整或结束。正式评测和决赛会使用各队在「密钥与网络」里保存的模型服务，记得提前配置好哦。
 
-已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 200 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**，也可以运行 `survey26 relay status` 查看。请不要把它保存为评测用的模型服务。
+已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 1000 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**，也可以运行 `survey26 relay status` 查看。请不要把它保存为评测用的模型服务。
 
 ```bash
 export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
@@ -230,13 +230,13 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | 第 1 步 · 上传项目 | `project upload 文件.zip [--title …]`、`project submit-repo https://github.com/OWNER/REPO [--branch 分支] [--subdir 子目录] [--title …]`（也可以直接用 `…/tree/分支/子目录` 或 `…/commit/提交号` 链接；提交时记录具体 commit） |
 | 第 2 步 · 检查并确认版本 | `project list [--all]`、`project wait 版本`、`project show 版本 --files`、`project logs 版本`、`project confirm 版本`、`project withdraw 版本`、`project download 版本`、`project evidence 版本 --notes … --code-url …` |
 | 第 3 步 · 开始评测 | `quota`、`eval start 版本 [--no-model] [--phase …]`、`eval selfcheck 版本 [--no-model] [--phase …]`（评测 3 次取平均；`--no-model` 即「本次不提供模型」）、`eval list [--phase …]`、`eval show 评测`、`eval wait [评测]` |
-| 结果 | `results show 评测 [--phase …]`、`results log 运行 [--tail N \| --full \| -o agent.log]`、`results download 运行`、`results download-all [评测] [--phase …]` |
+| 结果 | `results show 评测 [--phase …]`、`results log 运行 [--tail N \| --full \| -o agent.log]`、`results download 运行`、`results download-all [评测] [--phase …]`、`results cancel 评测`（取消尚未开始的排队评测） |
 | 最终版本 | `final show`、`final set 版本`、`final clear` |
 | 排行榜 | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`、`competition` |
 | Kimi Coding Plan 与兑换码 | `kimi status`、`kimi claim`（队长）、`credits list`、`credits claim 提供方` |
 | 临时 Kimi 中转 | `relay status`（接口地址、模型名和本队今天的剩余额度） |
 
-评测默认进入网站「评测」按钮所用的赛程：正式赛进行中为正式赛，结束后为练习赛。组委会另外开放可选的额外赛程时，`survey26 competition` 和 `survey26 quota` 会显示它的名称；它不计分（不上任何排行榜），评测次数单独计算。只有明确需要时才用 `--phase extra`（或该赛程的 slug）在其中评测；`eval list`、`eval show`、`eval wait`、`results show` 和 `results download-all` 也接受同样的 `--phase`，只列出该赛程的评测，或在其中取 `latest`。正式赛的 `leaderboard` 会像网站一样，把不参与排名的基线行（官方示例的平均分）显示在其分数对应的位置；`--json` 输出中位于 `baselines`。
+评测默认进入网站「评测」按钮所用的赛程：正式赛进行中为正式赛，结束后为练习赛。组委会另外开放可选的额外赛程时，`survey26 competition` 和 `survey26 quota` 会显示它的名称；它不计分（不上任何排行榜），评测次数单独计算。只有明确需要时才用 `--phase extra`（或该赛程的 slug）在其中评测；`eval list`、`eval show`、`eval wait`、`results show` 和 `results download-all` 也接受同样的 `--phase`，只列出该赛程的评测，或在其中取 `latest`。`results cancel 评测` 与网站上的「取消排队」按钮相同：在评测的任何一张卡都还没有开始时（包括调度器即将启动、但尚未被任何运行器领取的评测），取消本队这次排队中的评测；取消后不计入今日评测次数，也不会出现在任何排行榜上。已经开始的评测不能取消（`evaluation_started`）。对「评测 3 次取平均」中的一次评测执行取消，会取消这一组里所有尚未开始的评测，已在运行或已完成的保留。正式赛的 `leaderboard` 会像网站一样，把不参与排名的基线行（官方示例的平均分）显示在其分数对应的位置；`--json` 输出中位于 `baselines`。
 
 “版本”（项目版本）、“评测”（一次评测）和“运行”（一次评测中的一张任务卡）可以填写完整 ID，也可以填写至少 4 位、能唯一匹配的前缀，即 `project list`、`eval list`、`eval show` 输出中的 ID。`latest` 表示最近一次评测。
 
@@ -284,7 +284,7 @@ survey26 final set 1a2b3c4d
 | 8 | 达到每日或队伍上限（评测次数、上传次数、已有进行中的评测、队伍人数、每天 20 次 UID 操作） |
 | 9 | 所等待的准备或评测未能成功完成 |
 
-网站上会弹出确认框的操作（再次评测同一版本、评测 3 次取平均、撤回版本、取消最终版本选择、退出队伍、转让队长、移出队员、解散队伍、几分钟内重复提交同一项目），在交互式终端中同样需要确认。使用 `--json` 或没有终端时，工具从不等待输入：这些操作必须加 `--yes`，否则以退出码 2 结束。`project wait` 和 `eval wait` 默认每 15 秒和 20 秒查询一次（`--interval`，最少 5 秒），超过 `--timeout` 秒后停止。
+网站上会弹出确认框的操作（再次评测同一版本、评测 3 次取平均、取消排队中的评测、撤回版本、取消最终版本选择、退出队伍、转让队长、移出队员、解散队伍、几分钟内重复提交同一项目），在交互式终端中同样需要确认。使用 `--json` 或没有终端时，工具从不等待输入：这些操作必须加 `--yes`，否则以退出码 2 结束。`project wait` 和 `eval wait` 默认每 15 秒和 20 秒查询一次（`--interval`，最少 5 秒），超过 `--timeout` 秒后停止。
 
 ## 6. 编程智能体使用须知
 

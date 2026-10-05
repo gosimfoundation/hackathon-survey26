@@ -909,6 +909,18 @@
           "action": "Voir le score et le rejeu"
         }
       }
+    },
+    "cancel_eval": {
+      "button": "Annuler",
+      "working": "Annulation…",
+      "confirm": "Annuler cette évaluation en file d’attente ? Elle n’a pas encore démarré. Elle ne comptera pas dans les évaluations du jour et n’apparaîtra dans aucun classement.",
+      "confirm_set": "Annuler cette auto-vérification ? Ses évaluations qui n’ont pas encore démarré sont annulées et ne comptent pas dans les évaluations du jour ; celles déjà en cours ou terminées sont conservées.",
+      "done": "Évaluation annulée. Elle ne compte pas dans les évaluations du jour.",
+      "evaluation_started": "Cette évaluation a déjà démarré et ne peut plus être annulée.",
+      "evaluation_finished": "Cette évaluation est déjà terminée.",
+      "evaluation_not_found": "Évaluation introuvable. Actualisez la page.",
+      "evaluation_not_cancellable": "Cette évaluation est lancée par les organisateurs et ne peut pas être annulée.",
+      "failed": "Impossible d’annuler l’évaluation. Actualisez et réessayez."
     }
   },
   "eggs": {

@@ -169,3 +169,27 @@ export function evaluationMetadata(batch: { id: string; created_at: string; phas
 export function evaluationZipName(batch: { id: string; model_disabled?: boolean | null }, date: string): string {
   return `gosim-observer-${batch.id.slice(0, 8)}${isNoModel(batch) ? '-no-model' : ''}-${date}.zip`
 }
+
+type CancelBatch = { status: string; repeat_group?: string | null; observer_runs?: { status: string }[] | null }
+
+/**
+ * 取消排队: a team can cancel its evaluation while none of its cards has started (every card still queued).
+ * Without the cards loaded, a queued evaluation. The database decides either way (observer_cancel_batch).
+ */
+export function canCancel(batch: CancelBatch): boolean {
+  if (batch.observer_runs?.length) return ['queued', 'running'].includes(batch.status) && batch.observer_runs.every(r => r.status === 'queued')
+  return batch.status === 'queued'
+}
+
+/** The confirmation to ask: a self-check member cancels its set's members that have not started. */
+export function cancelConfirmKey(batch: CancelBatch): string {
+  return batch.repeat_group ? 'dash.cancel_eval.confirm_set' : 'dash.cancel_eval.confirm'
+}
+
+/** observer_cancel_batch errors with their own message (dash.cancel_eval.<code>). */
+export const CANCEL_ERRORS = ['evaluation_started', 'evaluation_finished', 'evaluation_not_found', 'evaluation_not_cancellable'] as const
+
+/** The message key for a failed cancel. */
+export function cancelErrorKey(code: string): string {
+  return 'dash.cancel_eval.' + ((CANCEL_ERRORS as readonly string[]).includes(code) ? code : 'failed')
+}

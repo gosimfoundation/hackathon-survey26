@@ -113,3 +113,32 @@ test('evaluations without a model are marked in the download name and metadata',
     revision_id: 'r', version: 'v1', model_provided: false, model_disabled: true, self_check_group: 'g' })
   assert.equal(evaluationMetadata(plain, null).model_provided, true)
 })
+
+test('取消排队 is offered only while no card has started', async () => {
+  const { canCancel, cancelConfirmKey, cancelErrorKey } = await import('../src/lib/projectEvaluation.ts')
+  assert.equal(canCancel({ status: 'queued' }), true)
+  assert.equal(canCancel({ status: 'running' }), false)
+  assert.equal(canCancel({ status: 'queued', observer_runs: [{ status: 'queued' }, { status: 'queued' }] }), true)
+  // A requeued evaluation whose cards are all waiting again (the database decides).
+  assert.equal(canCancel({ status: 'running', observer_runs: [{ status: 'queued' }] }), true)
+  assert.equal(canCancel({ status: 'running', observer_runs: [{ status: 'queued' }, { status: 'starting' }] }), false)
+  for (const status of ['scored', 'failed', 'cancelled']) assert.equal(canCancel({ status, observer_runs: [{ status: 'cancelled' }] }), false)
+  assert.equal(cancelConfirmKey({ status: 'queued' }), 'dash.cancel_eval.confirm')
+  assert.equal(cancelConfirmKey({ status: 'queued', repeat_group: 'g' }), 'dash.cancel_eval.confirm_set')
+  assert.equal(cancelErrorKey('evaluation_started'), 'dash.cancel_eval.evaluation_started')
+  assert.equal(cancelErrorKey('something else'), 'dash.cancel_eval.failed')
+})
+
+test('取消排队 is translated in every language', async () => {
+  const { readFileSync } = await import('node:fs')
+  const keys = ['button', 'working', 'confirm', 'confirm_set', 'done', 'failed', 'evaluation_started', 'evaluation_finished',
+    'evaluation_not_found', 'evaluation_not_cancellable']
+  const en = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')).dash.cancel_eval
+  for (const locale of ['en', 'zh', 'ja', 'fr']) {
+    const got = JSON.parse(readFileSync(new URL(`../src/i18n/${locale}.json`, import.meta.url), 'utf8')).dash.cancel_eval
+    for (const key of keys) {
+      assert.ok(typeof got[key] === 'string' && got[key].length > 0, `${locale}.${key}`)
+      if (locale !== 'en') assert.notEqual(got[key], en[key], `${locale}.${key} is translated`)
+    }
+  }
+})
