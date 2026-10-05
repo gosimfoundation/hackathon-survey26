@@ -137,7 +137,7 @@ export function parseBaselineRows(data: unknown): BaselineRow[] {
 /** The board's rows with the baselines inserted after every team scoring at least as much (tab: null = overall). */
 export function withBaselines(entries: LeaderboardEntry[], baselines: BaselineRow[], tab: string | null): BoardRow[] {
   const rows: BoardRow[] = [...entries]
-  const refs = baselines.map(b => ({ b, score: tab === null ? b.overall_score : b.card_scores?.[tab] }))
+  const refs = baselines.map(b => ({ b, score: tab === null || tab === SUPER_TAB ? b.overall_score : b.card_scores?.[tab] }))
     .filter((x): x is { b: BaselineRow; score: number } => typeof x.score === 'number')
     .sort((x, y) => y.score - x.score)
   for (const { b, score } of refs) {

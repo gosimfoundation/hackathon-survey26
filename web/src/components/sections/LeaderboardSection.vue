@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { boardScenarios, isProjectBoard, isSuperTab, loadCardBoard, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, superCards, SUPER_TAB, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
+import { boardScenarios, isProjectBoard, isSuperTab, loadCardBoard, loadSuperBaselineRows, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
 import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 import { useAuth } from '../../stores/auth'
@@ -32,6 +32,7 @@ const scenarioSlug = ref<string | null>(null)
 const scenarioTabs = computed(() => boardScenarios(phase.value))
 // Card boards (complete-project phases with board_layout 'cards' / 'cards_overall'): null is the overall tab.
 const cardBoard = ref<CardBoard | null>(null)
+const baselines = ref<BaselineRow[]>([])
 // Like the full board: the super board opens by default where the phase has one; null (总榜) once picked.
 const cardWanted = ref<string | null>(SUPER_TAB)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
@@ -64,7 +65,9 @@ async function load() {
     if (phase.value && !hidden.value && isProjectBoard(phase.value)) {
       cardBoard.value = await loadCardBoard(phase.value.id, cardWanted.value)
       entries.value = cardBoard.value.rows
+      baselines.value = cardBoard.value.scenario === SUPER_TAB ? await loadSuperBaselineRows(phase.value.id).catch(() => []) : []
     } else {
+      baselines.value = []
       cardBoard.value = null
       entries.value = phase.value && !hidden.value ? await loadLeaderboard(phase.value.slug, 500, scenarioSlug.value) : []
     }
@@ -132,7 +135,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <div v-else-if="cardMode" class="py-6"><CardBoardTable :entries="top" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" /></div>
+          <div v-else-if="cardMode" class="py-6"><CardBoardTable :entries="top" :layout="cardBoard!.layout" :cards="tableCards" :tab="cardTab" :baselines="baselines" :super-board="superMode" :team-id="team?.id ?? null" @select="selected = $event" /></div>
           <template v-else>
             <div class="py-6"><ScoreBars :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" /></div>
             <div class="table-wrap">

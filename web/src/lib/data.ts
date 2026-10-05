@@ -257,6 +257,14 @@ export async function loadBaselineRows(phaseId: string): Promise<BaselineRow[]> 
   })
 }
 
+/** The official-example baseline reference rows of the super board; none on any error (or where the RPC is absent). */
+export async function loadSuperBaselineRows(phaseId: string): Promise<BaselineRow[]> {
+  return cached(`card_board:super_baseline:${phaseId}`, BOARD_CACHE_MS, async () => {
+    const { data, error } = await supabase.rpc('observer_super_baseline_rows', { p_phase: phaseId })
+    return error ? [] : parseBaselineRows(data)
+  })
+}
+
 /** Clear the leaderboard/card-board cache so a profile or team change the user just made shows up on their
  * own next visit instead of waiting out the shared BOARD_CACHE_MS window. */
 export function invalidateBoardCache() {
