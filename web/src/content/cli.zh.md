@@ -143,3 +143,7 @@ survey26 final set 1a2b3c4d
 - 主办方功能：任何账号都不能通过令牌使用。
 - 原有的队伍模型 API 设置和浏览器内模型中转：已由 **密钥与网络**（`survey26 env`）取代。
 - 本地 CSV 会话以及早期练习赛的 CSV 提交记录：这些形式已不再接受。
+
+## 8. 联系人
+
+- 夜班看守 Johnny：`POST https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/contact-johnny`，请求体 `{"token": "$SOPHON_RUN_TOKEN"}`（仅在运行中的评测内有效）。

@@ -108,4 +108,4 @@
 3. 队名、得分与名次公开。
 4. 主办方提供的比赛数据、任务卡、评测程序与示例项目按 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 提供（署名、非商业）；使用请引用 GOSIM 2026 Agentic Observer Hackathon ([https://create.gosim.org/survey26/](https://create.gosim.org/survey26/))。选手自己编写的代码不受此限制。主办方将发布介绍本基准的正式文章，发布后请引用该文章。
 
-联系方式：hackathon@gosim.org
+联系方式：hackathon@gosim.org · 夜班看守 Johnny：JohnnyContact@163.com
