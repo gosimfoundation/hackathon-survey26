@@ -54,7 +54,7 @@ def schedule(edge_stack):
     practice, online, beta = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     starts = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=9, hours=6)
     query(uri, "insert into public.phases(id,slug,name_en,name_zh) values(%s,'practice','Practice','练习赛')", (practice,))
-    query(uri, "insert into public.phases(id,slug,name_en,name_zh,starts_at,sort_order) values(%s,'online','Online Competition','线上比赛',%s,10)",
+    query(uri, "insert into public.phases(id,slug,name_en,name_zh,starts_at,sort_order) values(%s,'online','Online Competition','正式赛',%s,10)",
           (online, starts))
     query(uri, "insert into public.phases(id,slug,name_en,name_zh,starts_at,sort_order) values(%s,'beta-acceptance','Beta acceptance','内测验收',%s,5)",
           (beta, starts - timedelta(days=5)))
@@ -76,13 +76,13 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
         desktop.on('pageerror', lambda error: errors.append(str(error)))
         desktop.goto(portal_site + '/?lang=zh')
         stage = desktop.get_by_test_id('phase-next')
-        expect(stage).to_contain_text('线上比赛', timeout=15000)
+        expect(stage).to_contain_text('正式赛', timeout=15000)
         expect(stage).to_contain_text(f'{local.month}月{local.day}日开赛（北京时间）')
         expect(stage).to_contain_text('还有 9 天')
         expect(stage.locator('.phase-countdown')).to_be_visible()
         expect(stage).not_to_contain_text('内测验收')
         expect(desktop.get_by_test_id('phase-strip')).to_contain_text('练习赛')
-        expect(desktop.get_by_test_id('phase-pill')).to_have_attribute('title', re.compile('下一阶段：线上比赛'))
+        expect(desktop.get_by_test_id('phase-pill')).to_have_attribute('title', re.compile('下一阶段：正式赛'))
         # The first-visit walkthrough shades only the sky map, never the hero title beside it.
         expect(desktop.locator('.sky-tour-shade')).to_be_visible()
         clipped = desktop.evaluate("""() => {
@@ -135,7 +135,7 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
         expect(mobile.locator('.register-bar-spacer')).to_have_count(0)
         mobile.goto(portal_site + '/?lang=zh')
         mobile.get_by_role('button', name='菜单').click()
-        expect(mobile.get_by_test_id('menu-next-phase')).to_contain_text('下一阶段：线上比赛')
+        expect(mobile.get_by_test_id('menu-next-phase')).to_contain_text('下一阶段：正式赛')
         # The access team can read its restricted test phase, yet it is never announced as the next stage.
         assert query(schedule['uri'], "select slug from public.phases where slug='beta-acceptance'",
                      role='authenticated', user=schedule['tester']) == [('beta-acceptance',)]
@@ -143,7 +143,7 @@ def test_visitor_sees_next_public_stage_aligned_pages_and_mobile_register_bar(po
         tester.on('pageerror', lambda error: errors.append(str(error)))
         login(tester, portal_site, schedule['tester'], '/dashboard')
         tester.goto(portal_site + '/?lang=zh')
-        expect(tester.get_by_test_id('phase-next')).to_contain_text('线上比赛', timeout=15000)
+        expect(tester.get_by_test_id('phase-next')).to_contain_text('正式赛', timeout=15000)
         expect(tester.get_by_test_id('phase-next')).not_to_contain_text('内测验收')
         browser.close()
     assert not errors, errors

@@ -177,14 +177,14 @@ const words = computed(() => pick({
   saveEvidence: '保存材料', notes: '架构和复现说明', close: '关闭检查', done: '已保存。', prepared: '项目已排队，等待准备。准备好后请到下方第2步点“检查接口”。',
   confirmed: '已确认版本。请到下方第3步开始评测。', queued: '已加入评测队列。', failed: '操作未完成，请刷新后重试。', working: '处理中…',
   team: '请先加入或创建队伍。', phaseUnavailable: '当前没有开放的评测赛程。',
-  final: '最终版本', finalIntro: '线上赛结束后，主办方会在隐藏任务卡 E–H 上对每队的最终版本各评测 3 次（每张卡 900 秒），每张卡的成绩取 3 次评测的平均分；每张卡的 3 次评测同时进行，请确保你的模型服务能承受并发调用。最终排名只看 E–H 四张卡的平均分，线上榜不决定最终排名。',
-  selfCheck: '评测 3 次取平均', selfCheckNote: '自检工具：与决赛相同，将同一版本连续评测 3 次，评测记录中显示各卡及综合的平均分，以及 3 次之间的最低–最高分，便于检查智能体是否稳定。占用今天 3 次评测。这 3 次评测各自按普通评测计入线上榜（线上榜取单次最高分），3 次的平均分不上榜。',
+  final: '最终版本', finalIntro: '正式赛结束后，主办方会在隐藏任务卡 E–H 上对每队的最终版本各评测 3 次（每张卡 900 秒），每张卡的成绩取 3 次评测的平均分；每张卡的 3 次评测同时进行，请确保你的模型服务能承受并发调用。最终排名只看 E–H 四张卡的平均分，正式赛排行榜不决定最终排名。',
+  selfCheck: '评测 3 次取平均', selfCheckNote: '自检工具：与决赛相同，将同一版本连续评测 3 次，评测记录中显示各卡及综合的平均分，以及 3 次之间的最低–最高分，便于检查智能体是否稳定。占用今天 3 次评测。这 3 次评测各自按普通评测计入正式赛排行榜（取单次最高分），3 次的平均分不上榜。',
   selfCheckNeed: '「评测 3 次取平均」需要今天剩余至少 3 次评测。', selfCheckConfirm: '将对此版本连续评测 3 次，占用今天 3 次评测（今天还剩 {n} 次）。确定继续吗？',
   selfCheckQueued: '已加入评测队列，3 次评测将依次进行。', selfCheckTitle: '评测 3 次取平均（自检）',
   selfCheckDone: '已完成 {done}/{total} 次', selfCheckCards: '各卡平均分（最低–最高）', selfCheckOverall: '综合平均分（最低–最高）',
   selfCheckOff: '不计入排行榜。', selfCheckOne: '自检第 {n}/{total} 次',
   noModel: '本次不提供模型', noModelPill: '无模型',
-  noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入线上榜。隐藏卡决赛始终使用本队的正常配置。',
+  noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入正式赛排行榜。隐藏卡决赛始终使用本队的正常配置。',
   noModelOn: '接下来的评测将不提供模型。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
@@ -201,14 +201,14 @@ const words = computed(() => pick({
   submitBlocked: '今天的上传次数已用完，按上方的时间重置。', approveNeedsTest: '这个版本没有通过公开场景测试，不能确认。请查看日志，修正项目后重新上传。',
   configured: '已配置', otherVars: '另有 {n} 个变量', noVars: '尚未配置',
   latestFailed: '最近一次评测失败', latestCardFailed: '最近一次评测有卡片失败', openFailLog: '查看失败日志', notCounted: '未计入次数', latestPill: '最近一次 · 失败',
-  apiFinalNote: '隐藏任务卡 E–H 评测时不会有人打开本页面：程序会调用大模型的队伍，请在线上赛结束前改为『加密保存』。',
+  apiFinalNote: '隐藏任务卡 E–H 评测时不会有人打开本页面：程序会调用大模型的队伍，请在正式赛结束前改为『加密保存』。',
 }))
 const activePhases = computed(() => (data.value?.phases ?? []).filter(p => entryPhaseIds(competition).includes(p.phase_id) && p.phases.is_active &&
   (!p.phases.ends_at || Date.parse(p.phases.ends_at) > Date.now())))
 const projectsOpen = computed(() => activePhases.value.some(p => p.projects_enabled))
 const openPhases = computed(() => activePhases.value.filter(p => !p.phases.starts_at || Date.parse(p.phases.starts_at) <= Date.now()))
 const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === phaseId.value))
-// 线上赛 / 练习赛 (competition mode with practice open, or an offered extra phase): the page's switch picks the phase, and the records
+// 正式赛 / 练习赛 (competition mode with practice open, or an offered extra phase): the page's switch picks the phase, and the records
 // below follow it; otherwise every evaluation is listed as before. A chosen phase that has ended (online after
 // its deadline) is read-only: no phase is selected, so nothing can start, while its records, logs, downloads
 // and the locked final version stay visible.
@@ -296,12 +296,12 @@ function errorMessage(e: unknown) {
     invalid_team_variable: t('submit.team_env.invalid_variable'),
     team_variable_limit: t('submit.team_env.variable_limit'),
     team_variable_not_found: pick('This variable no longer exists. Refresh the page.', '这个变量已不存在，请刷新页面。'),
-    no_model_not_available: pick('“Without a model” is only available for project evaluations in the online competition and practice, not in the hidden final.', '「本次不提供模型」只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。'),
+    no_model_not_available: pick('“Without a model” is only available for project evaluations in the online competition and practice, not in the hidden final.', '「本次不提供模型」只能用于正式赛和练习的项目评测，不能用于隐藏卡决赛。'),
     invalid_team_domains: t('submit.team_env.invalid_domain'),
     team_domain_not_public: t('submit.team_env.domain_not_public'),
     invalid_egress_route: pick('Choose direct, China route or overseas route.', '请选择直连、回国代理或海外代理。'),
     egress_route_unavailable: pick('Egress routes are not offered right now; evaluations connect directly.', '出网线路暂未开放，评测直接连接。'),
-    final_version_locked: pick('The online phase has ended; the final version can no longer change.', '线上赛已结束，最终版本不能再修改。'),
+    final_version_locked: pick('The online phase has ended; the final version can no longer change.', '正式赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
     upload_failed: pick('The file upload failed, possibly due to the network. Please try again.', '文件上传失败，可能是网络问题，请重试。'),

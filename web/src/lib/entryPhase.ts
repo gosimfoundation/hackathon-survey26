@@ -21,7 +21,7 @@ export function parseCompetition(data: unknown): Omit<CompetitionState, 'betaPha
     extraPhaseId: id(d.extra_phase_id) }
 }
 
-/** Whether the 线上赛 / 练习赛 switch is offered. */
+/** Whether the 正式赛 / 练习赛 switch is offered. */
 export const offersPracticeSwitch = (s: CompetitionState) => s.mode === 'competition' && !!s.practicePhaseId
 
 /** Whether the extra (unscored) phase is offered as a third choice. */

@@ -6,7 +6,7 @@ import { normalizeQuotaResetNotice, parseQuotaResetSeen, quotaResetText, remembe
 const now = Date.parse('2026-10-04T12:00:00Z')
 const raw = { id: 'r1', reset_at: '2026-10-04T10:00:00Z', phases: [
   { phase_id: 'a', name_en: 'Practice', name_zh: '练习', daily_batches: 40 },
-  { phase_id: 'b', name_en: 'Online', name_zh: '线上赛', daily_batches: 40 }] }
+  { phase_id: 'b', name_en: 'Online', name_zh: '正式赛', daily_batches: 40 }] }
 
 test('the backend payload is normalized defensively', () => {
   assert.equal(normalizeQuotaResetNotice(null), null)
@@ -41,7 +41,7 @@ test('the text uses the backend daily amount, not a fixed 40', () => {
   const other = normalizeQuotaResetNotice({ ...raw, phases: [{ ...raw.phases[0], daily_batches: 25 }] })!
   assert.match(quotaResetText(other).zh, /今天每队重新有 25 次评测机会/)
   const mixed = normalizeQuotaResetNotice({ ...raw, phases: [raw.phases[0], { ...raw.phases[1], daily_batches: 10 }] })!
-  assert.match(quotaResetText(mixed).zh, /练习 40 次、线上赛 10 次/)
+  assert.match(quotaResetText(mixed).zh, /练习 40 次、正式赛 10 次/)
 })
 
 test('the popup takes turns with the other popups and is mounted app-wide', () => {

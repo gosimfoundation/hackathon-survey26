@@ -25,7 +25,7 @@ const tid = (id: string) => `[data-testid="${id}"]`
 export const GUIDE_STEPS: GuideStep[] = [
   {
     id: 'entry', tab: null, targets: [tid('entry-switch')],
-    zh: { title: '线上赛 / 练习赛', body: '先选赛程。线上赛的评测计入线上榜。练习赛不影响排名，次数单独算。' },
+    zh: { title: '正式赛 / 练习赛', body: '先选赛程。正式赛的评测计入正式赛排行榜。练习赛不影响排名，次数单独算。' },
     en: { title: 'Online or practice', body: 'Pick where you evaluate. Online evaluations count for the online board. Practice does not affect the ranking and has its own daily evaluations.' },
   },
   {
@@ -60,10 +60,10 @@ export const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: 'final', tab: 'settings', targets: [tid('final-version'), tid('compete-tab-settings')],
-    zh: { title: '⑥ 最终版本', body: '线上赛截止前选好最终版本。不选的话，默认用本队最高分的版本。' },
+    zh: { title: '⑥ 最终版本', body: '正式赛截止前选好最终版本。不选的话，默认用本队最高分的版本。' },
     en: { title: '⑥ Final version', body: 'Choose your final version before the online deadline. If you don’t, your best-scoring version is used.' },
     fallback: {
-      zh: { title: '⑥ 最终版本', body: '练习期间还没有这一项。线上赛开始后，它会出现在「设置」里，记得在截止前选好。' },
+      zh: { title: '⑥ 最终版本', body: '练习期间还没有这一项。正式赛开始后，它会出现在「设置」里，记得在截止前选好。' },
       en: { title: '⑥ Final version', body: 'Not shown during practice. Once the online phase starts it appears under Settings; choose it before the deadline.' },
     },
   },
