@@ -32,7 +32,7 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
     shots = Path(os.environ['SUPERBOARD_SHOTS']) if os.environ.get('SUPERBOARD_SHOTS') else None
     query(uri, "update public.phases set slug=slug||'-old-'||%s,is_active=false where slug='online'", (tag,))
     phase = query(uri, """insert into public.phases(slug,name_en,name_zh,counts_for_final,is_active,leaderboard_mode,starts_at,ends_at)
-                  values('online-'||%s,'Online','线上赛',false,true,'live',now()-interval '1 day',now()+interval '2 days') returning id""", (tag,))[0][0]
+                  values('online-'||%s,'Online','正式赛',false,true,'live',now()-interval '1 day',now()+interval '2 days') returning id""", (tag,))[0][0]
     query(uri, """insert into public.observer_phase_settings(phase_id,projects_enabled,local_sessions_enabled,daily_batches,
                   model_token_limit,model_call_limit,board_layout) values(%s,true,true,80,1000,10,'cards_overall')""", (phase,))
     query(uri, "update private.observer_site_mode set mode='competition',phase_id=%s", (phase,))
@@ -67,6 +67,7 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
         before = shoot('1-before-switch-overall', '/leaderboard/online?lang=zh')
         assert board_state(before) == ['总榜', '任务卡 A', '任务卡 B', '任务卡 C', '任务卡 D']
         before_rows = texts(before.get_by_test_id('lb-row'))
+        expect(before.get_by_test_id('board-tab-super')).to_have_count(0)
         before.close()
 
         # Switch on: A1-D1 join the phase (staging-like version suffix); evaluations now run 8 cards.
@@ -76,6 +77,11 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
         assert board_state(page) == ['总榜', '任务卡 A', '任务卡 B', '任务卡 C', '任务卡 D',
                                      '超级总榜', '任务卡 A1', '任务卡 B1', '任务卡 C1', '任务卡 D1']
         assert texts(page.get_by_test_id('lb-row')) == before_rows                       # nothing moved
+        # The super board's own tab sits right after 正式赛; the debug board (if any) stays far right.
+        phase_tabs = [t.get_attribute('data-testid') for t in page.locator('.tabs a').all()]
+        assert phase_tabs[phase_tabs.index('board-tab-online') + 1] == 'board-tab-super'
+        assert 'board-tab-practice' not in phase_tabs or phase_tabs[-1] == 'board-tab-practice'
+        expect(page.get_by_test_id('board-tab-online')).to_have_class(re.compile(r'(^|\s)active(\s|$)'))
         page.close()
 
         staging = team_named(uri, 'plus-staging ' + tag)
@@ -101,6 +107,8 @@ def test_online_board_with_added_cards(portal_site, edge_stack):
 
             page = shoot('4-super', '/leaderboard/online?lang=zh&scenario=super', view)
             expect(page.get_by_test_id('board-card-super')).to_have_attribute('aria-pressed', 'true')
+            expect(page.get_by_test_id('board-tab-super')).to_have_class(re.compile(r'(^|\s)active(\s|$)'))
+            expect(page.get_by_test_id('board-tab-online')).not_to_have_class(re.compile(r'(^|\s)active(\s|$)'))
             rows = page.get_by_test_id('lb-row')
             expect(rows).to_have_count(2)                                                  # only complete 8-card evaluations
             expect(rows.nth(0)).to_contain_text('Spiky ' + tag)                            # 240000

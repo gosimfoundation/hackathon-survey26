@@ -1,4 +1,4 @@
-"""Cards A1-D1 alongside A-D (migrations 20261005110000/20261005110100): the A-D board, its score and its
+"""Cards A1-D1 alongside A-D (migrations 20261005200000/20261005200100): the A-D board, its score and its
 completeness rule are unchanged when evaluations run 8 cards; the super board ranks the sum of all 8 cards of
 evaluations that completed every card; a phase without added cards shows nothing new."""
 import secrets

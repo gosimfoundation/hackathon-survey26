@@ -53,7 +53,7 @@ test('the walkthrough uses current project guidance and preserves the submission
     // The starter-kit download was retired; new participants use the docs and example projects.
     assert.doesNotMatch([...flatten(messages[locale]!.start3)].join(' '), /local_runner\.py|agent-observer-starter-kit/)
   }
-  assert.match(messages.zh!.start3.practice.s3_points.join(' '), /40 次/)
+  assert.match(messages.zh!.start3.practice.s3_points.join(' '), /50 次/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /每队每天 50 次评测/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /A–D.*900 秒/)
   assert.match(messages.zh!.start3.competition.s3_points.join(' '), /隐藏任务卡 E–H/)

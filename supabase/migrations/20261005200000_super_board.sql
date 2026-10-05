@@ -1,7 +1,7 @@
 -- Super board (超级总榜) for a complete-project phase that also runs the added cards A1-D1.
 -- Owner-approved plan 2026-10-05: an online evaluation may run 8 cards, A-D plus A1-D1.
 -- The existing board (public.observer_card_board) keeps ranking the mean of A-D only
--- (migration 20261005110100); this board ranks the SUM of all the phase's cards of one
+-- (migration 20261005200100); this board ranks the SUM of all the phase's cards of one
 -- evaluation, counting only evaluations in which every card of the phase completed.
 -- Each team appears once, with its highest total; teams without such an evaluation are not listed.
 -- p_scenario_slug: one card of the phase, ranked by that card's score in the team's super-board

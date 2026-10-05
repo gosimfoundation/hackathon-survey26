@@ -1,7 +1,7 @@
 -- Cards A1-D1 alongside A-D (owner-approved plan 2026-10-05): the existing online board, its
 -- score and its rules stay exactly as they are when an evaluation runs 8 cards.
 -- An added card is one whose slug matches private.observer_extra_card (v4-a1 .. v4-d1, any -vN
--- version; migration 20261005110000). In a phase without such a card nothing below changes
+-- version; migration 20261005200000). In a phase without such a card nothing below changes
 -- behaviour: every rule reduces to the previous one.
 --
 -- 1. private.observer_batch_score: an evaluation's score (observer_batches.score, the headline

@@ -21,7 +21,7 @@ export function scenarioLabel(slug: string, name: string, locale: string): strin
 }
 
 /** Cards A1-D1 run with A-D in an online evaluation; they count only on the super board. Same pattern as
- * private.observer_extra_card in the database (migration 20261005110000). */
+ * private.observer_extra_card in the database (migration 20261005200000). */
 const EXTRA_CARD = /^v4-([a-d])1(?:-v\d+)?$/
 export const isExtraCard = (slug: string) => EXTRA_CARD.test(slug)
 

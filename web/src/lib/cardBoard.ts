@@ -70,7 +70,7 @@ export function toLeaderboardEntry(row: any, index: number): LeaderboardEntry {
  */
 export type BoardLayout = 'overall' | 'cards' | 'cards_overall'
 export interface BoardCard { slug: string; name: string }
-/** cards: the cards of the board's score (A-D); extraCards: the added cards A1-D1 (migration 20261005110100), which
+/** cards: the cards of the board's score (A-D); extraCards: the added cards A1-D1 (migration 20261005200100), which
  * count only on the super board. The super board's tab is SUPER_TAB; an added card's tab is its slug. */
 export interface CardBoard { layout: BoardLayout; cards: BoardCard[]; extraCards: BoardCard[]; scenario: string | null; rows: LeaderboardEntry[] }
 type TabSource = Pick<CardBoard, 'layout' | 'cards'> & Partial<Pick<CardBoard, 'extraCards'>>

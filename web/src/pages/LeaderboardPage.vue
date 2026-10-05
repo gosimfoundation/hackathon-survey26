@@ -6,7 +6,7 @@ import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
-import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
+import { isExtraCard, scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { competition, loadCompetition } from '../stores/competition'
 import { supabase } from '../lib/supabase'
@@ -96,6 +96,10 @@ const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.
   : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, allCards.value.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
 const boardNote = computed(() => cardTab.value === null ? t('leaderboard.overall_note') : cardTab.value === SUPER_TAB ? t('leaderboard.super_note')
   : superMode.value ? t('leaderboard.super_card_note') : t('leaderboard.card_note'))
+// The super board's own tab next to 正式赛 (before the debug board, which stays far right): only where the online
+// phase lists the added cards A1-D1. It opens the online board on its super-board view.
+const superTabShown = (p: Phase) => p.slug === 'online' && p.scenarios.some(s => isExtraCard(s.slug))
+const onSuper = computed(() => phase.value?.slug === 'online' && superMode.value)
 function pickCard(slug: string | null) {
   const { scenario: _drop, ...rest } = route.query
   void router.replace({ query: slug === null ? rest : { ...rest, scenario: slug } })
@@ -141,7 +145,10 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
-        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+        <template v-for="p in visiblePhases" :key="p.id">
+          <router-link :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id && !(p.slug === 'online' && onSuper), 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+          <router-link v-if="superTabShown(p)" :to="{ path: `/leaderboard/${p.slug}`, query: { scenario: SUPER_TAB } }" :class="{ active: onSuper }" data-testid="board-tab-super">{{ t('leaderboard.super_board') }}</router-link>
+        </template>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 

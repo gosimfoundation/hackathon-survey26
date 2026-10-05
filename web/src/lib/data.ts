@@ -272,7 +272,7 @@ async function fetchCardBoard(phaseId: string, scenarioSlug: string | null, limi
   })
 }
 
-/** The super board's rows (sum over A-D and A1-D1, migration 20261005110000); none on any error. */
+/** The super board's rows (sum over A-D and A1-D1, migration 20261005200000); none on any error. */
 async function fetchSuperRows(phaseId: string, limit: number): Promise<LeaderboardEntry[]> {
   return cached(`card_board:super:${phaseId}:${limit}`, BOARD_CACHE_MS, async () => {
     const { data, error } = await supabase.rpc('observer_super_board', { p_phase: phaseId, p_scenario_slug: null, p_limit: limit })
