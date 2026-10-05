@@ -33,13 +33,18 @@ let timer: number | undefined
 // The hidden final's tab comes last and exists only for phases the database returns (participants: once published).
 // Organizers may also open any phase they can read at /leaderboard/<slug> (e.g. a rehearsal) as a preview tab.
 const visiblePhases = computed(() => {
-  const listed = LEADERBOARD_PAGE_SLUGS.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p)
+  // Main boards first (正式赛, 练习赛, the final); the debug board (slug 'practice') goes last, set apart.
+  const main = LEADERBOARD_PAGE_SLUGS.filter(slug => slug !== 'practice')
+  const order = ['online', ...main.filter(slug => slug !== 'online')]
+  const listed = order.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p)
+  const debug = phases.value.find(p => p.slug === 'practice')
   const slug = route.params.phase as string | undefined
   const extra = isAdmin.value && slug && !listed.some(p => p.slug === slug) ? phases.value.find(p => p.slug === slug) : undefined
   // The extra (Overlook) phase gets its own tab wherever current_competition offers it to this person.
   const offered = phases.value.find(p => p.id === competition.extraPhaseId && !listed.some(l => l.id === p.id))
   const all = offered ? [...listed, offered] : listed
-  return extra && extra.id !== offered?.id ? [...all, extra] : all
+  const withExtra = extra && extra.id !== offered?.id && extra.id !== debug?.id ? [...all, extra] : all
+  return debug ? [...withExtra, debug] : withExtra
 })
 // Without a slug the default stays among the original three boards, so the final never displaces them.
 const defaultPhases = computed(() => visiblePhases.value.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug)))
@@ -129,7 +134,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
     <section class="section tight"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
-        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+        <router-link v-for="p in visiblePhases" :key="p.id" :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
@@ -210,4 +215,5 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
 .lb-click { cursor: pointer; transition: background-color .2s ease; }
 .lb-click:hover { background: rgba(49,94,251,.08); }
 .lb-click:focus-visible { outline: 2px solid #78a6ff; outline-offset: -2px; }
+.tabs .tab-debug { margin-left: auto; opacity: .7; }
 </style>
