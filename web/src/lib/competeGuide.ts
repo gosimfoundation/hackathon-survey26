@@ -40,8 +40,8 @@ export const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: 'evaluate', tab: 'progress', targets: [tid('project-evaluate-button'), tid('quota-bar'), tid('progress-step-3')],
-    zh: { title: '③ 评测', body: '确认后点「评测」。想看稳定性，用「评测 3 次取平均」。每天 40 次，最多同时 4 个。' },
-    en: { title: '③ Evaluate', body: 'Once confirmed, press Evaluate. To check stability, use “Evaluate 3 times and average”. 40 evaluations a day, up to 4 at once.' },
+    zh: { title: '③ 评测', body: '确认后点「评测」。想看稳定性，用「评测 3 次取平均」。每天 50 次，最多同时 4 个。' },
+    en: { title: '③ Evaluate', body: 'Once confirmed, press Evaluate. To check stability, use “Evaluate 3 times and average”. 50 evaluations a day, up to 4 at once.' },
   },
   {
     id: 'results', tab: 'progress', targets: [tid('latest-evaluation'), tid('compete-tab-history')],

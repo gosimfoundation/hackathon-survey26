@@ -473,11 +473,11 @@
       "items": [
         {
           "title": "Projects",
-          "desc": "Practice accepts a complete project (40 per team per day, separate board). The formal competition accepts complete projects only: a public repository URL or a private ZIP, evaluated round by round in the cloud."
+          "desc": "Practice accepts a complete project (50 per team per day, separate board). The formal competition accepts complete projects only: a public repository URL or a private ZIP, evaluated round by round in the cloud."
         },
         {
           "title": "Limits",
-          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 40 evaluations per team per day, each running cards A–D, with a budget of 900 s of normalized CPU time and a 30-minute real-time cap per card."
+          "desc": "Any language; model calls are optional. Project ZIP up to 50 MB. Competition: 50 evaluations per team per day, each running cards A–D, with a budget of 900 s of normalized CPU time and a 30-minute real-time cap per card."
         }
       ],
       "link": "Submission docs"
@@ -2207,7 +2207,7 @@
       },
       {
         "q": "How many submissions can I make?",
-        "a": "Practice: 40 complete-project evaluations per team per day (separate board). Competition: 40 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. The Practice board ranks each card separately."
+        "a": "Practice: 50 complete-project evaluations per team per day (separate board). Competition: 50 evaluations per team per day, each running once on every card A–D (900 s per card), and the online board keeps your best complete evaluation. Daily quotas reset at 00:00 UTC (08:00 Beijing time); failures caused by the platform are not counted. The Practice board ranks each card separately."
       },
       {
         "q": "Is the leaderboard score the final result?",
@@ -2737,7 +2737,7 @@
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate:",
       "s3_points": [
-        "Complete project: upload your code; the platform runs and scores it in the cloud. 40 per team per day."
+        "Complete project: upload your code; the platform runs and scores it in the cloud. 50 per team per day."
       ],
       "s3_cta": "Go to Participate",
       "help_prefix": "More questions? See the",
@@ -2759,7 +2759,7 @@
       "s3_title": "Step 3 · Submit a complete project",
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [
-        "40 evaluations per team per day; each runs your agent on the task cards A–D, 900 s per card, and the board shows the mean over A–D.",
+        "50 evaluations per team per day; each runs your agent on the task cards A–D, 900 s per card, and the board shows the mean over A–D.",
         "Choose your final version before the competition ends.",
         "The final ranking uses only that version's score on the hidden cards E–H (3 evaluations per card, averaged, then the mean over E–H)."
       ],
