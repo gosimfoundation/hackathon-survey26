@@ -284,6 +284,75 @@ def gw():
     g.server.shutdown()
 
 
+EXTRA = "99999999-9999-4999-8999-999999999999"
+ONLINE = "12121212-1212-4212-8212-121212121212"
+BATCH_X = "4444eeee-4444-4444-4444-444444444444"
+SC_C, SC_D = "7777cccc-7777-7777-7777-777777777777", "7777dddd-7777-7777-7777-777777777777"
+
+
+def extra_listing(online=False):
+    """listing() plus an optional extra (unscored) phase with its own quota and one newer evaluation in it."""
+    data = listing()
+    data["phases"].append({"phase_id": EXTRA, "projects_enabled": True, "daily_batches": 6,
+                           "phases": {"slug": "extra-round", "name_en": "Extra Round", "name_zh": "加时赛", "is_active": True,
+                                      "starts_at": None, "ends_at": None}})
+    if online:
+        data["phases"].append({"phase_id": ONLINE, "projects_enabled": True, "daily_batches": 40,
+                               "phases": {"slug": "online", "name_en": "Online", "name_zh": "正式赛", "is_active": True,
+                                          "starts_at": "2026-10-04T16:00:00+00:00", "ends_at": None}})
+    data["quota"].append({"phase_id": EXTRA, "daily_batches": 6, "used": 2, "remaining": 4, "resets_at": "2026-10-06T00:00:00+00:00",
+                          "preparations_daily": 40, "preparations_used": 2, "preparations_remaining": 38})
+    data["batches"].insert(0, {"id": BATCH_X, "status": "scored", "score": 12.5, "phase_id": EXTRA, "revision_id": REV,
+                               "created_at": "2026-10-03T00:00:00Z", "repeat_group": None, "repeat_runs": None, "quota_refunded": False,
+                               "observer_runs": [{"id": "5555eeee-5555-5555-5555-555555555555", "scenario_id": SC_C, "status": "scored",
+                                                  "score": 12.5, "result_path": "z"}]})
+    return data
+
+
+def extra_routes(online=False, beta=None, extra=True):
+    comp = {"mode": "competition" if online else "practice", "phase_id": ONLINE if online else "x"}
+    comp.update({"practice_phase_id": PHASE} if online else {"project_phase_id": PHASE})
+    if extra:
+        comp["extra_phase_id"] = EXTRA
+    return {"portal:list": (200, {"data": extra_listing(online)}), "rpc:current_competition": (200, {"data": comp}),
+            "rpc:my_observer_phase": (200, {"data": beta}),
+            "phases": (200, {"data": base_routes("")["phases"][1]["data"] + [
+                {"id": EXTRA, "slug": "extra-round", "name_en": "Extra Round", "name_zh": "加时赛", "starts_at": None, "ends_at": None,
+                 "is_active": True, "observer_settings": {"projects_enabled": True}}]})}
+
+
+# Card slugs as the A1-D1 cards would be named, mixed with A-D and an unknown one (listed last, stable).
+CARD_SCENARIOS = (200, {"data": [{"id": SC_A, "slug": "v4-b1", "name": "x"}, {"id": SC_B, "slug": "v4-d", "name": "y"},
+                                 {"id": SC_C, "slug": "v4-a1-v2", "name": "z"}, {"id": SC_D, "slug": "v4-e1", "name": "Other"}]})
+
+
+def card_listing():
+    data = listing()
+    data["batches"][0]["observer_runs"] += [{"id": "5555cccc-5555-5555-5555-555555555555", "scenario_id": SC_C, "status": "scored",
+                                             "score": 1, "result_path": "y"},
+                                            {"id": "5555dddd-5555-5555-5555-555555555555", "scenario_id": SC_D, "status": "scored",
+                                             "score": 2, "result_path": None}]
+    return data
+
+
+ONLINE_PHASES = (200, {"data": [{"id": ONLINE, "slug": "online", "starts_at": None, "ends_at": None, "is_active": True,
+                                 "observer_settings": [{"projects_enabled": True}]}]})
+BASELINES = [{"group": "basic", "overall_score": 65.25, "card_scores": {"v4-a": 80, "v4-b": 50.5}, "runs": 9, "updated_at": "t"},
+             {"group": "pro", "overall_score": 75, "card_scores": None, "runs": 12, "updated_at": "t"},
+             {"group": "other", "overall_score": 99}, {"group": "pro", "overall_score": "high"}]
+
+
+def online_board(baselines=BASELINES):
+    return {"phases": ONLINE_PHASES, "rpc:current_competition": (200, {"data": {"mode": "competition", "phase_id": ONLINE}}),
+            "rpc:observer_card_board": (200, lambda b: (200, {"data": dict(BOARD, scenario=b["args"]["p_scenario_slug"], cards=[
+                {"slug": "v4-b1", "name": "B1"}, {"slug": "v4-b", "name": "B"}, {"slug": "v4-a", "name": "A"}])})),
+            "rpc:observer_baseline_rows": baselines}
+
+
+RELAY = {"enabled": True, "has_team": True, "eligible": True, "daily_requests": 200, "daily_tokens": 2000000, "max_concurrent": 2,
+         "max_tokens": 8192, "used_requests": 13, "used_tokens": 2500000}
+
+
 def recent_listing():
     return (200, {"data": listing(recent=True)})
 
@@ -510,6 +579,58 @@ SCENARIOS = [
     ("kimi-claim-refused", ["--json", "kimi", "claim"], {"routes": {"rpc:claim_kimi_plan_code": (400, {"error": "not_eligible"})}, "exit": 1}),
     ("credits-list", ["--json", "credits", "list"], {"exit": 0}),
     ("credits-claim", ["--json", "credits", "claim", "acme"], {"exit": 0}),
+    # 1.7.0: the optional extra (unscored) phase
+    ("competition-extra", ["--json", "competition"], {"routes": extra_routes(), "exit": 0}),
+    ("competition-extra-human-zh", ["--lang", "zh", "competition"], {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("competition-extra-human", ["competition"], {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("quota-extra", ["--json", "quota"], {"routes": extra_routes(), "exit": 0}),
+    ("quota-extra-human-zh", ["--lang", "zh", "quota"], {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("quota-extra-lookup-fails", ["--json", "quota"],
+     {"routes": dict(extra_routes(), **{"rpc:current_competition": (503, {"error": "gateway_unavailable"})}), "exit": 0}),
+    ("eval-start-extra", ["--json", "eval", "start", REV2, "--phase", "extra"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-start-extra-human", ["eval", "start", REV2, "--phase", "extra"], {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("eval-start-extra-slug", ["--json", "eval", "start", REV2, "--phase", "extra-round"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-start-extra-none", ["--json", "eval", "start", REV2, "--phase", "extra"], {"routes": extra_routes(extra=False), "exit": 1}),
+    ("eval-start-default-practice", ["--json", "eval", "start", REV2], {"routes": extra_routes(), "exit": 0}),
+    ("eval-start-default-online", ["--json", "eval", "start", REV2], {"routes": extra_routes(online=True, beta=EXTRA), "exit": 0}),
+    ("eval-selfcheck-extra", ["--json", "eval", "selfcheck", REV2, "--phase", "extra", "--yes"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-selfcheck-extra-human-zh", ["--lang", "zh", "eval", "selfcheck", REV2, "--phase", "extra", "--yes"],
+     {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("eval-list-extra", ["--json", "eval", "list", "--phase", "extra"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-list-slug", ["--json", "eval", "list", "--phase", "practice-projects"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-list-all-phases-human", ["eval", "list"], {"routes": extra_routes(), "exit": 0, "human": True}),
+    ("eval-list-unknown-phase", ["--json", "eval", "list", "--phase", "nope"], {"routes": extra_routes(), "exit": 4}),
+    ("eval-list-extra-none", ["--json", "eval", "list", "--phase", "extra"], {"routes": extra_routes(extra=False), "exit": 1}),
+    ("eval-show-latest-phase", ["--json", "eval", "show", "latest", "--phase", "practice-projects"], {"routes": extra_routes(), "exit": 0}),
+    ("eval-wait-phase", ["--json", "eval", "wait", "--phase", "extra"], {"routes": extra_routes(), "exit": 0}),
+    ("results-show-phase", ["--json", "results", "show", "latest", "--phase", "extra"], {"routes": extra_routes(), "exit": 0}),
+    ("results-show-wrong-phase", ["--json", "results", "show", "4444eeee", "--phase", "practice-projects"], {"routes": extra_routes(), "exit": 4}),
+    ("results-download-all-phase", ["--json", "results", "download-all", "--phase", "practice-projects"], {"routes": extra_routes(), "exit": 0}),
+    # 1.7.0: baseline reference rows on the online board
+    ("leaderboard-baselines", ["--json", "leaderboard"], {"routes": online_board((200, {"data": BASELINES})), "exit": 0}),
+    ("leaderboard-baselines-human", ["leaderboard"], {"routes": online_board((200, {"data": BASELINES})), "exit": 0, "human": True}),
+    ("leaderboard-baselines-card-zh", ["--json", "--lang", "zh", "leaderboard", "--card", "v4-b"],
+     {"routes": online_board((200, {"data": BASELINES})), "exit": 0}),
+    ("leaderboard-baselines-mine", ["--json", "leaderboard", "--mine"], {"routes": online_board((200, {"data": BASELINES})), "exit": 0}),
+    ("leaderboard-baselines-unavailable", ["--json", "leaderboard"],
+     {"routes": online_board((403, {"error": "action_not_available"})), "exit": 0}),
+    ("leaderboard-baselines-none", ["--json", "leaderboard"], {"routes": online_board((200, {"data": None})), "exit": 0}),
+    # 1.7.0: temporary Kimi relay
+    ("relay-status", ["--json", "relay", "status"], {"routes": {"rpc:my_kimi_relay": (200, {"data": RELAY})}, "exit": 0}),
+    ("relay-status-human", ["relay", "status"], {"routes": {"rpc:my_kimi_relay": (200, {"data": RELAY})}, "exit": 0, "human": True}),
+    ("relay-status-off-zh", ["--json", "--lang", "zh", "relay", "status"],
+     {"routes": {"rpc:my_kimi_relay": (200, {"data": dict(RELAY, enabled=False)})}, "exit": 0}),
+    ("relay-status-not-eligible-human", ["relay", "status"],
+     {"routes": {"rpc:my_kimi_relay": (200, {"data": dict(RELAY, eligible=False)})}, "exit": 0, "human": True}),
+    ("relay-status-absent", ["--json", "relay", "status"], {"routes": {"rpc:my_kimi_relay": (200, {"data": None})}, "exit": 0}),
+    ("relay-status-refused", ["--json", "relay", "status"],
+     {"routes": {"rpc:my_kimi_relay": (403, {"error": "action_not_available"})}, "exit": 1}),
+    # 1.7.0: A1-D1 card slugs are recognised (labels, order, download folders)
+    ("cards-a1-show", ["--json", "eval", "show", "latest"], {"routes": {"scenarios": CARD_SCENARIOS, "portal:list": (200, {"data": card_listing()})}, "exit": 0}),
+    ("cards-a1-show-zh", ["--json", "--lang", "zh", "eval", "show", "latest"],
+     {"routes": {"scenarios": CARD_SCENARIOS, "portal:list": (200, {"data": card_listing()})}, "exit": 0}),
+    ("cards-a1-download-all", ["--json", "results", "download-all"],
+     {"routes": {"scenarios": CARD_SCENARIOS, "portal:list": (200, {"data": card_listing()})}, "exit": 0}),
     ("missing-command", ["--json"], {"exit": 2}),
     ("group-only", ["--json", "profile"], {"exit": 2}),
     ("missing-positional", ["team", "create"], {"exit": 2, "human": True}),
@@ -575,3 +696,59 @@ def test_every_spec_command_has_help_in_both_builds():
             assert done.returncode == 0, (build, entry["path"], done.stderr)
             for option in entry["options"]:
                 assert option["flags"][-1] in done.stdout, (build, entry["path"], option["flags"])
+
+
+def run_python(gw, tmp_path, argv, routes):
+    done = run_build([sys.executable, str(ROOT / "cli" / "survey26.py")], gw, tmp_path, argv, routes=routes)
+    return done, (json.loads(done["stdout"]) if done["stdout"].startswith("{") else None)
+
+
+def test_extra_phase_is_never_the_default(gw, tmp_path):
+    # Competition mode, and the extra phase is also the team's beta entry: the default stays online.
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "start", REV2], extra_routes(online=True, beta=EXTRA))
+    assert doc["data"]["phase_id"] == ONLINE and doc["data"]["extra"] is False
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "start", REV2], extra_routes())
+    assert doc["data"]["phase_id"] == PHASE and doc["data"]["extra"] is False
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "start", REV2, "--phase", "extra"], extra_routes())
+    assert doc["data"]["phase_id"] == EXTRA and doc["data"]["phase"] == "extra-round" and doc["data"]["extra"] is True
+
+
+def test_extra_phase_shown_by_its_name(gw, tmp_path):
+    _, doc = run_python(gw, tmp_path, ["--json", "competition"], extra_routes())
+    assert doc["data"]["extra_phase"]["name_en"] == "Extra Round" and EXTRA in [p["id"] for p in doc["data"]["phases"]]
+    done, _ = run_python(gw, tmp_path, ["competition"], extra_routes())
+    assert "Extra phase: Extra Round" in done["stdout"] and "--phase extra-round" in done["stdout"]
+    _, doc = run_python(gw, tmp_path, ["--json", "quota"], extra_routes())
+    assert [(q["phase"], q["extra"]) for q in doc["data"]] == [("practice-projects", False), ("extra-round", True)]
+    done, _ = run_python(gw, tmp_path, ["--lang", "zh", "quota"], extra_routes())
+    assert "加时赛" in done["stdout"] and "不计分" in done["stdout"]
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "list", "--phase", "extra"], extra_routes())
+    assert [b["batch_id"] for b in doc["data"]] == [BATCH_X] and doc["data"][0]["phase"] == "extra-round"
+
+
+def test_baselines_sit_where_their_score_would(gw, tmp_path):
+    done, _ = run_python(gw, tmp_path, ["leaderboard"], online_board((200, {"data": BASELINES})))
+    names = [line.split("  ")[1].strip() for line in done["stdout"].splitlines()[2:5]]
+    # Board: A 70.5, Stars 61; baselines pro 75, basic 65.25.
+    assert names == ["Baseline · official examples (pro)", "A", "Baseline · official examples (basic)"], done["stdout"]
+    assert "Cards (--card): v4-a, v4-b, v4-b1" in done["stdout"]
+    _, doc = run_python(gw, tmp_path, ["--json", "leaderboard"], online_board((200, {"data": BASELINES})))
+    assert [b["group"] for b in doc["data"]["baselines"]] == ["basic", "pro"] and [r["rank"] for r in doc["data"]["rows"]] == [1, 2]
+    done, _ = run_python(gw, tmp_path, ["--lang", "zh", "leaderboard", "--card", "v4-b"], online_board((200, {"data": BASELINES})))
+    rows = done["stdout"].splitlines()
+    assert "基线 · 官方示例（普通版）" in rows[4] and "pro" not in done["stdout"].split("基线：")[0], done["stdout"]
+
+
+def test_second_cards_are_ordered_after_a_to_d(gw, tmp_path):
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "show", "latest"],
+                        {"scenarios": CARD_SCENARIOS, "portal:list": (200, {"data": card_listing()})})
+    assert [(r["card"], r["label"]) for r in doc["data"]["runs"]] == [
+        ("v4-d", "Card D"), ("v4-a1-v2", "Card A1"), ("v4-b1", "Card B1"), ("v4-e1", "Other")]
+    assert [survey26.scenario_order(x) for x in ("v4-a", "v4-d", "v4-a1", "v4-d1-v12")] == [0, 3, 8, 11]
+    assert survey26.scenario_order("v4-a1-v") == float("inf") and survey26.scenario_order("v4-e1") == float("inf")
+
+
+def test_relay_status_remaining_allowance(gw, tmp_path):
+    _, doc = run_python(gw, tmp_path, ["--json", "relay", "status"], {"rpc:my_kimi_relay": (200, {"data": RELAY})})
+    assert doc["data"]["remaining_requests"] == 187 and doc["data"]["remaining_tokens"] == 0
+    assert doc["data"]["base_url"].endswith("/functions/v1/kimi-relay/v1") and doc["data"]["model"] == "kimi-for-coding"

@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.4.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.7.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.4.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.4.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.7.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.7.0
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
@@ -53,7 +53,7 @@ Alternatively, `survey26 login --token-stdin` reads the token from standard inpu
 
 This is a temporary Kimi allowance from the organizers to help with local development and debugging. It's limited and may change or end at any time. Platform evaluations and the final use the model service each team saves in 'Keys and network' — please make sure yours is set up.
 
-Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 200 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay**. Please do not save it as your evaluation model service.
+Teams on the leaderboard (one scored formal evaluation in the online phase) can use it from their own machines through an OpenAI-compatible API: base URL `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`, your personal API token (`s26_…`) as the API key, model `kimi-for-coding`. Each team gets about 200 requests and 2M tokens per day, at most 2 concurrent requests, and `max_tokens` is capped at 8192; your team's remaining allowance is shown under **Profile → Temporary Kimi relay** and by `survey26 relay status`. Please do not save it as your evaluation model service.
 
 ```bash
 export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
@@ -72,11 +72,14 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | Keys and network | `env show`, `env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix NAME] [--replace]` (the “Add a model service” form), `env set NAME --value-stdin [--plain]`, `env set NAME --from-env VAR`, `env unset NAME`, `env disable NAME` / `env enable NAME` (switch off/on, kept), `env tag NAME model\|none` (model-related or not), `env domains set HOST…`, `env domains clear`, `env route [direct\|cn\|overseas] [--fallback\|--no-fallback]` |
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--branch BRANCH] [--subdir FOLDER] [--title …]` (a `…/tree/BRANCH/FOLDER` or `…/commit/SHA` link works too; the exact commit is saved at submission) |
 | Step 2 · Review and confirm | `project list [--all]`, `project wait REV`, `project show REV --files`, `project logs REV`, `project confirm REV`, `project withdraw REV`, `project download REV`, `project evidence REV --notes … --code-url …` |
-| Step 3 · Evaluate | `quota`, `eval start REV [--no-model]`, `eval selfcheck REV [--no-model]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list`, `eval show BATCH`, `eval wait [BATCH]` |
-| Results | `results show BATCH`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH]` |
+| Step 3 · Evaluate | `quota`, `eval start REV [--no-model] [--phase …]`, `eval selfcheck REV [--no-model] [--phase …]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list [--phase …]`, `eval show BATCH`, `eval wait [BATCH]` |
+| Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]` |
 | Final version | `final show`, `final set REV`, `final clear` |
 | Leaderboard | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`, `competition` |
 | Kimi Coding Plan and credits | `kimi status`, `kimi claim` (captain), `credits list`, `credits claim PROVIDER` |
+| Temporary Kimi relay | `relay status` (base URL, model and your team's remaining allowance today) |
+
+Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
 
 `REV` (a project version), `BATCH` (an evaluation) and `RUN` (one card of an evaluation) accept the full ID or a unique prefix of at least 4 characters, as printed by `project list`, `eval list` and `eval show`. `latest` refers to the most recent evaluation.
 

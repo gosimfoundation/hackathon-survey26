@@ -198,7 +198,7 @@ def test_evaluate_again_needs_yes_and_sends_confirm_repeat(gw, capsys):
     assert code == 2 and "portal:evaluate" not in gw.ops()
     code, doc = run_json(capsys, "eval", "start", "33339", "--yes")
     assert code == 0 and doc["data"] == {"batch_id": BATCH, "phase_id": PHASE, "phase": "practice-projects",
-                                         "revision_id": REV2, "repeat": True, "model_disabled": False}
+                                         "revision_id": REV2, "repeat": True, "model_disabled": False, "extra": False}
     sent = [r["body"]["fields"] for r in gw.requests if r["body"]["op"] == "portal"][-1]
     assert sent == {"action": "evaluate", "phase_id": PHASE, "revision_id": REV2, "confirm_repeat": True}
 

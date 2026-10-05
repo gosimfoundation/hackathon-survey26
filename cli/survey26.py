@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -116,7 +116,7 @@ MESSAGES = {
     "invalid_team_variable": ("Invalid name or value: use upper-case letters, digits and underscores, not a reserved name; the value must not be empty and at most 8 KB.",
                               "变量名或值不符合要求：变量名使用大写字母、数字和下划线，不能使用平台保留的名称；值不能为空且不超过 8 KB。"),
     "no_model_not_available": ("\"Without a model\" (--no-model) is only for project evaluations in the online competition and practice, not the hidden final.",
-                               "「本次不提供模型」（--no-model）只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。"),
+                               "「本次不提供模型」（--no-model）只能用于正式赛和练习的项目评测，不能用于隐藏卡决赛。"),
     "team_variable_not_found": ("No team variable with this name. See survey26 env show.", "没有这个名称的队伍变量，可用 survey26 env show 查看。"),
     "team_variable_limit": ("The variable limit has been reached; delete a variable you no longer use first.", "变量数量已达上限，请先删除不再使用的变量。"),
     "invalid_egress_route": ("Choose an egress route: direct, cn or overseas.", "请选择出网线路：direct（直连）、cn（回国代理）或 overseas（海外代理）。"),
@@ -126,7 +126,7 @@ MESSAGES = {
                              "域名格式不正确：只填写域名本身（例如 api.kimi.com），不含 https://、端口或路径，不能是 IP 地址或内网名称；最多 10 个。"),
     "team_domain_not_public": ("This domain does not resolve right now, or resolves to a non-public address, so it cannot be added.",
                                "这个域名目前无法解析，或解析到了非公网地址，不能添加。"),
-    "final_version_locked": ("The online phase has ended; the final version can no longer change.", "线上赛已结束，最终版本不能再修改。"),
+    "final_version_locked": ("The online phase has ended; the final version can no longer change.", "正式赛已结束，最终版本不能再修改。"),
     "upload_limit": ("Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.", "本队有太多上传正在等待处理，请等几分钟后再试一次。"),
     "upload_failed": ("The file upload failed, possibly due to the network. Please try again.", "文件上传失败，可能是网络问题，请重试。"),
     "upload_not_found": ("The upload session expired or could not be found. Upload the file again.", "上传会话已过期或找不到，请重新上传。"),
@@ -134,6 +134,7 @@ MESSAGES = {
     "zip_has_no_code": ('No code files were found in the ZIP. Make sure you zipped the folder that contains your program, or start from an official example (the examples include observer.project.json).', '压缩包里没有找到代码文件。请确认打包的是包含程序的文件夹，或参考官方示例，示例自带 observer.project.json。'),
     "portal_unavailable": ("Could not reach the server. Check your connection and try again.", "无法连接服务器，请检查网络后重试。"),
     "phase_closed": ("This phase is not taking evaluations right now.", "这个赛程现在不接受评测。"),
+    "no_extra_phase": ("No extra phase is offered right now.", "当前没有开放的额外赛程。"),
     "projects_not_enabled": ("Project evaluation is not open for the current competition.", "当前比赛尚未开放项目评测。"),
     "result_not_ready": ("This card has no result yet.", "这张卡还没有结果。"),
     "project_not_ready": ("This project version cannot be downloaded yet.", "该项目版本暂时无法下载。"),
@@ -393,6 +394,10 @@ def confirm(args, out: Out, question_en: str, question_zh: str) -> None:
 # Helpers shared by commands
 
 
+# A1-D1 cards (v4-a1 ... v4-d1, optionally with a -vN version suffix): listed after A-H.
+SECOND_CARD_RE = re.compile(r"^v4-([a-d])1(-v[0-9]+)?\Z")
+
+
 def scenario_label(slug: str, name: str, lang: str) -> str:
     m = re.match(r"^v4-practice-(alpha|beta|gamma|delta)$", slug or "")
     if m:
@@ -401,6 +406,9 @@ def scenario_label(slug: str, name: str, lang: str) -> str:
     m = re.match(r"^v4-([a-h])$", slug or "")
     if m:
         return ("任务卡 " if lang == "zh" else "Card ") + m.group(1).upper()
+    m = SECOND_CARD_RE.match(slug or "")
+    if m:
+        return ("任务卡 " if lang == "zh" else "Card ") + m.group(1).upper() + "1"
     return name or slug or ""
 
 
@@ -411,6 +419,9 @@ def scenario_order(slug: str) -> float:
     m = re.match(r"^v4-([a-h])$", slug or "")
     if m:
         return ord(m.group(1)) - ord("a")
+    m = SECOND_CARD_RE.match(slug or "")
+    if m:
+        return 8 + ord(m.group(1)) - ord("a")
     return float("inf")
 
 
@@ -539,25 +550,65 @@ def competition_phase(api: Api, data: dict, wanted_slug: str | None) -> dict:
         if info.get("is_active") and (ends is None or ends > now) and (starts is None or starts <= now):
             phases.append(dict(p, slug=info.get("slug"), name_en=info.get("name_en"), name_zh=info.get("name_zh"),
                                ends_at=info.get("ends_at")))
+    comp = api.rpc("current_competition") or {}
+    extra = comp.get("extra_phase_id") or None
+    if wanted_slug == "extra":
+        if not extra:
+            raise CliError("no_extra_phase")
+        wanted_slug = extra
     if wanted_slug:
         for p in phases:
             if p["slug"] == wanted_slug or p["phase_id"] == wanted_slug:
-                return p
+                return dict(p, extra=p["phase_id"] == extra)
         raise CliError("phase_closed")
-    comp = api.rpc("current_competition") or {}
     beta = None
     if comp.get("mode") == "competition":
         try:
             beta = api.rpc("my_observer_phase")
         except CliError:
             beta = None
-    allowed = [x for x in (beta, comp.get("project_phase_id"), comp.get("phase_id")) if x]
+    # The optional extra (unscored) phase is only used when asked for (--phase extra or its slug).
+    allowed = [x for x in (beta, comp.get("project_phase_id"), comp.get("phase_id")) if x and x != extra]
     candidates = [p for p in phases if p["phase_id"] in allowed]
     for preferred in allowed:
         for p in candidates:
             if p["phase_id"] == preferred:
-                return p
+                return dict(p, extra=False)
     raise CliError("no_open_phase")
+
+
+def extra_phase_id(api: Api):
+    """The optional extra (unscored) phase of current_competition(), or None (also when the lookup fails)."""
+    try:
+        comp = api.rpc("current_competition")
+    except CliError:
+        return None
+    return (comp.get("extra_phase_id") or None) if isinstance(comp, dict) else None
+
+
+def phase_filter(api: Api, data: dict, wanted: str | None):
+    """--phase of the listing commands: a phase slug or ID of your team's phases, or 'extra'."""
+    if not wanted:
+        return None
+    if wanted == "extra":
+        extra = (api.rpc("current_competition") or {}).get("extra_phase_id")
+        if not extra:
+            raise CliError("no_extra_phase")
+        return extra
+    for p in data.get("phases") or []:
+        if p.get("phase_id") == wanted or (p.get("phases") or {}).get("slug") == wanted:
+            return p["phase_id"]
+    raise CliError("not_found", "no such phase: %s" % wanted, EXIT_NOT_FOUND)
+
+
+def in_phase(data: dict, phase_id) -> dict:
+    if not phase_id:
+        return data
+    return dict(data, batches=[b for b in data.get("batches") or [] if b.get("phase_id") == phase_id])
+
+
+def phase_slugs(data: dict) -> dict:
+    return {p.get("phase_id"): (p.get("phases") or {}).get("slug") for p in data.get("phases") or []}
 
 
 def _parse_time(value: str) -> float | None:
@@ -573,7 +624,7 @@ def _parse_time(value: str) -> float | None:
         return None
 
 
-def batch_summary(batch: dict, names: dict, lang: str) -> dict:
+def batch_summary(batch: dict, names: dict, lang: str, slugs: dict) -> dict:
     runs = []
     for run in batch.get("observer_runs") or []:
         sc = names.get(run.get("scenario_id")) or {}
@@ -585,7 +636,7 @@ def batch_summary(batch: dict, names: dict, lang: str) -> dict:
     runs.sort(key=lambda r: scenario_order(r["card"] or ""))
     return {
         "batch_id": batch["id"], "status": batch.get("status"), "score": batch.get("score"),
-        "phase_id": batch.get("phase_id"), "revision_id": batch.get("revision_id"),
+        "phase_id": batch.get("phase_id"), "phase": slugs.get(batch.get("phase_id")), "revision_id": batch.get("revision_id"),
         "created_at": batch.get("created_at"), "quota_refunded": bool(batch.get("quota_refunded")),
         "repeat_group": batch.get("repeat_group"), "repeat_runs": batch.get("repeat_runs"),
         "model_disabled": bool(batch.get("model_disabled")), "runs": runs,
@@ -1385,6 +1436,8 @@ def _quota_for(data: dict, phase_id: str):
     return None
 
 
+EXTRA_NOTE = ("Unscored phase: it does not count for any leaderboard and has its own daily evaluations.",
+              "不计分赛程：不计入任何排行榜，评测次数单独计算。")
 NO_MODEL_NOTE = ("Without a model: your program gets none of the team variables marked model-related, and OBSERVER_MODEL_DISABLED=1.",
                  "本次不提供模型：程序拿不到标记为模型相关的队伍变量，并会收到 OBSERVER_MODEL_DISABLED=1。")
 
@@ -1413,10 +1466,12 @@ def cmd_eval_start(api: Api, args, out: Out):
     batch_id = (result or {}).get("batch_id")
     out.line(out.t("Evaluation queued: %s (phase %s). Wait with: survey26 eval wait %s",
                    "已加入评测队列：%s（赛程 %s）。可用 survey26 eval wait %s 等待。") % (batch_id, phase["slug"], str(batch_id)[:8]))
+    if phase["extra"]:
+        out.line(EXTRA_NOTE[out.lang == "zh"])
     if args.no_model:
         out.line(NO_MODEL_NOTE[out.lang == "zh"])
     return {"batch_id": batch_id, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"], "repeat": repeat,
-            "model_disabled": bool(args.no_model)}
+            "model_disabled": bool(args.no_model), "extra": phase["extra"]}
 
 
 def cmd_eval_selfcheck(api: Api, args, out: Out):
@@ -1432,22 +1487,26 @@ def cmd_eval_selfcheck(api: Api, args, out: Out):
     result = api.rpc("observer_create_repeat_batches", write=True, p_phase=phase["phase_id"], p_revision=r["id"], p_confirm_repeat=True,
                      **({"p_no_model": True} if args.no_model else {}))
     out.line(out.t("Queued: the 3 evaluations run one after another.", "已加入评测队列，3 次评测将依次进行。"))
+    if phase["extra"]:
+        out.line(EXTRA_NOTE[out.lang == "zh"])
     if args.no_model:
         out.line(NO_MODEL_NOTE[out.lang == "zh"])
     return {"result": result, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"],
-            "model_disabled": bool(args.no_model)}
+            "model_disabled": bool(args.no_model), "extra": phase["extra"]}
 
 
 def cmd_eval_list(api: Api, args, out: Out):
     data = portal_list(api)
+    data = in_phase(data, phase_filter(api, data, args.phase))
     names = scenario_names(api, data)
-    rows = [batch_summary(b, names, out.lang) for b in (data.get("batches") or [])[:args.limit]]
+    slugs = phase_slugs(data)
+    rows = [batch_summary(b, names, out.lang, slugs) for b in (data.get("batches") or [])[:args.limit]]
     titles = {r["id"]: r.get("title") for r in all_revisions(data)}
     out.table([dict(b, id=b["batch_id"][:8], version=(b["revision_id"] or "")[:8], project=titles.get(b["revision_id"]),
                     score_text=fmt_score(b["score"]), self_check="3x" if b["repeat_group"] else "",
                     no_model=out.t("no model", "无模型") if b["model_disabled"] else "",
                     counted="" if not b["quota_refunded"] else out.t("not counted", "未计次")) for b in rows],
-              [("ID", "id"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
+              [("ID", "id"), (out.t("Phase", "赛程"), "phase"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
                (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"),
                ("", "counted"), (out.t("Created", "创建时间"), "created_at")])
     return rows
@@ -1474,7 +1533,7 @@ def _repeat_summary(data: dict, group: str) -> dict | None:
 
 def _show_batch(api: Api, data: dict, batch: dict, out: Out) -> dict:
     names = scenario_names(api, data)
-    summary = batch_summary(batch, names, out.lang)
+    summary = batch_summary(batch, names, out.lang, phase_slugs(data))
     out.line("%s  %s  %s %s" % (summary["batch_id"], summary["status"], out.t("score", "分数"), fmt_score(summary["score"]))
              + (out.t("  (no model)", "  （无模型）") if summary["model_disabled"] else ""))
     out.table([dict(r, score_text=fmt_score(r["score"]), result=out.t("yes", "有") if r["has_result"] else "") for r in summary["runs"]],
@@ -1491,16 +1550,19 @@ def _show_batch(api: Api, data: dict, batch: dict, out: Out) -> dict:
 
 def cmd_eval_show(api: Api, args, out: Out):
     data = portal_list(api)
-    return _show_batch(api, data, find_batch(data, args.batch), out)
+    return _show_batch(api, data, find_batch(in_phase(data, phase_filter(api, data, args.phase)), args.batch), out)
 
 
 def cmd_eval_wait(api: Api, args, out: Out):
     deadline = time.time() + args.timeout
     last = None
     batch_id = None
+    phase_id = None
     while True:
         data = polled_list(api, deadline)
-        batch = find_batch(data, batch_id or args.batch)
+        if batch_id is None:
+            phase_id = phase_filter(api, data, args.phase)
+        batch = find_batch(in_phase(data, phase_id), batch_id or args.batch)
         batch_id = batch["id"]
         state = (batch.get("status"), tuple((r.get("status"), r.get("score")) for r in batch.get("observer_runs") or []))
         if state != last:
@@ -1593,7 +1655,7 @@ def evaluation_metadata(batch: dict, version) -> dict:
 
 def cmd_results_download_all(api: Api, args, out: Out):
     data = portal_list(api)
-    batch = find_batch(data, args.batch)
+    batch = find_batch(in_phase(data, phase_filter(api, data, args.phase)), args.batch)
     names = scenario_names(api, data)
     runs = [r for r in batch.get("observer_runs") or [] if r.get("result_path")]
     runs.sort(key=lambda r: scenario_order((names.get(r.get("scenario_id")) or {}).get("slug") or ""))
@@ -1680,9 +1742,14 @@ def cmd_final_clear(api: Api, args, out: Out):
 
 def cmd_quota(api: Api, args, out: Out):
     data = portal_list(api)
-    phases = {p["phase_id"]: (p.get("phases") or {}).get("slug") for p in data.get("phases") or []}
-    rows = [dict(q, phase=phases.get(q.get("phase_id"))) for q in data.get("quota") or []]
-    out.table(rows, [(out.t("Phase", "赛程"), "phase"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
+    extra = extra_phase_id(api)
+    phases = {p["phase_id"]: (p.get("phases") or {}) for p in data.get("phases") or []}
+    rows = [dict(q, phase=phases.get(q.get("phase_id"), {}).get("slug"), name_en=phases.get(q.get("phase_id"), {}).get("name_en"),
+                 name_zh=phases.get(q.get("phase_id"), {}).get("name_zh"), extra=bool(extra) and q.get("phase_id") == extra)
+            for q in data.get("quota") or []]
+    out.table([dict(q, name=q["name_zh" if out.lang == "zh" else "name_en"], note=out.t("unscored", "不计分") if q["extra"] else "")
+               for q in rows],
+              [(out.t("Phase", "赛程"), "phase"), (out.t("Name", "名称"), "name"), ("", "note"), (out.t("Per day", "每天"), "daily_batches"), (out.t("Used", "已用"), "used"),
                      (out.t("Left", "剩余"), "remaining"), (out.t("Preparations/day", "每天可准备"), "preparations_daily"),
                      (out.t("Preparations left", "剩余准备"), "preparations_remaining"), (out.t("Resets", "重置时间"), "resets_at")])
     return rows
@@ -1692,11 +1759,22 @@ def cmd_competition(api: Api, args, out: Out):
     comp = api.rpc("current_competition") or {}
     phases = api.call("phases") or []
     by_id = {p["id"]: p for p in phases}
+    extra_id = comp.get("extra_phase_id") or None
     view = {"mode": comp.get("mode"), "phase": by_id.get(comp.get("phase_id")), "project_phase": by_id.get(comp.get("project_phase_id")),
-            "phases": [p for p in phases if p.get("slug") in ("practice-projects", "practice", "online", "final-hidden")]}
+            "extra_phase": by_id.get(extra_id) if extra_id else None,
+            "phases": [p for p in phases if p.get("slug") in ("practice-projects", "practice", "online", "final-hidden")
+                       or (extra_id and p.get("id") == extra_id)]}
     out.line(out.t("Mode: ", "模式：") + str(view["mode"]))
-    out.table(view["phases"], [("slug", "slug"), (out.t("Starts", "开始"), "starts_at"), (out.t("Ends", "结束"), "ends_at"),
-                               (out.t("Active", "启用"), "is_active")])
+    out.table([dict(p, name=p.get("name_zh" if out.lang == "zh" else "name_en"),
+                    note=out.t("unscored", "不计分") if extra_id and p.get("id") == extra_id else "") for p in view["phases"]],
+              [("slug", "slug"), (out.t("Name", "名称"), "name"), ("", "note"), (out.t("Starts", "开始"), "starts_at"),
+               (out.t("Ends", "结束"), "ends_at"), (out.t("Active", "启用"), "is_active")])
+    extra = view["extra_phase"]
+    if extra:
+        name = extra.get("name_zh" if out.lang == "zh" else "name_en") or extra.get("slug")
+        out.line(out.t("Extra phase: %s (unscored, not on any leaderboard, own daily evaluations). Evaluate there with --phase %s (or --phase extra).",
+                       "额外赛程：%s（不计分，不上任何排行榜，评测次数单独计算）。在该赛程评测请加 --phase %s（或 --phase extra）。")
+                 % (name, extra.get("slug")))
     return view
 
 
@@ -1715,23 +1793,108 @@ def cmd_leaderboard(api: Api, args, out: Out):
     if isinstance(settings, list):
         settings = settings[0] if settings else {}
     card = None
+    baselines: list = []
     if settings.get("projects_enabled"):
         board = api.rpc("observer_card_board", p_phase=phase["id"], p_scenario_slug=args.card, p_limit=args.limit) or {}
         rows = board.get("rows") if isinstance(board, dict) else board
         card = board.get("scenario") if isinstance(board, dict) else None
         cards = board.get("cards") if isinstance(board, dict) else None
+        if slug == "online":
+            baselines = baseline_rows(api, phase["id"])
     else:
         rows = api.rpc("leaderboard", p_phase_slug=slug, p_limit=args.limit, p_scenario_slug=args.card)
         cards = None
     rows = rows or []
     mine = [r for r in rows if team_id and r.get("team_id") == team_id]
     shown = mine if args.mine else rows
-    out.table([dict(r, score_text=fmt_score(r.get("total_score"))) for r in shown],
-              [("#", "rank"), (out.t("Team", "队伍"), "team_name"), (out.t("Score", "分数"), "score_text"),
-               (out.t("Evaluations", "评测次数"), "submission_count")])
+    table = [dict(r, score_text=fmt_score(r.get("total_score"))) for r in shown]
+    placed = 0
+    if not args.mine:
+        table, placed = with_baselines(table, baselines, card, out)
+    out.table(table, [("#", "rank"), (out.t("Team", "队伍"), "team_name"), (out.t("Score", "分数"), "score_text"),
+                      (out.t("Evaluations", "评测次数"), "submission_count")])
+    if placed:
+        out.line(out.t("Baseline: average score of the official examples run unmodified (with the organizers' model key). For reference only; not ranked.",
+                       "基线：官方示例原样运行的平均分（使用组委会的模型 key），仅供参考，不参与排名。"))
+    listed = sorted([c.get("slug") for c in cards or [] if isinstance(c, dict) and c.get("slug")], key=scenario_order)
+    if listed and not args.mine:
+        out.line(out.t("Cards (--card): ", "任务卡（--card）：") + ", ".join(listed))
     if args.mine and not mine:
         out.line(out.t("Your team is not on this board yet.", "本队尚未出现在这个排行榜上。"))
-    return {"phase": slug, "card": card, "cards": cards, "rows": shown, "my_team_id": team_id}
+    return {"phase": slug, "card": card, "cards": cards, "rows": shown, "baselines": baselines, "my_team_id": team_id}
+
+
+def _number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def baseline_rows(api: Api, phase_id: str) -> list:
+    """The online board's unranked reference rows (official examples' averages, basic and pro); none on any error."""
+    try:
+        data = api.rpc("observer_baseline_rows", p_phase=phase_id)
+    except CliError:
+        return []
+    return [{"group": r["group"], "overall_score": r["overall_score"],
+             "card_scores": r.get("card_scores") if isinstance(r.get("card_scores"), dict) else None,
+             "runs": r.get("runs"), "updated_at": r.get("updated_at")}
+            for r in (data if isinstance(data, list) else [])
+            if isinstance(r, dict) and r.get("group") in ("basic", "pro") and _number(r.get("overall_score"))]
+
+
+BASELINE_NAMES = {"basic": ("Baseline · official examples (basic)", "基线 · 官方示例（普通版）"),
+                  "pro": ("Baseline · official examples (pro)", "基线 · 官方示例（pro 版）")}
+
+
+def with_baselines(table: list, baselines: list, tab, out: Out) -> tuple:
+    """As on the website: each baseline sits after every team scoring at least as much; ranks stay unchanged."""
+    refs = []
+    for b in baselines:
+        score = b["overall_score"] if tab is None else (b["card_scores"] or {}).get(tab)
+        if _number(score):
+            refs.append((b, score))
+    refs.sort(key=lambda x: -x[1])
+    rows = list(table)
+    for b, score in refs:
+        at = next((i for i, r in enumerate(rows) if not r.get("baseline")
+                   and (not _number(r.get("total_score")) or r["total_score"] < score)), len(rows))
+        rows.insert(at, {"baseline": b["group"], "rank": "—", "team_name": out.t(*BASELINE_NAMES[b["group"]]),
+                         "score_text": fmt_score(score), "submission_count": b.get("runs")})
+    return rows, len(refs)
+
+
+RELAY_BASE = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1"
+RELAY_MODEL = "kimi-for-coding"
+
+
+def cmd_relay_status(api: Api, args, out: Out):
+    relay = api.rpc("my_kimi_relay") or {}
+    relay = relay if isinstance(relay, dict) else {}
+
+    def left(limit, used):
+        return max(0, limit - (used if _number(used) else 0)) if _number(limit) else None
+    view = {"enabled": bool(relay.get("enabled")), "has_team": bool(relay.get("has_team")), "eligible": bool(relay.get("eligible")),
+            "base_url": RELAY_BASE, "model": RELAY_MODEL,
+            "remaining_requests": left(relay.get("daily_requests"), relay.get("used_requests")),
+            "remaining_tokens": left(relay.get("daily_tokens"), relay.get("used_tokens")),
+            **{k: relay.get(k) for k in ("daily_requests", "daily_tokens", "used_requests", "used_tokens", "max_concurrent", "max_tokens")}}
+    if not view["enabled"]:
+        out.line(out.t("The temporary Kimi relay is not available right now.", "平台临时 Kimi 中转目前未开放。"))
+    elif not view["has_team"]:
+        out.line(message_for("need_team", out.lang))
+    elif not view["eligible"]:
+        out.line(out.t("Available once your team is on the leaderboard (one scored formal evaluation in the online phase).",
+                       "上榜后即可使用（正式赛有一次成功评测）。"))
+    else:
+        out.line(out.t("Base URL: ", "接口地址：") + RELAY_BASE)
+        out.line(out.t("Model: ", "模型：") + RELAY_MODEL + out.t("   API key: your personal API token (s26_...)", "   API key：你的个人 API 令牌（s26_...）"))
+        out.line(out.t("Your team's allowance today: %s / %s requests, %s / %s tokens", "本队今天剩余：%s / %s 次请求，%s / %s tokens")
+                 % (view["remaining_requests"], view["daily_requests"], view["remaining_tokens"], view["daily_tokens"]))
+        out.line(out.t("Up to %s concurrent requests per team; max_tokens is capped at %s. Resets daily at 00:00 UTC.",
+                       "每队最多同时 %s 个请求；max_tokens 上限 %s。每天 UTC 0 点（北京时间 8 点）重置。")
+                 % (view["max_concurrent"], view["max_tokens"]))
+    out.line(out.t("For local development only; evaluations use the model service saved under Keys and network (survey26 env).",
+                   "仅供本地开发调试；正式评测使用「密钥与网络」中保存的模型服务（survey26 env）。"))
+    return view
 
 
 def cmd_kimi_status(api: Api, args, out: Out):
@@ -1768,6 +1931,9 @@ def cmd_credits_claim(api: Api, args, out: Out):
 
 # ---------------------------------------------------------------------------------------------
 # Argument parsing
+
+
+PHASE_HELP = "a phase slug (online, practice-projects, ...) or 'extra' (the optional unscored phase)"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1932,22 +2098,29 @@ def build_parser() -> argparse.ArgumentParser:
     ev = sub.add_parser("eval", help="start and follow evaluations").add_subparsers(dest="cmd", metavar="ACTION")
     st = yes(add(ev, "start", cmd_eval_start, "evaluate a confirmed version once (uses 1 of today's evaluations)"))
     st.add_argument("revision")
-    st.add_argument("--phase", help="phase slug (default: the one the website uses)")
+    st.add_argument("--phase", help=PHASE_HELP + " (default: the one the website uses)")
     st.add_argument("--no-model", action="store_true", help="this evaluation without a model: no model-related team variables, "
                     "OBSERVER_MODEL_DISABLED=1 (to compare with and without an LLM)")
     sc = yes(add(ev, "selfcheck", cmd_eval_selfcheck, "evaluate 3 times and average (uses 3 of today's evaluations)"))
     sc.add_argument("revision")
-    sc.add_argument("--phase")
+    sc.add_argument("--phase", help=PHASE_HELP + " (default: the one the website uses)")
     sc.add_argument("--no-model", action="store_true", help="all 3 evaluations without a model (see eval start --no-model)")
-    add(ev, "list", cmd_eval_list, "evaluation records (newest first)").add_argument("--limit", type=int, default=20)
-    add(ev, "show", cmd_eval_show, "one evaluation: status and score per card ('latest' = newest)").add_argument("batch")
+    el = add(ev, "list", cmd_eval_list, "evaluation records (newest first)")
+    el.add_argument("--limit", type=int, default=20)
+    el.add_argument("--phase", help="only this phase: " + PHASE_HELP)
+    es_ = add(ev, "show", cmd_eval_show, "one evaluation: status and score per card ('latest' = newest)")
+    es_.add_argument("batch")
+    es_.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
     ew = add(ev, "wait", cmd_eval_wait, "wait until an evaluation ends; prints the scores (exit 9 unless scored)")
     ew.add_argument("batch", nargs="?", default="latest")
+    ew.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
     ew.add_argument("--timeout", type=int, default=3600)
     ew.add_argument("--interval", type=int, default=20)
 
     res = sub.add_parser("results", help="scores, agent.log and result downloads").add_subparsers(dest="cmd", metavar="ACTION")
-    add(res, "show", cmd_eval_show, "scores per card of an evaluation ('latest' = newest)").add_argument("batch")
+    rs = add(res, "show", cmd_eval_show, "scores per card of an evaluation ('latest' = newest)")
+    rs.add_argument("batch")
+    rs.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
     rl = add(res, "log", cmd_results_log, "a run's platform diagnostics and agent.log (last part, --tail N, --full, -o FILE)")
     rl.add_argument("run")
     rl.add_argument("--full", action="store_true")
@@ -1960,6 +2133,7 @@ def build_parser() -> argparse.ArgumentParser:
     ra = add(res, "download-all", cmd_results_download_all, "download all cards of an evaluation as one ZIP")
     ra.add_argument("batch", nargs="?", default="latest")
     ra.add_argument("-o", "--output")
+    ra.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
 
     fin = sub.add_parser("final", help="the version used for the hidden final").add_subparsers(dest="cmd", metavar="ACTION")
     add(fin, "show", cmd_final_show, "show the final version (chosen, or the default best evaluation)")
@@ -1977,6 +2151,9 @@ def build_parser() -> argparse.ArgumentParser:
     kimi = sub.add_parser("kimi", help="Kimi Coding Plan code").add_subparsers(dest="cmd", metavar="ACTION")
     add(kimi, "status", cmd_kimi_status, "eligibility and your team's code")
     add(kimi, "claim", cmd_kimi_claim, "captain: claim the team's code")
+    relay = sub.add_parser("relay", help="temporary Kimi relay for local development (OpenAI-compatible; your API token is the key)")
+    add(relay.add_subparsers(dest="cmd", metavar="ACTION"), "status", cmd_relay_status,
+        "base URL, model and your team's remaining relay allowance today")
     cr = sub.add_parser("credits", help="sponsor API credit codes").add_subparsers(dest="cmd", metavar="ACTION")
     add(cr, "list", cmd_credits_list, "providers and your team's codes")
     add(cr, "claim", cmd_credits_claim, "claim a code from a provider").add_argument("provider")

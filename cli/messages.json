@@ -189,7 +189,7 @@
  },
  "no_model_not_available": {
   "en": "\"Without a model\" (--no-model) is only for project evaluations in the online competition and practice, not the hidden final.",
-  "zh": "「本次不提供模型」（--no-model）只能用于线上赛和练习的项目评测，不能用于隐藏卡决赛。"
+  "zh": "「本次不提供模型」（--no-model）只能用于正式赛和练习的项目评测，不能用于隐藏卡决赛。"
  },
  "team_variable_not_found": {
   "en": "No team variable with this name. See survey26 env show.",
@@ -217,7 +217,7 @@
  },
  "final_version_locked": {
   "en": "The online phase has ended; the final version can no longer change.",
-  "zh": "线上赛已结束，最终版本不能再修改。"
+  "zh": "正式赛已结束，最终版本不能再修改。"
  },
  "upload_limit": {
   "en": "Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.",
@@ -246,6 +246,10 @@
  "phase_closed": {
   "en": "This phase is not taking evaluations right now.",
   "zh": "这个赛程现在不接受评测。"
+ },
+ "no_extra_phase": {
+  "en": "No extra phase is offered right now.",
+  "zh": "当前没有开放的额外赛程。"
  },
  "projects_not_enabled": {
   "en": "Project evaluation is not open for the current competition.",
