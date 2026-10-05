@@ -447,3 +447,7 @@ verify_jwt = false
 [functions.wechat-qr]
 # Checks the user session itself (and answers CORS preflight), like the other participant functions.
 verify_jwt = false
+
+[functions.kimi-relay]
+# Personal API tokens (not JWTs): checked against their stored hash on every request.
+verify_jwt = false

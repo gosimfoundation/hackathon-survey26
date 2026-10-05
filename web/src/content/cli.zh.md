@@ -49,6 +49,17 @@ survey26 whoami
 3. 令牌代表你本人。凡是你的账号在网站上不能做的操作，令牌同样不能做；任何账号都不能通过令牌使用主办方功能。每个账号最多同时持有 5 个有效令牌，个人资料页会显示每个令牌的创建时间和最近使用时间。令牌不再需要或可能泄露时，请立即在该页撤销，撤销后立即失效。每个账号每分钟最多 120 次请求。
 4. 任何拿到令牌的人都能以你的身份操作。请勿把令牌写入仓库、项目 ZIP、日志、截图或聊天记录。令牌不能用来创建或撤销令牌，这只能在个人资料页完成。
 
+### 临时 Kimi 中转（本地开发用）
+
+这是组委会临时提供的 Kimi 额度，方便大家本地开发调试，额度有限，可能随时调整或结束。正式评测和决赛会使用各队在「密钥与网络」里保存的模型服务，记得提前配置好哦。
+
+已上榜的队伍（正式赛有一次成功评测）可以在自己的电脑上通过兼容 OpenAI 的接口使用：接口地址 `https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1`，API key 填个人 API 令牌（`s26_…`），模型名 `kimi-for-coding`。每队每天约 200 次请求、200 万 tokens，最多同时 2 个请求，`max_tokens` 上限 8192；本队今天的剩余额度见 **个人资料 → 平台临时 Kimi 中转**。请不要把它保存为评测用的模型服务。
+
+```bash
+export OPENAI_BASE_URL=https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1
+export OPENAI_API_KEY=$SURVEY26_TOKEN
+```
+
 ## 3. 命令一览
 
 | 网站功能 | 命令 |

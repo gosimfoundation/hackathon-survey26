@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../stores/auth'
 import { supabase } from '../../lib/supabase'
@@ -591,6 +592,7 @@ const w2 = computed(() => pick({
   uploaded: 'Uploaded', more: 'More', reviewConfirm: 'Review and confirm', evidenceItem: 'Design award evidence', lastFailed: 'last failed', lastCardFailed: 'a card failed',
   latest: 'Latest evaluation', allEvaluations: 'All evaluations', expandHint: 'Newest first; click a row for the cards, downloads and logs.',
   keys: 'Keys and network', keysNote: 'Evaluations and the hidden final use these variables; no page needs to stay open.',
+  relayNote: 'For local development only, the organizers temporarily offer a limited Kimi relay (see your profile page); evaluations use the model service saved here.', relayLink: 'Temporary Kimi relay',
   tokens: 'Personal API tokens (command line)', classic: 'Classic layout',
   nClosed: 'Project evaluation is not open for the current competition.', nFirst: 'Upload your first project to get started.',
   nFailed: 'The latest evaluation failed ({what}).', nFixUpload: 'Upload a fixed version',
@@ -612,6 +614,7 @@ const w2 = computed(() => pick({
   uploaded: '上传于', more: '更多', reviewConfirm: '检查并确认', evidenceItem: '设计奖材料', lastFailed: '最近失败', lastCardFailed: '有卡片失败',
   latest: '最近一次评测', allEvaluations: '全部评测记录', expandHint: '最新在上；点一行展开各卡分数、下载与日志。',
   keys: '密钥与网络', keysNote: '评测和隐藏决赛都使用这里的变量，无需开着页面。',
+  relayNote: '本地开发调试可以先用组委会临时提供的 Kimi 中转（额度有限，见个人资料页）；评测和决赛使用这里保存的模型服务。', relayLink: '临时 Kimi 中转',
   tokens: '个人 API 令牌（命令行）', classic: '旧版布局',
   nClosed: '当前比赛尚未开放项目评测。', nFirst: '上传你的第一个项目，开始参赛。',
   nFailed: '最近一次评测失败（{what}）。', nFixUpload: '上传修正版',
@@ -937,6 +940,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <div class="cw-row-head"><h2 id="model-api">{{ w2.keys }}</h2>
             <span v-if="keysSummary" class="pill ok" data-testid="model-api-configured">{{ words.configured }}</span>
             <span class="help">{{ w2.keysNote }}</span></div>
+          <p class="help" data-testid="kimi-relay-hint">{{ w2.relayNote }} <RouterLink to="/profile#kimi-relay" class="accent-l">{{ w2.relayLink }} →</RouterLink></p>
           <TeamEnvironment :environment="data?.team_environment" :busy="busy" @act="(work, success) => action(work, success)" />
         </section>
         <section v-if="finalVersion" class="panel mt-4" data-testid="final-version">

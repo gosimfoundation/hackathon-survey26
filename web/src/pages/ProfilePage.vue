@@ -11,6 +11,7 @@ import DashShell from '../components/layout/DashShell.vue'
 import TierBadge from '../components/TierBadge.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import ApiTokensPanel from '../components/dashboard/ApiTokensPanel.vue'
+import KimiRelayPanel from '../components/dashboard/KimiRelayPanel.vue'
 import FriendsPanel from '../components/dashboard/FriendsPanel.vue'
 import WechatQrPanel from '../components/wechat/WechatQrPanel.vue'
 
@@ -182,6 +183,7 @@ async function changePassword() {
           </form>
         </div>
         <FriendsPanel />
+        <KimiRelayPanel />
         <ApiTokensPanel />
       </div>
     </div>
