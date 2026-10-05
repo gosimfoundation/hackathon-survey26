@@ -103,6 +103,7 @@ def test_observed_map_and_score_bars(page: Page, site):
     page.locator("#leaderboard").scroll_into_view_if_needed()
     page.wait_for_timeout(800)
     shot(page, "03b-home-leaderboard")
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)
 
@@ -140,6 +141,7 @@ def test_api_credits_claim_and_admin(page: Page, site):
     page.locator("[data-testid=credits-panel]").scroll_into_view_if_needed()
     shot(page, "11-dashboard-credits", full=True)
     page.locator("[data-testid=credits-panel]").screenshot(path=str(SHOTS_V2 / "11b-credits-panel.png"))
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)
 

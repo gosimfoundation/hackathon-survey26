@@ -6,7 +6,7 @@ import { shouldAutoShow } from '../src/lib/competeGuide.ts'
 test('every documented anchor resolves on its page and nowhere else', () => {
   const documented: Record<string, string[]> = {
     '/compete': ['upload', 'keys', 'final', 'phase'],
-    '/profile': ['uid', 'friends', 'wechat-qr'],
+    '/profile': ['uid', 'friends', 'wechat-qr', 'api-tokens', 'kimi-relay'],
     '/team': ['invite-uid', 'requests'],
   }
   assert.deepEqual(Object.fromEntries(Object.entries(DEEP_LINKS).map(([p, m]) => [p, Object.keys(m)])), documented)

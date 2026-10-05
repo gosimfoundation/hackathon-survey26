@@ -66,9 +66,10 @@ def test_round1_signup_validation_duplicate_and_relogin(page: Page, site):
     _register(page, base, "Round One", "round1@e2e.org")
     page.reload()
     expect(page).to_have_url(re.compile(r"/dashboard"), timeout=15000)
-    expect(page.locator("[data-testid=nav-logout]")).to_be_visible()
+    expect(page.locator("[data-testid=account-menu]")).to_be_visible()
 
     # the same address cannot be taken twice
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     expect(page.locator("[data-testid=nav-register]")).to_be_visible(timeout=10000)
     page.goto(base + "/register")
@@ -88,6 +89,7 @@ def test_round1_signup_validation_duplicate_and_relogin(page: Page, site):
     expect(page).to_have_url(re.compile(r"/dashboard"), timeout=20000)
 
     # the reset form is reachable from the login screen and accepts an address
+    page.click("[data-testid=account-menu]")
     page.click("[data-testid=nav-logout]")
     page.goto(base + "/register?mode=reset")
     expect(page.locator("form")).to_be_visible(timeout=10000)

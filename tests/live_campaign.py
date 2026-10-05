@@ -232,7 +232,7 @@ def main() -> int:
             register_ui(pg, base, "Alice E2E", alice_email); created_users.append(alice_email)
             check("register -> dashboard", "/dashboard" in pg.url)
             # duplicate registration is rejected with a message
-            pg.click("[data-testid=nav-logout]"); pg.wait_for_selector("[data-testid=nav-register]", timeout=15000)
+            pg.click("[data-testid=account-menu]"); pg.click("[data-testid=nav-logout]"); pg.wait_for_selector("[data-testid=nav-register]", timeout=15000)
             pg.goto(base + "/register", wait_until="networkidle")
             pg.fill("[data-testid=reg-name]", "Dup"); pg.fill("[data-testid=reg-email]", alice_email)
             pg.fill("[data-testid=reg-password]", PW); pg.fill("[data-testid=reg-password2]", PW); pg.check("[data-testid=reg-agree]")

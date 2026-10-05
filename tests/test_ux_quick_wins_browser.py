@@ -294,6 +294,7 @@ def test_log_out_clears_the_stored_session(portal_site, schedule):
         login(page, portal_site, user, lang='en')
         stored = "() => Object.keys(localStorage).filter(key => key.startsWith('sb-') && key.endsWith('-auth-token'))"
         assert page.evaluate(stored)
+        page.get_by_test_id('account-menu').click()
         page.get_by_test_id('nav-logout').click()
         expect(page.get_by_test_id('nav-logout')).to_have_count(0, timeout=10000)
         assert page.evaluate(stored) == []

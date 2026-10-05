@@ -19,6 +19,7 @@ import QuestPanel from '../components/dashboard/QuestPanel.vue'
 import TeamInbox from '../components/TeamInbox.vue'
 import { useQuestFlags } from '../composables/useQuestFlags'
 import { questProgress } from '../lib/quest'
+import { dashboardQuickLinks } from '../lib/accountLinks'
 
 const { t, tf, pick } = useI18n()
 const route = useRoute()
@@ -94,6 +95,15 @@ onMounted(async () => {
 <template>
   <DashShell :kicker="t('dash.title')" :title="tf('dash.welcome', { name: me?.nickname || me?.name || me?.email || '' })">
     <TeamInbox compact />
+    <section class="panel quick-links" data-testid="dash-quick-links">
+      <div class="hd"><h2>{{ pick('Quick links', '常用入口') }}</h2><span class="label">{{ pick('Tokens · CLI · team', '令牌 · 命令行 · 队伍') }}</span></div>
+      <div class="quick-grid">
+        <router-link v-for="item in dashboardQuickLinks" :key="item.to" :to="item.to" class="quick-link" :data-testid="item.testid">
+          <b>{{ pick(item.en, item.zh) }} <span aria-hidden="true">→</span></b>
+          <small>{{ pick(item.hintEn, item.hintZh) }}</small>
+        </router-link>
+      </div>
+    </section>
     <div v-if="loading" class="dash-grid"><div class="panel"><SkeletonRows :rows="5" :cols="5" :label="t('dash.loading')" /></div><div class="panel"><SkeletonRows :rows="3" :cols="2" :label="t('dash.loading')" /></div></div>
     <div v-else class="dash-grid">
       <div>
@@ -146,3 +156,14 @@ onMounted(async () => {
     </div>
   </DashShell>
 </template>
+
+<style scoped>
+.quick-links { margin-bottom: 2rem; }
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: .75rem; }
+.quick-link { display: flex; flex-direction: column; gap: .3rem; padding: .85rem 1rem; border: 1px solid rgba(158,173,255,.26); background: rgba(49,94,251,.06);
+  transition: border-color .15s ease, background .15s ease; }
+.quick-link:hover { border-color: #78a6ff; background: rgba(49,94,251,.16); }
+.quick-link b { font-size: .95rem; font-weight: 600; color: #f5f5f5; }
+.quick-link b span { color: #78a6ff; }
+.quick-link small { font-size: .78rem; line-height: 1.45; color: rgba(255,255,255,.55); }
+</style>
