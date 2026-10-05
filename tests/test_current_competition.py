@@ -205,3 +205,41 @@ def test_practice_board_keeps_taking_evaluations_during_the_competition(database
         query(uri,'delete from public.phase_scenarios where phase_id=%s',(board,))
         query(uri,'delete from public.observer_phase_settings where phase_id=%s',(board,))
         query(uri,'delete from public.phases where id=%s',(board,))
+
+
+def test_extra_phase_is_offered_only_when_configured_open_and_unrestricted(database):
+    uri=database;team=identity(uri)[1]
+    extra=uuid.uuid4()
+    query(uri,"insert into public.phases(id,slug,name_en,name_zh) values(%s,'extra-phase','Extra','加赛')",(extra,))
+    query(uri,'insert into public.observer_phase_settings(phase_id,projects_enabled,daily_batches) values(%s,true,5)',(extra,))
+    text=lambda: query(uri,'select public.current_competition()::text')[0][0]
+    try:
+        for mode in ('practice','competition'):
+            query(uri,'update private.observer_site_mode set mode=%s,phase_id=null',(mode,))
+            base=text()  # nothing configured: the answer as before
+            query(uri,'insert into private.observer_extra_phase(id,phase_id) values(true,%s) on conflict (id) do update set phase_id=excluded.phase_id',(extra,))
+            assert rpc(uri,'current_competition',role='anon')['extra_phase_id']==str(extra)
+            assert query(uri,"select (public.current_competition()-'extra_phase_id')::text")[0][0]==base
+            # Restricted, inactive, ended, not yet started or without projects: unchanged, byte for byte.
+            for change,undo,args in (
+                    ('update public.observer_phase_settings set access_team_id=%s where phase_id=%s',
+                     'update public.observer_phase_settings set access_team_id=null where phase_id=%s',(team,extra)),
+                    ('update public.phases set is_active=false where id=%s','update public.phases set is_active=true where id=%s',(extra,)),
+                    ("update public.phases set ends_at=now()-interval '1 minute' where id=%s",'update public.phases set ends_at=null where id=%s',(extra,)),
+                    ("update public.phases set starts_at=now()+interval '1 hour' where id=%s",'update public.phases set starts_at=null where id=%s',(extra,)),
+                    ('update public.observer_phase_settings set projects_enabled=false where phase_id=%s',
+                     'update public.observer_phase_settings set projects_enabled=true where phase_id=%s',(extra,))):
+                query(uri,change,args)
+                assert text()==base
+                query(uri,undo,(extra,))
+            assert rpc(uri,'current_competition',role='anon')['extra_phase_id']==str(extra)
+            # Turned off by hand: unchanged again.
+            query(uri,'update private.observer_extra_phase set phase_id=null')
+            assert text()==base
+        with pytest.raises(psycopg.Error,match='permission denied'):
+            query(uri,'select * from private.observer_extra_phase',role='anon')
+    finally:
+        query(uri,"update private.observer_site_mode set mode='practice',phase_id=null")
+        query(uri,'delete from private.observer_extra_phase')
+        query(uri,'delete from public.observer_phase_settings where phase_id=%s',(extra,))
+        query(uri,'delete from public.phases where id=%s',(extra,))

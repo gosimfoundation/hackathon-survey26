@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { entryPhaseId, entryPhaseIds, entryStorageKey, offersPracticeSwitch, parseCompetition, readEntryChoice, rememberEntryChoice, type CompetitionState } from '../src/lib/entryPhase.ts'
+import { entryPhaseId, entryPhaseIds, entryStorageKey, initialEntryChoice, offersExtraSwitch, offersPracticeSwitch, parseCompetition, readEntryChoice, rememberEntryChoice, type CompetitionState } from '../src/lib/entryPhase.ts'
 
 const memory = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v) }, m } }
 const state = (data: unknown, beta: string | null = null): CompetitionState => ({ ...parseCompetition(data), betaPhaseId: beta })
 
 test('practice mode answers exactly as before and offers no switch', () => {
   const s = state({ mode: 'practice', phase_id: 'csv', project_phase_id: 'pp', practice_phase_id: 'ignored' })
-  assert.deepEqual(s, { mode: 'practice', phaseId: 'csv', projectPhaseId: 'pp', practicePhaseId: null, betaPhaseId: null })
+  assert.deepEqual(s, { mode: 'practice', phaseId: 'csv', projectPhaseId: 'pp', practicePhaseId: null, extraPhaseId: null, betaPhaseId: null })
   assert.equal(offersPracticeSwitch(s), false)
   assert.equal(entryPhaseId(s, 'practice'), 'pp')
   assert.equal(entryPhaseId(s, 'online'), 'pp')
@@ -27,7 +27,7 @@ test('without an open practice board the competition has no switch and stays onl
   const s = state({ mode: 'competition', phase_id: 'online' })
   assert.equal(offersPracticeSwitch(s), false)
   assert.equal(entryPhaseId(s, 'practice'), 'online')
-  assert.deepEqual(state(null), { mode: 'practice', phaseId: null, projectPhaseId: null, practicePhaseId: null, betaPhaseId: null })
+  assert.deepEqual(state(null), { mode: 'practice', phaseId: null, projectPhaseId: null, practicePhaseId: null, extraPhaseId: null, betaPhaseId: null })
 })
 
 test('the choice is remembered per user and defaults to online', () => {
@@ -56,4 +56,31 @@ test('after the online deadline the page opens on practice, whatever was remembe
   assert.equal(entryPhaseId(s, 'practice'), 'pp')
   assert.equal(entryPhaseId(s, 'online'), 'online')
   assert.deepEqual(entryPhaseIds(s), ['online', 'pp', 'pp'])
+})
+
+test('an offered extra phase is a third choice, remembered only while it is offered', () => {
+  const s = state({ mode: 'competition', phase_id: 'online', practice_phase_id: 'pp', extra_phase_id: 'ex' })
+  assert.equal(s.extraPhaseId, 'ex')
+  assert.equal(offersExtraSwitch(s), true)
+  assert.equal(entryPhaseId(s, 'extra'), 'ex')
+  assert.equal(entryPhaseId(s, 'online'), 'online')
+  assert.deepEqual(entryPhaseIds(s), ['online', 'pp', 'ex'])
+  // Also next to practice mode, without a practice switch.
+  const p = state({ mode: 'practice', phase_id: 'csv', project_phase_id: 'board', extra_phase_id: 'ex' })
+  assert.equal(offersPracticeSwitch(p), false)
+  assert.equal(offersExtraSwitch(p), true)
+  assert.equal(entryPhaseId(p, 'extra'), 'ex')
+  assert.equal(entryPhaseId(p, 'online'), 'board')
+  const st = memory()
+  rememberEntryChoice(st, 'u1', 'extra')
+  assert.equal(readEntryChoice(st, 'u1', true), 'extra')
+  assert.equal(initialEntryChoice(st, 'u1', true, true), 'extra')
+  // Not offered (any more): the remembered choice falls back as before and binds nowhere new.
+  assert.equal(readEntryChoice(st, 'u1'), 'online')
+  assert.equal(initialEntryChoice(st, 'u1', false, false), 'online')
+  assert.equal(initialEntryChoice(st, 'u1', true, false), 'practice')
+  const none = state({ mode: 'competition', phase_id: 'online', practice_phase_id: 'pp' })
+  assert.equal(offersExtraSwitch(none), false)
+  assert.equal(entryPhaseId(none, 'extra'), 'online')
+  assert.deepEqual(entryPhaseIds(none), ['online', 'pp'])
 })

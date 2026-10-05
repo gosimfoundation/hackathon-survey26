@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { loadCompeteUiSetting, loadPhases,type Phase } from '../lib/data'
 import { COMPETE_UI_STORAGE, competeLayout, layoutOverride, type CompeteLayout } from '../lib/competeUi'
 import { chooseEntry, competition, entryChoice, loadCompetition, useEntryFor } from '../stores/competition'
-import { offersPracticeSwitch } from '../lib/entryPhase'
+import { offersExtraSwitch, offersPracticeSwitch } from '../lib/entryPhase'
 import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
@@ -32,7 +32,10 @@ async function chooseLayout(){
   layout.value=competeLayout(override?{v2_all:false,v2_teams:[]}:await loadCompeteUiSetting(),team.value?.id,override)
 }
 // During the competition practice stays open: 线上赛 by default, 练习赛 one click away (remembered per user).
-const showSwitch=computed(()=>offersPracticeSwitch(competition))
+// Organizers may also offer an extra (unscored) phase as a third choice.
+const showPractice=computed(()=>offersPracticeSwitch(competition)),showExtra=computed(()=>offersExtraSwitch(competition))
+const showSwitch=computed(()=>showPractice.value||showExtra.value)
+const extraPhase=computed(()=>allPhases.value.find(p=>p.id===competition.extraPhaseId))
 // After the online deadline the page opens on practice; online stays one click away, read-only.
 const onlineEnded=computed(()=>{const p=allPhases.value.find(x=>x.id===competition.phaseId);return !!p?.ends_at&&Date.parse(p.ends_at)<=Date.now()})
 const onlineEndedView=computed(()=>showSwitch.value&&onlineEnded.value&&entryChoice.value==='online')
@@ -66,9 +69,10 @@ onMounted(async()=>{try{await refreshMe()
       <div class="compete-top mb-5">
       <div v-if="showSwitch" class="actions-inline" role="group" :aria-label="pick('Evaluation phase','评测赛程')" data-testid="entry-switch">
         <button type="button" class="btn sm" :class="{ primary: entryChoice==='online' }" :aria-pressed="entryChoice==='online'" data-testid="entry-online" @click="chooseEntry('online')">{{ onlineEnded ? pick('Online competition · Ended','线上赛 · 已截止') : pick('Online competition','线上赛') }}</button>
-        <button type="button" class="btn sm" :class="{ primary: entryChoice==='practice' }" :aria-pressed="entryChoice==='practice'" data-testid="entry-practice" @click="chooseEntry('practice')">{{ pick('Practice','练习赛') }}</button>
-        <router-link class="text2 text-sm" :to="`/leaderboard/${boardSlug}`" data-testid="entry-board">{{ entryChoice==='practice' ? pick('Practice leaderboard →','练习赛排行榜 →') : pick('Online leaderboard →','线上赛排行榜 →') }}</router-link>
-        <span class="text3 text-sm" data-testid="entry-note">{{ onlineEndedView ? pick('The online phase has ended: its records, logs and downloads stay available and the final version is locked. Switch to Practice to keep evaluating.','线上赛已截止：评测记录、日志和下载仍可查看，最终版本已锁定。继续评测请切换到练习赛。') : entryChoice==='practice' ? pick('Practice does not affect the online ranking; it has its own daily evaluations.','练习赛不影响线上赛排名，评测次数单独计算。') : pick('Evaluations here count for the online leaderboard.','这里的评测计入线上赛排行榜。') }}</span>
+        <button v-if="showPractice" type="button" class="btn sm" :class="{ primary: entryChoice==='practice' }" :aria-pressed="entryChoice==='practice'" data-testid="entry-practice" @click="chooseEntry('practice')">{{ pick('Practice','练习赛') }}</button>
+        <button v-if="showExtra" type="button" class="btn sm" :class="{ primary: entryChoice==='extra' }" :aria-pressed="entryChoice==='extra'" data-testid="entry-extra" @click="chooseEntry('extra')">{{ pick(extraPhase?.name_en||'Extra',extraPhase?.name_zh||'加赛') }}</button>
+        <router-link v-if="entryChoice!=='extra'" class="text2 text-sm" :to="`/leaderboard/${boardSlug}`" data-testid="entry-board">{{ entryChoice==='practice' ? pick('Practice leaderboard →','练习赛排行榜 →') : pick('Online leaderboard →','线上赛排行榜 →') }}</router-link>
+        <span class="text3 text-sm" data-testid="entry-note">{{ entryChoice==='extra' ? pick('Unscored: does not count for any leaderboard and has its own daily evaluations.','不计分：不计入任何排行榜，评测次数单独计算。') : onlineEndedView ? pick('The online phase has ended: its records, logs and downloads stay available and the final version is locked. Switch to Practice to keep evaluating.','线上赛已截止：评测记录、日志和下载仍可查看，最终版本已锁定。继续评测请切换到练习赛。') : entryChoice==='practice' ? pick('Practice does not affect the online ranking; it has its own daily evaluations.','练习赛不影响线上赛排名，评测次数单独计算。') : pick('Evaluations here count for the online leaderboard.','这里的评测计入线上赛排行榜。') }}</span>
       </div>
       <div v-if="layout==='v2'" class="compete-guide-btn"><CompeteGuide /></div>
       </div>
