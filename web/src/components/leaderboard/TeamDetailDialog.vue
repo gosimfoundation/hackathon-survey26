@@ -10,7 +10,7 @@ import { scenarioLabel } from '../../lib/scenarioLabels'
 // publishes is shown: team names, scores and ranks are public; member details are not.
 // Card boards pass their cards and the current tab's label; their rows carry numeric score components.
 // superBoard: a row of the super board (超级总榜) or of an added card's tab; its total is the 8-card sum.
-const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null; superBoard?: boolean }>()
+const props = defineProps<{ entry: LeaderboardEntry | null; mine: boolean; cards?: BoardCard[]; boardLabel?: string | null; superBoard?: boolean; unranked?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, tf, pick, locale } = useI18n()
 const closeBtn = ref<HTMLButtonElement | null>(null)
@@ -54,7 +54,7 @@ onUnmounted(() => { document.documentElement.style.overflow = ''; window.removeE
   <div v-if="entry" class="team-detail" data-testid="team-detail" @click.self="emit('close')">
     <section class="team-detail-panel" role="dialog" aria-modal="true" :aria-label="entry.team_name">
       <header class="team-detail-head">
-        <span class="team-detail-rank" :class="entry.rank <= 3 ? `rank-${entry.rank}` : ''">#{{ entry.rank }}</span>
+        <span v-if="!unranked" class="team-detail-rank" :class="entry.rank <= 3 ? `rank-${entry.rank}` : ''">#{{ entry.rank }}</span>
         <UserAvatar :name="entry.team_name" :github="entry.leader_github" :avatar-url="entry.leader_avatar_url" />
         <h2 class="team-detail-name">{{ entry.team_name }}</h2>
         <span v-if="mine" class="team-detail-tag">{{ t('leaderboard.chart.your_team') }}</span>
