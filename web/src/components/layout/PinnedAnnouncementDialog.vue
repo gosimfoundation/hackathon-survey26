@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Pinned announcements open as a dialog on any page (the slim banner alone went unnoticed), one per page load.
-// It pops up on every page load (except /announcements) until the person has closed it 3 times (lib/popupRules: key
+// It pops up on every page load (except /announcements) until the person has closed it twice (lib/popupRules: key
 // id + notify_version, so an organizer's "remind everyone" brings it back with a fresh count, edits do not).
 // Remembered on this device and, when signed in, on the server. Several pinned ones take turns across page loads.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -52,7 +52,7 @@ watch([open, () => route.path], async ([isOpen, path]) => {
 
 function dismiss() {
   if (!item.value) return
-  // Every close counts (button, ×, Esc, outside click, "all announcements"); the 3rd one stops it for good.
+  // Every close counts (button, ×, Esc, outside click, "all announcements"); the 2nd one stops it for good.
   markSeen([announcementCloseKey(item.value, closes.value + 1)])
   item.value = null
   if (dialog.value?.open) dialog.value.close()

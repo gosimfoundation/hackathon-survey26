@@ -1,5 +1,5 @@
 """Pinned announcements pop up, one per page load, with clickable links and its poster shown whole (also on a phone).
-Each one pops up on every page load (except /announcements) until the person has closed it 3 times (any way); an
+Each one pops up on every page load (except /announcements) until the person has closed it twice (any way); an
 organizer's "remind everyone" (notify_version) brings it back with a fresh count; edits never re-show it; keys of the
 older snooze / switch-off scheme do not count. Several pinned announcements take turns across page loads
 (web/src/lib/popupRules.ts)."""
@@ -54,12 +54,12 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         page.wait_for_function('img => img.complete && img.naturalWidth > 0', arg=image.element_handle())
         expect(box).to_contain_text('另有 1 条置顶公告')
         expect(box.get_by_test_id('pinned-announcement-all')).to_have_text('查看全部公告 →')
-        expect(box.get_by_test_id('pinned-announcement-closes-left')).to_have_text('再关闭 3 次后不再显示')
+        expect(box.get_by_test_id('pinned-announcement-closes-left')).to_have_text('再关闭 2 次后不再显示')
         expect(box.get_by_test_id('pinned-announcement-off')).to_have_count(0)
         page.get_by_test_id('pinned-announcement-close').click()
         expect(box).to_have_count(0)
         # The pinned ones take turns (least closed first, newest on a tie); every way of closing counts.
-        closes = [('Older', 3, 'close'), ('Talk', 2, 'escape'), ('Older', 2, 'ok'), ('Talk', 1, 'close'), ('Older', 1, 'escape')]
+        closes = [('Older', 2, 'close'), ('Talk', 1, 'escape'), ('Older', 1, 'ok')]
         for i, (title, left, how) in enumerate(closes):
             page.goto(portal_site + ('/leaderboard' if i % 2 == 0 else '/rules') + '?lang=zh', wait_until='domcontentloaded')
             box = popup_box(page)
@@ -73,13 +73,13 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
             else:
                 page.get_by_test_id('pinned-announcement-close').click()
             expect(box).to_have_count(0)
-        # Closed 3 times each: they stop for good.
+        # Closed twice each: they stop for good.
         page.goto(portal_site + '/faq?lang=zh', wait_until='domcontentloaded')
         page.wait_for_timeout(3000)
         expect(popup_box(page)).to_have_count(0)
         seen = page.evaluate("JSON.parse(localStorage.getItem('sac.popups.seen'))")
         for ann in (talk, older):
-            assert all(f'ann-off:{ann}:v1#close{n}' in seen for n in (1, 2, 3)), seen
+            assert all(f'ann-off:{ann}:v1#close{n}' in seen for n in (1, 2)) and f'ann-off:{ann}:v1#close3' not in seen, seen
         assert not any(k.startswith('ann-snooze:') for k in seen)
         # Editing the text never re-shows it.
         query(uri, "update public.announcements set body_zh=body_zh||' (更新)' where id=%s", (talk,))
@@ -90,7 +90,7 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
         query(uri, "update public.announcements set notify_version=notify_version+1 where id=%s", (talk,))
         page.goto(portal_site + '/faq?lang=zh', wait_until='domcontentloaded')
         expect(popup_box(page)).to_contain_text('Talk ' + tag, timeout=15000)
-        expect(popup_box(page).get_by_test_id('pinned-announcement-closes-left')).to_have_text('再关闭 3 次后不再显示')
+        expect(popup_box(page).get_by_test_id('pinned-announcement-closes-left')).to_have_text('再关闭 2 次后不再显示')
         context.close()
 
         # A newer pinned announcement pops up (English). Keys of the older snooze / switch-off scheme do not
@@ -103,7 +103,7 @@ def test_pinned_announcement_popup(portal_site, edge_stack):
                       [f'ann:{newer}:v1', f'ann-off:{newer}:v1', f'ann-snooze:{newer}:v1:2026-10-06'])
         home.reload(wait_until='domcontentloaded')
         expect(popup_box(home)).to_contain_text('Newer ' + tag + ' (en)', timeout=15000)
-        expect(popup_box(home).get_by_test_id('pinned-announcement-closes-left')).to_have_text('Closes left before it stops: 3')
+        expect(popup_box(home).get_by_test_id('pinned-announcement-closes-left')).to_have_text('Closes left before it stops: 2')
         home.wait_for_timeout(3500)
         home.reload(wait_until='domcontentloaded')
         expect(popup_box(home)).to_contain_text('Newer ' + tag, timeout=15000)
