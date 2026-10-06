@@ -3,7 +3,8 @@
  * `fold`: when the desktop header row does not fit, main links move under More in this order
  * (1 first), as many as needed. Links without it always stay in the row.
  */
-export interface NavItem { key: string; to: string; fold?: number }
+/** `divider`: a thin rule above the item in the More menu (reference pages above, announcements below). */
+export interface NavItem { key: string; to: string; fold?: number; divider?: boolean }
 
 export const mainNavItems: NavItem[] = [
   { key: 'nav.start', to: '/start' },
@@ -20,9 +21,10 @@ export const moreNavItems: NavItem[] = [
   { key: 'nav.brief', to: '/brief' },
   { key: 'nav.cards', to: '/cards' },
   { key: 'nav.docs', to: '/docs' },
+  { key: 'nav.cli', to: '/cli' },
   { key: 'nav.resources', to: '/resources' },
   { key: 'nav.faq', to: '/faq' },
-  { key: 'nav.announcements', to: '/announcements' },
+  { key: 'nav.announcements', to: '/announcements', divider: true },
 ]
 
 /** Highest `fold` level, i.e. how many steps the header can fold before only fixed links remain. */

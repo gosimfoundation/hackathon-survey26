@@ -351,6 +351,43 @@ def online_board(baselines=BASELINES):
             "rpc:observer_baseline_rows": baselines}
 
 
+# Two-stage evaluations (online): A-D first, then A1-D1 of the same evaluation.
+STAGE_SCENARIOS = (200, {"data": [{"id": SC_A, "slug": "v4-a", "name": "a"}, {"id": SC_B, "slug": "v4-b", "name": "b"},
+                                  {"id": SC_C, "slug": "v4-a1", "name": "a1"}, {"id": SC_D, "slug": "v4-b1", "name": "b1"}]})
+
+
+def staged_listing(second_stage=False):
+    data = listing("running")
+    batch = data["batches"][0]
+    batch["staged"] = True
+    if second_stage:
+        batch["observer_runs"] = [
+            {"id": RUN_A, "scenario_id": SC_A, "status": "scored", "score": 60, "result_path": "y", "started_at": iso(1500)},
+            {"id": RUN_B, "scenario_id": SC_B, "status": "scored", "score": 63.25, "result_path": "x", "started_at": iso(1500)},
+            {"id": "5555cccc-5555-5555-5555-555555555555", "scenario_id": SC_C, "status": "running", "score": None, "result_path": None,
+             "started_at": iso(20)},
+            {"id": "5555dddd-5555-5555-5555-555555555555", "scenario_id": SC_D, "status": "queued", "score": None, "result_path": None}]
+    else:
+        batch["observer_runs"] = [
+            {"id": RUN_A, "scenario_id": SC_A, "status": "running", "score": None, "result_path": None, "started_at": iso(150)},
+            {"id": RUN_B, "scenario_id": SC_B, "status": "scored", "score": 60, "result_path": "x", "started_at": iso(900)},
+            {"id": "5555cccc-5555-5555-5555-555555555555", "scenario_id": SC_C, "status": "queued", "score": None, "result_path": None},
+            {"id": "5555dddd-5555-5555-5555-555555555555", "scenario_id": SC_D, "status": "queued", "score": None, "result_path": None}]
+    return {"scenarios": STAGE_SCENARIOS, "portal:list": (200, {"data": data})}
+
+
+SUPER = {"layout": "super", "cards": [{"slug": "v4-a", "name": "A"}, {"slug": "v4-a1", "name": "A1"}], "scenario": None,
+         "rows": [{"rank": 1, "team_id": "t1", "team_name": "Stars", "total_score": 101.5, "submission_count": 3,
+                   "card_scores": {"v4-a": 60, "v4-a1": 51}}]}
+
+
+def super_board():
+    routes = online_board()
+    routes["rpc:observer_super_board"] = (200, {"data": SUPER})
+    routes["rpc:observer_super_baseline_rows"] = (200, {"data": [{"group": "basic", "overall_score": 90.0, "card_scores": None, "runs": 4}]})
+    return routes
+
+
 RELAY = {"enabled": True, "has_team": True, "eligible": True, "daily_requests": 200, "daily_tokens": 2000000, "max_concurrent": 2,
          "max_tokens": 8192, "used_requests": 13, "used_tokens": 2500000}
 
@@ -547,6 +584,16 @@ SCENARIOS = [
     ("eval-show-selfcheck", ["--json", "eval", "show", "latest"], {"routes": {"portal:list": (200, {"data": listing(repeat=True)})}, "exit": 0}),
     ("eval-show-human", ["eval", "show", "latest"], {"routes": {"portal:list": (200, {"data": listing(repeat=True)})}, "exit": 0, "human": True}),
     ("eval-wait", ["--json", "eval", "wait"], {"exit": 0}),
+    ("eval-show-staged", ["--json", "eval", "show", "latest"], {"routes": staged_listing(), "exit": 0}),
+    ("eval-show-staged-human", ["eval", "show", "latest"], {"routes": staged_listing(), "exit": 0, "human": True}),
+    ("eval-show-staged2-human-zh", ["--lang", "zh", "eval", "show", "latest"], {"routes": staged_listing(True), "exit": 0, "human": True}),
+    ("eval-list-staged", ["--json", "eval", "list"], {"routes": staged_listing(), "exit": 0}),
+    ("eval-list-staged-human", ["eval", "list"], {"routes": staged_listing(), "exit": 0, "human": True}),
+    ("eval-wait-first-stage", ["--json", "eval", "wait", "--first-stage"], {"routes": staged_listing(True), "exit": 0}),
+    ("eval-wait-first-stage-early", ["--json", "eval", "wait", "--first-stage", "--timeout", "0"], {"routes": staged_listing(), "exit": 7}),
+    ("eval-wait-staged-timeout-human", ["eval", "wait", "--timeout", "0"], {"routes": staged_listing(True), "exit": 7, "human": True}),
+    ("leaderboard-super", ["--json", "leaderboard", "--card", "super"], {"routes": super_board(), "exit": 0}),
+    ("leaderboard-super-human", ["leaderboard", "--card", "super"], {"routes": super_board(), "exit": 0, "human": True}),
     ("eval-wait-failed", ["--json", "eval", "wait", "44444444"], {"routes": {"portal:list": (200, {"data": listing("failed")})}, "exit": 9}),
     ("eval-wait-timeout", ["--json", "eval", "wait", "--timeout", "0"], {"routes": {"portal:list": (200, {"data": listing("running")})}, "exit": 7}),
     ("eval-wait-none", ["--json", "eval", "wait"], {"routes": {"portal:list": (200, {"data": {"batches": []}})}, "exit": 4}),
@@ -765,3 +812,31 @@ def test_relay_status_remaining_allowance(gw, tmp_path):
     _, doc = run_python(gw, tmp_path, ["--json", "relay", "status"], {"rpc:my_kimi_relay": (200, {"data": RELAY})})
     assert doc["data"]["remaining_requests"] == 187 and doc["data"]["remaining_tokens"] == 0
     assert doc["data"]["base_url"].endswith("/functions/v1/kimi-relay/v1") and doc["data"]["model"] == "kimi-for-coding"
+
+
+def test_two_stage_status(gw, tmp_path):
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "show", "latest"], staged_listing())
+    data = doc["data"]
+    assert data["staged"] is True and data["first_stage_finished"] is False and data["first_stage_score"] is None
+    assert [(r["card"], r["waiting_for_first_stage"], r["running_minutes"]) for r in data["runs"]] == [
+        ("v4-a", False, 2), ("v4-b", False, None), ("v4-a1", True, None), ("v4-b1", True, None)]
+    done, _ = run_python(gw, tmp_path, ["eval", "list"], staged_listing())
+    assert "1/4 (1 running, 2 waiting for A–D)" in done["stdout"], done["stdout"]
+    done, _ = run_python(gw, tmp_path, ["eval", "show", "latest"], staged_listing())
+    assert "running 2 min" in done["stdout"] and "waiting for A–D" in done["stdout"], done["stdout"]
+    _, doc = run_python(gw, tmp_path, ["--json", "eval", "wait", "--first-stage"], staged_listing(True))
+    assert doc["data"]["first_stage_score"] == 61.625 and [r["waiting_for_first_stage"] for r in doc["data"]["runs"]] == [False] * 4
+    assert doc["data"]["runs"][2]["running_minutes"] == 0
+
+
+def test_super_board(gw, tmp_path):
+    done, doc = run_python(gw, tmp_path, ["--json", "leaderboard", "--card", "super"], super_board())
+    assert doc["data"]["card"] == "super" and doc["data"]["rows"][0]["total_score"] == 101.5
+    assert [r["name"] for r in done["requests"] if r.get("name", "").startswith("observer_super")] == [
+        "observer_super_board", "observer_super_baseline_rows"]
+    done, _ = run_python(gw, tmp_path, ["leaderboard", "--card", "super"], super_board())
+    assert "Super board = 20%" in done["stdout"] and "Baseline · official examples (basic)" in done["stdout"].splitlines()[3], done["stdout"]
+    routes = online_board()
+    routes["rpc:observer_card_board"] = (200, {"data": dict(BOARD, extra_cards=[{"slug": "v4-a1", "name": "A1"}])})
+    done, _ = run_python(gw, tmp_path, ["leaderboard"], routes)
+    assert "Cards (--card): v4-a, v4-a1, super" in done["stdout"], done["stdout"]

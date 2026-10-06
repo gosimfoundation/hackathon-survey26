@@ -145,9 +145,7 @@ async function logout() {
           </button>
           <div v-show="moreOpen" class="nav-drop-panel">
             <router-link v-for="item in foldedItems" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
-            <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to) }">{{ t(item.key) }}</router-link>
-            <router-link v-if="isLoggedIn" to="/teammates#find-uid" class="nav-drop-item" data-testid="nav-find-uid">{{ t('nav.find_uid') }}</router-link>
-            <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="nav-drop-item" data-testid="nav-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
+            <router-link v-for="item in more" :key="item.to" :to="item.to" class="nav-drop-item" :class="{ active: isActive(item.to), 'nav-drop-divider': item.divider }">{{ t(item.key) }}</router-link>
           </div>
         </div>
         <router-link v-if="isAdmin" to="/admin" class="inline-flex h-10 items-center font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]" :class="route.path.startsWith('/admin') ? 'text-[#78a6ff]' : 'text-white/50'">{{ t('nav.admin') }}</router-link>
@@ -196,8 +194,6 @@ async function logout() {
       <p v-if="nextLine" class="mb-2 font-mono text-[.68rem] leading-relaxed tracking-[.06em] text-white/60" data-testid="menu-next-phase">{{ nextLine }}</p>
       <router-link v-for="item in items" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
       <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
-      <router-link v-if="isLoggedIn" to="/teammates#find-uid" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-find-uid">{{ t('nav.find_uid') }}</router-link>
-      <router-link v-if="isLoggedIn" to="/profile#wechat-qr" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" data-testid="mobile-wechat-qr">{{ t('nav.wechat_qr') }}</router-link>
       <router-link v-if="isLoggedIn && pendingTeamActions" to="/team#requests" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-team-requests">{{ pick('Team requests waiting for you', '待处理的组队请求') }} <span class="nav-count">{{ badgeText(pendingTeamActions) }}</span></router-link>
       <router-link v-if="isLoggedIn && pendingFriendRequests" to="/profile#friends" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-friend-requests">{{ pick('Friend requests waiting for you', '待处理的好友请求') }} <span class="nav-count">{{ badgeText(pendingFriendRequests) }}</span></router-link>
       <router-link v-if="isAdmin" to="/admin" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.admin') }}</router-link>
@@ -211,12 +207,13 @@ async function logout() {
         <router-link to="/register?mode=login" class="mt-3 block border border-white/35 px-4 py-3 text-center font-mono text-xs font-semibold uppercase tracking-widest text-[#f5f5f5]">{{ t('nav.login') }}</router-link>
       </template>
       <p class="mt-4 mb-1 font-mono text-[.62rem] uppercase tracking-[.14em] text-white/35" data-testid="mobile-more">{{ t('nav.more') }}</p>
-      <router-link v-for="item in more" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
+      <router-link v-for="item in more" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white" :class="{ 'mt-2 border-t': item.divider }">{{ t(item.key) }}</router-link>
     </div>
   </header>
 </template>
 
 <style scoped>
+.nav-drop-divider { border-top: 1px solid rgba(255,255,255,.12); margin-top: .25rem; padding-top: .7rem; }
 .nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.1rem; height: 1.1rem; margin-left: .35rem; padding: 0 .3rem;
   border-radius: 999px; background: #ef4444; color: #fff; font-size: .65rem; line-height: 1; letter-spacing: 0; }
 @media (max-width: 1279px) { .main-link { letter-spacing: .02em; } }

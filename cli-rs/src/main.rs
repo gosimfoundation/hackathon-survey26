@@ -703,9 +703,33 @@ fn slug_of_phase(slugs: &[(Value, Value)], phase_id: &Value) -> Value {
     slugs.iter().rev().find(|(id, _)| id == phase_id).map(|(_, s)| s.clone()).unwrap_or(Value::Null)
 }
 
+/// Whole minutes a running card has run (as on the website), or null when it is not running.
+fn running_minutes(run: &Value, now_secs: f64) -> Value {
+    if s_or(&run["status"]) != "running" || !truthy(&run["started_at"]) {
+        return Value::Null;
+    }
+    match parse_time(&py_str(&run["started_at"])) {
+        Some(started) => json!(std::cmp::max(0, ((now_secs - started) / 60.0).floor() as i64)),
+        None => Value::Null,
+    }
+}
+
+/// One evaluation with the live status of each card. Two-stage evaluations (staged: the online competition)
+/// run A-D first; their A1-D1 cards wait (waiting_for_first_stage) until every A-D card has finished.
 fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str, slugs: &[(Value, Value)]) -> Value {
+    let now_secs = now();
+    let staged = truthy(&batch["staged"]);
+    let raw = arr(&batch["observer_runs"]);
+    let second = |run: &Value| second_card(&s_or(&names.get(&s_or(&run["scenario_id"])).cloned().unwrap_or(json!({}))["slug"])).is_some();
+    let first: Vec<&Value> = raw.iter().filter(|r| !second(r)).collect();
+    let first_done = !first.is_empty() && first.iter().all(|r| FINISHED_RUN.contains(&s_or(&r["status"]).as_str()));
+    let mut first_score = Value::Null;
+    if staged && first_done && first.iter().all(|r| s_or(&r["status"]) == "scored" && r["score"].is_number()) {
+        let sum = first.iter().fold(0.0, |acc, r| acc + r["score"].as_f64().unwrap_or(0.0));
+        first_score = json!(sum / first.len() as f64);
+    }
     let mut runs: Vec<Value> = Vec::new();
-    for run in arr(&batch["observer_runs"]) {
+    for run in &raw {
         let sc = names.get(&s_or(&run["scenario_id"])).cloned().unwrap_or(json!({}));
         runs.push(obj(vec![
             ("run_id", run["id"].clone()),
@@ -715,6 +739,9 @@ fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str, slugs: &
             ("status", run.get("status").cloned().unwrap_or(Value::Null)),
             ("score", run.get("score").cloned().unwrap_or(Value::Null)),
             ("has_result", Value::Bool(truthy(&run["result_path"]))),
+            ("started_at", run.get("started_at").cloned().unwrap_or(Value::Null)),
+            ("running_minutes", running_minutes(run, now_secs)),
+            ("waiting_for_first_stage", Value::Bool(staged && s_or(&run["status"]) == "queued" && second(run) && !first_done)),
         ]));
     }
     runs.sort_by(|a, b| scenario_order(&s_or(&a["card"])).partial_cmp(&scenario_order(&s_or(&b["card"]))).unwrap());
@@ -730,9 +757,55 @@ fn batch_summary(batch: &Value, names: &Map<String, Value>, lang: &str, slugs: &
         ("repeat_group", g(batch, "repeat_group")),
         ("repeat_runs", g(batch, "repeat_runs")),
         ("model_disabled", Value::Bool(truthy(&batch["model_disabled"]))),
+        ("staged", Value::Bool(staged)),
+        ("first_stage_finished", if staged { Value::Bool(first_done) } else { Value::Null }),
+        ("first_stage_score", first_score),
         ("runs", Value::Array(runs)),
     ])
 }
+
+/// The card status the website shows: waiting for A-D, running for N minutes, or the status itself.
+fn run_state_text(run: &Value, lang: &str) -> String {
+    let zh = lang == "zh";
+    if truthy(&run["waiting_for_first_stage"]) {
+        return (if zh { "等待 A–D 完成" } else { "waiting for A–D" }).into();
+    }
+    if let Some(minutes) = run["running_minutes"].as_i64() {
+        if minutes < 1 {
+            return (if zh { "已运行不到 1 分钟" } else { "running <1 min" }).into();
+        }
+        return if zh { format!("已运行 {} 分钟", minutes) } else { format!("running {} min", minutes) };
+    }
+    blank_none(&run["status"])
+}
+
+/// eval list: cards finished, and while it runs how many are running or waiting for A-D.
+fn progress_text(summary: &Value, lang: &str) -> String {
+    let zh = lang == "zh";
+    let runs = arr(&summary["runs"]);
+    let done = runs.iter().filter(|r| FINISHED_RUN.contains(&s_or(&r["status"]).as_str())).count();
+    let mut text = format!("{}/{}", done, runs.len());
+    if ACTIVE.contains(&s_or(&summary["status"]).as_str()) {
+        let mut parts: Vec<String> = Vec::new();
+        let running = runs.iter().filter(|r| s_or(&r["status"]) == "running").count();
+        let waiting = runs.iter().filter(|r| truthy(&r["waiting_for_first_stage"])).count();
+        if running > 0 {
+            parts.push(if zh { format!("{} 张运行中", running) } else { format!("{} running", running) });
+        }
+        if waiting > 0 {
+            parts.push(if zh { format!("{} 张等待 A–D", waiting) } else { format!("{} waiting for A–D", waiting) });
+        }
+        if !parts.is_empty() {
+            text += &if zh { format!("（{}）", parts.join("，")) } else { format!(" ({})", parts.join(", ")) };
+        }
+    }
+    text
+}
+
+const STAGE_NOTE: (&str, &str) = ("Two stages: cards A–D run first; A1–D1 start automatically once A–D have all finished. A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program's run time).",
+    "两阶段评测：先同时运行 A–D，全部结束后自动运行 A1–D1。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。");
+const RETRY_NOTE: (&str, &str) = ("If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing; several keys (KIMI_KEY_1 ...) spread the requests of the cards that run at the same time. See https://create.gosim.org/survey26/platform/cli",
+    "调用模型的程序遇到 429（限流）时请等待后重试，不要直接报错；保存多个 key（KIMI_KEY_1 ...）可把同时运行的各张卡的请求分散开。详见 https://create.gosim.org/survey26/platform/cli");
 
 fn fmt_score(v: &Value) -> String {
     match v.as_f64() {
@@ -1842,6 +1915,10 @@ fn cmd_eval_start(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     if no_model {
         out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
     }
+    if s_or(&phase["slug"]) == "online" {
+        out.line(out.t(STAGE_NOTE.0, STAGE_NOTE.1));
+    }
+    out.line(out.t(RETRY_NOTE.0, RETRY_NOTE.1));
     Ok(obj(vec![("batch_id", batch_id), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()),
         ("revision_id", r["id"].clone()), ("repeat", Value::Bool(repeat)), ("model_disabled", Value::Bool(no_model)),
         ("extra", phase["extra"].clone())]))
@@ -1875,6 +1952,10 @@ fn cmd_eval_selfcheck(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     if no_model {
         out.line(out.t(NO_MODEL_NOTE.0, NO_MODEL_NOTE.1));
     }
+    if s_or(&phase["slug"]) == "online" {
+        out.line(out.t(STAGE_NOTE.0, STAGE_NOTE.1));
+    }
+    out.line(out.t(RETRY_NOTE.0, RETRY_NOTE.1));
     Ok(obj(vec![("result", result), ("phase_id", phase["phase_id"].clone()), ("phase", phase["slug"].clone()), ("revision_id", r["id"].clone()),
         ("model_disabled", Value::Bool(no_model)), ("extra", phase["extra"].clone())]))
 }
@@ -1896,13 +1977,14 @@ fn cmd_eval_list(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         o.insert("version".into(), Value::String(s_or(&b["revision_id"]).chars().take(8).collect()));
         o.insert("project".into(), titles.get(&s_or(&b["revision_id"])).cloned().unwrap_or(Value::Null));
         o.insert("score_text".into(), Value::String(fmt_score(&b["score"])));
+        o.insert("cards".into(), Value::String(progress_text(b, &out.lang)));
         o.insert("self_check".into(), Value::String(if truthy(&b["repeat_group"]) { "3x".into() } else { String::new() }));
         o.insert("no_model".into(), Value::String(if truthy(&b["model_disabled"]) { out.t("no model", "无模型").into() } else { String::new() }));
         o.insert("counted".into(), Value::String(if truthy(&b["quota_refunded"]) { out.t("not counted", "未计次").into() } else { String::new() }));
         t
     }).collect();
     out.table(&table, &[("ID", "id"), (out.t("Phase", "赛程"), "phase"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
-        (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"), ("", "counted"),
+        (out.t("Cards", "任务卡"), "cards"), (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"), ("", "counted"),
         (out.t("Created", "创建时间"), "created_at")]);
     Ok(Value::Array(rows))
 }
@@ -1950,11 +2032,20 @@ fn show_batch(api: &Api, data: &Value, batch: &Value, out: &Out) -> R<Value> {
         if truthy(&summary["model_disabled"]) { out.t("  (no model)", "  （无模型）") } else { "" }));
     let rows: Vec<Value> = arr(&summary["runs"]).iter().map(|r| {
         let mut t = with(r, "score_text", Value::String(fmt_score(&r["score"])));
+        t.as_object_mut().unwrap().insert("state".into(), Value::String(run_state_text(r, &out.lang)));
         t.as_object_mut().unwrap().insert("result".into(), Value::String(if truthy(&r["has_result"]) { out.t("yes", "有").into() } else { String::new() }));
         t
     }).collect();
-    out.table(&rows, &[(out.t("Card", "任务卡"), "label"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
+    out.table(&rows, &[(out.t("Card", "任务卡"), "label"), (out.t("Status", "状态"), "state"), (out.t("Score", "分数"), "score_text"),
         (out.t("Run ID", "运行 ID"), "run_id"), (out.t("Result", "结果"), "result")]);
+    if truthy(&summary["staged"]) && ACTIVE.contains(&s_or(&summary["status"]).as_str()) {
+        if summary["first_stage_score"].is_number() {
+            out.line(&out.t("Cards A–D finished: mean {0} (the online board score of this evaluation); A1–D1 continue.",
+                "A–D 已完成：平均 {0}（本次评测在正式赛排行榜上的成绩）；A1–D1 继续运行。").replace("{0}", &fmt_score(&summary["first_stage_score"])));
+        } else {
+            out.line(out.t(STAGE_NOTE.0, STAGE_NOTE.1));
+        }
+    }
     if truthy(&summary["repeat_group"]) {
         let sc = repeat_summary(data, &summary["repeat_group"]);
         summary.as_object_mut().unwrap().insert("self_check".into(), sc.clone());
@@ -1975,11 +2066,33 @@ fn cmd_eval_show(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     show_batch(api, &data, &batch, out)
 }
 
+/// eval wait: one line per change, with the running cards' minutes and the cards waiting for A-D.
+fn wait_progress(summary: &Value, out: &Out) -> String {
+    let runs = arr(&summary["runs"]);
+    let done = runs.iter().filter(|r| FINISHED_RUN.contains(&s_or(&r["status"]).as_str())).count();
+    let mut text = format!("{}  {}  {}/{} {}", time_hms(), py_none_str(&summary["status"]), done, runs.len(), out.t("cards finished", "张卡已结束"));
+    let running: Vec<String> = runs.iter().filter(|r| r["running_minutes"].is_number()).map(|r| {
+        let m = r["running_minutes"].as_i64().unwrap_or(0);
+        let minutes = if m < 1 { out.t("<1 min", "不到 1 分钟").to_string() } else { out.t("{0} min", "{0} 分钟").replace("{0}", &m.to_string()) };
+        format!("{} ({})", s(&r["label"]), minutes)
+    }).collect();
+    if !running.is_empty() {
+        text += out.t(" · running: ", " · 运行中：");
+        text += &running.join(", ");
+    }
+    let waiting = runs.iter().filter(|r| truthy(&r["waiting_for_first_stage"])).count();
+    if waiting > 0 {
+        text += &out.t(" · {0} waiting for A–D", " · {0} 张等待 A–D 完成").replace("{0}", &waiting.to_string());
+    }
+    text
+}
+
 fn cmd_eval_wait(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
-    let deadline = now() + a.int("timeout").unwrap_or(3600) as f64;
+    let deadline = now() + a.int("timeout").unwrap_or(7200) as f64;
     let mut last: Option<Value> = None;
     let mut batch_id: Option<String> = None;
     let mut pid = Value::Null;
+    let mut names: Option<Map<String, Value>> = None;
     loop {
         let data = polled_list(api, deadline)?;
         if batch_id.is_none() {
@@ -1988,12 +2101,22 @@ fn cmd_eval_wait(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         let target = batch_id.clone().unwrap_or_else(|| a.str("batch").unwrap_or_else(|| "latest".into()));
         let batch = find_batch(&in_phase(&data, &pid), &target)?;
         batch_id = Some(s(&batch["id"]));
+        if names.is_none() {
+            names = Some(scenario_names(api, &with(&data, "batches", json!([batch.clone()])))?);
+        }
+        let summary = batch_summary(&batch, names.as_ref().unwrap(), &out.lang, &phase_slugs(&data));
         let runs = arr(&batch["observer_runs"]);
         let state = json!([g(&batch, "status"), runs.iter().map(|r| json!([g(r, "status"), g(r, "score")])).collect::<Vec<_>>()]);
         if last.as_ref() != Some(&state) {
-            let done = runs.iter().filter(|r| FINISHED_RUN.contains(&s_or(&r["status"]).as_str())).count();
-            out.line(&format!("{}  {}  {}/{} {}", time_hms(), py_none_str(&g(&batch, "status")), done, runs.len(), out.t("cards finished", "张卡已结束")));
+            out.line(&wait_progress(&summary, out));
             last = Some(state);
+        }
+        if a.flag("first_stage") && truthy(&summary["staged"]) && truthy(&summary["first_stage_finished"])
+            && ACTIVE.contains(&s_or(&batch["status"]).as_str()) {
+            let shown = show_batch(api, &data, &batch, out)?;
+            out.line(&out.t("Wait for A1–D1 with: survey26 eval wait {0}", "等待 A1–D1：survey26 eval wait {0}")
+                .replace("{0}", &s(&batch["id"]).chars().take(8).collect::<String>()));
+            return Ok(shown);
         }
         let status = s_or(&batch["status"]);
         if !ACTIVE.contains(&status.as_str()) {
@@ -2326,19 +2449,29 @@ fn cmd_leaderboard(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let card_arg = a.str("card").map(Value::String).unwrap_or(Value::Null);
     let (rows, card, cards);
     let mut baselines: Vec<Value> = Vec::new();
-    if truthy(&settings["projects_enabled"]) {
+    let mut extra_cards = Value::Null;
+    if truthy(&settings["projects_enabled"]) && a.str("card").as_deref() == Some(SUPER_TAB) {
+        // The super board: 20% x the A-D card scores + 80% x the A1-D1 card scores of each team's latest complete evaluation.
+        let board = or_empty(api.rpc("observer_super_board", false, json!({"p_phase": phase["id"], "p_scenario_slug": null, "p_limit": a.int("limit")}))?);
+        let board = if board.is_object() { board } else { json!({}) };
+        rows = g(&board, "rows");
+        card = json!(SUPER_TAB);
+        cards = g(&board, "cards");
+        baselines = baseline_rows(api, &phase["id"], "observer_super_baseline_rows");
+    } else if truthy(&settings["projects_enabled"]) {
         let board = or_empty(api.rpc("observer_card_board", false, json!({"p_phase": phase["id"], "p_scenario_slug": card_arg, "p_limit": a.int("limit")}))?);
         if board.is_object() {
             rows = g(&board, "rows");
             card = g(&board, "scenario");
             cards = g(&board, "cards");
+            extra_cards = g(&board, "extra_cards");
         } else {
             rows = board;
             card = Value::Null;
             cards = Value::Null;
         }
         if slug == "online" {
-            baselines = baseline_rows(api, &phase["id"]);
+            baselines = baseline_rows(api, &phase["id"], "observer_baseline_rows");
         }
     } else {
         rows = api.rpc("leaderboard", false, json!({"p_phase_slug": slug, "p_limit": a.int("limit"), "p_scenario_slug": card_arg}))?;
@@ -2358,21 +2491,32 @@ fn cmd_leaderboard(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
         out.line(out.t("Baseline: average score of the official examples run unmodified (with the organizers' model key). For reference only; not ranked.",
             "基线：官方示例原样运行的平均分（使用组委会的模型 key），仅供参考，不参与排名。"));
     }
-    let mut listed: Vec<String> = arr(&cards).iter().filter(|c| c.is_object() && truthy(&c["slug"])).map(|c| s(&c["slug"])).collect();
+    if card == json!(SUPER_TAB) {
+        out.line(out.t(SUPER_NOTE.0, SUPER_NOTE.1));
+    }
+    let mut listed: Vec<String> = arr(&cards).iter().chain(arr(&extra_cards).iter())
+        .filter(|c| c.is_object() && truthy(&c["slug"])).map(|c| s(&c["slug"])).collect();
     listed.sort_by(|x, y| scenario_order(x).partial_cmp(&scenario_order(y)).unwrap());
+    if truthy(&extra_cards) && card != json!(SUPER_TAB) {
+        listed.push(SUPER_TAB.into());
+    }
     if !listed.is_empty() && !a.flag("mine") {
         out.line(&format!("{}{}", out.t("Cards (--card): ", "任务卡（--card）："), listed.join(", ")));
     }
     if a.flag("mine") && mine.is_empty() {
         out.line(out.t("Your team is not on this board yet.", "本队尚未出现在这个排行榜上。"));
     }
-    Ok(obj(vec![("phase", Value::String(slug)), ("card", card), ("cards", cards), ("rows", Value::Array(shown)),
+    Ok(obj(vec![("phase", Value::String(slug)), ("card", card), ("cards", cards), ("extra_cards", extra_cards), ("rows", Value::Array(shown)),
         ("baselines", Value::Array(baselines)), ("my_team_id", team_id)]))
 }
 
+const SUPER_TAB: &str = "super";
+const SUPER_NOTE: (&str, &str) = ("Super board = 20% × the sum of the A–D card scores + 80% × the sum of the A1–D1 card scores, both from the same evaluation. Only evaluations that completed all 8 cards count, and each team keeps its latest complete evaluation (not its highest).",
+    "超级总榜 = 20% × A–D 四张卡分数之和 + 80% × A1–D1 四张卡分数之和，两者来自同一次评测。只计入 8 张卡全部完成的评测，每队取最近一次完整评测（不是最高分）。");
+
 /// The online board's unranked reference rows (official examples' averages, basic and pro); none on any error.
-fn baseline_rows(api: &Api, phase_id: &Value) -> Vec<Value> {
-    let Ok(data) = api.rpc("observer_baseline_rows", false, json!({"p_phase": phase_id})) else { return Vec::new() };
+fn baseline_rows(api: &Api, phase_id: &Value, rpc: &str) -> Vec<Value> {
+    let Ok(data) = api.rpc(rpc, false, json!({"p_phase": phase_id})) else { return Vec::new() };
     arr(&data).iter().filter(|r| r.is_object() && ["basic", "pro"].contains(&r["group"].as_str().unwrap_or("")) && r["overall_score"].is_number())
         .map(|r| obj(vec![("group", g(r, "group")), ("overall_score", g(r, "overall_score")),
             ("card_scores", if r["card_scores"].is_object() { g(r, "card_scores") } else { Value::Null }),
@@ -2384,7 +2528,7 @@ fn baseline_rows(api: &Api, phase_id: &Value) -> Vec<Value> {
 fn with_baselines(table: &mut Vec<Value>, baselines: &[Value], tab: &Value, out: &Out) -> usize {
     let mut refs: Vec<(Value, f64)> = Vec::new();
     for b in baselines {
-        let score = if tab.is_null() { g(b, "overall_score") } else { b["card_scores"].get(s(tab)).cloned().unwrap_or(Value::Null) };
+        let score = if tab.is_null() || tab == &json!(SUPER_TAB) { g(b, "overall_score") } else { b["card_scores"].get(s(tab)).cloned().unwrap_or(Value::Null) };
         if let Some(sc) = score.as_f64().filter(|_| score.is_number()) {
             refs.push((b.clone(), sc));
         }

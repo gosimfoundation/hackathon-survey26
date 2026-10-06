@@ -60,6 +60,8 @@ export const ALLOWED_RPCS = new Set([
   "observer_board",
   "observer_card_board",
   "observer_baseline_rows",
+  "observer_super_board",
+  "observer_super_baseline_rows",
   "leaderboard",
   "my_kimi_relay",
 ]);

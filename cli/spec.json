@@ -1,5 +1,5 @@
 {
- "version": "1.8.0",
+ "version": "1.9.0",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1780,7 +1780,7 @@
      "dest": "timeout",
      "kind": "value",
      "type": "int",
-     "default": 3600,
+     "default": 7200,
      "help": ""
     },
     {
@@ -1792,6 +1792,14 @@
      "type": "int",
      "default": 20,
      "help": ""
+    },
+    {
+     "flags": [
+      "--first-stage"
+     ],
+     "dest": "first_stage",
+     "kind": "flag",
+     "help": "two-stage evaluations: return once cards A-D have finished (their mean is the online board score); A1-D1 keep running"
     }
    ]
   },
@@ -2084,7 +2092,7 @@
      "dest": "card",
      "kind": "value",
      "type": "str",
-     "help": "card slug, e.g. v4-a (default: overall)"
+     "help": "card slug, e.g. v4-a or v4-a1, or 'super' for the super board (default: overall)"
     },
     {
      "flags": [

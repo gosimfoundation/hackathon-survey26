@@ -106,6 +106,7 @@
     "rules": "规则",
     "cards": "任务卡",
     "docs": "文档",
+    "cli": "命令行工具 & Skill",
     "resources": "资源",
     "leaderboard": "排行榜",
     "faq": "常见问题",
@@ -2265,8 +2266,8 @@
         "a": "可以。在「密钥与网络」中为每个服务商保存密钥（例如 KIMI_API_KEY、DEEPSEEK_API_KEY），程序即可同时调用多个服务商，协议不限（OpenAI 兼容、Anthropic Messages 或服务商自己的接口），无需登记域名，并在每次请求中自行选择模型，例如简单步骤用较快、较省的模型，关键步骤用更强的模型。所用模型的费用由本队承担。示例见示例项目的 README。"
       },
       {
-        "q": "可以全部用命令行完成，或交给编程智能体操作吗？",
-        "a": "可以。官方命令行工具 survey26（参考资料 → 命令行工具）覆盖网站为参赛者提供的全部操作：队伍、密钥与网络、项目上传、版本确认、评测、日志、结果、最终版本和排行榜。在个人资料页创建个人 API 令牌，并设置为环境变量 SURVEY26_TOKEN 即可使用。工具的每日次数和配额与网站相同，所有命令都支持 --json 输出，便于程序和编程智能体使用。"
+        "q": "可以全部用命令行完成，或交给编程智能体（如 Claude Code）操作吗？",
+        "a": "可以。官方命令行工具 survey26 覆盖网站为参赛者提供的全部操作：队伍、密钥与网络、项目上传、版本确认、评测（含每张卡的实时状态）、日志、结果、最终版本和排行榜（含超级总榜）。在个人资料页创建个人 API 令牌，并设置为环境变量 SURVEY26_TOKEN 即可使用；每日次数和配额与网站相同，所有命令都支持 --json 输出。使用 Claude Code 时，可一行安装 survey26 Skill：mkdir -p ~/.claude/skills/survey26 && curl -fsSL https://create.gosim.org/survey26/platform/skills/survey26/SKILL.md -o ~/.claude/skills/survey26/SKILL.md；其他编程智能体可读取 survey26-AGENTS.md。安装方法和完整说明见「更多 → 命令行工具 & Skill」，「参赛」页顶部也有入口。请勿把令牌写进代码、项目 ZIP 或聊天记录。"
       },
       {
         "q": "个人 API 令牌能做什么？如何保护？",

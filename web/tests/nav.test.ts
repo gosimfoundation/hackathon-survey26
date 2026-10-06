@@ -9,9 +9,11 @@ test('the header keeps its main links, ends with About, plus the prominent Parti
 
 test('every former header page stays reachable under More', () => {
   assert.deepEqual(moreNavItems.map(item => item.to),
-    ['/brief', '/cards', '/docs', '/resources', '/faq', '/announcements'])
+    ['/brief', '/cards', '/docs', '/cli', '/resources', '/faq', '/announcements'])
+  // A thin divider separates the reference pages from the announcements.
+  assert.deepEqual(moreNavItems.filter(item => item.divider).map(item => item.to), ['/announcements'])
   const all = new Set([...mainNavItems, participateItem, ...moreNavItems].map(item => item.to))
-  for (const path of ['/about', '/start', '/brief', '/rules', '/cards', '/docs', '/resources', '/faq', '/leaderboard', '/announcements', '/teammates', '/compete']) {
+  for (const path of ['/cli', '/about', '/start', '/brief', '/rules', '/cards', '/docs', '/resources', '/faq', '/leaderboard', '/announcements', '/teammates', '/compete']) {
     assert.ok(all.has(path), `${path} must stay reachable from the header`)
   }
 })
