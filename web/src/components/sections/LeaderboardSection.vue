@@ -123,7 +123,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" @update:model-value="pickCard" />
+          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" hide-old @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="!hidden && !cardMode" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <div v-if="loading" class="py-6"><SkeletonRows :rows="6" :cols="5" :label="t('leaderboard.loading')" /></div>
           <div v-else-if="!entries.length" class="grid min-h-80 place-items-center py-16 text-center">

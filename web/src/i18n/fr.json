@@ -692,6 +692,7 @@
     "live": "Mise à jour en direct",
     "tie": "À égalité, la soumission la plus ancienne passe devant.",
     "super_board": "Super classement",
+    "super_old_board": "Super classement (ancien)",
     "super_total": "Total 8 cartes",
     "mean_note": "Score de compétition = moyenne de tous les scénarios d'un même lot terminé. Chaque équipe garde son meilleur lot complet ; chaque colonne est moyennée de la même façon.",
     "download_csv": "Télécharger le CSV",
