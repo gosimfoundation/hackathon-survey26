@@ -258,8 +258,14 @@ class SurveyState:
             score = best.get(target_id, 0.0)
             self.factor[i] = min(1.0, score / (self.weight[i] * top_multiplier)) if score > 0 and self.weight[i] > 0 else 0.0
         self.active = [i for i in range(len(self.ids)) if self.hmax[i] > 0.0]
-        self.pending.clear()
-        self.pending_action_index = None
+        # The resync arrives together with the result of the observe that ended at the
+        # trigger (on_result runs after this). That observe counts in N and is invalidated
+        # only if its index falls inside the window; otherwise keep it pending so its
+        # result still lands in the ledger.
+        index = self.pending_action_index
+        if index is None or start is None or end is None or start <= index < end:
+            self.pending.clear()
+            self.pending_action_index = None
 
     def site_closed(self) -> bool:
         for key in self.notices:

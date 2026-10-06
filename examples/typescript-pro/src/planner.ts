@@ -520,7 +520,8 @@ export class Planner {
     this.active = [];
     for (let i = 0; i < this.ids.length; i++) if ((this.hmax[i] as number) > 0.0) this.active.push(i);
     this.vcache = null;
-    this.pending = new Map();
+    // Keep this.pending: the result of the observe that ended at the trigger arrives with
+    // this message and onResult (called next) still applies it.
     this.log(`state_resync: ${best.size} targets keep a score; plan rebuilt`);
   }
 

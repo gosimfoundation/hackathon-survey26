@@ -355,7 +355,8 @@ class Planner:
             self.cur[i] = score / self.weight[i]
         self.active = [i for i in range(len(self.ids)) if self.hmax[i] > 0.0]
         self.vcache = None
-        self.pending = {}
+        # Keep self.pending: the result of the observe that ended at the trigger arrives with
+        # this message and on_result (called next) still applies it.
         self.log(f"state_resync: {len(best)} targets keep a score; plan rebuilt")
 
     def site_closed(self) -> bool:

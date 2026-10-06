@@ -301,8 +301,15 @@ export class AgentState {
     for (let i = 0; i < this.ids.length; i++) {
       if (this.hmax[i]! > 0.0) this.active.push(i);
     }
-    this.pending.clear();
-    this.pendingActionIndex = null;
+    // The resync arrives together with the result of the observe that ended at the
+    // trigger (onResult runs after this). That observe counts in N and is invalidated
+    // only if its index falls inside the window; otherwise keep it pending so its
+    // result still lands in the ledger.
+    const index = this.pendingActionIndex;
+    if (index === null || start === undefined || end === undefined || (index >= start && index < end)) {
+      this.pending.clear();
+      this.pendingActionIndex = null;
+    }
   }
 
   siteClosed(): boolean {
