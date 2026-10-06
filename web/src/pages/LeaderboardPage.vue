@@ -187,11 +187,11 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             <ScoreBars v-if="!isExtra" class="mb-8" :entries="entries" :team-id="team?.id ?? null" :updated-at="updatedAt" @select="selected = $event" />
             <div class="table-wrap">
               <table class="data-table">
-                <thead><tr><th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">{{ t('leaderboard.score') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.base_science') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.bonus') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.requests') }}</th><th v-if="showCoverage && !isExtra" class="r">{{ t('leaderboard.coverage') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.penalties') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.tiles') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.required_missing') }}</th><th class="r">{{ t('leaderboard.submissions') }}</th></tr></thead>
+                <thead><tr><th v-if="!isExtra">{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">{{ t('leaderboard.score') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.base_science') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.bonus') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.requests') }}</th><th v-if="showCoverage && !isExtra" class="r">{{ t('leaderboard.coverage') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.penalties') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.tiles') }}</th><th v-if="!isExtra" class="r">{{ t('leaderboard.required_missing') }}</th><th class="r">{{ t('leaderboard.submissions') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="row in entries" :key="row.team_id" data-testid="lb-row" class="lb-click" :class="{ me: team && team.id === row.team_id }" tabindex="0" @click="selected = row" @keydown.enter.prevent="selected = row">
-                    <td class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
-                    <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="team && team.id === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
+                    <td v-if="!isExtra" class="m rank-cell" :class="row.rank <= 3 ? `rank-${row.rank}` : ''">{{ row.rank }}</td>
+                    <td><span class="team-cell"><UserAvatar :name="row.team_name" :github="row.leader_github" :avatar-url="row.leader_avatar_url" /><i v-if="row.rank === 1 && !isExtra" class="champ-star" aria-hidden="true">✦</i><span class="team-name">{{ row.team_name }}</span></span><span v-if="team && team.id === row.team_id" class="label accent ml-2">{{ t('leaderboard.me') }}</span></td>
                     <td class="r m" :class="{ 'text-[#ff6b6b]': row.total_score < 0 }">{{ num(row.total_score) }}</td>
                     <td v-if="!isExtra" class="r m">{{ num(row.base_science) }}</td>
                     <td v-if="!isExtra" class="r m">{{ num(row.program_bonus) }}</td>
@@ -210,7 +210,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
         </div>
       </div>
     </div></section>
-    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? tableCards : undefined" :super-board="cardMode && superMode" :board-label="cardMode ? cardLabel : null" @close="selected = null" />
+    <TeamDetailDialog :entry="selected" :mine="!!selected && team?.id === selected.team_id" :cards="cardMode ? tableCards : undefined" :super-board="cardMode && superMode" :board-label="cardMode ? cardLabel : null" :unranked="isExtra" @close="selected = null" />
   </main>
 </template>
 
