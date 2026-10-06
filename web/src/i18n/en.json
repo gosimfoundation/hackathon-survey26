@@ -1337,8 +1337,8 @@
     "card_note": "This board ranks each team's run on this card, taken from its best complete evaluation (the one with the highest mean over all cards).",
     "super_board": "Super board",
     "super_total": "8-card total",
-    "super_note": "Super board = the sum of the scores on all 8 cards (A–D and A1–D1) of one evaluation; only evaluations that completed all 8 cards count, and each team keeps its highest total. The super board does not decide any award; the overall board (mean of A–D) and its rules are unchanged.",
-    "super_card_note": "This board ranks each team’s run on this card, taken from its super-board evaluation (the one with the highest 8-card total).",
+    "super_note": "Super board = 30% × the sum of the A–D card scores + 70% × the sum of the A1–D1 card scores, both from the same evaluation. Only evaluations that completed all 8 cards count, and each team keeps its latest complete evaluation (not its highest). The super board does not decide any award; the overall board (mean of A–D) and its rules are unchanged.",
+    "super_card_note": "This board ranks each team’s run on this card, taken from its super-board evaluation (its latest complete 8-card evaluation).",
     "targets_observed": "Targets",
     "components": {
       "sum_best_scores": "Best scores",
