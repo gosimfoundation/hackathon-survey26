@@ -8,7 +8,7 @@ import { num } from '../../lib/format'
 import { formatDateTime } from '../../lib/projectText'
 import { useQuestFlags } from '../../composables/useQuestFlags'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
-import { elapsedText, runningMinutes, waitingForStage1, waitingText } from '../../lib/runProgress'
+import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
 import { refreshDue, REFRESH_TICK_MS } from '../../lib/dashboardRefresh'
 import { cancelEvaluation } from '../../lib/cancelEvaluation'
 import { canCancel, cancelConfirmKey, cancelErrorKey } from '../../lib/projectEvaluation'
@@ -26,6 +26,7 @@ const statuses=computed(()=>pick<Record<string,string>>({queued:'Queued',startin
 const runs=(b:Batch)=>[...(b.observer_runs??[])].sort((x,y)=>scenarioOrder(x.scenarios?.slug??'')-scenarioOrder(y.scenarios?.slug??''))
 // Each card's live status: score once scored; queued A1–D1 of a two-stage evaluation wait for A–D; running cards show their time.
 const runSlug=(run:Run)=>run.scenarios?.slug??''
+const runHint=(b:Batch,run:Run)=>run.score==null&&waitingForStage1(b.staged,b.observer_runs??[],run,runSlug)?waitingHint(pick):''
 function runText(b:Batch,run:Run){
   if(run.score!=null)return num(run.score)
   if(waitingForStage1(b.staged,b.observer_runs??[],run,runSlug))return waitingText(pick)
@@ -75,7 +76,7 @@ onUnmounted(()=>window.clearInterval(timer))
         <td v-if="props.allPhases">{{ row.phases ? pick(row.phases.name_en,row.phases.name_zh) : '—' }}</td>
         <td>{{ statuses[row.status]??row.status }}<span v-if="row.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ pick('Not counted toward the daily limit','未计入次数') }}</span></td>
         <td class="m">{{ num(row.score) }}</td>
-        <td class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block" data-testid="run-live-status">{{ run.scenarios ? scenarioLabel(run.scenarios.slug, run.scenarios.name, locale) : pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ runText(row, run) }}</span></td>
+        <td class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block" :title="runHint(row, run) || undefined" data-testid="run-live-status">{{ run.scenarios ? scenarioLabel(run.scenarios.slug, run.scenarios.name, locale) : pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ runText(row, run) }}<span v-if="runHint(row, run)" class="sr-only"> {{ runHint(row, run) }}</span></span></td>
         <td><router-link class="accent-l" :to="'/compete?track=project#batch-'+row.id" @click="remember('review','competition')">{{ pick('View progress and results','查看进度与结果') }}</router-link>
           <button v-if="canCancel(row)" type="button" class="btn sm ml-2" :disabled="!!cancelling" :aria-busy="cancelling===row.id" data-testid="batch-cancel" @click="cancel(row)">{{ cancelling===row.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></td>
       </tr></tbody>
