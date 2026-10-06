@@ -1879,6 +1879,7 @@
       "final_note": "The hidden final uses the variables saved here as well; no page needs to stay open. Saved keys are deleted automatically after the hidden final results are published and verified, and you can delete or replace them at any time.",
       "vars_title": "Environment variables",
       "vars_help": "Use upper-case letters, digits and underscores for names, e.g. OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL. Values marked \"Save encrypted as a secret\" are stored encrypted and afterwards only their last 4 characters are shown; leave endpoints and model names unmarked so they stay visible. Saving a name again replaces it. Up to {variables} variables of at most 8 KB each; names starting with OBSERVER_ or SAC_ and proxy settings are reserved by the platform.",
+      "vars_multi": "All cards of an evaluation run at the same time, each in its own container. You can save several keys here (for example KIMI_KEY_1 to KIMI_KEY_8; up to {variables} variables) and let each container use a different one: pick at random, or by task_card.card_id from the initialize message. This spreads requests over several keys and makes rate limits less likely. On HTTP 429, wait and retry instead of failing.",
       "name": "Name",
       "value": "Value",
       "secret": "Save encrypted as a secret (not shown again)",

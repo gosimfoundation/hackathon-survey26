@@ -138,6 +138,18 @@ survey26 final set 1a2b3c4d
 5. 用 `project wait`、`eval wait` 及其 `--timeout` 等待，不要高频轮询。退出码 5 表示应等待一分钟，退出码 6 表示应稍后重试。
 6. 执行 `project confirm` 之前，请先用 `project show 版本 --files` 检查：确认即表示本队已检查运行设置和适配文件。
 7. 评测过程中的每个决策都必须由程序自动做出；关于人工参与的规则同样适用于命令行。
+8. 一次评测的各张卡同时运行，每张卡在独立的容器中。可以把多个 key 保存为 KIMI_KEY_1 … KIMI_KEY_8（每队最多 20 个变量），让每个容器选用不同的 key：随机选，或按 `initialize` 消息中的 `task_card.card_id` 选。这样请求会分散到多个 key 上，减少触发限流。遇到 429 时请等待后重试，不要直接报错。
+
+```python
+import os, random, zlib
+
+def pick_key(init_payload):
+    keys = [os.environ[k] for k in sorted(os.environ) if k.startswith("KIMI_KEY_")]
+    if not keys:
+        return os.environ.get("KIMI_API_KEY")
+    card = (init_payload.get("task_card") or {}).get("card_id", "")
+    return keys[zlib.crc32(card.encode()) % len(keys)] if card else random.choice(keys)
+```
 
 ## 7. 命令行不提供的功能
 

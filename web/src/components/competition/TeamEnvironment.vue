@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Example shown under the variables help: one key per container.
+const MULTI_KEY_SNIPPET = "import os, random, zlib\n\ndef pick_key(init_payload):\n    keys = [os.environ[k] for k in sorted(os.environ) if k.startswith(\"KIMI_KEY_\")]\n    if not keys:\n        return os.environ.get(\"KIMI_API_KEY\")\n    card = (init_payload.get(\"task_card\") or {}).get(\"card_id\", \"\")\n    return keys[zlib.crc32(card.encode()) % len(keys)] if card else random.choice(keys)"
+
 import { computed, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { portal, type TeamEnvironment } from '../../lib/observerPortal'
@@ -183,6 +186,8 @@ function addDomain() {
     <summary><h3 class="inline">{{ t('submit.team_env.svc.advanced') }}</h3></summary>
     <h3 class="mt-3">{{ t('submit.team_env.vars_title') }}</h3>
     <p class="help">{{ tf('submit.team_env.vars_help', { variables: limits.variables }) }}</p>
+    <p class="help" data-testid="team-env-multi-key">{{ tf('submit.team_env.vars_multi', { variables: limits.variables }) }}</p>
+    <pre class="help team-env-snippet">{{ MULTI_KEY_SNIPPET }}</pre>
     <p class="help" data-testid="team-env-flags-help">{{ t('submit.team_env.flags.help') }}</p>
     <ul v-if="variables.length" class="team-env-list" data-testid="team-env-variables">
       <li v-for="v in variables" :key="v.name" :class="{ off: v.disabled }" :data-testid="'team-env-variable-' + v.name">
@@ -262,4 +267,5 @@ function addDomain() {
 .svc-clash { border: 1px solid #b88a2a; padding: .6rem .75rem; margin-bottom: 1rem; }
 .svc-advanced > summary { cursor: pointer; }
 .route-options { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin: .5rem 0; }
+.team-env-snippet { white-space: pre; overflow-x: auto; font-size: .8rem; padding: .6rem .8rem; background: rgba(255,255,255,.04); border-radius: 6px; }
 </style>
