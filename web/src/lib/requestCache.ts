@@ -22,6 +22,7 @@ function writeEntry<T>(key: string, entry: Entry<T>, store?: Storage) {
 
 /** Drop every cached entry whose key starts with `prefix`, so the next read is a fresh fetch. */
 export function invalidatePrefix(prefix: string, store?: Storage) {
+  for (const key of inFlight.keys()) if (key.startsWith(prefix)) inFlight.delete(key)
   if (!store) {
     for (const key of memory.keys()) if (key.startsWith(prefix)) memory.delete(key)
     return
@@ -37,8 +38,11 @@ export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>
   const pending = inFlight.get(key) as Promise<T> | undefined
   if (pending) return pending
   const promise = fn()
-    .then(value => { writeEntry(key, { value, expires: Date.now() + ttlMs }, store); return value })
-    .finally(() => { inFlight.delete(key) })
+    .then(value => {
+      if (inFlight.get(key) === promise) writeEntry(key, { value, expires: Date.now() + ttlMs }, store)
+      return value
+    })
+    .finally(() => { if (inFlight.get(key) === promise) inFlight.delete(key) })
   inFlight.set(key, promise)
   return promise
 }
