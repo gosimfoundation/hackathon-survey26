@@ -55,6 +55,14 @@ def iso(seconds_ago):
     return datetime.fromtimestamp(time.time() - seconds_ago, timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f+00")
 
 
+def queued_listing(**kw):
+    """An evaluation none of whose cards has started (取消排队)."""
+    data = listing("queued", **kw)
+    for run in data["batches"][0]["observer_runs"]:
+        run.update(status="queued", score=None, result_path=None)
+    return data
+
+
 def listing(batch_status="scored", evaluated=False, recent=False, repeat=False, no_model=False):
     created = iso(60) if recent else "2026-10-01T00:00:00Z"
     batches = [{"id": BATCH, "status": batch_status, "score": 61.5 if batch_status == "scored" else None,
@@ -609,16 +617,26 @@ SCENARIOS = [
     ("results-download-all-partial", ["--json", "results", "download-all", "latest", "-o", "all.zip"],
      {"routes": {"portal:download_result": (200, lambda b: (200, {"data": {"url": "http://127.0.0.1:1/x"}}) if b["fields"]["run_id"] == RUN_B
                                             else (404, {"error": "result_not_ready"}))}, "exit": 1}),
-    ("results-cancel-needs-yes", ["--json", "results", "cancel", "44444444"], {"routes": {"portal:list": (200, {"data": listing("queued")})}, "exit": 2}),
-    ("results-cancel", ["--json", "results", "cancel", "44444444", "--yes"], {"routes": {"portal:list": (200, {"data": listing("queued")})}, "exit": 0}),
+    ("results-cancel-needs-yes", ["--json", "results", "cancel", "44444444"], {"routes": {"portal:list": (200, {"data": queued_listing()})}, "exit": 2}),
+    ("results-cancel", ["--json", "results", "cancel", "44444444", "--yes"], {"routes": {"portal:list": (200, {"data": queued_listing()})}, "exit": 0}),
     ("results-cancel-human-zh", ["--lang", "zh", "results", "cancel", "44444444", "--yes"],
-     {"routes": {"portal:list": (200, {"data": listing("queued")})}, "exit": 0, "human": True}),
+     {"routes": {"portal:list": (200, {"data": queued_listing()})}, "exit": 0, "human": True}),
     ("results-cancel-selfcheck-needs-yes", ["--json", "results", "cancel", "44444444"],
-     {"routes": {"portal:list": (200, {"data": listing("queued", repeat=True)})}, "exit": 2}),
+     {"routes": {"portal:list": (200, {"data": queued_listing(repeat=True)})}, "exit": 2}),
     ("results-cancel-again", ["--json", "results", "cancel", "44444444", "--yes"],
      {"routes": {"rpc:observer_cancel_batch": (200, {"data": {"batch_id": BATCH, "status": "cancelled", "cancelled": []}})}, "exit": 0}),
     ("results-cancel-started", ["--json", "results", "cancel", "44444444", "--yes"],
-     {"routes": {"rpc:observer_cancel_batch": (400, {"error": "evaluation_started"})}, "exit": 1}),
+     {"routes": {"portal:list": (200, {"data": queued_listing()}),
+                 "rpc:observer_cancel_batch": (400, {"error": "evaluation_started"})}, "exit": 1}),
+    ("eval-stop-needs-yes", ["--json", "eval", "cancel", "44444444"], {"routes": {"portal:list": (200, {"data": listing("running")})}, "exit": 2}),
+    ("eval-stop", ["--json", "eval", "cancel", "44444444", "--yes"],
+     {"routes": {"portal:list": (200, {"data": listing("running")}),
+                 "rpc:observer_cancel_batch": (200, lambda b: (200, {"data": {"batch_id": b["args"]["p_batch"], "status": "failed",
+                     "cancelled": [], "stopped": [b["args"]["p_batch"]] if b["args"].get("p_running") else []}}))}, "exit": 0}),
+    ("eval-stop-human-zh", ["--lang", "zh", "eval", "cancel", "44444444", "--yes"],
+     {"routes": {"portal:list": (200, {"data": listing("running")}),
+                 "rpc:observer_cancel_batch": (200, {"data": {"batch_id": BATCH, "status": "scored", "cancelled": [], "stopped": [BATCH]}})},
+      "exit": 0, "human": True}),
     ("results-cancel-unknown", ["--json", "results", "cancel", "abcdef12", "--yes"], {"exit": 4}),
     ("final-show", ["--json", "final", "show"], {"exit": 0}),
     ("final-show-none", ["--json", "final", "show"], {"routes": {"portal:list": (200, {"data": dict(listing(), final_versions=[])})}, "exit": 0}),

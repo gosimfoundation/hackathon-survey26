@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.9.0"
+__version__ = "1.9.1"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -87,7 +87,7 @@ MESSAGES = {
     "team_required": ("Join or create a team first.", "请先加入或创建队伍。"),
     "stale_approval": ("The version changed. Reopen the review before confirming.", "版本已变化，请重新打开并检查。"),
     "batch_already_active": ("Your team already has an active evaluation.", "本队已有正在进行的评测。"),
-    "evaluation_started": ("This evaluation has already started and can no longer be cancelled.", "该评测已经开始运行，无法再取消。"),
+    "evaluation_started": ("This evaluation has already started. Run the command again to stop it.", "该评测已经开始运行。再次执行该命令可停止它。"),
     "evaluation_finished": ("This evaluation has already finished.", "该评测已经结束。"),
     "evaluation_not_found": ("No such evaluation of your team.", "找不到本队的这个评测。"),
     "evaluation_not_cancellable": ("This evaluation is run by the organizers and cannot be cancelled.", "该评测由主办方发起，不能取消。"),
@@ -1683,6 +1683,8 @@ def cmd_eval_wait(api: Api, args, out: Out):
         _sleep(max(5, args.interval))
 
 
+CANCEL_HELP = ("cancel a queued evaluation (not counted toward today's evaluations), or stop a running one "
+               "(its unfinished cards are not scored; still counted; needs --yes without a terminal)")
 CANCEL_QUESTION = ("Cancel this queued evaluation? It has not started yet. It will not count toward today’s evaluations and will not appear on any leaderboard.",
                    "取消这次排队中的评测？它还没有开始。取消后不计入今日评测次数，也不会出现在任何排行榜上。")
 CANCEL_SET_QUESTION = ("Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; "
@@ -1690,9 +1692,29 @@ CANCEL_SET_QUESTION = ("Cancel this self-check? Its evaluations that have not st
                        "取消这组「评测 3 次取平均」？其中尚未开始的评测会被取消，不计入今日评测次数；已在运行或已完成的评测保留。")
 
 
+STOP_QUESTION = ("Stop this evaluation? Cards that are running or have not started yet are stopped and will not be scored. "
+                 "It has already started, so it still counts toward today’s evaluations. If cards A–D are all scored and only "
+                 "A1–D1 are stopped, it keeps its A–D score on the online board but is not complete for the super board.",
+                 "停止这次评测？正在运行和尚未开始的任务卡会被停止，不会得分。这次评测已经开始，仍计入今日评测次数，不退还。"
+                 "如果 A–D 已全部评分、只停止了 A1–D1，本次评测仍以 A–D 成绩计入比赛榜，但不进入超级总榜。")
+
+
+def batch_started(batch) -> bool:
+    """A card no longer queued: the evaluation is stopped (not refunded) instead of cancelled."""
+    return any(r.get("status") != "queued" for r in batch.get("observer_runs") or [])
+
+
 def cmd_results_cancel(api: Api, args, out: Out):
     data = portal_list(api)
     batch = find_batch(data, args.batch)
+    if batch.get("status") in ("queued", "running") and batch_started(batch):
+        confirm(args, out, *STOP_QUESTION)
+        result = api.rpc("observer_cancel_batch", write=True, p_batch=batch["id"], p_running=True) or {}
+        stopped = [str(x) for x in result.get("stopped") or []]
+        out.line(out.t("Stopped. The stopped cards will not be scored; it still counts toward today’s evaluations. Status: %s.",
+                       "已停止。被停止的任务卡不会得分，本次评测仍计入今日评测次数。状态：%s。") % result.get("status", ""))
+        return {"batch_id": batch["id"], "status": result.get("status"), "stopped": stopped,
+                "cancelled": [str(x) for x in result.get("cancelled") or []]}
     confirm(args, out, *(CANCEL_SET_QUESTION if batch.get("repeat_group") else CANCEL_QUESTION))
     result = api.rpc("observer_cancel_batch", write=True, p_batch=batch["id"]) or {}
     cancelled = [str(x) for x in result.get("cancelled") or []]
@@ -2259,6 +2281,7 @@ def build_parser() -> argparse.ArgumentParser:
     ew.add_argument("--interval", type=int, default=20)
     ew.add_argument("--first-stage", action="store_true", help="two-stage evaluations: return once cards A-D have finished "
                     "(their mean is the online board score); A1-D1 keep running")
+    yes(add(ev, "cancel", cmd_results_cancel, CANCEL_HELP)).add_argument("batch")
 
     res = sub.add_parser("results", help="scores, agent.log and result downloads").add_subparsers(dest="cmd", metavar="ACTION")
     rs = add(res, "show", cmd_eval_show, "scores per card of an evaluation ('latest' = newest)")
@@ -2277,7 +2300,7 @@ def build_parser() -> argparse.ArgumentParser:
     ra.add_argument("batch", nargs="?", default="latest")
     ra.add_argument("-o", "--output")
     ra.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
-    rc = yes(add(res, "cancel", cmd_results_cancel, "cancel a queued evaluation that has not started (not counted toward today's evaluations)"))
+    rc = yes(add(res, "cancel", cmd_results_cancel, CANCEL_HELP))
     rc.add_argument("batch")
 
     fin = sub.add_parser("final", help="the version used for the hidden final").add_subparsers(dest="cmd", metavar="ACTION")

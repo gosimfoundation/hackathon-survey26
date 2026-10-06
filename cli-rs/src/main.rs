@@ -2354,9 +2354,24 @@ const CANCEL_QUESTION: (&str, &str) = ("Cancel this queued evaluation? It has no
 const CANCEL_SET_QUESTION: (&str, &str) = ("Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; evaluations already running or finished are kept.",
     "取消这组「评测 3 次取平均」？其中尚未开始的评测会被取消，不计入今日评测次数；已在运行或已完成的评测保留。");
 
+const STOP_QUESTION: (&str, &str) = ("Stop this evaluation? Cards that are running or have not started yet are stopped and will not be scored. It has already started, so it still counts toward today’s evaluations. If cards A–D are all scored and only A1–D1 are stopped, it keeps its A–D score on the online board but is not complete for the super board.",
+    "停止这次评测？正在运行和尚未开始的任务卡会被停止，不会得分。这次评测已经开始，仍计入今日评测次数，不退还。如果 A–D 已全部评分、只停止了 A1–D1，本次评测仍以 A–D 成绩计入比赛榜，但不进入超级总榜。");
+
 fn cmd_results_cancel(api: &mut Api, a: &Args, out: &Out) -> R<Value> {
     let data = portal_list(api)?;
     let batch = find_batch(&data, &a.str("batch").unwrap_or_default())?;
+    let status = s(&batch["status"]);
+    let started = arr(&batch["observer_runs"]).iter().any(|r| s(&r["status"]) != "queued");
+    if (status == "queued" || status == "running") && started {
+        // 停止评测: a started evaluation; its unfinished cards are not scored, not refunded.
+        confirm(a, out, STOP_QUESTION.0, STOP_QUESTION.1)?;
+        let result = or_empty(api.rpc("observer_cancel_batch", true, json!({"p_batch": batch["id"], "p_running": true}))?);
+        out.line(&out.t("Stopped. The stopped cards will not be scored; it still counts toward today’s evaluations. Status: %s.",
+            "已停止。被停止的任务卡不会得分，本次评测仍计入今日评测次数。状态：%s。").replacen("%s", &s(&g(&result, "status")), 1));
+        let ids = |k: &str| Value::Array(arr(&g(&result, k)).iter().map(|x| Value::String(s(x))).collect());
+        return Ok(obj(vec![("batch_id", batch["id"].clone()), ("status", g(&result, "status")),
+            ("stopped", ids("stopped")), ("cancelled", ids("cancelled"))]));
+    }
     let (en, zh) = if truthy(&batch["repeat_group"]) { CANCEL_SET_QUESTION } else { CANCEL_QUESTION };
     confirm(a, out, en, zh)?;
     let result = or_empty(api.rpc("observer_cancel_batch", true, json!({"p_batch": batch["id"]}))?);

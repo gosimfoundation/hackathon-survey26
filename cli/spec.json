@@ -1,5 +1,5 @@
 {
- "version": "1.9.0",
+ "version": "1.9.1",
  "prog": "survey26",
  "description": "Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website (https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
  "epilog": "Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, 7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: https://create.gosim.org/survey26/platform/cli",
@@ -1805,6 +1805,33 @@
   },
   {
    "path": [
+    "eval",
+    "cancel"
+   ],
+   "help": "cancel a queued evaluation (not counted toward today's evaluations), or stop a running one (its unfinished cards are not scored; still counted; needs --yes without a terminal)",
+   "group": false,
+   "func": "cmd_results_cancel",
+   "positionals": [
+    {
+     "name": "batch",
+     "nargs": 1,
+     "help": ""
+    }
+   ],
+   "options": [
+    {
+     "flags": [
+      "-y",
+      "--yes"
+     ],
+     "dest": "yes",
+     "kind": "flag",
+     "help": "confirm without asking (needed with --json or without a terminal)"
+    }
+   ]
+  },
+  {
+   "path": [
     "results"
    ],
    "help": "scores, agent.log and result downloads",
@@ -1965,7 +1992,7 @@
     "results",
     "cancel"
    ],
-   "help": "cancel a queued evaluation that has not started (not counted toward today's evaluations)",
+   "help": "cancel a queued evaluation (not counted toward today's evaluations), or stop a running one (its unfinished cards are not scored; still counted; needs --yes without a terminal)",
    "group": false,
    "func": "cmd_results_cancel",
    "positionals": [

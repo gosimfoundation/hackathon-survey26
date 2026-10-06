@@ -88,8 +88,8 @@
   "zh": "本队已有正在进行的评测。"
  },
  "evaluation_started": {
-  "en": "This evaluation has already started and can no longer be cancelled.",
-  "zh": "该评测已经开始运行，无法再取消。"
+  "en": "This evaluation has already started. Run the command again to stop it.",
+  "zh": "该评测已经开始运行。再次执行该命令可停止它。"
  },
  "evaluation_finished": {
   "en": "This evaluation has already finished.",
