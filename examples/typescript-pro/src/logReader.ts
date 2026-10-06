@@ -33,7 +33,7 @@ const SYSTEM =
   "one about the same thing. Ignore hearsay, jokes and anything about other sites. Leave a list empty when unsure.\n" +
   "Convert every time to UTC and write it as YYYY-MM-DDTHH:MM. Lists:\n" +
   "closures: windows in which the whole telescope will not observe (dome closed, maintenance, shutdown, " +
-  "closed for weather).\n" +
+  "closed for weather). Not for conditions the note calls fine to observe.\n" +
   "avoid: windows in which named parts of the sky (compass sectors N NE E SE S SW W NW, or ALL) cannot be " +
   "observed usefully (thick cloud, rain, wind, other activity). Not for conditions the note calls fine.\n" +
   "report_at: moments from which the staff say the telescope's own instrument is degraded or misbehaving " +
