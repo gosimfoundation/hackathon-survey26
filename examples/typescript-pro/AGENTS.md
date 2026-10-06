@@ -19,6 +19,7 @@ src/planner.ts     planner.py      one search for pointing + fibres + duration +
 src/skymath.ts     skymath.py      public sky maths (+ Python float semantics: %, //, round, sum)
 src/advisor.ts     advisor.py      the model stages: night plan, fault review, paid-report confirmation (prompts + validation)
 src/llmClient.ts   llm_client.py   OpenAI-compatible chat client (built-in fetch), calls run in the background
+src/logReader.ts   log_reader.py   optional stage: each free-text note in a request's `reason` is read once by the model
 src/packAgent.ts   pack_agent.py   zip this folder for upload (.env, node_modules and dist are never packed)
 observer.project.json, package.json, tsconfig.json, .env.example
 ```
@@ -27,7 +28,7 @@ observer.project.json, package.json, tsconfig.json, .env.example
 
 - Never read card files at run time. All information comes from stdin (catalogue, public score config,
   bulletins, forecasts, your own hits).
-- Never call the model per decision. The night stages run in the background; `modelWaitBudget` in
+- Never call the model per decision (the note reader calls it once per new note, not per decision). The night stages run in the background; `modelWaitBudget` in
   `agent.ts` decides how long a night start may wait for them.
 - Every tunable constant can be overridden with a `PRO_<NAME>` environment variable for sweeps
   (`PRO_FIXED_LEVEL=0` pins the search level, useful for reproducible local comparisons).

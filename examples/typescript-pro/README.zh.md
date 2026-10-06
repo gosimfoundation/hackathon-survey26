@@ -30,6 +30,7 @@ src/planner.ts     planner.py      一次搜索同时决定指向、光纤、曝
 src/skymath.ts     skymath.py      公开天球几何：恒星时、地平坐标、切平面投影、光纤网格、月亮
 src/advisor.ts     advisor.py      大模型环节：夜间计划、故障复核、付费报告确认
 src/llmClient.ts   llm_client.py   OpenAI 兼容客户端（内置 fetch），调用在后台进行
+src/logReader.ts   log_reader.py   可选的大模型环节：读观测请求里附带的值班人员留言
 src/packAgent.ts   pack_agent.py   打包上传用的 ZIP（不会打包 .env）
 observer.project.json   平台清单：镜像 node:22-slim，构建 `npm ci --include=dev` + `npm run build`，运行 `node dist/agent.js`
 .env.example            复制成 .env，本地运行前填好 API key
@@ -44,6 +45,16 @@ observer.project.json   平台清单：镜像 node:22-slim，构建 `npm ci --in
 - **隐藏的指向偏差（Hard mode 卡）**：在按光纤间距缩放的网格上给候选偏差打分（最优点落在边缘时自动扩大范围），依据是哪些目标命中、哪些落空。
 - **公平时钟**：智能体用 `process.cpuUsage()` 测自己每次决策的 CPU 时间，与 `wallclock.remaining_real_cpu_seconds` 按剩余决策数摊开后的预算比较，同时留意实际时间上限（`wall_remaining_seconds`），需要时降低搜索力度。
 - **大模型：每晚两个环节，付费报告前再加一次**：夜间计划（预报 + 公报 → `bad_night`、要避开的方位）、故障复核（自己的逐小时质量表 → `fault_likely`，决定付费报告的门槛），以及可以否决付费报告的确认。调用在后台进行，从不阻塞决策：每晚开始时只在剩余实际时间允许的范围内等待，晚到的答案到了再用，失败时保留规则的默认值。HTTP 429/5xx、超时和网络错误会退避重试（遵守 `Retry-After`）。
+
+### 值班留言（src/logReader.ts）
+
+在部分任务卡上，观测请求的 `reason` 不是一句简短说明，而是一段较长的值班人员留言，里面可能提到与巡天有关的事。每条新留言（31 个字符以上）只发给模型一次，附上之前几条留言作上下文、当前时间和台址的 UTC 时差。提示词只用通用的说法，请模型提取带时间的运行信息：`{"closures", "avoid", "report_at", "summary"}`。三条简单规则把答案变成行动：
+
+- `closures`：在宣布全站关闭的时段里等待；
+- `avoid`：在宣布的时段里降低所列方位的权重（全部方位都不能拍就等待）；
+- `report_at`：值班人员说仪器本身出了问题（现在，或从某个宣布的时刻起），或明确要求在某个时刻报告问题时，提交 `report`。
+
+等模型不花 CPU 预算，只花真实时间，所以新留言的答案还没回来时，可以让运行等一等（带超时的 await 竞速）：最多 `PRO_LOG_WAIT_MAX`（240 秒），而且只用规划器用不上的真实时间，按预计剩余的留言条数分摊。遇到 HTTP 429 / 5xx 会退避重试，几分钟后放弃（`PRO_LOG_READER=0` 关闭这一环节）。这是一个有意写得很简单的读取器：一个通用提示词，不针对任何台站的写法。把留言读得更准，是超过这个示例最明显的方向之一。
 
 ## TypeScript 相关说明
 
