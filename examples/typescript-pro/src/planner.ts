@@ -262,6 +262,7 @@ export class Planner {
   notices: Pair[] = [];
   private terrain = new Set<string>();
   extraAvoid = new Set<string>(); // directions an advisor asked to avoid tonight
+  logAvoid = new Set<string>(); // directions the staff notes say to avoid right now (logReader.ts)
   fastLevel = 0;
   private requestBonus = new Map<number, number>();
   private requestThreshold = new Map<number, number>();
@@ -806,8 +807,10 @@ export class Planner {
       if (BLOCKING_KINDS.has(kind) && near && alt < 62.0) return 0.0;
       if (near && alt < 75.0) factor = Math.min(factor, 0.35);
     }
-    for (const direction of this.extraAvoid) {
-      if (direction in DIRECTION_AZ && azDistance(az, DIRECTION_AZ[direction] as number) <= 67.5 && alt < 70.0) factor = Math.min(factor, 0.35);
+    for (const avoid of [this.extraAvoid, this.logAvoid]) {
+      for (const direction of avoid) {
+        if (direction in DIRECTION_AZ && azDistance(az, DIRECTION_AZ[direction] as number) <= 67.5 && alt < 70.0) factor = Math.min(factor, 0.35);
+      }
     }
     for (const [blockedAz, blockedAlt] of this.blocked.slice(-40)) {
       if (azDistance(az, blockedAz) <= 12.0 && alt <= blockedAlt + 3.0) factor = Math.min(factor, 0.2);

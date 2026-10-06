@@ -336,6 +336,8 @@ pub struct Planner {
     pub notices: BTreeSet<(String, String)>,
     terrain: BTreeSet<String>,
     pub extra_avoid: BTreeSet<String>,
+    /// Directions the staff notes say to avoid right now (log_reader.rs).
+    pub log_avoid: BTreeSet<String>,
     pub fast_level: usize,
     request_bonus: HashMap<usize, f64>,
     request_threshold: HashMap<usize, f64>,
@@ -495,6 +497,7 @@ impl Planner {
             notices: BTreeSet::new(),
             terrain: BTreeSet::new(),
             extra_avoid: BTreeSet::new(),
+            log_avoid: BTreeSet::new(),
             fast_level: 0,
             request_bonus: HashMap::new(),
             request_threshold: HashMap::new(),
@@ -1044,7 +1047,7 @@ impl Planner {
                 factor = factor.min(0.35);
             }
         }
-        for direction in &self.extra_avoid {
+        for direction in self.extra_avoid.union(&self.log_avoid) {
             if let Some(daz) = direction_az(direction) {
                 if az_distance(az, daz) <= 67.5 && alt < 70.0 {
                     factor = factor.min(0.35);
