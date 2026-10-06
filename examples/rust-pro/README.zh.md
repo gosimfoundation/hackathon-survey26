@@ -33,6 +33,7 @@ src/planner.rs     planner.py     一次搜索同时决定指向、光纤、时�
 src/skymath.rs     skymath.py     公开天球几何：恒星时、地平坐标、切平面投影、光纤网格、月亮
 src/advisor.rs     advisor.py     大模型环节：夜间计划、故障复核、付费报告确认
 src/llm_client.rs  llm_client.py  OpenAI 兼容客户端，调用在后台线程里跑
+src/log_reader.rs  log_reader.py  可选的大模型环节：读观测请求里附带的值班人员留言
 observer.project.json   平台清单（cargo build --release --locked；./target/release/rust-pro）
 pack_agent.py      打包上传用的 ZIP（不会打包 target/ 和 .env）
 .env.example       复制成 .env，本地运行前填好 API key
@@ -44,6 +45,16 @@ pack_agent.py      打包上传用的 ZIP（不会打包 target/ 和 .env）
 目标等到天空接近最好且不是预报坏天气的夜晚再尝试；观测请求按全有全无的价值计算。节奏按公平时钟控制
 （`wallclock.remaining_real_cpu_seconds` 对比进程自己的 CPU 时间 `getrusage`，并留意实际时间上限）。大模型（默认
 Kimi `k3`）每晚开始时问两次（夜间计划、故障复核），付费报告前再问一次，全部在后台线程里，从不阻塞决策。
+
+### 值班留言（src/log_reader.rs）
+
+在部分任务卡上，观测请求的 `reason` 不是一句简短说明，而是一段较长的值班人员留言，里面可能提到与巡天有关的事。每条新留言（31 个字符以上）只发给模型一次，附上之前几条留言作上下文、当前时间和台址的 UTC 时差。提示词只用通用的说法，请模型提取带时间的运行信息：`{"closures", "avoid", "report_at", "summary"}`。三条简单规则把答案变成行动：
+
+- `closures`：在宣布全站关闭的时段里等待；
+- `avoid`：在宣布的时段里降低所列方位的权重（全部方位都不能拍就等待）；
+- `report_at`：值班人员说仪器本身出了问题（现在，或从某个宣布的时刻起），或明确要求在某个时刻报告问题时，提交 `report`。
+
+等模型不花 CPU 预算，只花真实时间，所以新留言的答案还没回来时，可以让运行等一等：最多 `PRO_LOG_WAIT_MAX`（240 秒），而且只用规划器用不上的真实时间，按预计剩余的留言条数分摊。遇到 HTTP 429 / 5xx 会退避重试，几分钟后放弃；没有 key 时直接跳过（`PRO_LOG_READER=0` 关闭这一环节）。这是一个有意写得很简单的读取器：一个通用提示词，不针对任何台站的写法。把留言读得更准，是超过这个示例最明显的方向之一。
 
 ## 配置（.env）
 
