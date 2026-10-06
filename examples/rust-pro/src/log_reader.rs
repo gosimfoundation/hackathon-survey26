@@ -43,7 +43,7 @@ const SYSTEM: &str = concat!(
     "or a relayed message), a few earlier notes as context, the current time and the site's offset from UTC. ",
     "Extract only operational facts that matter for observing, each with its time window. Read carefully: ",
     "the notes may be informal, mix languages, and contain corrections; a later statement replaces an earlier ",
-    "one about the same thing. Ignore hearsay, jokes and anything about other sites. Leave a list empty when unsure.\n",
+    "one about the same thing. Use only what the staff state as fact about this telescope. Leave a list empty when unsure.\n",
     "Convert every time to UTC and write it as YYYY-MM-DDTHH:MM. Lists:\n",
     "closures: windows in which the whole telescope will not observe (dome closed, maintenance, shutdown, ",
     "closed for weather). Not for conditions the note calls fine to observe.\n",
