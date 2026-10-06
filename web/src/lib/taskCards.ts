@@ -1,7 +1,8 @@
 // The v4 task cards participants can see (pure data, no Supabase client, so it can be unit-tested).
 // Practice cards are public now: their pages ship with the site (web/src/content/taskcard.<id>.v4.<lang>.md).
-// Hackathon cards A–D are fetched at run time from the 'scenarios' bucket, which serves their files only
-// once the competition has started (migration 20260928004400, scripts/configure-v4-phases.py).
+// Hackathon cards A–D and A1–D1 are fetched at run time from the 'scenarios' bucket, which serves their files
+// only once the competition has started (migrations 20260928004400 and 20261006050000, scripts/configure-v4-phases.py).
+// A1–D1 count only on the Super board; nothing here decides scoring or boards.
 // The hidden cards E–H are never listed here: the site never names, links or requests them.
 
 export type CardStage = 'practice' | 'formal'
@@ -13,8 +14,14 @@ export const PRACTICE_CARDS: TaskCard[] = [
   { id: 'gamma', slug: 'v4-practice-gamma', stage: 'practice', symbol: 'γ' },
   { id: 'delta', slug: 'v4-practice-delta', stage: 'practice', symbol: 'δ' },
 ]
-export const FORMAL_CARDS: TaskCard[] = ['a', 'b', 'c', 'd']
+/** Hackathon cards A–D (the online board). */
+export const ONLINE_CARDS: TaskCard[] = ['a', 'b', 'c', 'd']
   .map(id => ({ id, slug: `v4-${id}`, stage: 'formal' as const, symbol: id.toUpperCase() }))
+/** Hackathon cards A1–D1 (Super board only); same site, targets and nights as A–D. */
+export const SUPER_CARDS: TaskCard[] = ['a1', 'b1', 'c1', 'd1']
+  .map(id => ({ id, slug: `v4-${id}-v5`, stage: 'formal' as const, symbol: id.toUpperCase() }))
+/** Every public hackathon card, in page order: A–D, then A1–D1. */
+export const FORMAL_CARDS: TaskCard[] = [...ONLINE_CARDS, ...SUPER_CARDS]
 
 /** Bucket folders of a card that may be released; the bucket policy decides which ones a visitor can read. */
 export const CARD_FOLDERS = ['config', 'public', 'truth'] as const

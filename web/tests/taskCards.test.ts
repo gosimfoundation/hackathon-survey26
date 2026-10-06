@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import test from 'node:test'
-import { FORMAL_CARDS, PRACTICE_CARDS, cardPagePath, cardTitle, cardZipEntry, findCard, practiceCardsWithPages } from '../src/lib/taskCards.ts'
+import { FORMAL_CARDS, ONLINE_CARDS, PRACTICE_CARDS, SUPER_CARDS, cardPagePath, cardTitle, cardZipEntry, findCard, practiceCardsWithPages } from '../src/lib/taskCards.ts'
 
-test('the site knows the practice cards and the hackathon cards A–D, never the hidden cards E–H', () => {
+test('the site knows the practice cards and the hackathon cards A–D and A1–D1, never the hidden cards E–H', () => {
   assert.deepEqual(PRACTICE_CARDS.map(c => [c.id, c.slug, c.symbol]),
     [['alpha', 'v4-practice-alpha', 'α'], ['beta', 'v4-practice-beta', 'β'], ['gamma', 'v4-practice-gamma', 'γ'], ['delta', 'v4-practice-delta', 'δ']])
-  assert.deepEqual(FORMAL_CARDS.map(c => [c.id, c.slug, c.symbol]), [['a', 'v4-a', 'A'], ['b', 'v4-b', 'B'], ['c', 'v4-c', 'C'], ['d', 'v4-d', 'D']])
-  for (const hidden of ['e', 'f', 'g', 'h', 'v4-e']) assert.equal(findCard(hidden), null)
+  assert.deepEqual(ONLINE_CARDS.map(c => [c.id, c.slug, c.symbol]), [['a', 'v4-a', 'A'], ['b', 'v4-b', 'B'], ['c', 'v4-c', 'C'], ['d', 'v4-d', 'D']])
+  assert.deepEqual(SUPER_CARDS.map(c => [c.id, c.slug, c.symbol]),
+    [['a1', 'v4-a1-v5', 'A1'], ['b1', 'v4-b1-v5', 'B1'], ['c1', 'v4-c1-v5', 'C1'], ['d1', 'v4-d1-v5', 'D1']])
+  assert.deepEqual(FORMAL_CARDS.map(c => c.id), ['a', 'b', 'c', 'd', 'a1', 'b1', 'c1', 'd1'])
+  assert.equal(findCard('a1')?.slug, 'v4-a1-v5')
+  assert.equal(findCard('d1')?.stage, 'formal')
+  assert.equal(cardZipEntry(findCard('c1')!, 'public/targets.csv'), 'c1/public/targets.csv')
+  for (const hidden of ['e', 'f', 'g', 'h', 'v4-e', 'e1', 'v4-a1-v5']) assert.equal(findCard(hidden), null)
   assert.equal(findCard('a')?.stage, 'formal')
   assert.equal(findCard('alpha')?.stage, 'practice')
 })
