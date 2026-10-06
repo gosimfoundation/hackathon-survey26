@@ -106,6 +106,7 @@
     "rules": "Rules",
     "cards": "Task cards",
     "docs": "Docs",
+    "cli": "CLI & agent skill",
     "resources": "Resources",
     "leaderboard": "Leaderboard",
     "faq": "FAQ",
@@ -2265,8 +2266,8 @@
         "a": "Yes. In \"Keys and network\", save a key for each provider (e.g. KIMI_API_KEY, DEEPSEEK_API_KEY). Your program can then call several providers at the same time, over any protocol (OpenAI-compatible, Anthropic Messages or the provider's own API), with no domain to list, and choose the model for each request, for example a fast, inexpensive model for simple steps and a stronger one for key decisions. Model calls are paid for by your team. See the example projects' READMEs for code."
       },
       {
-        "q": "Can I do everything from the command line or let a coding agent do it?",
-        "a": "Yes. The official survey26 command-line tool (Resources → Command-line tool) covers everything the website offers to contestants: team, keys and network, project upload, version confirmation, evaluations, logs, results, the final version and the leaderboard. Create a personal API token on your profile page and set it as SURVEY26_TOKEN. The tool has the same daily limits and quotas as the website, and every command supports --json output for programs and coding agents."
+        "q": "Can I do everything from the command line or let a coding agent (such as Claude Code) do it?",
+        "a": "Yes. The official survey26 command-line tool covers everything the website offers to contestants: team, keys and network, project upload, version confirmation, evaluations (with each card's live status), logs, results, the final version and the leaderboards (including the super board). Create a personal API token on your profile page and set it as SURVEY26_TOKEN; daily limits and quotas are the same as on the website, and every command supports --json output. For Claude Code, install the survey26 skill with one line: mkdir -p ~/.claude/skills/survey26 && curl -fsSL https://create.gosim.org/survey26/platform/skills/survey26/SKILL.md -o ~/.claude/skills/survey26/SKILL.md; other coding agents can read survey26-AGENTS.md. Installation and the full guide: More → CLI & agent skill, also linked at the top of Participate. Never put the token in code, a project ZIP or a chat."
       },
       {
         "q": "What can a personal API token do, and how do I protect it?",

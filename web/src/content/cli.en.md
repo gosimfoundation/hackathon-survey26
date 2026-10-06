@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.8.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.9.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -15,24 +15,32 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.8.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.9.0
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
 
 `survey26 --help` lists all commands; `survey26 <command> --help` describes each one. The usage guide for coding agents can be downloaded as [survey26-AGENTS.md](__BASE_URL__survey26-AGENTS.md); place it in your project so that your coding agent reads it.
+
+**Agent skill.** For Claude Code, install the survey26 skill with one line; it teaches the agent to install and use this tool, upload and confirm projects, start and wait for evaluations, read logs and results, and follow the rules. Other coding agents (Codex, Cursor, …) can read the same file, or [survey26-AGENTS.md](__BASE_URL__survey26-AGENTS.md).
+
+```bash
+mkdir -p ~/.claude/skills/survey26 && curl -fsSL https://create.gosim.org/survey26/platform/skills/survey26/SKILL.md -o ~/.claude/skills/survey26/SKILL.md
+```
+
+The skill file: [SKILL.md](__BASE_URL__skills/survey26/SKILL.md).
 
 ## 2. Personal API token
 
@@ -72,14 +80,16 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | Keys and network | `env show`, `env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix NAME] [--replace]` (the “Add a model service” form), `env set NAME --value-stdin [--plain]`, `env set NAME --from-env VAR`, `env unset NAME`, `env disable NAME` / `env enable NAME` (switch off/on, kept), `env tag NAME model\|none` (model-related or not), `env domains set HOST…`, `env domains clear`, `env route [direct\|cn\|overseas] [--fallback\|--no-fallback]` |
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--branch BRANCH] [--subdir FOLDER] [--title …]` (a `…/tree/BRANCH/FOLDER` or `…/commit/SHA` link works too; the exact commit is saved at submission) |
 | Step 2 · Review and confirm | `project list [--all]`, `project wait REV`, `project show REV --files`, `project logs REV`, `project confirm REV`, `project withdraw REV`, `project download REV`, `project evidence REV --notes … --code-url …` |
-| Step 3 · Evaluate | `quota`, `eval start REV [--no-model] [--phase …]`, `eval selfcheck REV [--no-model] [--phase …]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list [--phase …]`, `eval show BATCH`, `eval wait [BATCH]` |
+| Step 3 · Evaluate | `quota`, `eval start REV [--no-model] [--phase …]`, `eval selfcheck REV [--no-model] [--phase …]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list [--phase …]`, `eval show BATCH`, `eval wait [BATCH] [--first-stage]` |
 | Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]`, `results cancel BATCH` (cancel a queued evaluation that has not started) |
 | Final version | `final show`, `final set REV`, `final clear` |
-| Leaderboard | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`, `competition` |
+| Leaderboard | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a\|v4-a1\|super] [--mine]`, `competition` |
 | Kimi Coding Plan and credits | `kimi status`, `kimi claim` (captain), `credits list`, `credits claim PROVIDER` |
 | Temporary Kimi relay | `relay status` (base URL, model and your team's remaining allowance today) |
 
 Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. `results cancel BATCH` cancels a queued evaluation of your team while none of its cards has started (also an evaluation the dispatcher is about to start but no runner has taken yet), as the website's **Cancel** button does: it is not counted toward today's evaluations and appears on no leaderboard. An evaluation that has started cannot be cancelled (`evaluation_started`). In an “evaluate 3 times” self-check, cancelling one evaluation cancels every evaluation of that set that has not started; those already running or finished are kept. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
+
+**Two-stage evaluations and the super board.** In the online competition every evaluation first runs cards A–D at the same time; when all four have finished, the same evaluation runs A1–D1 automatically (it counts as 1 evaluation). A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours. As on the website, `eval show`, `eval list` and `eval wait` show each card's live status: queued, waiting for A–D, running for N minutes, scored or failed. In `--json`, each run has `running_minutes`, `started_at` and `waiting_for_first_stage`, and the evaluation has `staged`, `first_stage_finished` and `first_stage_score` (the mean of A–D, which is the evaluation's online board score). `eval wait --first-stage` returns as soon as A–D have finished; A1–D1 keep running. `leaderboard --card super` shows the super board: 20% × the sum of the A–D card scores + 80% × the sum of the A1–D1 card scores of one evaluation, counting only evaluations that completed all 8 cards and keeping each team's latest complete evaluation (not its highest); `--card v4-a1` and so on show each added card.
 
 `REV` (a project version), `BATCH` (an evaluation) and `RUN` (one card of an evaluation) accept the full ID or a unique prefix of at least 4 characters, as printed by `project list`, `eval list` and `eval show`. `latest` refers to the most recent evaluation.
 
@@ -93,7 +103,8 @@ survey26 project logs 1a2b3c4d                              # build log and agen
 survey26 project show 1a2b3c4d --files                      # execution settings and adapter files
 survey26 project confirm 1a2b3c4d --yes                     # does not use an evaluation
 survey26 eval start 1a2b3c4d --yes                          # uses 1 of today's evaluations
-survey26 eval wait --timeout 3600                           # scores per card when finished
+survey26 eval wait --first-stage --timeout 3600             # A–D scores (online board), about 25 minutes
+survey26 eval wait --timeout 7200                           # all 8 cards, about 1 to 1.5 hours
 survey26 results log RUN_ID --tail 100
 survey26 results download-all latest -o results.zip
 survey26 final set 1a2b3c4d

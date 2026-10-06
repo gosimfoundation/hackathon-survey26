@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The floating friends button (悬浮球): signed-in only, bottom-right above the UID label, with a red badge for
 // friend requests waiting for an answer + unread messages. It opens a small panel (a bottom sheet on phones):
-// add a friend by UID (the 按 UID 找人 card), answer requests, the friend list, and plain-text chats with friends.
+// shortcuts to 按 UID 找人 and 微信二维码 (moved here from the header's More menu), add a friend by UID (the 按 UID 找人 card), answer requests, the friend list, and plain-text chats with friends.
 // It hides while a popup or the 参赛 guide is open, and fades out over the register bar, section rail and sky console.
 // No Realtime: the panel polls every 5 s while open and visible; the badge rides the header's 60 s poll.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -233,6 +233,10 @@ watch(isLoggedIn, logged => { if (!logged) closePanel(); void nextTick(schedule)
 
         <!-- home: add by UID, requests, friends and chats -->
         <div v-if="view === 'home'" class="fp-body" data-testid="friends-fab-home">
+          <nav class="fp-links" data-testid="friends-fab-links">
+            <router-link to="/teammates#find-uid" data-testid="fab-find-uid" @click="closePanel">{{ t('nav.find_uid') }} <span aria-hidden="true">→</span></router-link>
+            <router-link to="/profile#wechat-qr" data-testid="fab-wechat-qr" @click="closePanel">{{ t('nav.wechat_qr') }} <span aria-hidden="true">→</span></router-link>
+          </nav>
           <form class="fp-add" role="search" @submit.prevent="findUid">
             <label class="sr-only" for="friends-fab-uid">{{ t('dm.add_label') }}</label>
             <input id="friends-fab-uid" v-model="uidInput" data-testid="friends-fab-uid" type="text" inputmode="numeric" autocomplete="off"
@@ -335,6 +339,11 @@ watch(isLoggedIn, logged => { if (!logged) closePanel(); void nextTick(schedule)
 .fp-text-btn { flex: none; border: 1px solid #3a3a3a; background: none; color: #aeb6c8; font-size: .72rem; padding: .25rem .55rem; cursor: pointer; }
 .fp-text-btn:hover { color: #ffb3b3; border-color: #7a2a2a; }
 .fp-body { flex: 1; overflow-y: auto; padding: .8rem 1rem 1rem; overscroll-behavior: contain; }
+.fp-links { display: flex; gap: .5rem; margin-bottom: .75rem; }
+.fp-links a { flex: 1; padding: .45rem .6rem; border: 1px solid rgba(158, 173, 255, .26); background: rgba(49, 94, 251, .06); font-size: .82rem;
+  color: rgba(230, 236, 255, .85); text-align: center; white-space: nowrap; transition: border-color .15s ease, background .15s ease; }
+.fp-links a:hover { border-color: #78a6ff; background: rgba(49, 94, 251, .16); color: #fff; }
+.fp-links a span { color: #78a6ff; }
 .fp-add { display: flex; gap: .5rem; }
 .fp-add input { flex: 1; min-width: 0; min-height: 36px; padding: .4rem .6rem; border: 1px solid rgba(217, 229, 255, .3); background: rgba(2, 8, 20, .5); color: inherit; }
 .fp-h { margin: 1.1rem 0 .3rem; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: rgba(205, 214, 238, .7); }

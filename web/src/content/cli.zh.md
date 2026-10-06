@@ -4,7 +4,7 @@
 
 ## 1. 安装
 
-工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.8.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
+工具提供两种等效的构建，命令、选项、`--json` 输出和退出码完全相同（版本 1.9.0）：一个 Python 单文件，需要 Python 3.9 或更高版本、不依赖其他软件包；以及一个预编译的单文件程序，无需任何运行环境。
 
 ```bash
 # 方式 A：安装 survey26 命令
@@ -15,24 +15,32 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/SHA256SUMS)。
+**方式 C：预编译程序。** 下载对应系统的文件，赋予执行权限并放入 `PATH` 即可使用。校验和：[SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/SHA256SUMS)。
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-arm64) |
-| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-macos-x86_64) |
-| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64) |
-| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-windows-x86_64.exe) |
+| macOS（Apple 芯片） | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-arm64) |
+| macOS（Intel） | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-x86_64) |
+| Linux x86_64（静态链接） | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64) |
+| Linux aarch64（静态链接） | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.8.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.8.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.9.0
 ```
 
 在 macOS 上，用浏览器下载的程序需先解除隔离：`xattr -d com.apple.quarantine survey26`。在 Windows 上，请在 PowerShell 或命令提示符中运行 `survey26-windows-x86_64.exe`。
 
 `survey26 --help` 列出全部命令，`survey26 <命令> --help` 说明每条命令的用法。面向编程智能体的使用说明可下载为 [survey26-AGENTS.md](__BASE_URL__survey26-AGENTS.md)，放入项目目录后，编程智能体即可读取。
+
+**智能体 Skill。** 使用 Claude Code 时，一行命令即可安装 survey26 Skill：它教智能体安装和使用本工具、上传并确认项目、开始并等待评测、查看日志和结果，并遵守比赛规则。其他编程智能体（Codex、Cursor 等）可以读取同一个文件，或读取 [survey26-AGENTS.md](__BASE_URL__survey26-AGENTS.md)。
+
+```bash
+mkdir -p ~/.claude/skills/survey26 && curl -fsSL https://create.gosim.org/survey26/platform/skills/survey26/SKILL.md -o ~/.claude/skills/survey26/SKILL.md
+```
+
+Skill 文件：[SKILL.md](__BASE_URL__skills/survey26/SKILL.md)。
 
 ## 2. 个人 API 令牌
 
@@ -72,14 +80,16 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | 密钥与网络 | `env show`、`env model --provider kimi\|moonshot\|deepseek\|openai\|anthropic\|zhipu\|custom --key - [--model …] [--prefix 名称] [--replace]`（即「添加模型服务」）、`env set 名称 --value-stdin [--plain]`、`env set 名称 --from-env 变量`、`env unset 名称`、`env disable 名称` / `env enable 名称`（停用/启用，保留不删除）、`env tag 名称 model\|none`（是否模型相关）、`env domains set 域名…`、`env domains clear`、`env route [direct\|cn\|overseas] [--fallback\|--no-fallback]` |
 | 第 1 步 · 上传项目 | `project upload 文件.zip [--title …]`、`project submit-repo https://github.com/OWNER/REPO [--branch 分支] [--subdir 子目录] [--title …]`（也可以直接用 `…/tree/分支/子目录` 或 `…/commit/提交号` 链接；提交时记录具体 commit） |
 | 第 2 步 · 检查并确认版本 | `project list [--all]`、`project wait 版本`、`project show 版本 --files`、`project logs 版本`、`project confirm 版本`、`project withdraw 版本`、`project download 版本`、`project evidence 版本 --notes … --code-url …` |
-| 第 3 步 · 开始评测 | `quota`、`eval start 版本 [--no-model] [--phase …]`、`eval selfcheck 版本 [--no-model] [--phase …]`（评测 3 次取平均；`--no-model` 即「本次不提供模型」）、`eval list [--phase …]`、`eval show 评测`、`eval wait [评测]` |
+| 第 3 步 · 开始评测 | `quota`、`eval start 版本 [--no-model] [--phase …]`、`eval selfcheck 版本 [--no-model] [--phase …]`（评测 3 次取平均；`--no-model` 即「本次不提供模型」）、`eval list [--phase …]`、`eval show 评测`、`eval wait [评测] [--first-stage]` |
 | 结果 | `results show 评测 [--phase …]`、`results log 运行 [--tail N \| --full \| -o agent.log]`、`results download 运行`、`results download-all [评测] [--phase …]`、`results cancel 评测`（取消尚未开始的排队评测） |
 | 最终版本 | `final show`、`final set 版本`、`final clear` |
-| 排行榜 | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a] [--mine]`、`competition` |
+| 排行榜 | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a\|v4-a1\|super] [--mine]`、`competition` |
 | Kimi Coding Plan 与兑换码 | `kimi status`、`kimi claim`（队长）、`credits list`、`credits claim 提供方` |
 | 临时 Kimi 中转 | `relay status`（接口地址、模型名和本队今天的剩余额度） |
 
 评测默认进入网站「评测」按钮所用的赛程：正式赛进行中为正式赛，结束后为练习赛。组委会另外开放可选的额外赛程时，`survey26 competition` 和 `survey26 quota` 会显示它的名称；它不计分（不上任何排行榜），评测次数单独计算。只有明确需要时才用 `--phase extra`（或该赛程的 slug）在其中评测；`eval list`、`eval show`、`eval wait`、`results show` 和 `results download-all` 也接受同样的 `--phase`，只列出该赛程的评测，或在其中取 `latest`。`results cancel 评测` 与网站上的「取消排队」按钮相同：在评测的任何一张卡都还没有开始时（包括调度器即将启动、但尚未被任何运行器领取的评测），取消本队这次排队中的评测；取消后不计入今日评测次数，也不会出现在任何排行榜上。已经开始的评测不能取消（`evaluation_started`）。对「评测 3 次取平均」中的一次评测执行取消，会取消这一组里所有尚未开始的评测，已在运行或已完成的保留。正式赛的 `leaderboard` 会像网站一样，把不参与排名的基线行（官方示例的平均分）显示在其分数对应的位置；`--json` 输出中位于 `baselines`。
+
+**两阶段评测与超级总榜。** 正式赛的每次评测先同时运行 A–D 四张卡，全部结束后同一次评测自动运行 A1–D1（计为 1 次评测）。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成。与网站相同，`eval show`、`eval list` 和 `eval wait` 会显示每张卡的实时状态：排队中、等待 A–D 完成、已运行 N 分钟、已评分或失败。`--json` 输出中，每张卡有 `running_minutes`、`started_at` 和 `waiting_for_first_stage`，评测有 `staged`、`first_stage_finished` 和 `first_stage_score`（A–D 的平均分，即这次评测在正式赛排行榜上的成绩）。`eval wait --first-stage` 在 A–D 全部结束后立即返回，A1–D1 继续运行。`leaderboard --card super` 显示超级总榜：同一次评测中 20% × A–D 四张卡分数之和 + 80% × A1–D1 四张卡分数之和，只计入 8 张卡全部完成的评测，每队取最近一次完整评测（不是最高分）；`--card v4-a1` 等显示各张新增卡的榜单。
 
 “版本”（项目版本）、“评测”（一次评测）和“运行”（一次评测中的一张任务卡）可以填写完整 ID，也可以填写至少 4 位、能唯一匹配的前缀，即 `project list`、`eval list`、`eval show` 输出中的 ID。`latest` 表示最近一次评测。
 
@@ -93,7 +103,8 @@ survey26 project logs 1a2b3c4d                              # 构建日志与公
 survey26 project show 1a2b3c4d --files                      # 运行设置与适配文件
 survey26 project confirm 1a2b3c4d --yes                     # 不占评测次数
 survey26 eval start 1a2b3c4d --yes                          # 占用今天 1 次评测
-survey26 eval wait --timeout 3600                           # 结束后显示各卡分数
+survey26 eval wait --first-stage --timeout 3600             # A–D 成绩（正式赛排行榜），约 25 分钟
+survey26 eval wait --timeout 7200                           # 全部 8 张卡，约 1 到 1.5 小时
 survey26 results log 运行ID --tail 100
 survey26 results download-all latest -o results.zip
 survey26 final set 1a2b3c4d

@@ -8,6 +8,7 @@ import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
 import CompeteGuide from '../components/competition/CompeteGuide.vue'
+import CliSkillCard from '../components/competition/CliSkillCard.vue'
 import ProjectWorkflow from '../components/competition/ProjectWorkflow.vue'
 import SoloTeamButton from '../components/SoloTeamButton.vue'
 import TeamInbox from '../components/TeamInbox.vue'
@@ -76,6 +77,7 @@ onMounted(async()=>{try{await refreshMe()
       </div>
       <div v-if="layout==='v2'" class="compete-guide-btn"><CompeteGuide /></div>
       </div>
+      <CliSkillCard />
       <ProjectWorkflow :layout="layout" @phase="p => workflowPhase = p" />
     </template>
   </DashShell>

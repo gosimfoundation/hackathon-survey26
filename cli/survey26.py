@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 
 DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
@@ -628,14 +628,37 @@ def _parse_time(value: str) -> float | None:
         return None
 
 
+def running_minutes(run: dict, now: float):
+    """Whole minutes a running card has run (as on the website), or None when it is not running."""
+    if run.get("status") != "running" or not run.get("started_at"):
+        return None
+    started = _parse_time(str(run["started_at"]))
+    return None if started is None else max(0, int((now - started) // 60))
+
+
 def batch_summary(batch: dict, names: dict, lang: str, slugs: dict) -> dict:
+    """One evaluation with the live status of each card. Two-stage evaluations (staged: the online competition)
+    run A-D first; their A1-D1 cards wait (waiting_for_first_stage) until every A-D card has finished."""
+    now = time.time()
+    staged = bool(batch.get("staged"))
+    raw = batch.get("observer_runs") or []
+
+    def second(run):
+        return bool(SECOND_CARD_RE.match((names.get(run.get("scenario_id")) or {}).get("slug") or ""))
+    first = [r for r in raw if not second(r)]
+    first_done = bool(first) and all(r.get("status") in FINISHED_RUN for r in first)
+    first_score = None
+    if staged and first_done and all(r.get("status") == "scored" and _number(r.get("score")) for r in first):
+        first_score = sum(float(r["score"]) for r in first) / len(first)
     runs = []
-    for run in batch.get("observer_runs") or []:
+    for run in raw:
         sc = names.get(run.get("scenario_id")) or {}
         runs.append({
             "run_id": run["id"], "scenario_id": run.get("scenario_id"), "card": sc.get("slug"),
             "label": scenario_label(sc.get("slug") or "", sc.get("name") or "", lang),
             "status": run.get("status"), "score": run.get("score"), "has_result": bool(run.get("result_path")),
+            "started_at": run.get("started_at"), "running_minutes": running_minutes(run, now),
+            "waiting_for_first_stage": staged and run.get("status") == "queued" and second(run) and not first_done,
         })
     runs.sort(key=lambda r: scenario_order(r["card"] or ""))
     return {
@@ -643,8 +666,48 @@ def batch_summary(batch: dict, names: dict, lang: str, slugs: dict) -> dict:
         "phase_id": batch.get("phase_id"), "phase": slugs.get(batch.get("phase_id")), "revision_id": batch.get("revision_id"),
         "created_at": batch.get("created_at"), "quota_refunded": bool(batch.get("quota_refunded")),
         "repeat_group": batch.get("repeat_group"), "repeat_runs": batch.get("repeat_runs"),
-        "model_disabled": bool(batch.get("model_disabled")), "runs": runs,
+        "model_disabled": bool(batch.get("model_disabled")), "staged": staged,
+        "first_stage_finished": first_done if staged else None, "first_stage_score": first_score, "runs": runs,
     }
+
+
+def run_state_text(run: dict, lang: str) -> str:
+    """The card status the website shows: waiting for A-D, running for N minutes, or the status itself."""
+    zh = lang == "zh"
+    if run.get("waiting_for_first_stage"):
+        return "等待 A–D 完成" if zh else "waiting for A–D"
+    minutes = run.get("running_minutes")
+    if minutes is not None:
+        if minutes < 1:
+            return "已运行不到 1 分钟" if zh else "running <1 min"
+        return ("已运行 %d 分钟" if zh else "running %d min") % minutes
+    return str(run.get("status") or "")
+
+
+def progress_text(summary: dict, lang: str) -> str:
+    """eval list: cards finished, and while it runs how many are running or waiting for A-D."""
+    zh = lang == "zh"
+    runs = summary["runs"]
+    text = "%d/%d" % (len([r for r in runs if r["status"] in FINISHED_RUN]), len(runs))
+    if summary["status"] in ACTIVE:
+        parts = []
+        running = len([r for r in runs if r["status"] == "running"])
+        waiting = len([r for r in runs if r["waiting_for_first_stage"]])
+        if running:
+            parts.append(("%d 张运行中" if zh else "%d running") % running)
+        if waiting:
+            parts.append(("%d 张等待 A–D" if zh else "%d waiting for A–D") % waiting)
+        if parts:
+            text += ("（" + "，".join(parts) + "）") if zh else (" (" + ", ".join(parts) + ")")
+    return text
+
+
+STAGE_NOTE = ("Two stages: cards A–D run first; A1–D1 start automatically once A–D have all finished. A–D results come in about "
+              "25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program's run time).",
+              "两阶段评测：先同时运行 A–D，全部结束后自动运行 A1–D1。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。")
+RETRY_NOTE = ("If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing; several keys "
+              "(KIMI_KEY_1 ...) spread the requests of the cards that run at the same time. See " + SITE + "/cli",
+              "调用模型的程序遇到 429（限流）时请等待后重试，不要直接报错；保存多个 key（KIMI_KEY_1 ...）可把同时运行的各张卡的请求分散开。详见 " + SITE + "/cli")
 
 
 def fmt_score(value) -> str:
@@ -1474,6 +1537,9 @@ def cmd_eval_start(api: Api, args, out: Out):
         out.line(EXTRA_NOTE[out.lang == "zh"])
     if args.no_model:
         out.line(NO_MODEL_NOTE[out.lang == "zh"])
+    if phase["slug"] == "online":
+        out.line(STAGE_NOTE[out.lang == "zh"])
+    out.line(RETRY_NOTE[out.lang == "zh"])
     return {"batch_id": batch_id, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"], "repeat": repeat,
             "model_disabled": bool(args.no_model), "extra": phase["extra"]}
 
@@ -1495,6 +1561,9 @@ def cmd_eval_selfcheck(api: Api, args, out: Out):
         out.line(EXTRA_NOTE[out.lang == "zh"])
     if args.no_model:
         out.line(NO_MODEL_NOTE[out.lang == "zh"])
+    if phase["slug"] == "online":
+        out.line(STAGE_NOTE[out.lang == "zh"])
+    out.line(RETRY_NOTE[out.lang == "zh"])
     return {"result": result, "phase_id": phase["phase_id"], "phase": phase["slug"], "revision_id": r["id"],
             "model_disabled": bool(args.no_model), "extra": phase["extra"]}
 
@@ -1507,11 +1576,11 @@ def cmd_eval_list(api: Api, args, out: Out):
     rows = [batch_summary(b, names, out.lang, slugs) for b in (data.get("batches") or [])[:args.limit]]
     titles = {r["id"]: r.get("title") for r in all_revisions(data)}
     out.table([dict(b, id=b["batch_id"][:8], version=(b["revision_id"] or "")[:8], project=titles.get(b["revision_id"]),
-                    score_text=fmt_score(b["score"]), self_check="3x" if b["repeat_group"] else "",
+                    score_text=fmt_score(b["score"]), cards=progress_text(b, out.lang), self_check="3x" if b["repeat_group"] else "",
                     no_model=out.t("no model", "无模型") if b["model_disabled"] else "",
                     counted="" if not b["quota_refunded"] else out.t("not counted", "未计次")) for b in rows],
               [("ID", "id"), (out.t("Phase", "赛程"), "phase"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
-               (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"),
+               (out.t("Cards", "任务卡"), "cards"), (out.t("Version", "版本"), "version"), (out.t("Project", "项目"), "project"), ("", "self_check"), ("", "no_model"),
                ("", "counted"), (out.t("Created", "创建时间"), "created_at")])
     return rows
 
@@ -1540,9 +1609,16 @@ def _show_batch(api: Api, data: dict, batch: dict, out: Out) -> dict:
     summary = batch_summary(batch, names, out.lang, phase_slugs(data))
     out.line("%s  %s  %s %s" % (summary["batch_id"], summary["status"], out.t("score", "分数"), fmt_score(summary["score"]))
              + (out.t("  (no model)", "  （无模型）") if summary["model_disabled"] else ""))
-    out.table([dict(r, score_text=fmt_score(r["score"]), result=out.t("yes", "有") if r["has_result"] else "") for r in summary["runs"]],
-              [(out.t("Card", "任务卡"), "label"), (out.t("Status", "状态"), "status"), (out.t("Score", "分数"), "score_text"),
+    out.table([dict(r, state=run_state_text(r, out.lang), score_text=fmt_score(r["score"]), result=out.t("yes", "有") if r["has_result"] else "")
+               for r in summary["runs"]],
+              [(out.t("Card", "任务卡"), "label"), (out.t("Status", "状态"), "state"), (out.t("Score", "分数"), "score_text"),
                (out.t("Run ID", "运行 ID"), "run_id"), (out.t("Result", "结果"), "result")])
+    if summary["staged"] and summary["status"] in ACTIVE:
+        if summary["first_stage_score"] is not None:
+            out.line(out.t("Cards A–D finished: mean %s (the online board score of this evaluation); A1–D1 continue.",
+                           "A–D 已完成：平均 %s（本次评测在正式赛排行榜上的成绩）；A1–D1 继续运行。") % fmt_score(summary["first_stage_score"]))
+        else:
+            out.line(STAGE_NOTE[out.lang == "zh"])
     if summary["repeat_group"]:
         summary["self_check"] = _repeat_summary(data, summary["repeat_group"])
         sc = summary["self_check"]
@@ -1557,23 +1633,45 @@ def cmd_eval_show(api: Api, args, out: Out):
     return _show_batch(api, data, find_batch(in_phase(data, phase_filter(api, data, args.phase)), args.batch), out)
 
 
+def wait_progress(summary: dict, out: Out) -> str:
+    """eval wait: one line per change, with the running cards' minutes and the cards waiting for A-D."""
+    runs = summary["runs"]
+    done = len([r for r in runs if r["status"] in FINISHED_RUN])
+    text = "%s  %s  %d/%d %s" % (time.strftime("%H:%M:%S"), summary["status"], done, len(runs), out.t("cards finished", "张卡已结束"))
+    running = [r for r in runs if r["running_minutes"] is not None]
+    if running:
+        text += out.t(" · running: ", " · 运行中：") + ", ".join(
+            "%s (%s)" % (r["label"], out.t("<1 min", "不到 1 分钟") if r["running_minutes"] < 1 else out.t("%d min", "%d 分钟") % r["running_minutes"])
+            for r in running)
+    waiting = len([r for r in runs if r["waiting_for_first_stage"]])
+    if waiting:
+        text += out.t(" · %d waiting for A–D", " · %d 张等待 A–D 完成") % waiting
+    return text
+
+
 def cmd_eval_wait(api: Api, args, out: Out):
     deadline = time.time() + args.timeout
     last = None
     batch_id = None
     phase_id = None
+    names = None
     while True:
         data = polled_list(api, deadline)
         if batch_id is None:
             phase_id = phase_filter(api, data, args.phase)
         batch = find_batch(in_phase(data, phase_id), batch_id or args.batch)
         batch_id = batch["id"]
+        if names is None:
+            names = scenario_names(api, dict(data, batches=[batch]))
+        summary = batch_summary(batch, names, out.lang, phase_slugs(data))
         state = (batch.get("status"), tuple((r.get("status"), r.get("score")) for r in batch.get("observer_runs") or []))
         if state != last:
-            done = len([r for r in batch.get("observer_runs") or [] if r.get("status") in FINISHED_RUN])
-            out.line("%s  %s  %d/%d %s" % (time.strftime("%H:%M:%S"), batch.get("status"), done, len(batch.get("observer_runs") or []),
-                                           out.t("cards finished", "张卡已结束")))
+            out.line(wait_progress(summary, out))
             last = state
+        if args.first_stage and summary["staged"] and summary["first_stage_finished"] and batch.get("status") in ACTIVE:
+            summary = _show_batch(api, data, batch, out)
+            out.line(out.t("Wait for A1–D1 with: survey26 eval wait %s", "等待 A1–D1：survey26 eval wait %s") % batch["id"][:8])
+            return summary
         if batch.get("status") not in ACTIVE:
             summary = _show_batch(api, data, batch, out)
             if batch.get("status") != "scored":
@@ -1818,11 +1916,19 @@ def cmd_leaderboard(api: Api, args, out: Out):
         settings = settings[0] if settings else {}
     card = None
     baselines: list = []
-    if settings.get("projects_enabled"):
+    extra_cards = None
+    if settings.get("projects_enabled") and args.card == SUPER_TAB:
+        # The super board: 20% x the A-D card scores + 80% x the A1-D1 card scores of each team's latest complete evaluation.
+        board = api.rpc("observer_super_board", p_phase=phase["id"], p_scenario_slug=None, p_limit=args.limit) or {}
+        board = board if isinstance(board, dict) else {}
+        rows, card, cards = board.get("rows"), SUPER_TAB, board.get("cards")
+        baselines = baseline_rows(api, phase["id"], "observer_super_baseline_rows")
+    elif settings.get("projects_enabled"):
         board = api.rpc("observer_card_board", p_phase=phase["id"], p_scenario_slug=args.card, p_limit=args.limit) or {}
         rows = board.get("rows") if isinstance(board, dict) else board
         card = board.get("scenario") if isinstance(board, dict) else None
         cards = board.get("cards") if isinstance(board, dict) else None
+        extra_cards = board.get("extra_cards") if isinstance(board, dict) else None
         if slug == "online":
             baselines = baseline_rows(api, phase["id"])
     else:
@@ -1840,22 +1946,33 @@ def cmd_leaderboard(api: Api, args, out: Out):
     if placed:
         out.line(out.t("Baseline: average score of the official examples run unmodified (with the organizers' model key). For reference only; not ranked.",
                        "基线：官方示例原样运行的平均分（使用组委会的模型 key），仅供参考，不参与排名。"))
-    listed = sorted([c.get("slug") for c in cards or [] if isinstance(c, dict) and c.get("slug")], key=scenario_order)
+    if card == SUPER_TAB:
+        out.line(out.t(*SUPER_NOTE))
+    listed = sorted([c.get("slug") for c in (cards or []) + (extra_cards or []) if isinstance(c, dict) and c.get("slug")], key=scenario_order)
+    if extra_cards and card != SUPER_TAB:
+        listed.append(SUPER_TAB)
     if listed and not args.mine:
         out.line(out.t("Cards (--card): ", "任务卡（--card）：") + ", ".join(listed))
     if args.mine and not mine:
         out.line(out.t("Your team is not on this board yet.", "本队尚未出现在这个排行榜上。"))
-    return {"phase": slug, "card": card, "cards": cards, "rows": shown, "baselines": baselines, "my_team_id": team_id}
+    return {"phase": slug, "card": card, "cards": cards, "extra_cards": extra_cards, "rows": shown, "baselines": baselines, "my_team_id": team_id}
 
 
 def _number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def baseline_rows(api: Api, phase_id: str) -> list:
+SUPER_TAB = "super"
+SUPER_NOTE = ("Super board = 20% × the sum of the A–D card scores + 80% × the sum of the A1–D1 card scores, both from the same evaluation. "
+              "Only evaluations that completed all 8 cards count, and each team keeps its latest complete evaluation (not its highest).",
+              "超级总榜 = 20% × A–D 四张卡分数之和 + 80% × A1–D1 四张卡分数之和，两者来自同一次评测。只计入 8 张卡全部完成的评测，"
+              "每队取最近一次完整评测（不是最高分）。")
+
+
+def baseline_rows(api: Api, phase_id: str, rpc: str = "observer_baseline_rows") -> list:
     """The online board's unranked reference rows (official examples' averages, basic and pro); none on any error."""
     try:
-        data = api.rpc("observer_baseline_rows", p_phase=phase_id)
+        data = api.rpc(rpc, p_phase=phase_id)
     except CliError:
         return []
     return [{"group": r["group"], "overall_score": r["overall_score"],
@@ -1873,7 +1990,7 @@ def with_baselines(table: list, baselines: list, tab, out: Out) -> tuple:
     """As on the website: each baseline sits after every team scoring at least as much; ranks stay unchanged."""
     refs = []
     for b in baselines:
-        score = b["overall_score"] if tab is None else (b["card_scores"] or {}).get(tab)
+        score = b["overall_score"] if tab in (None, SUPER_TAB) else (b["card_scores"] or {}).get(tab)
         if _number(score):
             refs.append((b, score))
     refs.sort(key=lambda x: -x[1])
@@ -2138,8 +2255,10 @@ def build_parser() -> argparse.ArgumentParser:
     ew = add(ev, "wait", cmd_eval_wait, "wait until an evaluation ends; prints the scores (exit 9 unless scored)")
     ew.add_argument("batch", nargs="?", default="latest")
     ew.add_argument("--phase", help="'latest' within this phase: " + PHASE_HELP)
-    ew.add_argument("--timeout", type=int, default=3600)
+    ew.add_argument("--timeout", type=int, default=7200)
     ew.add_argument("--interval", type=int, default=20)
+    ew.add_argument("--first-stage", action="store_true", help="two-stage evaluations: return once cards A-D have finished "
+                    "(their mean is the online board score); A1-D1 keep running")
 
     res = sub.add_parser("results", help="scores, agent.log and result downloads").add_subparsers(dest="cmd", metavar="ACTION")
     rs = add(res, "show", cmd_eval_show, "scores per card of an evaluation ('latest' = newest)")
@@ -2170,7 +2289,7 @@ def build_parser() -> argparse.ArgumentParser:
     add(sub, "competition", cmd_competition, "current competition mode and phases")
     lb = add(sub, "leaderboard", cmd_leaderboard, "leaderboard (online, practice-projects, practice)")
     lb.add_argument("--phase", help="online | practice-projects | practice (default: the current board)")
-    lb.add_argument("--card", help="card slug, e.g. v4-a (default: overall)")
+    lb.add_argument("--card", help="card slug, e.g. v4-a or v4-a1, or 'super' for the super board (default: overall)")
     lb.add_argument("--mine", action="store_true", help="only your team's row")
     lb.add_argument("--limit", type=int, default=500)
 
