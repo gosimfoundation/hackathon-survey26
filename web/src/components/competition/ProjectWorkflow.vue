@@ -129,6 +129,7 @@ const words = computed(() => pick({
   noModel: 'This evaluation without a model', noModelPill: 'No model',
   noModelHelp: 'For comparing your agent with and without an LLM: the program gets none of the variables tagged “model” under Keys and network (API keys, base URLs, model names) and OBSERVER_MODEL_DISABLED=1. Everything else, network access included, is unchanged. Applies to the next “Evaluate” or “Evaluate 3 times and average” only; it counts as an ordinary evaluation. The hidden final always uses your normal configuration.',
   noModelOn: 'The next evaluation runs without a model.',
+  stages: 'Each evaluation runs A–D at the same time first, then A1–D1 automatically; it counts as 1 evaluation.',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
   finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
@@ -194,6 +195,7 @@ const words = computed(() => pick({
   noModel: '本次不提供模型', noModelPill: '无模型',
   noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入正式赛排行榜。隐藏卡决赛始终使用本队的正常配置。',
   noModelOn: '接下来的评测将不提供模型。',
+  stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
@@ -815,6 +817,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <label v-if="approvedVersions.length" class="check no-model-option mt-3" :title="words.noModelHelp" data-testid="evaluation-no-model">
             <input v-model="noModel" type="checkbox" name="observer-no-model" :disabled="busy" data-testid="evaluation-no-model-input">{{ words.noModel }}</label>
           <p v-if="approvedVersions.length" class="help no-model-help" :class="{ on: noModel }" data-testid="evaluation-no-model-help">{{ noModel ? words.noModelOn + ' ' : '' }}{{ words.noModelHelp }}</p>
+          <p v-if="approvedVersions.length && selectedPhase?.phases.slug === 'online'" class="help mt-2" data-testid="evaluation-stages">{{ words.stages }}</p>
           <div v-if="versionRows.length" class="cw-table" role="table">
             <div class="cw-tr cw-th" role="row"><span role="columnheader">{{ w2.colVersion }}</span><span role="columnheader">{{ w2.colStatus }}</span><span role="columnheader">{{ w2.colEvals }}</span><span role="columnheader">{{ w2.colBest }}</span><span role="columnheader" class="cw-right">{{ w2.colActions }}</span></div>
             <template v-for="v in versionRows" :key="v.r.id">
@@ -1160,6 +1163,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <label v-if="approvedVersions.length" class="check no-model-option mt-3" :title="words.noModelHelp" data-testid="evaluation-no-model">
             <input v-model="noModel" type="checkbox" name="observer-no-model" :disabled="busy" data-testid="evaluation-no-model-input">{{ words.noModel }}</label>
           <p v-if="approvedVersions.length" class="help no-model-help" :class="{ on: noModel }" data-testid="evaluation-no-model-help">{{ noModel ? words.noModelOn + ' ' : '' }}{{ words.noModelHelp }}</p>
+          <p v-if="approvedVersions.length && selectedPhase?.phases.slug === 'online'" class="help mt-2" data-testid="evaluation-stages">{{ words.stages }}</p>
           <p v-if="!approvedVersions.length" class="text3 mt-3">{{ words.noApproved }}</p>
           <div v-for="v in approvedVersions" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-revision-id="v.revision.id">
             <span>{{ v.title }}</span>

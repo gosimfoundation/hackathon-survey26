@@ -88,7 +88,8 @@ const allCards = computed(() => cardBoard.value ? superCards(cardBoard.value) : 
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
   : cardTab.value === SUPER_TAB ? tf('leaderboard.detail.board_card', { card: t('leaderboard.super_board') })
   : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, allCards.value.find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
-const boardNote = computed(() => cardTab.value === null ? t('leaderboard.overall_note') : cardTab.value === SUPER_TAB ? t('leaderboard.super_note')
+const boardNote = computed(() => cardTab.value === null
+  ? t('leaderboard.overall_note') + (cardBoard.value?.extraCards?.length ? ' ' + t('leaderboard.overall_stage_note') : '') : cardTab.value === SUPER_TAB ? t('leaderboard.super_note')
   : superMode.value ? t('leaderboard.super_card_note') : t('leaderboard.card_note'))
 // The super board (超级总榜) is a card tab inside the 正式赛 board, not a top-level board tab.
 const OVERALL_QUERY = 'overall'

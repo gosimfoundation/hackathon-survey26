@@ -138,7 +138,7 @@ Actions that the website confirms with a dialog (evaluating a version again, the
 5. Use `project wait`, `eval wait` and their `--timeout` instead of polling in a tight loop. Exit code 5 means waiting one minute; exit code 6 means retrying later.
 6. Before `project confirm`, inspect `project show REV --files`: confirming states that your team reviewed the execution settings and adapter files.
 7. Every decision during an evaluation must be made by your program; the rules on human participation apply in the same way to the command line.
-8. An evaluation runs all its cards at the same time, each in its own container. To spread model requests over several keys, save them as KIMI_KEY_1 … KIMI_KEY_8 (up to 20 variables) and let each container pick one, at random or by `task_card.card_id` from the `initialize` message. On HTTP 429, wait and retry instead of failing.
+8. The cards that an evaluation runs at the same time (in the online competition A–D first, then A1–D1) each run in their own container. To spread model requests over several keys, save them as KIMI_KEY_1 … KIMI_KEY_8 (up to 20 variables) and let each container pick one, at random or by `task_card.card_id` from the `initialize` message. On HTTP 429, wait and retry instead of failing.
 
 ```python
 import os, random, zlib
