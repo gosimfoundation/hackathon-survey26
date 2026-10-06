@@ -1,6 +1,6 @@
 """Cards A1-D1 alongside A-D (migrations 20261005200000/20261005200100): the A-D board, its score and its
 completeness rule are unchanged when evaluations run 8 cards; the super board ranks the sum of all 8 cards of
-evaluations that completed every card; a phase without added cards shows nothing new."""
+evaluations that completed every card, 20% A-D + 80% A1-D1, latest per team (20261006040000); a phase without added cards shows nothing new."""
 import secrets
 import uuid
 
@@ -111,16 +111,16 @@ def test_a_d_board_unchanged_and_super_board_sums_eight_cards(setup):
     sup = super_board(uri, s['phase'])
     assert [c['slug'] for c in sup['cards']] == sorted(slug.values())
     assert [(r['observer_batch_id'], r['rank'], r['total_score']) for r in sup['rows']] == \
-        [(str(full), 1, 560), (str(rival), 2, 220)]
+        [(str(full), 1, 352), (str(rival), 2, 68)]
     assert sup['rows'][0]['card_scores'] == {**{slug[c]: 40 for c in 'abcd'}, **{slug[c]: 100 for c in extra}}
     # A1 tab, from the super board (the card board delegates, so the CLI's --card works too).
     a1 = board(uri, s['phase'], slug['a1'])
     assert a1['scenario'] == slug['a1'] and a1['cards'] == after['cards']
     assert [(r['team_id'], r['total_score'], r['overall_score']) for r in a1['rows']] == \
-        [(str(full_team), 100, 560), (str(rival_team), 10, 220)]
+        [(str(full_team), 100, 352), (str(rival_team), 10, 68)]
     assert a1['rows'] == super_board(uri, s['phase'], slug['a1'])['rows']
 
-    # A better A-D evaluation of the rival without A1-D1 complete: A-D board moves, super board keeps its best total.
+    # A better A-D evaluation of the rival without A1-D1 complete: A-D board moves, super board keeps the latest complete 8-card evaluation.
     better = partial_batch(s, rival_user, {**{cards[c]: 90 for c in 'abcd'}, **{extra[c]: 1 for c in ('b1', 'c1', 'd1')}})
     assert state(uri, better)[0] in ('queued', 'running')
     fail_run(s, better, extra['a1'])                                                   # an added card fails
