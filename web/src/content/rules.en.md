@@ -112,4 +112,4 @@ prizes will be announced separately.
 3. Team names, scores, and ranks are public.
 4. Challenge data, task cards, evaluation code and example projects provided by the organizers are licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution, non-commercial); please cite the GOSIM 2026 Agentic Observer Hackathon ([https://create.gosim.org/survey26/](https://create.gosim.org/survey26/)) when using them. Your own agent code is not restricted by this. The organizers will publish an article on this benchmark; once out, please cite it.
 
-Contact: hackathon@gosim.org · Night caretaker Johnny: JohnnyContact@163.com
+Contact: hackathon@gosim.org

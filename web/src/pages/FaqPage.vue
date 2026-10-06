@@ -15,7 +15,7 @@ const items = computed(() => t('faq.items') as Item[])
         <summary>{{ item.q }}</summary>
         <p>{{ item.a }}</p>
       </details>
-      <p class="text3 mt-12 text-sm">{{ pick('Other questions:', '其他问题：') }} <a class="accent-l" :href="`mailto:${t('footer.contact_email')}`">{{ t('footer.contact_email') }}</a> · {{ pick('Night caretaker Johnny:', '夜班看守 Johnny：') }} <a class="accent-l" href="mailto:JohnnyContact@163.com">JohnnyContact@163.com</a></p>
+      <p class="text3 mt-12 text-sm">{{ pick('Other questions:', '其他问题：') }} <a class="accent-l" :href="`mailto:${t('footer.contact_email')}`">{{ t('footer.contact_email') }}</a></p>
     </div></section>
   </main>
 </template>
