@@ -2339,7 +2339,7 @@
     "popup_all": "See all announcements",
     "popup_ok": "Got it",
     "popup_more": "{n} more pinned, shown next",
-    "popup_dont_show": "Don't show this again"
+    "popup_closes_left": "Closes left before it stops: {n}"
   },
   "admin": {
     "title": "Admin",
