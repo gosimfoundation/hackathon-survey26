@@ -25,17 +25,28 @@ import urllib.request
 PREFIX = "AGENTIC-OBSERVER26-runner-"
 
 
+# Public repositories are free and unmetered: their minutes never count toward the 2000 included.
+PUBLIC_REPOSITORIES = {"observer-public"}
+
+
 def billed_minutes(organization: str) -> float:
-    out = subprocess.run(["gh", "api", f"/organizations/{organization}/settings/billing/usage/summary"],
+    now = time.gmtime()
+    out = subprocess.run(["gh", "api", f"/organizations/{organization}/settings/billing/usage"
+                          f"?year={now.tm_year}&month={now.tm_mon}"],
                          capture_output=True, text=True, timeout=60, check=True).stdout
-    return parse_summary(json.loads(out))
+    return parse_usage(json.loads(out))
 
 
-def parse_summary(summary: dict) -> float:
-    """Gross Actions minutes of the summary's month (public repositories are not billed)."""
-    return float(sum(item.get("grossQuantity") or 0 for item in summary.get("usageItems") or []
+def parse_usage(usage: dict) -> float:
+    """Actions minutes of private repositories this month, from the per-repository usage detail.
+
+    The usage summary's grossQuantity also counts the free public repository (observer-public),
+    which made every organization look far over its limit.
+    """
+    return float(sum(item.get("quantity") or 0 for item in usage.get("usageItems") or []
                      if str(item.get("product", "")).lower() == "actions"
-                     and str(item.get("unitType", "")).lower() == "minutes"))
+                     and str(item.get("unitType", "")).lower() == "minutes"
+                     and item.get("repositoryName") not in PUBLIC_REPOSITORIES))
 
 
 def rpc(name: str, body: dict):

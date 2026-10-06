@@ -302,3 +302,25 @@ when the private organizations' remaining included minutes fall below 3000
 (checked every minute, audited as `observer.rescore_sampling`); then only each
 team's best run per phase and card plus a stable 20% are rescored, the rest keep
 `score_check='pending'` and are rescored once sampling ends.
+
+## Engine and score jobs are public-only (2026-10-06)
+
+Migration `20261006030000`. Private organizations have 2000 included Actions minutes a month;
+the public repositories are free. With `private.observer_public_pool.engine_score_private=false`
+(production) an engine or score job that the public repositories can run is moved there by
+`observer_pending_jobs` itself (queued, or dispatched to a private repository more than two minutes
+ago and never claimed), or it **waits in the queue** for a free public slot. It is never dispatched
+to a private `observer-control` repository, so private minutes go to preparation jobs and to jobs
+the pool cannot run (phases not switched on for the pool, randomized private instances, split runs).
+A public repository that does not start a job still sends it home (`observer_public_return_job`),
+and the next dispatcher pass moves it to another public repository.
+
+The global `monthly_minute_cap` no longer limits the free pool (it had been reached, which sent
+every job back to private minutes). Per-repository `max_active` is 20 (GitHub Free's concurrent
+job limit per organization).
+
+```sql
+update private.observer_public_pool set engine_score_private=true;   -- escape hatch: private fallback again
+select runner, kind, status, count(*) from private.observer_jobs
+  where status in ('queued','dispatched','claimed') group by 1, 2, 3;
+```

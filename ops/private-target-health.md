@@ -70,3 +70,11 @@ select public.observer_set_target_health(p_stall_minutes=>4, p_threshold=>3, p_w
 `p_routing=>false` differs from `enabled=false`: it sends no new work, but runs
 already claimed there keep working and finish (with `enabled=false` their claims
 and results would be refused).
+
+**2026-10-06: private minutes only, conservative estimate.** `scripts/sync-runner-minutes.py` reads the
+per-repository usage detail (`/organizations/<org>/settings/billing/usage`) and counts private repositories
+only: the usage summary's `grossQuantity` also counted the free `observer-public` repository. The estimate
+(migration `20261006030000`) is per job `ceil(claim to finish in minutes) + 1` (GitHub rounds every job up and
+bills setup before the claim); running jobs count as running so far (capped). With a sync younger than three
+hours the effective minutes are the billed minutes plus the estimate's growth since the sync (jobs still running
+at the sync count fully); older syncs fall back to `greatest(estimate, billed + growth)`.
