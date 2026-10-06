@@ -10,7 +10,7 @@ test('one popup per page load: the most important candidate wins, whatever the a
   assert.equal(pickPopup(['something-new', 'kimi-plan']), 'kimi-plan')
 })
 
-test('an announcement pops up until closed 3 times; only notify_version brings it back, with a fresh count', () => {
+test('an announcement pops up until closed twice; only notify_version brings it back, with a fresh count', () => {
   const a = { id: 7, title_en: 'Hi', body_zh: 'y', created_at: '2026-10-04', is_pinned: true }
   const seen = new Set<string>()
   assert.equal(announcementCloses(a, seen), 0)
@@ -19,7 +19,7 @@ test('an announcement pops up until closed 3 times; only notify_version brings i
     seen.add(announcementCloseKey(a, n))
     assert.equal(announcementCloses(a, seen), n)
   }
-  assert.equal(ANNOUNCEMENT_CLOSES, 3)
+  assert.equal(ANNOUNCEMENT_CLOSES, 2)
   assert.equal(pickAnnouncement([a], seen), null)
   // Text edits keep the keys; "remind everyone" (notify_version + 1) starts again from 0 closes.
   assert.equal(announcementCloseKey({ ...a, body_zh: 'edited' }, 2), 'ann-off:7:v1#close2')
@@ -37,13 +37,13 @@ test('keys of the older snooze / switch-off scheme do not suppress it', () => {
 
 test('one announcement per page load, rotating: the least-closed one shows, newest first on a tie', () => {
   const rows = [{ id: 3 }, { id: 2 }, { id: 1 }]
-  const seen = new Set<string>([1, 2, 3].map(n => announcementCloseKey(rows[1]!, n)))
+  const seen = new Set<string>([1, 2].map(n => announcementCloseKey(rows[1]!, n)))
   assert.equal(pickAnnouncement(rows, seen)?.id, 3)
   seen.add(announcementCloseKey(rows[0]!, 1))
   assert.equal(pickAnnouncement(rows, seen)?.id, 1)
   seen.add(announcementCloseKey(rows[2]!, 1))
   assert.equal(pickAnnouncement(rows, seen)?.id, 3)
-  for (const r of [rows[0]!, rows[2]!]) for (const n of [2, 3]) seen.add(announcementCloseKey(r, n))
+  for (const r of [rows[0]!, rows[2]!]) for (const n of [2]) seen.add(announcementCloseKey(r, n))
   assert.equal(pickAnnouncement(rows, seen), null)
   assert.notEqual(contentHash('ab', 'c'), contentHash('a', 'bc'))
   assert.notEqual(kimiPlanKey('t', 'member'), kimiPlanKey('t', 'captain'))

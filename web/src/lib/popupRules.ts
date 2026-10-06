@@ -49,7 +49,7 @@ type AnnouncementRef = { id: string | number; notify_version?: number | null }
 const annVersion = (a: AnnouncementRef) => Math.max(1, Math.floor(Number(a.notify_version) || 1))
 const annId = (a: AnnouncementRef) => String(a.id).replace(/[^0-9A-Za-z-]/g, '')
 /** Pinned announcements stop for good after this many closes (per id + notify_version). */
-export const ANNOUNCEMENT_CLOSES = 3
+export const ANNOUNCEMENT_CLOSES = 2
 /** Base key of an announcement's notify_version: "remind everyone" (notify_version + 1) starts a fresh count. */
 export const announcementOffKey = (a: AnnouncementRef) => `ann-off:${annId(a)}:v${annVersion(a)}`
 /** Recorded on the n-th close (1..ANNOUNCEMENT_CLOSES). Only these keys count; older snooze/off keys do not. */
