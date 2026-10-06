@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import UserAvatar from '../UserAvatar.vue'
 import { useI18n } from '../../composables/useI18n'
-import { isBaseline, SUPER_TAB, withBaselines, type BaselineRow, type BoardCard, type BoardLayout, type LeaderboardEntry } from '../../lib/data'
+import { isBaseline, SUPER_OLD_TAB, SUPER_TAB, withBaselines, type BaselineRow, type BoardCard, type BoardLayout, type LeaderboardEntry } from '../../lib/data'
 import { num } from '../../lib/format'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 
@@ -17,7 +17,7 @@ const hasBaselines = computed(() => rows.value.some(isBaseline))
 const emit = defineEmits<{ select: [entry: LeaderboardEntry] }>()
 const { t, tf, locale } = useI18n()
 
-const overallTab = computed(() => props.tab === null || props.tab === SUPER_TAB)
+const overallTab = computed(() => props.tab === null || props.tab === SUPER_TAB || props.tab === SUPER_OLD_TAB)
 const totalLabel = computed(() => props.superBoard ? t('leaderboard.super_total') : t('leaderboard.overall'))
 const componentKeys = computed(() => {
   if (overallTab.value) return []

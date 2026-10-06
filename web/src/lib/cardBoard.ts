@@ -77,19 +77,22 @@ type TabSource = Pick<CardBoard, 'layout' | 'cards'> & Partial<Pick<CardBoard, '
 
 /** The super board's tab (超级总榜): the sum over all cards, A-D and A1-D1. No card slug is ever this. */
 export const SUPER_TAB = 'super'
+/** The old super board's tab (超级榜（旧）): a frozen snapshot of the super board from evaluations before the A1-D1
+ * update, right of the super board's tab. No card slug is ever this. */
+export const SUPER_OLD_TAB = 'super-old'
 
 /** The tabs of a board, in order; null is the overall tab. Boards without cards have none. Where the phase has
- * added cards: overall, A-D, then the super board and A1-D1. */
+ * added cards: overall, A-D, then the super board, the old super board and A1-D1. */
 export function cardBoardTabs(board: TabSource | null): (string | null)[] {
   if (!board || board.layout === 'overall' || !board.cards.length) return []
   const extra = board.extraCards ?? []
   return [...(board.layout === 'cards_overall' ? [null] : []), ...board.cards.map(c => c.slug),
-    ...(extra.length ? [SUPER_TAB, ...extra.map(c => c.slug)] : [])]
+    ...(extra.length ? [SUPER_TAB, SUPER_OLD_TAB, ...extra.map(c => c.slug)] : [])]
 }
 
-/** Whether a tab belongs to the super board (the super tab or an added card's tab). */
+/** Whether a tab belongs to the super board (the super tab, the old super tab or an added card's tab). */
 export const isSuperTab = (board: Partial<Pick<CardBoard, 'extraCards'>> | null, tab: string | null) =>
-  tab === SUPER_TAB || (tab !== null && !!board?.extraCards?.some(c => c.slug === tab))
+  tab === SUPER_TAB || tab === SUPER_OLD_TAB || (tab !== null && !!board?.extraCards?.some(c => c.slug === tab))
 
 /** The requested tab when the board has it, else the first one (overall where there is one). */
 export function pickCardTab(board: TabSource | null, wanted: string | null | undefined): string | null {
