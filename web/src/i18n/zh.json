@@ -2339,7 +2339,7 @@
     "popup_all": "查看全部公告",
     "popup_ok": "知道了",
     "popup_more": "另有 {n} 条置顶公告，稍后依次显示",
-    "popup_dont_show": "不再显示这条公告"
+    "popup_closes_left": "再关闭 {n} 次后不再显示"
   },
   "admin": {
     "title": "Admin",
