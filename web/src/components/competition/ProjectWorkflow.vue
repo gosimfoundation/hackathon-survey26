@@ -24,7 +24,7 @@ import { bytes } from '../../lib/format'
 import { cancelEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
-import { elapsedText, runningMinutes, waitingForStage1, waitingText } from '../../lib/runProgress'
+import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
@@ -130,7 +130,7 @@ const words = computed(() => pick({
   noModel: 'This evaluation without a model', noModelPill: 'No model',
   noModelHelp: 'For comparing your agent with and without an LLM: the program gets none of the variables tagged “model” under Keys and network (API keys, base URLs, model names) and OBSERVER_MODEL_DISABLED=1. Everything else, network access included, is unchanged. Applies to the next “Evaluate” or “Evaluate 3 times and average” only; it counts as an ordinary evaluation. The hidden final always uses your normal configuration.',
   noModelOn: 'The next evaluation runs without a model.',
-  stages: 'Each evaluation runs A–D at the same time first, then A1–D1 automatically; it counts as 1 evaluation. If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing.',
+  stages: 'Each evaluation first runs A–D together, then A1–D1 automatically, and counts as 1 evaluation. A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program\'s run time). If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing.',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
   finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
@@ -196,7 +196,7 @@ const words = computed(() => pick({
   noModel: '本次不提供模型', noModelPill: '无模型',
   noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入正式赛排行榜。隐藏卡决赛始终使用本队的正常配置。',
   noModelOn: '接下来的评测将不提供模型。',
-  stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。调用模型的程序请在遇到 429（限流）时等待后重试，不要直接报错。',
+  stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。调用模型的程序请在遇到 429（限流）时等待后重试，不要直接报错。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
@@ -530,6 +530,9 @@ const now = ref(Date.now())
 const runSlug = (run: { scenario_id: string }) => scenarioNames.value[run.scenario_id]?.slug ?? ''
 function runStatus(b: PortalBatch, run: PortalBatch['observer_runs'][number]) {
   return waitingForStage1(b.staged, b.observer_runs, run, runSlug) ? waitingText(pick) : statuses.value[run.status] ?? run.status
+}
+function runHint(b: PortalBatch, run: PortalBatch['observer_runs'][number]) {
+  return run.score == null && waitingForStage1(b.staged, b.observer_runs, run, runSlug) ? waitingHint(pick) : ''
 }
 function runElapsed(run: PortalBatch['observer_runs'][number]) {
   const minutes = runningMinutes(run, now.value)
@@ -909,7 +912,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               <div class="cw-cards">
                 <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
                   <span class="meta">{{ scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : '—' }}</span>
-                  <strong class="cw-card-score">{{ run.score != null ? run.score.toFixed(2) : runStatus(b, run) }}</strong>
+                  <strong class="cw-card-score" :title="runHint(b, run) || undefined">{{ run.score != null ? run.score.toFixed(2) : runStatus(b, run) }}<span v-if="runHint(b, run)" class="sr-only"> {{ runHint(b, run) }}</span></strong>
                   <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
                   <span class="cw-card-links">
                     <button v-if="run.result_path" type="button" class="cw-link" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
@@ -961,7 +964,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               </p>
               <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
                 <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
-                <span class="pill" :class="run.status">{{ runStatus(b, run) }}</span>
+                <span class="pill" :class="run.status" :title="runHint(b, run) || undefined">{{ runStatus(b, run) }}<span v-if="runHint(b, run)" class="sr-only"> {{ runHint(b, run) }}</span></span>
                 <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
                 <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
                 <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
@@ -1243,7 +1246,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </p>
           <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
             <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
-            <span class="pill">{{ runStatus(b, run) }}</span>
+            <span class="pill" :title="runHint(b, run) || undefined">{{ runStatus(b, run) }}<span v-if="runHint(b, run)" class="sr-only"> {{ runHint(b, run) }}</span></span>
             <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
             <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>

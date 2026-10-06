@@ -21,6 +21,9 @@ export function runningMinutes(run: Run, now: number): number | null {
 
 type Pick = <T>(english: T, chinese: T) => T
 export const waitingText = (pick: Pick) => pick('Waiting for A–D', '等待 A–D 完成')
+/** Tooltip (and screen-reader text) on the waiting status. */
+export const waitingHint = (pick: Pick) =>
+  pick('Starts automatically once A–D have all finished, usually about 25 minutes after submission.', 'A–D 全部结束后会自动开始，通常在提交后约 25 分钟。')
 export function elapsedText(pick: Pick, minutes: number): string {
   if (minutes < 1) return pick('Running for under a minute', '已运行不到 1 分钟')
   return pick(`Running for ${minutes} min`, `已运行 ${minutes} 分钟`)
