@@ -208,6 +208,7 @@ class Planner:
         self.notices: set[tuple[str, str]] = set()
         self.terrain: set[str] = set()
         self.extra_avoid: set[str] = set()       # directions an advisor asked to avoid tonight
+        self.log_avoid: set[str] = set()         # directions the staff notes say to avoid right now (log_reader.py)
         self.duration_scale = 1.0
         self.fast_level = 0
         self.request_bonus: dict[int, float] = {}
@@ -595,7 +596,7 @@ class Planner:
                 return 0.0
             if near and alt < 75.0:
                 factor = min(factor, 0.35)
-        for direction in self.extra_avoid:
+        for direction in self.extra_avoid | self.log_avoid:
             if direction in DIRECTION_AZ and _az_distance(az, DIRECTION_AZ[direction]) <= 67.5 and alt < 70.0:
                 factor = min(factor, 0.35)
         for blocked_az, blocked_alt in self.blocked[-40:]:
