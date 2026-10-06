@@ -48,7 +48,10 @@ export type PortalData = {
     model_disabled?: boolean
     /** Set on the evaluations of one self-check ("evaluate 3 times and average"). */
     repeat_group?: string | null; repeat_runs?: number | null
+    /** Two stages: A–D first, then A1–D1 of the same evaluation. */
+    staged?: boolean
     observer_runs: { id: string; scenario_id: string; status: string; score: number | null; result_path: string | null
+      started_at?: string | null
       score_summary?: { raw_score?: { total: number }; calibration?: { version: string } } | null }[] }[]
   providers: { id: string; name: string; base_url: string; models: string[]; shared: boolean; enabled: boolean; daily_token_limit: number }[]
   team_model: TeamModel | null

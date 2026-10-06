@@ -24,6 +24,7 @@ import { bytes } from '../../lib/format'
 import { cancelEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
+import { elapsedText, runningMinutes, waitingForStage1, waitingText } from '../../lib/runProgress'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
@@ -521,6 +522,17 @@ function downloadFile(command: string, fields: Record<string, unknown>, filename
 function cardFolder(run: { id: string; scenario_id: string }): string {
   return cardFolderName(scenarioNames.value[run.scenario_id]?.slug ?? run.scenario_id, run.id)
 }
+// Live card status: queued A1–D1 of a two-stage evaluation wait for A–D; running cards show how long they have run.
+type PortalBatch = PortalData['batches'][number]
+const now = ref(Date.now())
+const runSlug = (run: { scenario_id: string }) => scenarioNames.value[run.scenario_id]?.slug ?? ''
+function runStatus(b: PortalBatch, run: PortalBatch['observer_runs'][number]) {
+  return waitingForStage1(b.staged, b.observer_runs, run, runSlug) ? waitingText(pick) : statuses.value[run.status] ?? run.status
+}
+function runElapsed(run: PortalBatch['observer_runs'][number]) {
+  const minutes = runningMinutes(run, now.value)
+  return minutes == null ? '' : elapsedText(pick, minutes)
+}
 function sortedRuns<T extends { scenario_id: string }>(runs: T[]): T[] {
   return [...runs].sort((a, b) => scenarioOrder(scenarioNames.value[a.scenario_id]?.slug ?? '') - scenarioOrder(scenarioNames.value[b.scenario_id]?.slug ?? ''))
 }
@@ -716,6 +728,8 @@ onMounted(async () => {
     void nextTick(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'center' }))
   }
   timer = setInterval(() => {
+    // Elapsed minutes only change once a minute; avoid re-rendering on every tick.
+    if (Math.floor(Date.now() / 60_000) !== Math.floor(now.value / 60_000)) now.value = Date.now()
     if (!busy.value && team.value && !document.hidden && refreshDue(data.value, lastLoadAt, Date.now())) void reload().catch(() => {})
   }, REFRESH_TICK_MS)
 })
@@ -892,7 +906,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               <div class="cw-cards">
                 <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
                   <span class="meta">{{ scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : '—' }}</span>
-                  <strong class="cw-card-score">{{ run.score != null ? run.score.toFixed(2) : statuses[run.status] ?? run.status }}</strong>
+                  <strong class="cw-card-score">{{ run.score != null ? run.score.toFixed(2) : runStatus(b, run) }}</strong>
+                  <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
                   <span class="cw-card-links">
                     <button v-if="run.result_path" type="button" class="cw-link" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
                     <button type="button" class="cw-link" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button></span>
@@ -943,7 +958,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
               </p>
               <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
                 <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
-                <span class="pill" :class="run.status">{{ statuses[run.status] ?? run.status }}</span>
+                <span class="pill" :class="run.status">{{ runStatus(b, run) }}</span>
+                <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
                 <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
                 <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
                 <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
@@ -1223,7 +1239,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </p>
           <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="flex flex-wrap gap-3 mt-3 items-center">
             <span v-if="scenarioNames[run.scenario_id]" class="m text-sm" :title="scenarioNames[run.scenario_id]!.slug" data-testid="run-scenario">{{ scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) }}</span>
-            <span class="pill">{{ statuses[run.status] ?? run.status }}</span>
+            <span class="pill">{{ runStatus(b, run) }}</span>
+            <span v-if="runElapsed(run)" class="meta" data-testid="run-elapsed">{{ runElapsed(run) }}</span>
             <span v-if="run.score != null">{{ run.score_summary?.calibration ? t('leaderboard.calibrated_score') + ': ' : '' }}{{ run.score.toFixed(2) }}</span>
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
             <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
