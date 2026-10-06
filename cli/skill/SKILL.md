@@ -24,7 +24,7 @@ daily limits and quotas. Full guide: https://create.gosim.org/survey26/platform/
 
 ```bash
 command -v survey26 || curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
-survey26 --version            # or: python3 survey26.py --version   (1.9.0 or later)
+survey26 --version            # or: python3 survey26.py --version   (1.9.1 or later)
 test -n "$SURVEY26_TOKEN" && survey26 --json whoami
 ```
 
@@ -76,7 +76,7 @@ survey26 --json eval show latest               # live status of each card
 In the online competition each evaluation runs cards A–D first, then A1–D1 automatically. `eval show` reports for
 every card `status`, `running_minutes` and `waiting_for_first_stage`; the evaluation's `first_stage_score` is the
 mean of A–D (its online board score). Do not poll in a tight loop: use `eval wait`.
-A queued evaluation that has not started can be cancelled (not counted): `survey26 --json results cancel BATCH --yes`.
+A queued evaluation that has not started can be cancelled (not counted): `survey26 --json eval cancel BATCH --yes`. The same command stops a running evaluation: its unfinished cards are not scored and it still counts toward today's evaluations, so stop only when the user asks.
 
 ## 5. Results and logs
 

@@ -4,7 +4,7 @@
 
 ## 1. Installation
 
-The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.9.0): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
+The tool is available in two equivalent builds with the same commands, options, `--json` output and exit codes (version 1.9.1): a single Python file that requires Python 3.9 or later and no other packages, and a single prebuilt binary that requires nothing at all.
 
 ```bash
 # Option A: install the survey26 command
@@ -15,19 +15,19 @@ curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
 python3 survey26.py --help
 ```
 
-**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/SHA256SUMS).
+**Option C: prebuilt binary.** Download the file for your system, make it executable and place it on your `PATH`. Checksums: [SHA256SUMS](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/SHA256SUMS).
 
 | System | Download |
 | --- | --- |
-| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-arm64) |
-| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-macos-x86_64) |
-| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64) |
-| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-aarch64) |
-| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-windows-x86_64.exe) |
+| macOS (Apple silicon) | [survey26-macos-arm64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-macos-arm64) |
+| macOS (Intel) | [survey26-macos-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-macos-x86_64) |
+| Linux x86_64 (static) | [survey26-linux-x86_64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-linux-x86_64) |
+| Linux aarch64 (static) | [survey26-linux-aarch64](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-linux-aarch64) |
+| Windows x86_64 | [survey26-windows-x86_64.exe](https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-windows-x86_64.exe) |
 
 ```bash
-curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.0/survey26-linux-x86_64
-chmod +x survey26 && ./survey26 --version   # survey26 1.9.0
+curl -fsSL -o survey26 https://github.com/gosimfoundation/hackathon-survey26/releases/download/cli-v1.9.1/survey26-linux-x86_64
+chmod +x survey26 && ./survey26 --version   # survey26 1.9.1
 ```
 
 On macOS, a binary downloaded with a browser must first be released from quarantine: `xattr -d com.apple.quarantine survey26`. On Windows, run `survey26-windows-x86_64.exe` from PowerShell or the command prompt.
@@ -81,13 +81,13 @@ export OPENAI_API_KEY=$SURVEY26_TOKEN
 | Step 1 · Upload a project | `project upload FILE.zip [--title …]`, `project submit-repo https://github.com/OWNER/REPO [--branch BRANCH] [--subdir FOLDER] [--title …]` (a `…/tree/BRANCH/FOLDER` or `…/commit/SHA` link works too; the exact commit is saved at submission) |
 | Step 2 · Review and confirm | `project list [--all]`, `project wait REV`, `project show REV --files`, `project logs REV`, `project confirm REV`, `project withdraw REV`, `project download REV`, `project evidence REV --notes … --code-url …` |
 | Step 3 · Evaluate | `quota`, `eval start REV [--no-model] [--phase …]`, `eval selfcheck REV [--no-model] [--phase …]` (evaluate 3 times and average; `--no-model` = “this evaluation without a model”), `eval list [--phase …]`, `eval show BATCH`, `eval wait [BATCH] [--first-stage]` |
-| Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]`, `results cancel BATCH` (cancel a queued evaluation that has not started) |
+| Results | `results show BATCH [--phase …]`, `results log RUN [--tail N \| --full \| -o agent.log]`, `results download RUN`, `results download-all [BATCH] [--phase …]`, `results cancel BATCH` (cancel a queued evaluation, or stop a running one; same as `eval cancel BATCH`) |
 | Final version | `final show`, `final set REV`, `final clear` |
 | Leaderboard | `leaderboard [--phase online\|practice-projects\|practice] [--card v4-a\|v4-a1\|super] [--mine]`, `competition` |
 | Kimi Coding Plan and credits | `kimi status`, `kimi claim` (captain), `credits list`, `credits claim PROVIDER` |
 | Temporary Kimi relay | `relay status` (base URL, model and your team's remaining allowance today) |
 
-Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. `results cancel BATCH` cancels a queued evaluation of your team while none of its cards has started (also an evaluation the dispatcher is about to start but no runner has taken yet), as the website's **Cancel** button does: it is not counted toward today's evaluations and appears on no leaderboard. An evaluation that has started cannot be cancelled (`evaluation_started`). In an “evaluate 3 times” self-check, cancelling one evaluation cancels every evaluation of that set that has not started; those already running or finished are kept. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
+Evaluations go to the same phase as the website's evaluate button: the online competition while it runs, practice afterwards. When the organizers offer an optional extra phase, `survey26 competition` and `survey26 quota` show it by name; it is unscored (not on any leaderboard) and has its own daily evaluations. Evaluate there only on purpose, with `--phase extra` (or the phase's slug); `eval list`, `eval show`, `eval wait`, `results show` and `results download-all` accept the same `--phase` to list or pick `latest` within one phase. `results cancel BATCH` cancels a queued evaluation of your team while none of its cards has started (also an evaluation the dispatcher is about to start but no runner has taken yet), as the website's **Cancel** button does: it is not counted toward today's evaluations and appears on no leaderboard. Once a card has started, the same command (also `eval cancel BATCH`) stops the evaluation, as the website's **Stop evaluation** button does: its running and not-yet-started cards are stopped and not scored, and it still counts toward today's evaluations (not refunded). A stopped A–D card fails the evaluation; if A–D are all scored and only A1–D1 are stopped, it keeps its A–D score on the online board but is not complete for the super board. Stopping asks for confirmation; with `--json` or without a terminal pass `--yes`. Organizers' sealed final evaluations cannot be cancelled or stopped. In an “evaluate 3 times” self-check, cancelling one evaluation cancels every evaluation of that set that has not started; those already running or finished are kept. The online `leaderboard` also prints the unranked baseline rows (official examples' averages) where their score would place them, as on the website; `--json` returns them under `baselines`.
 
 **Two-stage evaluations and the super board.** In the online competition every evaluation first runs cards A–D at the same time; when all four have finished, the same evaluation runs A1–D1 automatically (it counts as 1 evaluation). A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours. As on the website, `eval show`, `eval list` and `eval wait` show each card's live status: queued, waiting for A–D, running for N minutes, scored or failed. In `--json`, each run has `running_minutes`, `started_at` and `waiting_for_first_stage`, and the evaluation has `staged`, `first_stage_finished` and `first_stage_score` (the mean of A–D, which is the evaluation's online board score). `eval wait --first-stage` returns as soon as A–D have finished; A1–D1 keep running. `leaderboard --card super` shows the super board: 20% × the sum of the A–D card scores + 80% × the sum of the A1–D1 card scores of one evaluation, counting only evaluations that completed all 8 cards and keeping each team's latest complete evaluation (not its highest); `--card v4-a1` and so on show each added card.
 
@@ -138,7 +138,7 @@ Every command accepts `--json` and then prints exactly one JSON object on standa
 | 8 | A daily or team limit was reached (evaluations, uploads, active evaluation, team size, 20 actions by UID per day) |
 | 9 | The awaited preparation or evaluation finished unsuccessfully |
 
-Actions that the website confirms with a dialog (evaluating a version again, the 3-evaluation self-check, cancelling a queued evaluation, withdrawing a version, clearing the final version, leaving, transferring, removing members, disbanding, submitting the same project again within a few minutes) ask for confirmation in an interactive terminal. With `--json` or without a terminal the tool never prompts: such actions fail with exit code 2 unless `--yes` is given. `project wait` and `eval wait` check the status every 15 and 20 seconds by default (`--interval`, at least 5) and stop after `--timeout` seconds.
+Actions that the website confirms with a dialog (evaluating a version again, the 3-evaluation self-check, cancelling a queued evaluation, stopping a running one, withdrawing a version, clearing the final version, leaving, transferring, removing members, disbanding, submitting the same project again within a few minutes) ask for confirmation in an interactive terminal. With `--json` or without a terminal the tool never prompts: such actions fail with exit code 2 unless `--yes` is given. `project wait` and `eval wait` check the status every 15 and 20 seconds by default (`--interval`, at least 5) and stop after `--timeout` seconds.
 
 ## 6. Guidance for coding agents
 
