@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { FORMAL_CARDS, findCard, type CardLanguage, type TaskCard } from '../lib/taskCards'
+import { FORMAL_CARDS, ONLINE_CARDS, SUPER_CARDS, findCard, type CardLanguage, type TaskCard } from '../lib/taskCards'
 import { cardPage, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
 import { competition } from '../stores/competition'
 import { useFlash } from '../stores/flash'
@@ -66,8 +66,11 @@ async function download() {
         <nav :aria-label="t('cards_page.formal')">
           <span class="label">{{ t('cards_page.formal') }}</span>
           <div class="tabs">
-            <router-link v-for="c in FORMAL_CARDS" :key="c.id" :to="{ path: `/cards/${c.id}`, query: route.query }" :class="{ active: c.id === card.id }"
-              :aria-current="c.id === card.id ? 'page' : undefined" :data-testid="`card-tab-${c.id}`">{{ c.symbol }}</router-link>
+            <template v-for="(set, i) in [ONLINE_CARDS, SUPER_CARDS]" :key="i">
+              <span v-if="i" class="tab-sep" aria-hidden="true">|</span>
+              <router-link v-for="c in set" :key="c.id" :to="{ path: `/cards/${c.id}`, query: route.query }" :class="{ active: c.id === card.id }"
+                :aria-current="c.id === card.id ? 'page' : undefined" :data-testid="`card-tab-${c.id}`">{{ c.symbol }}</router-link>
+            </template>
           </div>
         </nav>
       </div>
@@ -106,6 +109,7 @@ async function download() {
 .card-sets .label { display: block; margin-bottom: .35rem; }
 /* Greek letters must stay lower case: an upper-case α reads as the hackathon card A. */
 .card-sets .tabs a { text-transform: none; letter-spacing: .04em; font-size: .85rem; }
+.card-sets .tab-sep { align-self: center; padding: 0 .35rem; color: rgba(245,247,255,.35); }
 .card-files { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
 .locked { max-width: 42rem; }
 .hidden-cards-note { max-width: 42rem; border: 1px solid rgba(251,191,36,.3); background: rgba(251,191,36,.06); padding: 1.1rem 1.2rem; }
