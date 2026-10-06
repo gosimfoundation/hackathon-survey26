@@ -181,6 +181,19 @@ export function canCancel(batch: CancelBatch): boolean {
   return batch.status === 'queued'
 }
 
+/**
+ * 停止评测: a started evaluation (queued or running, some card no longer queued) can be stopped by the team.
+ * Its unfinished cards are cancelled and never scored; it is not refunded (observer_cancel_batch with p_running).
+ */
+export function canStop(batch: CancelBatch): boolean {
+  return ['queued', 'running'].includes(batch.status) && !canCancel(batch)
+}
+
+/** The confirmation before stopping a started evaluation. */
+export function stopConfirmKey(batch: CancelBatch): string {
+  return batch.repeat_group ? 'dash.stop_eval.confirm_set' : 'dash.stop_eval.confirm'
+}
+
 /** The confirmation to ask: a self-check member cancels its set's members that have not started. */
 export function cancelConfirmKey(batch: CancelBatch): string {
   return batch.repeat_group ? 'dash.cancel_eval.confirm_set' : 'dash.cancel_eval.confirm'

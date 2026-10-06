@@ -1641,11 +1641,18 @@
       "confirm": "Cancel this queued evaluation? It has not started yet. It will not count toward today’s evaluations and will not appear on any leaderboard.",
       "confirm_set": "Cancel this self-check? Its evaluations that have not started yet are cancelled and not counted toward today’s evaluations; evaluations already running or finished are kept.",
       "done": "Evaluation cancelled. It does not count toward today’s evaluations.",
-      "evaluation_started": "This evaluation has already started and can no longer be cancelled.",
+      "evaluation_started": "This evaluation has already started. Refresh the page and use “Stop evaluation”.",
       "evaluation_finished": "This evaluation has already finished.",
       "evaluation_not_found": "This evaluation was not found. Refresh the page.",
       "evaluation_not_cancellable": "This evaluation is run by the organizers and cannot be cancelled.",
       "failed": "Could not cancel the evaluation. Refresh and try again."
+    },
+    "stop_eval": {
+      "button": "Stop evaluation",
+      "working": "Stopping…",
+      "confirm": "Stop this evaluation? Cards that are running or have not started yet are stopped and will not be scored. This evaluation has already started, so it still counts toward today’s evaluations. If cards A–D are all scored and only A1–D1 are stopped, the evaluation keeps its A–D score on the online board but is not complete for the super board.",
+      "confirm_set": "Stop this evaluation of the self-check? Its cards that are running or have not started yet are stopped and will not be scored; it still counts toward today’s evaluations. The set’s evaluations that have not started yet are cancelled and not counted.",
+      "done": "Evaluation stopped. The stopped cards will not be scored; it still counts toward today’s evaluations."
     }
   },
   "credits": {

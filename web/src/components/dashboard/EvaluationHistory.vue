@@ -10,8 +10,8 @@ import { useQuestFlags } from '../../composables/useQuestFlags'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
 import { refreshDue, REFRESH_TICK_MS } from '../../lib/dashboardRefresh'
-import { cancelEvaluation } from '../../lib/cancelEvaluation'
-import { canCancel, cancelConfirmKey, cancelErrorKey } from '../../lib/projectEvaluation'
+import { cancelEvaluation, stopEvaluation } from '../../lib/cancelEvaluation'
+import { canCancel, canStop, cancelConfirmKey, cancelErrorKey, stopConfirmKey } from '../../lib/projectEvaluation'
 // `quiet` keeps the new-submission button secondary while the dashboard quest leads.
 // `allPhases` is the records page: every complete-project evaluation with its scenario scores.
 const props=withDefaults(defineProps<{limit?:number;quiet?:boolean;allPhases?:boolean;hideEmpty?:boolean}>(),{limit:50,quiet:false,allPhases:false,hideEmpty:false})
@@ -54,6 +54,14 @@ async function cancel(row:Batch){
   catch(e){cancelNote.value={text:t(cancelErrorKey(e instanceof Error?e.message:'')),failed:true}}
   finally{cancelling.value='';await load()}
 }
+// 停止评测: a started evaluation; its unfinished cards are cancelled (never scored), not refunded.
+async function stop(row:Batch){
+  if(cancelling.value||!window.confirm(t(stopConfirmKey(row))))return
+  cancelling.value=row.id;cancelNote.value=null
+  try{await stopEvaluation(row.id);cancelNote.value={text:t('dash.stop_eval.done'),failed:false}}
+  catch(e){cancelNote.value={text:t(cancelErrorKey(e instanceof Error?e.message:'')),failed:true}}
+  finally{cancelling.value='';await load()}
+}
 // Same cadence as the project dashboard: every 30 s while an evaluation is queued or running, else every 60 s.
 onMounted(()=>{void load();timer=window.setInterval(()=>{
   if(Math.floor(Date.now()/60_000)!==Math.floor(now.value/60_000))now.value=Date.now()
@@ -78,7 +86,8 @@ onUnmounted(()=>window.clearInterval(timer))
         <td class="m">{{ num(row.score) }}</td>
         <td class="m xs"><span v-for="(run,index) in runs(row)" :key="run.id" class="mr-3 inline-block" :title="runHint(row, run) || undefined" data-testid="run-live-status">{{ run.scenarios ? scenarioLabel(run.scenarios.slug, run.scenarios.name, locale) : pick(`Scenario ${index+1}`,`场景 ${index+1}`) }}: {{ runText(row, run) }}<span v-if="runHint(row, run)" class="sr-only"> {{ runHint(row, run) }}</span></span></td>
         <td><router-link class="accent-l" :to="'/compete?track=project#batch-'+row.id" @click="remember('review','competition')">{{ pick('View progress and results','查看进度与结果') }}</router-link>
-          <button v-if="canCancel(row)" type="button" class="btn sm ml-2" :disabled="!!cancelling" :aria-busy="cancelling===row.id" data-testid="batch-cancel" @click="cancel(row)">{{ cancelling===row.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></td>
+          <button v-if="canCancel(row)" type="button" class="btn sm ml-2" :disabled="!!cancelling" :aria-busy="cancelling===row.id" data-testid="batch-cancel" @click="cancel(row)">{{ cancelling===row.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button>
+          <button v-if="canStop(row)" type="button" class="btn sm ml-2" :disabled="!!cancelling" :aria-busy="cancelling===row.id" data-testid="batch-stop" @click="stop(row)">{{ cancelling===row.id ? t('dash.stop_eval.working') : t('dash.stop_eval.button') }}</button></td>
       </tr></tbody>
     </table></div>
     <p v-if="!props.allPhases" class="mt-5"><router-link class="btn sm" :class="{ primary: !props.quiet }" to="/compete">{{ t('dash.new_submission') }} →</router-link></p>
