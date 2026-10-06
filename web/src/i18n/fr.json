@@ -918,11 +918,18 @@
       "confirm": "Annuler cette évaluation en file d’attente ? Elle n’a pas encore démarré. Elle ne comptera pas dans les évaluations du jour et n’apparaîtra dans aucun classement.",
       "confirm_set": "Annuler cette auto-vérification ? Ses évaluations qui n’ont pas encore démarré sont annulées et ne comptent pas dans les évaluations du jour ; celles déjà en cours ou terminées sont conservées.",
       "done": "Évaluation annulée. Elle ne compte pas dans les évaluations du jour.",
-      "evaluation_started": "Cette évaluation a déjà démarré et ne peut plus être annulée.",
+      "evaluation_started": "Cette évaluation a déjà commencé. Actualisez la page et utilisez « Arrêter l’évaluation ».",
       "evaluation_finished": "Cette évaluation est déjà terminée.",
       "evaluation_not_found": "Évaluation introuvable. Actualisez la page.",
       "evaluation_not_cancellable": "Cette évaluation est lancée par les organisateurs et ne peut pas être annulée.",
       "failed": "Impossible d’annuler l’évaluation. Actualisez et réessayez."
+    },
+    "stop_eval": {
+      "button": "Arrêter l’évaluation",
+      "working": "Arrêt…",
+      "confirm": "Arrêter cette évaluation ? Les cartes en cours ou pas encore démarrées sont arrêtées et ne seront pas notées. Elle a déjà commencé : elle compte toujours dans les évaluations du jour. Si les cartes A–D sont toutes notées et que seules A1–D1 sont arrêtées, l’évaluation garde son score A–D au classement en ligne mais n’est pas complète pour le super classement.",
+      "confirm_set": "Arrêter cette évaluation de l’auto-vérification ? Ses cartes en cours ou pas encore démarrées sont arrêtées et ne seront pas notées ; elle compte toujours dans les évaluations du jour. Les évaluations de la série pas encore démarrées sont annulées et ne comptent pas.",
+      "done": "Évaluation arrêtée. Les cartes arrêtées ne seront pas notées ; elle compte toujours dans les évaluations du jour."
     }
   },
   "eggs": {

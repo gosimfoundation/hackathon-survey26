@@ -129,6 +129,26 @@ test('取消排队 is offered only while no card has started', async () => {
   assert.equal(cancelErrorKey('something else'), 'dash.cancel_eval.failed')
 })
 
+test('停止评测 is offered once a card has started, until the evaluation ends', async () => {
+  const { canStop, stopConfirmKey } = await import('../src/lib/projectEvaluation.ts')
+  assert.equal(canStop({ status: 'queued' }), false)
+  assert.equal(canStop({ status: 'running' }), true)
+  assert.equal(canStop({ status: 'queued', observer_runs: [{ status: 'queued' }] }), false)
+  assert.equal(canStop({ status: 'running', observer_runs: [{ status: 'scored' }, { status: 'running' }] }), true)
+  assert.equal(canStop({ status: 'queued', observer_runs: [{ status: 'starting' }, { status: 'queued' }] }), true)
+  for (const status of ['scored', 'failed', 'cancelled']) assert.equal(canStop({ status, observer_runs: [{ status: 'cancelled' }] }), false)
+  assert.equal(stopConfirmKey({ status: 'running' }), 'dash.stop_eval.confirm')
+  assert.equal(stopConfirmKey({ status: 'running', repeat_group: 'g' }), 'dash.stop_eval.confirm_set')
+})
+
+test('停止评测 is translated in every language', async () => {
+  const { readFileSync } = await import('node:fs')
+  for (const lang of ['en', 'zh', 'ja', 'fr']) {
+    const stop = JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8')).dash.stop_eval
+    for (const key of ['button', 'working', 'confirm', 'confirm_set', 'done']) assert.ok(stop?.[key], `${lang} dash.stop_eval.${key}`)
+  }
+})
+
 test('取消排队 is translated in every language', async () => {
   const { readFileSync } = await import('node:fs')
   const keys = ['button', 'working', 'confirm', 'confirm_set', 'done', 'failed', 'evaluation_started', 'evaluation_finished',

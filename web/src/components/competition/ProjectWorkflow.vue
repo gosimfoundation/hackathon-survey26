@@ -18,10 +18,10 @@ import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type Mod
 import { competition, entryPhase } from '../../stores/competition'
 import { entryPhaseIds, offersExtraSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
 import { tabFromQuery } from '../../lib/deepLink'
-import { activeEvaluations, canCancel, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
+import { activeEvaluations, canCancel, canStop, stopConfirmKey, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
-import { cancelEvaluation } from '../../lib/cancelEvaluation'
+import { cancelEvaluation, stopEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
@@ -428,6 +428,11 @@ function evaluate(revision_id: string) {
 function cancelBatch(b: { id: string; status: string; repeat_group?: string | null }) {
   if (!window.confirm(t(cancelConfirmKey(b)))) return
   void action(async () => { await cancelEvaluation(b.id) }, t('dash.cancel_eval.done'), 'cancel:' + b.id)
+}
+// 停止评测: a started evaluation; its unfinished cards are cancelled (never scored), not refunded.
+function stopBatch(b: { id: string; status: string; repeat_group?: string | null }) {
+  if (!window.confirm(t(stopConfirmKey(b)))) return
+  void action(async () => { await stopEvaluation(b.id) }, t('dash.stop_eval.done'), 'cancel:' + b.id)
 }
 // The self-check: SELF_CHECK_RUNS evaluations of one version, run one after another (observer_create_repeat_batches).
 function selfCheck(revision_id: string) {
@@ -908,7 +913,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
                 <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
                 <span v-if="b.score != null" class="cw-score ml-2">{{ words.average }}: {{ b.score.toFixed(2) }}</span>
-                <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
+                <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button><button v-if="canStop(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-stop" @click="stopBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.stop_eval.working') : t('dash.stop_eval.button') }}</button></p>
               <div class="cw-cards">
                 <div v-for="run in sortedRuns(b.observer_runs)" :key="run.id" class="cw-card" :class="{ failed: run.status === 'failed' }">
                   <span class="meta">{{ scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : '—' }}</span>
@@ -956,7 +961,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span></span>
               <span class="cw-score" :class="{ best: best && b.score === best.score }">{{ b.score != null ? b.score.toFixed(2) : '—' }}</span>
             </button>
-            <p v-if="canCancel(b)" class="cw-batch-cancel"><button type="button" class="btn sm" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
+            <p v-if="canCancel(b) || canStop(b)" class="cw-batch-cancel"><button v-if="canCancel(b)" type="button" class="btn sm" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button><button v-if="canStop(b)" type="button" class="btn sm" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-stop" @click="stopBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.stop_eval.working') : t('dash.stop_eval.button') }}</button></p>
             <div v-if="openBatches.has(b.id)" class="cw-batch-body">
               <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3">
                 <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>
@@ -1238,7 +1243,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="b.quota_refunded" class="pill info ml-2" data-testid="batch-refunded">{{ words.refunded }}</span>
             <span v-if="isNoModel(b)" class="pill no-model ml-2" :title="words.noModelHelp" data-testid="batch-no-model">{{ words.noModelPill }}</span>
             <span v-if="b.repeat_group && repeatIndex(b) > 0" class="pill ml-2" data-testid="batch-self-check">{{ words.selfCheckOne.replace('{n}', String(repeatIndex(b))).replace('{total}', String(b.repeat_runs ?? SELF_CHECK_RUNS)) }}</span>
-            <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button></p>
+            <button v-if="canCancel(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-cancel" @click="cancelBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.cancel_eval.working') : t('dash.cancel_eval.button') }}</button><button v-if="canStop(b)" type="button" class="btn sm ml-2" :disabled="busy || locked.has('cancel:'+b.id)" :aria-busy="pending === 'cancel:'+b.id" data-testid="batch-stop" @click="stopBatch(b)">{{ pending === 'cancel:'+b.id ? t('dash.stop_eval.working') : t('dash.stop_eval.button') }}</button></p>
           <p v-if="b.score != null">{{ words.average }}: {{ b.score.toFixed(2) }}</p>
           <p v-if="b.observer_runs.filter(r => r.result_path).length > 1" class="flex flex-wrap items-center gap-3 mt-3">
             <button type="button" class="btn sm" :disabled="!!zipProgress[b.id]" data-testid="download-all-results" @click="downloadAllResults(b)">{{ zipProgress[b.id] ? words.downloadAllProgress.replace('{done}', String(zipProgress[b.id]!.done)).replace('{total}', String(zipProgress[b.id]!.total)) : words.downloadAll }}</button>

@@ -177,3 +177,46 @@ def test_an_organizers_sealed_evaluation_is_not_the_teams_to_cancel(ready):
             cancel(s, batch)
     finally:
         query(uri, 'update public.observer_phase_settings set sealed=false where phase_id=%s', (s['phase'],))
+
+
+def stop(s, batch, user=None):
+    return query(s['uri'], 'select public.observer_cancel_batch(%s,true)', (batch,), role='authenticated',
+                 user=user or s['user'])[0][0]
+
+
+def test_a_started_evaluation_is_stopped_by_the_team_and_not_refunded(ready):
+    s, rev = ready; uri = s['uri']
+    batch = evaluate(s, rev)
+    run = start(s, batch)
+    query(uri, "update private.observer_jobs set status='claimed',claimed_at=now() where run_id=%s", (run,))
+    teammate, _ = identity(uri, team=s['team'])
+    got = stop(s, batch, user=teammate)
+    assert got['stopped'] == [str(batch)] and got['status'] == 'failed'
+    b, runs = state(s, batch)
+    assert b == ('failed', False, None) and set(runs) == {'cancelled'}
+    assert used(s) == 1
+    assert query(uri, 'select distinct error from public.observer_runs where batch_id=%s', (batch,)) == [('cancelled by team',)]
+    job = query(uri, 'select status,error,finished_at is not null,private.observer_platform_failure(j) '
+                     'from private.observer_jobs j where run_id=%s', (run,))
+    assert job == [('failed', 'team_cancel', True, False)]
+    assert query(uri, 'select count(*) from private.observer_run_leases where run_id=%s', (run,)) == [(0,)]
+    with pytest.raises(psycopg.Error, match='evaluation_finished'):
+        stop(s, batch)
+
+
+def test_stopping_only_the_added_cards_keeps_the_a_to_d_score(ready):
+    s, rev = ready; uri = s['uri']
+    batch = evaluate(s, rev)
+    runs = [r[0] for r in query(uri, 'select id from public.observer_runs where batch_id=%s order by id', (batch,))]
+    last = runs[-1]
+    query(uri, "update public.scenarios set slug='v4-d1-v'||(floor(random()*1e9))::bigint "
+               "where id=(select scenario_id from public.observer_runs where id=%s)", (last,))
+    query(uri, "update public.observer_runs set status='scored',score=50,finished_at=now() where batch_id=%s and id<>%s",
+          (batch, last))
+    query(uri, "update public.observer_runs set status='running' where id=%s", (last,))
+    query(uri, "update public.observer_batches set status='running' where id=%s", (batch,))
+    assert stop(s, batch)['status'] == 'scored'
+    b, _ = state(s, batch)
+    assert b[:2] == ('scored', False)
+    assert b[2] == query(uri, 'select private.observer_batch_score(%s)', (batch,))[0][0]
+    assert query(uri, 'select status,error from public.observer_runs where id=%s', (last,)) == [('cancelled', 'cancelled by team')]
