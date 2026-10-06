@@ -45,6 +45,7 @@ src/planner.ts     planner.py      one search for pointing + fibres + duration +
 src/skymath.ts     skymath.py      public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
 src/advisor.ts     advisor.py      the model stages: night plan, fault review, paid-report confirmation
 src/llmClient.ts   llm_client.py   OpenAI-compatible chat client (built-in fetch), calls run in the background
+src/logReader.ts   log_reader.py   optional model stage: reads free-text staff notes attached to observation requests
 src/packAgent.ts   pack_agent.py   zip this folder for upload (.env is never packed)
 observer.project.json   platform manifest: image node:22-slim, build `npm ci --include=dev` + `npm run build`, run `node dist/agent.js`
 .env.example            copy to .env and set an API key for local runs
@@ -74,6 +75,26 @@ observer.project.json   platform manifest: image node:22-slim, build `npm ci --i
   and never block a decision: a night start waits only as long as the remaining real time allows, late
   answers are applied when they arrive, and a failure leaves the rule-based value in place. HTTP 429/5xx,
   timeouts and network errors are retried with backoff (honouring `Retry-After`).
+
+### Staff notes (src/logReader.ts)
+
+On some cards an observation request's `reason` is not a short label but a longer note from the
+observatory staff, and such notes can mention things that matter for the survey. Every new note (31+
+characters) is sent once to the model, with a few earlier notes as context, the current time and the site's
+UTC offset. The model is asked, in general terms, for operational facts with times:
+`{"closures", "avoid", "report_at", "summary"}`. Three plain rules turn the answer into actions:
+
+- `closures`: wait while the whole site is announced closed;
+- `avoid`: down-weight the named sectors during the announced window (every sector: wait);
+- `report_at`: send `report` once the staff say the instrument itself has a problem (now, or from an
+  announced time), or when they explicitly ask for a problem report.
+
+Waiting for the model costs no CPU budget, only real time, so a new note may hold the run while its answer
+is pending (an awaited race with a timeout): at most `PRO_LOG_WAIT_MAX` (240 s), and only from real time the
+planner will not need, spread over the notes expected until the end. Calls are retried with backoff on HTTP
+429 / 5xx and given up after a few minutes (`PRO_LOG_READER=0` turns the stage off). This is a deliberately
+simple reader: one generic prompt, no knowledge of how a particular station writes. Reading the notes more
+carefully is one of the clearest ways to beat this example.
 
 ## TypeScript notes
 

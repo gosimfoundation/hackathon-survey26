@@ -32,6 +32,7 @@ planner.py        one search for pointing + fibres + duration + program; learnin
 skymath.py        public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
 advisor.py        the model stages: night plan, fault review, paid-report confirmation
 llm_client.py     OpenAI-compatible chat client running calls on background threads
+log_reader.py     optional model stage: reads free-text staff notes attached to observation requests
 observer.project.json   platform manifest (python3 -u agent.py)
 pack_agent.py     zip this folder for upload (.env is never packed)
 .env.example      copy to .env and set an API key for local runs
@@ -61,6 +62,26 @@ Calls never stall the survey: they run on background threads, and a night start 
 only as long as the remaining wall clock allows (about 20 s at most on a 38-night card; less on long
 cards, where late answers are applied when they arrive). Any failure, timeout or invalid answer leaves the
 rule-based value in place for that night.
+
+### Staff notes (log_reader.py)
+
+On some cards an observation request's `reason` is not a short label but a longer note from the
+observatory staff, and such notes can mention things that matter for the survey. Every new note (31+
+characters) is sent once to the model, with a few earlier notes as context, the current time and the site's
+UTC offset. The model is asked, in general terms, for operational facts with times:
+`{"closures", "avoid", "report_at", "summary"}`. Three plain rules turn the answer into actions:
+
+- `closures`: wait while the whole site is announced closed;
+- `avoid`: down-weight the named sectors during the announced window (every sector: wait);
+- `report_at`: send `report` once the staff say the instrument itself has a problem (now, or from an
+  announced time), or when they explicitly ask for a problem report.
+
+Waiting for the model costs no CPU budget, only real time, so a new note may hold the run while its answer
+is pending: at most `PRO_LOG_WAIT_MAX` (240 s), and only from real time the planner will not need, spread
+over the notes expected until the end. Calls are retried with backoff on HTTP 429 / 5xx, given up after a
+few minutes, and skipped without a key (`PRO_LOG_READER=0` turns the stage off). This is a deliberately
+simple reader: one generic prompt, no knowledge of how a particular station writes. Reading the notes more
+carefully is one of the clearest ways to beat this example.
 
 ## What makes the planner strong
 
@@ -125,6 +146,7 @@ local comparisons reproducible on a busy machine (the platform run uses the adap
 - **Partial exposures that get redone.** About a tenth of fibre-time goes to exposures that a later, longer
   exposure of the same target replaces. `PRO_PARTIAL_DISCOUNT<1` discounts partial exposures of targets a
   season plan expects to complete; it helped on the four practice cards and hurt on eight others, so it is off.
+- **Read the staff notes better** (see above): the generic prompt misses or misreads some facts.
 - **Better use of the model**, e.g. letting it read the whole forecast week and plan which nights to spend
   on which part of the sky.
 

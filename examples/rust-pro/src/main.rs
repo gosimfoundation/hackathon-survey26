@@ -15,10 +15,13 @@
 //! 4. Pace: the search level adapts to the measured cost per decision so a 4-month card fits the clock.
 //! 5. Model (advisor.rs): at every night start a night plan (forecast + bulletin -> bad night, sectors to avoid)
 //!    and a fault review (own quality table -> how likely a fault is, which gates paid reports); before a paid
-//!    report the model confirms or vetoes. Calls run in the background; without an API key the agent exits.
+//!    report the model confirms or vetoes. log_reader.rs reads free-text staff notes attached to observation
+//!    requests once each (closures, sectors to avoid, instrument problems -> report). Calls run in the
+//!    background; without an API key the agent exits.
 
 mod advisor;
 mod llm_client;
+mod log_reader;
 mod planner;
 mod skymath;
 
@@ -29,6 +32,7 @@ use std::time::Instant;
 
 use advisor::{Advisor, FaultReview, NightPlan};
 use llm_client::{api_key, load_dotenv, model_disabled, LlmClient};
+use log_reader::LogReader;
 use planner::{env_f, env_i, Planner};
 use skymath::{format_date, format_hour_stamp, format_utc, parse_utc, psum, round_to};
 
@@ -88,6 +92,8 @@ struct Knobs {
     model_fault_high: f64, // fault review at or above this: report more readily tonight
     model_fault_low: f64,  // ... at or below this: paid reports need the strongest evidence
     scale_step: f64,
+    log_wait_max: f64,      // longest wait for the reader's answer to a new staff note (s)
+    log_reader: bool,       // 0: do not read staff notes
     model_free_probe: bool, // 1: a high fault review may also spend a free probe on a low scale
     fixed_level: i64,       // development only: pin the search level (deterministic runs)
 }
@@ -113,6 +119,8 @@ impl Knobs {
             model_fault_high: env_f("MODEL_FAULT_HIGH", 0.6),
             model_fault_low: env_f("MODEL_FAULT_LOW", 0.15),
             scale_step: env_f("SCALE_STEP", 0.7),
+            log_wait_max: env_f("LOG_WAIT_MAX", 240.0),
+            log_reader: env_i("LOG_READER", 1) != 0,
             model_free_probe: env_i("MODEL_FREE_PROBE", 0) != 0,
             fixed_level: env_i("FIXED_LEVEL", -1),
         }
@@ -153,6 +161,8 @@ struct ObserverAgent {
     planner: Planner,
     client: LlmClient,
     advisor: Advisor,
+    reader: Option<LogReader>,
+    correct_report_at: Option<f64>, // time of the last correct report
     model_wait: f64,          // wall seconds spent waiting for the model (not planning cost)
     fault_likely: Option<f64>, // tonight's model estimate that an instrument fault is active
     scale_hours: BTreeMap<i64, Vec<f64>>, // hour -> [planner.scale samples] (for the model's fault table)
@@ -191,8 +201,13 @@ impl ObserverAgent {
         let planner = Planner::new(init);
         let client = LlmClient::new();
         let free_allowance = init["scoring"]["reporting"]["false_report_free_allowance"].as_f64().unwrap_or(0.0) as i64;
+        let k = Knobs::load();
+        let reader = (!model_disabled() && k.log_reader)
+            .then(|| LogReader::new(client.endpoint(), init["site"]["utc_offset_hours"].as_f64().unwrap_or(0.0)));
         let agent = ObserverAgent {
-            k: Knobs::load(),
+            k,
+            reader,
+            correct_report_at: None,
             start: parse_utc(init["survey"]["start_utc"].as_str().unwrap_or("")),
             advisor: Advisor::new(),
             model_wait: 0.0,
@@ -316,6 +331,9 @@ impl ObserverAgent {
         self.planner.on_requests(requests);
         self.planner.on_result(&last, hours);
         self.pace(payload, now);
+        if let Some(action) = self.read_notes(payload, now, hours) {
+            return action;
+        }
 
         let Some((night_index, night_start, night_end)) = self.planner.current_night(now) else {
             return match self.planner.next_night_start(now) {
@@ -354,6 +372,64 @@ impl ObserverAgent {
                 action
             }
         }
+    }
+
+    // --- staff notes (log_reader.rs) -----------------------------------------------------------------------
+
+    /// Send new notes to the reader and apply its answers: a report or a wait when they call for one.
+    fn read_notes(&mut self, payload: &Value, now: f64, hours: f64) -> Option<Map<String, Value>> {
+        let empty = Vec::new();
+        let active = payload.get("active_requests").and_then(Value::as_array).unwrap_or(&empty);
+        let messages = payload.get("new_messages").and_then(Value::as_array).unwrap_or(&empty);
+        let requests: Vec<&Value> = active
+            .iter()
+            .chain(messages.iter().filter(|m| m.get("record_type").and_then(Value::as_str) == Some("observation_request")))
+            .collect();
+        let wall_left = Self::clock(payload).1;
+        if self.reader.as_mut()?.feed(&requests, now, wall_left) > 0 {
+            // waiting costs no CPU budget, only real time: wait a little so a fresh note is applied before acting
+            let started = Instant::now();
+            let budget = self.note_wait_budget(payload, now);
+            self.reader.as_ref()?.wait(budget);
+            self.model_wait += started.elapsed().as_secs_f64();
+        }
+        let reader = self.reader.as_mut()?;
+        reader.collect();
+        self.planner.log_avoid = reader.avoid_now(now);
+        if let Some(since) = reader.report_due(now) {
+            if self.correct_report_at.is_none_or(|t| t < since) && self.false_reports < MAX_FALSE_REPORTS {
+                self.last_report_hours = hours;
+                self.reports += 1;
+                let from = format_utc(since)[..16].replace('T', " ");
+                log(&format!("pro: report at {} (staff note: instrument problem from {from})", payload["now_utc"].as_str().unwrap_or("")));
+                let mut m = Map::new();
+                m.insert("action".into(), json!("report"));
+                m.insert("reason".into(), json!("staff note: instrument problem"));
+                return Some(m);
+            }
+        }
+        let (_, night_start, night_end) = self.planner.current_night(now)?;
+        let mut end = reader.closed(now);
+        if end.is_none() && self.planner.log_avoid.len() == 8 {
+            // every sector: as closed
+            end = Some(now + self.to_next_slot(now, night_start) as f64);
+        }
+        let seconds = (end? - now).min(night_end - now).clamp(60.0, 3600.0) as i64;
+        Some(action_wait_for(seconds, "staff note: site closed"))
+    }
+
+    /// How long a new note may hold the run. Reading models can take minutes, and a note often announces
+    /// something a few nights ahead, so waiting for the answer pays when real time is to spare: half of the
+    /// real time the planner will not need, spread over the notes expected until the end (at the rate seen so far).
+    fn note_wait_budget(&self, payload: &Value, now: f64) -> f64 {
+        let (_, wall_left, _) = Self::clock(payload);
+        let per_decision = self.wall_ema[self.planner.fast_level.min(3)].max(0.05) + self.engine_ema.unwrap_or(0.02);
+        let spare = wall_left - 1.5 * self.decisions_left(now) * per_decision - 60.0;
+        let end = self.planner.nights.last().map_or(now, |n| n.1);
+        let done = (3.0 * 86400.0f64).max(now - self.start); // rate estimate needs a few days
+        let seen = self.reader.as_ref().map_or(0, |r| r.seen.len()) as f64;
+        let notes_left = 1.0 + seen * (end - now).max(0.0) / done;
+        (0.5 * spare / notes_left).min(self.k.log_wait_max).max(0.0)
     }
 
     fn to_next_slot(&self, now: f64, night_start: f64) -> i64 {
@@ -700,6 +776,7 @@ impl ObserverAgent {
     fn on_report_result(&mut self, result: &Value, hours: f64) {
         let delta = result.get("score_delta").cloned().unwrap_or(Value::Null);
         if result.get("correct").and_then(Value::as_bool).unwrap_or(false) {
+            self.correct_report_at = self.last_now;
             log(&format!("pro: report correct, fault repaired (delta {delta})"));
             self.correct_reports += 1;
             self.false_since_correct = 0;

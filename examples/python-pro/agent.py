@@ -15,8 +15,9 @@ What it does (details in README.md and planner.py):
 4. Pace: the search level adapts to the measured cost per decision so a 4-month card fits the wall clock.
 5. Model (advisor.py): at every night start a night plan (forecast + bulletin -> bad night, sectors to avoid)
    and a fault review (own quality table -> how likely a fault is, which gates paid reports); before a paid
-   report the model confirms or vetoes. Calls run in the background; without an API key the agent exits,
-   except when the platform sets OBSERVER_MODEL_DISABLED=1 (an evaluation without a model): then rules only.
+   report the model confirms or vetoes. log_reader.py reads free-text staff notes attached to observation
+   requests once each (closures, sectors to avoid, instrument problems -> report). Calls run in the
+   background; without an API key the agent exits, except when the platform sets OBSERVER_MODEL_DISABLED=1 (an evaluation without a model): then rules only.
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from datetime import timedelta
 
 from advisor import Advisor
 from llm_client import LLMClient, api_key, load_dotenv
+from log_reader import LogReader
 from planner import Planner
 from skymath import format_utc, parse_utc
 
@@ -67,6 +69,8 @@ MODEL_WAIT_MAX = _env("MODEL_WAIT_MAX", 20.0)   # longest wait for the night's m
 MODEL_FAULT_HIGH = _env("MODEL_FAULT_HIGH", 0.6)  # fault review at or above this: report more readily tonight
 MODEL_FAULT_LOW = _env("MODEL_FAULT_LOW", 0.15)   # ... at or below this: paid reports need the strongest evidence
 SCALE_STEP = _env("SCALE_STEP", 0.7)
+LOG_WAIT_MAX = _env("LOG_WAIT_MAX", 240.0)     # longest wait for the reader's answer to a new staff note (s)
+LOG_READER = _env("LOG_READER", 1)             # 0: do not read staff notes
 MODEL_FREE_PROBE = _env("MODEL_FREE_PROBE", 0)   # 1: a high fault review may also spend a free probe on a low scale            # with a likely fault: report when scale stays below this x ref
 FIXED_LEVEL = _env("FIXED_LEVEL", -1)     # development only: pin the search level (deterministic runs)   # spend at most this share of the remaining wall clock
 
@@ -102,6 +106,9 @@ class ObserverAgent:
         self.rules_only = rules_only
         self.client = None if rules_only else LLMClient(log=log)
         self.advisor = RulesOnly() if rules_only else Advisor(self.client, log=log)
+        self.reader = None if rules_only or not LOG_READER else \
+            LogReader(self.client, float(init.get("site", {}).get("utc_offset_hours", 0.0)), log=log)
+        self.correct_report_at = None            # time of the last correct report
         self.model_wait = 0.0                    # wall seconds spent waiting for the model (not planning cost)
         self.fault_likely = None                 # tonight's model estimate that an instrument fault is active
         self.scale_hours: dict = {}              # hour -> [planner.scale samples] (for the model's fault table)
@@ -187,6 +194,9 @@ class ObserverAgent:
         planner.on_requests(payload.get("active_requests", []))
         planner.on_result(payload.get("last_result"), now, hours)
         self._pace(payload, now)
+        reader_action = self._read_notes(payload, now, hours)
+        if reader_action is not None:
+            return reader_action
 
         night = planner.current_night(now)
         if night is None:
@@ -218,6 +228,51 @@ class ObserverAgent:
         self.observes += 1
         action["reason"] = f"{len(action['assignments'])} fibres, program {action['program']}"
         return action
+
+    # --- staff notes (log_reader.py) -------------------------------------------------------------------
+
+    def _read_notes(self, payload: dict, now, hours: float):
+        """Send new notes to the reader and apply its answers: a report or a wait when they call for one."""
+        reader = self.reader
+        if reader is None:
+            return None
+        requests = payload.get("active_requests", []) + [m for m in payload.get("new_messages", [])
+                                                        if m.get("record_type") == "observation_request"]
+        wall_left = self._clock(payload)[1]
+        if reader.feed(requests, now, wall_left):
+            # waiting costs no CPU budget, only real time: wait a little so a fresh note is applied before acting
+            started = time.monotonic()
+            reader.wait(self._note_wait_budget(payload, now))
+            self.model_wait += time.monotonic() - started
+        reader.collect()
+        self.planner.log_avoid = reader.avoid_now(now)
+        since = reader.report_due(now)
+        if since is not None and (self.correct_report_at is None or self.correct_report_at < since) \
+                and self.false_reports < MAX_FALSE_REPORTS:
+            self.last_report_hours = hours
+            self.reports += 1
+            log(f"pro: report at {payload['now_utc']} (staff note: instrument problem from {since:%Y-%m-%d %H:%M})")
+            return {"action": "report", "reason": "staff note: instrument problem"}
+        night = self.planner.current_night(now)
+        end = reader.closed(now)
+        if night is not None and end is None and len(self.planner.log_avoid) == 8:   # every sector: as closed
+            end = now + timedelta(seconds=self._to_next_slot(now, night[1]))
+        if night is not None and end is not None:
+            seconds = int(max(60, min((end - now).total_seconds(), (night[2] - now).total_seconds(), 3600)))
+            return {"action": "wait", "duration_seconds": seconds, "reason": "staff note: site closed"}
+        return None
+
+    def _note_wait_budget(self, payload: dict, now) -> float:
+        """How long a new note may hold the run. Reading models can take minutes, and a note often announces
+        something a few nights ahead, so waiting for the answer pays when real time is to spare: half of the
+        real time the planner will not need, spread over the notes expected until the end (at the rate seen so far)."""
+        _, wall_left, _ = self._clock(payload)
+        per_decision = max(self.wall_ema[self.planner.fast_level], 0.05) + (self.engine_ema or 0.02)
+        spare = wall_left - 1.5 * self._decisions_left(now) * per_decision - 60.0
+        end = self.planner.nights[-1][1] if self.planner.nights else now
+        done = max(3 * 86400.0, (now - self.start).total_seconds())   # rate estimate needs a few days
+        notes_left = 1.0 + len(self.reader.seen) * max(0.0, (end - now).total_seconds()) / done
+        return max(0.0, min(LOG_WAIT_MAX, 0.5 * spare / notes_left))
 
     def _to_next_slot(self, now, night_start) -> int:
         slot = self.planner.slot_seconds
@@ -432,6 +487,7 @@ class ObserverAgent:
 
     def _on_report_result(self, result: dict, hours: float) -> None:
         if result.get("correct"):
+            self.correct_report_at = self.last_now
             log(f"pro: report correct, fault repaired (delta {result.get('score_delta')})")
             self.correct_reports += 1
             self.false_since_correct = 0

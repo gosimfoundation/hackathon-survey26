@@ -18,6 +18,7 @@ src/planner.rs     planner.py      one search for pointing + fibres + duration +
 src/skymath.rs     skymath.py      public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
 src/advisor.rs     advisor.py      the model stages: night plan, fault review, paid-report confirmation (prompts + validation)
 src/llm_client.rs  llm_client.py   OpenAI-compatible chat client on background threads (Kimi Coding Plan defaults)
+src/log_reader.rs  log_reader.py   optional stage: each free-text note in a request's `reason` is read once by the model
 observer.project.json, pack_agent.py, .env.example
 ```
 
@@ -25,7 +26,7 @@ observer.project.json, pack_agent.py, .env.example
 
 - Never read card files at run time. All information comes from stdin (catalogue, public score config,
   bulletins, forecasts, your own hits).
-- Never call the model per decision. The night stages run on background threads; `model_wait_budget` in
+- Never call the model per decision (the note reader calls it once per new note, not per decision). The night stages run on background threads; `model_wait_budget` in
   `src/main.rs` decides how long a night start may wait for them.
 - Every tunable constant can be overridden with a `PRO_<NAME>` environment variable, exactly as in
   python-pro (`PRO_FIXED_LEVEL=0` pins the search level, useful for reproducible local comparisons).

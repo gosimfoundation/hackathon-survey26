@@ -97,24 +97,25 @@ impl Call {
 }
 
 #[derive(Clone)]
-struct Endpoint {
+pub struct Endpoint {
     base_url: String,
     key: String,
     model: String,
 }
 
-/// A failed attempt: what went wrong, and the server's Retry-After (seconds) if it sent one.
-enum Failure {
-    Retry(String, Option<f64>),
+/// A failed attempt: what went wrong, the server's Retry-After (seconds) if it sent one, and the HTTP status
+/// (0 when the request never got one).
+pub enum Failure {
+    Retry(String, Option<f64>, u16),
 }
 
 impl Endpoint {
-    fn request(&self, system: &str, user: &Value, timeout: f64) -> Result<Map<String, Value>, Failure> {
+    pub fn request(&self, system: &str, user: &Value, timeout: f64, max_tokens: u32) -> Result<Map<String, Value>, Failure> {
         let body = json!({
             "model": self.model,
             "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": serde_json::to_string(user).unwrap_or_default()}],
-            "max_tokens": 2000,
+            "max_tokens": max_tokens,
         });
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs_f64(timeout.max(1.0))).build();
         let response = agent
@@ -123,7 +124,7 @@ impl Endpoint {
             .set("Authorization", &format!("Bearer {}", self.key))
             .send_json(body);
         let data: Value = match response {
-            Ok(r) => r.into_json().map_err(|e| Failure::Retry(format!("read: {}", e.kind()), None))?,
+            Ok(r) => r.into_json().map_err(|e| Failure::Retry(format!("read: {}", e.kind()), None, 0))?,
             Err(ureq::Error::Status(code, r)) => {
                 // like python-pro, every failed attempt is retried; 429 / 5xx honour Retry-After
                 let after = if code == 429 || code >= 500 {
@@ -132,21 +133,21 @@ impl Endpoint {
                     None
                 };
                 let body: String = r.into_string().unwrap_or_default().chars().filter(|c| !c.is_control()).take(120).collect();
-                return Err(Failure::Retry(format!("HTTP {code}: {body}"), after));
+                return Err(Failure::Retry(format!("HTTP {code}: {body}"), after, code));
             }
-            Err(ureq::Error::Transport(t)) => return Err(Failure::Retry(format!("transport: {}", t.kind()), None)),
+            Err(ureq::Error::Transport(t)) => return Err(Failure::Retry(format!("transport: {}", t.kind()), None, 0)),
         };
         let text = data["choices"][0]["message"]["content"].as_str().unwrap_or("");
         // the first '{' to the last '}' (the reply may wrap the object in prose or a code fence)
         let (Some(a), Some(b)) = (text.find('{'), text.rfind('}')) else {
-            return Err(Failure::Retry("no JSON object in the reply".into(), None));
+            return Err(Failure::Retry("no JSON object in the reply".into(), None, 0));
         };
         if b < a {
-            return Err(Failure::Retry("no JSON object in the reply".into(), None));
+            return Err(Failure::Retry("no JSON object in the reply".into(), None, 0));
         }
         match serde_json::from_str::<Value>(&text[a..=b]) {
             Ok(Value::Object(map)) => Ok(map),
-            _ => Err(Failure::Retry("reply is not a JSON object".into(), None)),
+            _ => Err(Failure::Retry("reply is not a JSON object".into(), None, 0)),
         }
     }
 }
@@ -182,6 +183,11 @@ impl LlmClient {
         }
     }
 
+    /// The endpoint, for stages that run their own calls (log_reader.rs).
+    pub fn endpoint(&self) -> Endpoint {
+        self.endpoint.clone()
+    }
+
     pub fn in_flight(&self) -> usize {
         self.calls.iter().filter(|c| !c.0.lock().map(|s| s.done).unwrap_or(true)).count()
     }
@@ -201,13 +207,13 @@ impl LlmClient {
             let mut answer = None;
             let mut error = None;
             for attempt in 0..retries {
-                match endpoint.request(system, &user, timeout) {
+                match endpoint.request(system, &user, timeout, 2000) {
                     Ok(a) => {
                         answer = Some(a);
                         error = None;
                         break;
                     }
-                    Err(Failure::Retry(e, after)) => {
+                    Err(Failure::Retry(e, after, _)) => {
                         error = Some(e);
                         if started.elapsed().as_secs_f64() > timeout {
                             break;

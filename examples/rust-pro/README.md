@@ -36,6 +36,7 @@ src/planner.rs     planner.py     one search for pointing + fibres + duration + 
 src/skymath.rs     skymath.py     public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
 src/advisor.rs     advisor.py     the model stages: night plan, fault review, paid-report confirmation
 src/llm_client.rs  llm_client.py  OpenAI-compatible chat client running calls on background threads
+src/log_reader.rs  log_reader.py  optional model stage: reads free-text staff notes attached to observation requests
 observer.project.json   platform manifest (cargo build --release --locked; ./target/release/rust-pro)
 pack_agent.py      zip this folder for upload (target/ and .env are never packed)
 .env.example       copy to .env and set an API key for local runs
@@ -51,6 +52,26 @@ observation requests get all-or-nothing value. Pacing uses the fair clock
 (`wallclock.remaining_real_cpu_seconds` against the process's own CPU time from `getrusage`, plus the real-time
 cap). The model (default Kimi `k3`) is asked twice at every night start (night plan; fault review) and once
 before a paid report, always on background threads, so it never blocks a decision.
+
+### Staff notes (src/log_reader.rs)
+
+On some cards an observation request's `reason` is not a short label but a longer note from the
+observatory staff, and such notes can mention things that matter for the survey. Every new note (31+
+characters) is sent once to the model, with a few earlier notes as context, the current time and the site's
+UTC offset. The model is asked, in general terms, for operational facts with times:
+`{"closures", "avoid", "report_at", "summary"}`. Three plain rules turn the answer into actions:
+
+- `closures`: wait while the whole site is announced closed;
+- `avoid`: down-weight the named sectors during the announced window (every sector: wait);
+- `report_at`: send `report` once the staff say the instrument itself has a problem (now, or from an
+  announced time), or when they explicitly ask for a problem report.
+
+Waiting for the model costs no CPU budget, only real time, so a new note may hold the run while its answer
+is pending: at most `PRO_LOG_WAIT_MAX` (240 s), and only from real time the planner will not need, spread
+over the notes expected until the end. Calls are retried with backoff on HTTP 429 / 5xx, given up after a
+few minutes, and skipped without a key (`PRO_LOG_READER=0` turns the stage off). This is a deliberately
+simple reader: one generic prompt, no knowledge of how a particular station writes. Reading the notes more
+carefully is one of the clearest ways to beat this example.
 
 ## Configuration (.env)
 

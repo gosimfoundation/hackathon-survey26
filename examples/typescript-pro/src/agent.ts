@@ -17,13 +17,16 @@
  * 4. Pace: the search level adapts to the measured CPU cost per decision so a 4-month card fits the clock.
  * 5. Model (advisor.ts): at every night start a night plan (forecast + bulletin -> bad night, sectors to avoid)
  *    and a fault review (own quality table -> how likely a fault is, which gates paid reports); before a paid
- *    report the model confirms or vetoes. Calls run in the background; without an API key the agent exits,
- *    except when the platform sets OBSERVER_MODEL_DISABLED=1 (an evaluation without a model): then rules only.
+ *    report the model confirms or vetoes. logReader.ts reads free-text staff notes attached to observation
+ *    requests once each (closures, sectors to avoid, instrument problems -> report). Calls run in the
+ *    background; without an API key the agent exits, except when the platform sets OBSERVER_MODEL_DISABLED=1
+ *    (an evaluation without a model): then rules only.
  */
 import * as path from "node:path";
 import * as readline from "node:readline";
 import { Advisor, FaultReview, NightPlan, Notice } from "./advisor";
 import { Json, LLMClient, apiKey, loadDotenv } from "./llmClient";
+import { LogReader } from "./logReader";
 import { Planner, env } from "./planner";
 import { formatUtc, parseUtc, pyround, pysum, upperMedian } from "./skymath";
 
@@ -57,6 +60,8 @@ const MODEL_WAIT_MAX = env("MODEL_WAIT_MAX", 20.0); // longest wait for the nigh
 const MODEL_FAULT_HIGH = env("MODEL_FAULT_HIGH", 0.6); // fault review at or above this: report more readily tonight
 const MODEL_FAULT_LOW = env("MODEL_FAULT_LOW", 0.15); // ... at or below this: paid reports need the strongest evidence
 const SCALE_STEP = env("SCALE_STEP", 0.7); // with a likely fault: report when scale stays below this x ref
+const LOG_WAIT_MAX = env("LOG_WAIT_MAX", 240.0); // longest wait for the reader's answer to a new staff note (s)
+const LOG_READER = env("LOG_READER", 1); // 0: do not read staff notes
 const MODEL_FREE_PROBE = env("MODEL_FREE_PROBE", 0); // 1: a high fault review may also spend a free probe on a low scale
 const FIXED_LEVEL = env("FIXED_LEVEL", -1); // development only: pin the search level (deterministic runs)
 
@@ -102,6 +107,8 @@ class ObserverAgent {
   private readonly planner: Planner;
   private readonly client: LLMClient | null;
   private readonly advisor: Advisor | RulesOnly;
+  private readonly reader: LogReader | null;
+  private correctReportAt: number | null = null; // time of the last correct report
   private modelWait = 0.0; // wall seconds spent waiting for the model (not planning cost)
   private faultLikely: number | null = null; // tonight's model estimate that an instrument fault is active
   private readonly scaleHours = new Map<number, number[]>(); // hour -> [planner.scale samples] (for the model's fault table)
@@ -138,6 +145,7 @@ class ObserverAgent {
     this.planner = new Planner(init, log);
     this.client = rulesOnly ? null : new LLMClient(log);
     this.advisor = this.client === null ? new RulesOnly() : new Advisor(this.client, log);
+    this.reader = this.client === null || !LOG_READER ? null : new LogReader(this.client, Number(init.site?.utc_offset_hours ?? 0.0), log);
     this.start = parseUtc(init.survey.start_utc);
     const reporting = init.scoring.reporting ?? {};
     this.freeAllowance = Math.trunc(Number(reporting.false_report_free_allowance ?? 0));
@@ -207,6 +215,8 @@ class ObserverAgent {
     planner.onRequests(payload.active_requests ?? []);
     planner.onResult(payload.last_result, now, hours);
     this.pace(payload, now);
+    const readerAction = await this.readNotes(payload, now, hours);
+    if (readerAction !== null) return readerAction;
 
     const night = planner.currentNight(now);
     if (night === null) {
@@ -242,6 +252,53 @@ class ObserverAgent {
     this.observes += 1;
     action.reason = `${Object.keys(action.assignments).length} fibres, program ${action.program}`;
     return action as unknown as Action;
+  }
+
+  // --- staff notes (logReader.ts) -------------------------------------------------------------------
+
+  /** Send new notes to the reader and apply its answers: a report or a wait when they call for one. */
+  private async readNotes(payload: Payload, now: number, hours: number): Promise<Action | null> {
+    const reader = this.reader;
+    if (reader === null) return null;
+    const requests = [...(payload.active_requests ?? []), ...(payload.new_messages ?? []).filter((m: Payload) => m?.record_type === "observation_request")];
+    const wallLeft = this.clock(payload)[1];
+    if (reader.feed(requests, now, wallLeft) > 0) {
+      // waiting costs no CPU budget, only real time: wait a little so a fresh note is applied before acting
+      const started = monotonic();
+      await reader.wait(this.noteWaitBudget(payload, now));
+      this.modelWait += monotonic() - started;
+    }
+    reader.collect();
+    this.planner.logAvoid = reader.avoidNow(now);
+    const since = reader.reportDue(now);
+    if (since !== null && (this.correctReportAt === null || this.correctReportAt < since) && this.falseReports < MAX_FALSE_REPORTS) {
+      this.lastReportHours = hours;
+      this.reports += 1;
+      log(`pro: report at ${payload.now_utc} (staff note: instrument problem from ${formatUtc(since).slice(0, 16).replace("T", " ")})`);
+      return { action: "report", reason: "staff note: instrument problem" };
+    }
+    const night = this.planner.currentNight(now);
+    let end = reader.closed(now);
+    if (night !== null && end === null && this.planner.logAvoid.size === 8) end = now + this.toNextSlot(now, night[1]); // every sector: as closed
+    if (night !== null && end !== null) {
+      const seconds = Math.trunc(Math.max(60, Math.min(end - now, night[2] - now, 3600)));
+      return { action: "wait", duration_seconds: seconds, reason: "staff note: site closed" };
+    }
+    return null;
+  }
+
+  /** How long a new note may hold the run. Reading models can take minutes, and a note often announces
+   *  something a few nights ahead, so waiting for the answer pays when real time is to spare: half of the
+   *  real time the planner will not need, spread over the notes expected until the end (at the rate seen so far). */
+  private noteWaitBudget(payload: Payload, now: number): number {
+    const wallLeft = this.clock(payload)[1];
+    const perDecision = Math.max(this.wallEma[Math.min(this.planner.fastLevel, 3)] as number, 0.05) + (this.engineEma || 0.02);
+    const spare = wallLeft - 1.5 * this.decisionsLeft(now) * perDecision - 60.0;
+    const nights = this.planner.nights;
+    const end = nights.length > 0 ? (nights[nights.length - 1] as [number, number])[1] : now;
+    const done = Math.max(3 * 86400.0, now - this.start); // rate estimate needs a few days
+    const notesLeft = 1.0 + ((this.reader as LogReader).seen.size * Math.max(0.0, end - now)) / done;
+    return Math.max(0.0, Math.min(LOG_WAIT_MAX, (0.5 * spare) / notesLeft));
   }
 
   private toNextSlot(now: number, nightStart: number): number {
@@ -519,6 +576,7 @@ class ObserverAgent {
 
   private onReportResult(result: Payload, hours: number): void {
     if (result.correct) {
+      this.correctReportAt = this.lastNow;
       log(`pro: report correct, fault repaired (delta ${result.score_delta})`);
       this.correctReports += 1;
       this.falseSinceCorrect = 0;
