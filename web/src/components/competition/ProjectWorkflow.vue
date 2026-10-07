@@ -237,6 +237,11 @@ watch(selectedPhase, p => emit('phase', p ? { name_en: p.phases.name_en, name_zh
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
 const prep = computed(() => preparationQuota(data.value?.quota))
+// Deadline extension window: at most `limit` new versions per team (shown only while the window is open).
+const ext = computed(() => data.value?.extension?.active ? data.value.extension : null)
+const extNote = computed(() => ext.value ? pick(
+  `Extension period: your team may submit up to ${ext.value.limit} new versions (${ext.value.used}/${ext.value.limit} used).`,
+  `延长期内每队最多再提交 ${ext.value.limit} 个新版本（已用 ${ext.value.used}/${ext.value.limit}）。`) : '')
 // Shown even before the quota RPC answers: the phase setting is the same number the database enforces.
 const dailyLimit = computed(() => quota.value?.daily_batches ?? selectedPhase.value?.daily_batches ?? null)
 // Up to max_active_evaluations of the team's evaluations may run at once (a self-check set counts once).
@@ -281,6 +286,7 @@ function errorMessage(e: unknown) {
     batch_already_active: pick(`Your team can run up to ${activeLimit.value} evaluations at a time.`, `本队最多可同时进行 ${activeLimit.value} 个评测。`),
     repeat_already_active: pick('An “Evaluate 3 times and average” set is already running. Start another when it finishes.', '已有一组「评测 3 次取平均」正在进行，请等它结束后再开始。'),
     preparation_limit: pick('Your team already has three projects being prepared.', '本队已有三个项目正在准备，请等待完成。'),
+    extension_version_limit: pick(`During the deadline extension each team may submit at most ${ext.value?.limit ?? 5} new versions (${ext.value?.used ?? 5}/${ext.value?.limit ?? 5} used). You can still evaluate and choose any confirmed version.`, `截止后的延长期内每队最多再提交 ${ext.value?.limit ?? 5} 个版本（已用 ${ext.value?.used ?? 5}/${ext.value?.limit ?? 5}）。已有的已确认版本仍可评测，也可选为最终版本。`),
     preparation_daily_limit: prep.value
       ? pick(`Your team has used today’s ${prep.value.daily} project uploads. ${formatDailyReset(prep.value.resets_at, 'en')}.`, `本队今天的 ${prep.value.daily} 次上传机会已用完，${formatDailyReset(prep.value.resets_at, 'zh')}。`)
       : pick('Your team has used today’s project uploads. The count resets at 00:00 UTC (08:00 Beijing time).', '本队今天的上传机会已用完，每天北京时间 8 点（UTC 0 点）重置。'),
@@ -839,8 +845,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             </p>
             <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
             <p class="help mb-4">{{ words.privacy }}</p>
-            <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+            <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0) || (ext != null && ext.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
             <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
+            <p v-if="ext" class="help mt-2" data-testid="extension-versions">{{ extNote }}</p>
           </form>
           <p v-if="!projectsOpen" class="help mt-3">{{ words.closed }}</p>
 
@@ -1135,8 +1142,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </p>
         <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
         <p class="help mb-4">{{ words.privacy }}</p>
-        <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+        <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0) || (ext != null && ext.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
         <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
+        <p v-if="ext" class="help mt-2" data-testid="extension-versions">{{ extNote }}</p>
       </form>
       <section class="panel mb-6" data-testid="project-versions">
         <h2 id="review">{{ words.step2 }}</h2><p class="help">{{ words.step2Note }}</p>

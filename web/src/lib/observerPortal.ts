@@ -57,6 +57,8 @@ export type PortalData = {
   team_model: TeamModel | null
   model_bases: string[]
   team_environment?: TeamEnvironment | null
+  /** New versions left in the deadline extension window; null outside it. The database enforces the limit. */
+  extension?: { active: boolean; opens_at: string; closes_at: string; limit: number; used: number; remaining: number } | null
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
   /** The team's final version per open formal phase; missing until the database provides it. */
