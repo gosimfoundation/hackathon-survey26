@@ -2,7 +2,7 @@
  * (internal rehearsal/staging/observer boards) is filtered out even if the DB returns it. */
 export const LEADERBOARD_SLUGS = ['practice-projects', 'practice', 'online'] as const
 
-/** Free Play (娱乐赛): unscored phase on the online cards that opens when the online phase closes. */
+/** Open Play (日常赛): unscored phase on the online cards that opens when the online phase closes. */
 export const FUN_SLUG = 'after-party'
 
 /** The leaderboard page also has the hidden final's tab, after the others. The database returns that phase

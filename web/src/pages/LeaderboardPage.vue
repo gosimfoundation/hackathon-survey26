@@ -37,7 +37,7 @@ const visiblePhases = computed(() => {
   // Main boards first (正式赛, 练习赛, the final); the debug board (slug 'practice') goes last, set apart.
   const main = LEADERBOARD_PAGE_SLUGS.filter(slug => slug !== 'practice')
   const order = ['online', ...main.filter(slug => slug !== 'online')]
-  // Free Play gets its tab once it has started (organizers see it earlier, as a preview).
+  // Open Play gets its tab once it has started (organizers see it earlier, as a preview).
   const listed = order.map(slug => phases.value.find(p => p.slug === slug))
     .filter((p): p is Phase => !!p && (p.slug !== FUN_SLUG || p.status !== 'upcoming' || !!isAdmin.value))
   const debug = phases.value.find(p => p.slug === 'practice')

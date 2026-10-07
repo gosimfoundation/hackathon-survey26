@@ -7,7 +7,7 @@ const state = reactive({ mode: 'practice' as 'practice'|'competition', phaseId: 
   practicePhaseId: null as string|null,
   // Optional extra (unscored) phase organizers may offer, in either mode.
   extraPhaseId: null as string|null,
-  // Free Play (unscored), once it has started.
+  // Open Play (unscored), once it has started.
   funPhaseId: null as string|null })
 let fetched = 0, pending: Promise<void>|null = null
 export const competition = readonly(state)

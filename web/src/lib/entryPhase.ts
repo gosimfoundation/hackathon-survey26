@@ -2,7 +2,7 @@
 // practice_phase_id in competition mode). The 参赛 page evaluates in the online phase by default; a person can
 // switch to practice, and the choice is remembered per user in this browser. Organizers may also offer an optional
 // extra (unscored) phase, answered as extra_phase_id in either mode; it adds a third choice, 'extra'.
-// Free Play (娱乐赛), answered as fun_phase_id once it has started (after the online phase closes), adds 'fun'.
+// Open Play (日常赛), answered as fun_phase_id once it has started (after the online phase closes), adds 'fun'.
 import type { StorageLike } from './quest'
 
 export type EntryChoice = 'online' | 'practice' | 'extra' | 'fun'
@@ -20,7 +20,7 @@ export function parseCompetition(data: unknown): Omit<CompetitionState, 'betaPha
     practicePhaseId: mode === 'competition' ? id(d.practice_phase_id) : null,
     // Optional extra (unscored) phase, in either mode.
     extraPhaseId: id(d.extra_phase_id),
-    // Free Play (unscored), once it has started.
+    // Open Play (unscored), once it has started.
     funPhaseId: id(d.fun_phase_id) }
 }
 
@@ -30,7 +30,7 @@ export const offersPracticeSwitch = (s: CompetitionState) => s.mode === 'competi
 /** Whether the extra (unscored) phase is offered as a third choice. */
 export const offersExtraSwitch = (s: Pick<CompetitionState, 'extraPhaseId'>) => !!s.extraPhaseId
 
-/** Whether Free Play is offered as a choice. */
+/** Whether Open Play is offered as a choice. */
 export const offersFunSwitch = (s: Pick<CompetitionState, 'funPhaseId'>) => !!s.funPhaseId
 
 /** A remembered 'extra' counts only while the extra phase is offered; otherwise online, as before. */
@@ -42,7 +42,7 @@ export function readEntryChoice(storage: StorageLike | null, userId: string | nu
   } catch { return 'online' }
 }
 
-/** Where the page starts: once the online phase has ended, Free Play when offered (else practice), unless another
+/** Where the page starts: once the online phase has ended, Open Play when offered (else practice), unless another
  * open choice was remembered (online stays viewable, read-only). */
 export function initialEntryChoice(storage: StorageLike | null, userId: string | null | undefined, onlineEnded: boolean, extraOffered = false, funOffered = false): EntryChoice {
   const remembered = readEntryChoice(storage, userId, extraOffered, funOffered)
