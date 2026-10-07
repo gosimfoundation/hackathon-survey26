@@ -52,7 +52,7 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 }
 
 /// (year, month, day) of a day count since 1970-01-01.
-pub fn civil_from_days(z: i64) -> (i64, i64, i64) {
+fn civil_from_days(z: i64) -> (i64, i64, i64) {
     let z = z + 719468;
     let era = if z >= 0 { z } else { z - 146096 } / 146097;
     let doe = z - era * 146097;
@@ -103,18 +103,6 @@ fn split(moment: f64) -> (i64, i64, i64, i64, i64, i64) {
 pub fn format_utc(moment: f64) -> String {
     let (y, m, d, h, mi, s) = split(moment);
     format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, m, d, h, mi, s)
-}
-
-/// "YYYY-MM-DD" of the UTC date.
-pub fn format_date(moment: f64) -> String {
-    let (y, m, d, _, _, _) = split(moment);
-    format!("{:04}-{:02}-{:02}", y, m, d)
-}
-
-/// "MM-DDTHH" (the fault table's hour stamp).
-pub fn format_hour_stamp(moment: f64) -> String {
-    let (_, m, d, h, _, _) = split(moment);
-    format!("{:02}-{:02}T{:02}", m, d, h)
 }
 
 pub fn julian_date(moment: f64) -> f64 {
