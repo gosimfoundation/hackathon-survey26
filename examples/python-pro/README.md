@@ -12,7 +12,7 @@ configuration, bulletins, forecasts, observation requests and its own results); 
 
 | Card | A | B | C | D | A1 | B1 | C1 | D1 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,809 |
+| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,659 |
 
 Scores move by a few percent between runs (machine speed changes the CPU budget, fault timing varies).
 
@@ -54,15 +54,17 @@ blocks its direction low in the sky; directional weather down-weights its sector
 ## Instrument faults (agent.py, `FaultWatch`)
 
 A fault lowers the instrument efficiency until somebody reports it; weather and earthquakes lower the quality
-too, and a report does not repair those. The rule compares each exposure's quality with the usual level since
-the last repair (75th percentile) and reports only:
+too, and a report does not repair those. Weather changes from night to night, a fault stays. The rule compares
+each exposure's quality with the usual level since the last repair (90th percentile of exposures without
+all-sky weather: a clear night with a healthy instrument) and reports on
 
-- after two exposures in a row below 10 % of the usual level (a collapse weather rarely explains), or
-- while free wrong reports are left: when the median of the last eight exposures stays below half of the
-  usual level, with no all-sky weather and no earthquake in the bulletin.
+- a collapse: two exposures in a row below 10 % of the usual level, or
+- a lasting drop: the median quality of each of the last two observed nights (at least four exposures each,
+  no all-sky weather) below 55 % of the usual level.
 
-After a wrong report it waits until the quality recovers. Once the free allowance is used up, only a
-collapse is reported, at most once a day.
+Only exposures after the last report count as evidence, so one episode is never reported twice. Once the
+free wrong reports are used up, reports are at least 120 hours apart (a fault lasts until it is reported,
+so a late report still pays).
 
 ## Optional model: staff notes (log_reader.py)
 
