@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { loadCompeteUiSetting, loadPhases,type Phase } from '../lib/data'
 import { COMPETE_UI_STORAGE, competeLayout, layoutOverride, type CompeteLayout } from '../lib/competeUi'
 import { chooseEntry, competition, entryChoice, loadCompetition, useEntryFor } from '../stores/competition'
-import { offersExtraSwitch, offersPracticeSwitch } from '../lib/entryPhase'
+import { offersExtraSwitch, offersFunSwitch, offersPracticeSwitch } from '../lib/entryPhase'
 import { useAuth } from '../stores/auth'
 import { useI18n } from '../composables/useI18n'
 import DashShell from '../components/layout/DashShell.vue'
@@ -35,7 +35,9 @@ async function chooseLayout(){
 // During the competition practice stays open: 正式赛 by default, 练习赛 one click away (remembered per user).
 // Organizers may also offer an extra (unscored) phase as a third choice.
 const showPractice=computed(()=>offersPracticeSwitch(competition)),showExtra=computed(()=>offersExtraSwitch(competition))
-const showSwitch=computed(()=>showPractice.value||showExtra.value)
+// Free Play (娱乐赛) opens when the online phase closes: one more choice, unscored, with its own board.
+const showFun=computed(()=>offersFunSwitch(competition)),funPhase=computed(()=>allPhases.value.find(p=>p.id===competition.funPhaseId))
+const showSwitch=computed(()=>showPractice.value||showExtra.value||showFun.value)
 const extraPhase=computed(()=>allPhases.value.find(p=>p.id===competition.extraPhaseId))
 // After the online deadline the page opens on practice; online stays one click away, read-only.
 const onlineEnded=computed(()=>{const p=allPhases.value.find(x=>x.id===competition.phaseId);return !!p?.ends_at&&Date.parse(p.ends_at)<=Date.now()})
@@ -72,8 +74,15 @@ onMounted(async()=>{try{await refreshMe()
         <button type="button" class="btn sm" :class="{ primary: entryChoice==='online' }" :aria-pressed="entryChoice==='online'" data-testid="entry-online" @click="chooseEntry('online')">{{ onlineEnded ? pick('Online competition · Ended','正式赛 · 已截止') : pick('Online competition','正式赛') }}</button>
         <button v-if="showPractice" type="button" class="btn sm" :class="{ primary: entryChoice==='practice' }" :aria-pressed="entryChoice==='practice'" data-testid="entry-practice" @click="chooseEntry('practice')">{{ pick('Practice','练习赛') }}</button>
         <button v-if="showExtra" type="button" class="btn sm" :class="{ primary: entryChoice==='extra' }" :aria-pressed="entryChoice==='extra'" data-testid="entry-extra" @click="chooseEntry('extra')">{{ pick(extraPhase?.name_en||'Extra',extraPhase?.name_zh||'加赛') }}</button>
+        <button v-if="showFun" type="button" class="btn sm" :class="{ primary: entryChoice==='fun' }" :aria-pressed="entryChoice==='fun'" data-testid="entry-fun" @click="chooseEntry('fun')">{{ pick(funPhase?.name_en||'Free Play',funPhase?.name_zh||'娱乐赛') }}</button>
+        <template v-if="entryChoice!=='fun'">
         <router-link class="text2 text-sm" :to="`/leaderboard/${boardSlug}`" data-testid="entry-board">{{ entryChoice==='extra' ? pick(`${extraPhase?.name_en||'Extra'} board →`,`${extraPhase?.name_zh||'加赛'} 榜 →`) : entryChoice==='practice' ? pick('Practice leaderboard →','练习赛排行榜 →') : pick('Online leaderboard →','正式赛排行榜 →') }}</router-link>
         <span class="text3 text-sm" data-testid="entry-note">{{ entryChoice==='extra' ? pick('Scores here are for reference only and do not count toward any ranking or award; Sophon is about discovering the easter egg hidden within. It has its own daily evaluations.','本关分数仅供参考，不计入任何排名或奖项；Sophon 的重点在于发现其中隐藏的彩蛋。评测次数单独计算。') : onlineEndedView ? pick('The online phase has ended: its records, logs and downloads stay available and the final version is locked. Switch to Practice to keep evaluating.','正式赛已截止：评测记录、日志和下载仍可查看，最终版本已锁定。继续评测请切换到练习赛。') : entryChoice==='practice' ? pick('Practice does not affect the online ranking; it has its own daily evaluations.','练习赛不影响正式赛排名，评测次数单独计算。') : pick('Evaluations here count for the online leaderboard (feedback only; the final ranking comes from the hidden-card final after the deadline).','这里的评测计入正式赛排行榜（仅作反馈；最终排名看截止后的隐藏卡决赛）。') }}</span>
+        </template>
+        <template v-else>
+        <router-link class="text2 text-sm" :to="`/leaderboard/${funPhase?.slug||'after-party'}`" data-testid="entry-board">{{ pick(`${funPhase?.name_en||'Free Play'} board →`,`${funPhase?.name_zh||'娱乐赛'}排行榜 →`) }}</router-link>
+        <span class="text3 text-sm" data-testid="entry-note">{{ pick('Free Play uses the online cards (A–D and A1–D1): evaluate any confirmed version or submit new ones. Just for fun: no prizes, no part in the final, and it never changes your online final version or the online board. It has its own daily evaluations.','娱乐赛使用正式赛的任务卡（A–D 与 A1–D1），可以评测任何已确认的版本或提交新版本。仅供娱乐：不设奖项，不计入决赛，也不会改变正式赛的最终版本和正式赛排行榜。评测次数单独计算。') }}</span>
+        </template>
       </div>
       <div v-if="layout==='v2'" class="compete-guide-btn"><CompeteGuide /></div>
       </div>

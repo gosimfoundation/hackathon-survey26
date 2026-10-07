@@ -1271,7 +1271,8 @@
       "practice": "Practice",
       "debug": "Debug board",
       "competition": "Competition",
-      "final": "Final"
+      "final": "Final",
+      "fun": "Free Play"
     },
     "debug_submissions_closed": "Submissions closed",
     "competition_starts": "Starts Oct 5, 00:00 Beijing time",
@@ -1315,6 +1316,7 @@
     "raw_score": "Raw score",
     "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
     "public_board": "Online board: each team’s best complete evaluation on the task cards A–D (900 s per card); the Overall tab is the mean over A–D and each card has its own tab. The Super board = 20% × the A–D card sum + 80% × the A1–D1 card sum of one evaluation (each evaluation runs A–D first, then automatically A1–D1), counting only evaluations where all 8 cards completed. Boards are live, but they do not decide the final ranking or any award — after the online phase ends, each team’s final version is evaluated 3 times on each of the hidden cards E–H, each card is the mean of its 3 evaluations, and only the mean over E–H ranks. Scores on A1–D1 and the Super board do not affect the ranking on the hidden cards either.",
+    "fun_board": "Free Play: the same cards as the online competition (A–D and A1–D1), open after it closed. Just for fun: no prizes, no part in the final, and it never changes your online final version or the online board.",
     "final_board": "Final ranking: each team’s final version evaluated 3 times on each of the hidden cards E–H after the online phase ended; each card shows the mean of its 3 evaluations and the Overall tab is the mean over E–H. A card not completed in an evaluation because of the team itself scores 0 there and still counts in the mean.",
     "overall": "Overall",
     "unfinished": "Unfinished",
