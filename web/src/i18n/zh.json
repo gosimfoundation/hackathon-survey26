@@ -2200,7 +2200,7 @@
     "example_typescript_desc": "同一套策略的 TypeScript（Node.js）实现：规划、记忆、两个大模型环节、协议与动作校验。",
     "example_typescript_pro_desc": "早期基于搜索的 Python Pro 的 TypeScript 移植版（Node.js 22+，只用内置模块）：同样的规划器和大模型环节，决策逐条一致，CPU 时间约为其 1/6。",
     "example_rust_desc": "同一套策略的 Rust 实现：规划、记忆、两个大模型环节、协议与动作校验。",
-    "example_rust_pro_desc": "早期基于搜索的 python-pro 的 Rust 移植版：同样的规划器、故障处理和大模型环节，每次决策的 CPU 时间约为 Python 版的 1/30。",
+    "example_rust_pro_desc": "易读的规则型 python-pro 的 Rust 移植版：同样的贪心、required 优先的调度、仪器故障规则和可选的读值班笔记的大模型环节，CPU 时间只是 Python 版的一小部分。",
     "flow2": "参考资料",
     "flow2_hint": "写智能体和提交时会用到的资料。"
   },

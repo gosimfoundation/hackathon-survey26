@@ -2200,7 +2200,7 @@
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_pro_desc": "The earlier, search-based Python Pro agent ported to TypeScript (Node.js 22+, built-ins only): the same planner and LLM stages, decision-for-decision identical, about 6x less CPU.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
-    "example_rust_pro_desc": "The earlier, search-based python-pro ported to Rust: the same planner, fault handling and LLM stages, at about 1/30 of the CPU time per decision.",
+    "example_rust_pro_desc": "The Rust port of the readable rule-based python-pro: the same greedy required-first planner, instrument-fault rule and optional LLM reader for staff notes, at a fraction of the CPU time.",
     "flow2": "Reference",
     "flow2_hint": "What you'll need for building and submitting your agent."
   },
