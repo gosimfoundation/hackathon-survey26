@@ -95,11 +95,13 @@ DEEPSEEK_API_KEY=<your-key>
 `MODEL_BASE_URL`。实际 endpoint 和 model ID 可能变化，应以各厂商当前官方文档为准。
 
 平台运行（云端评测和官方本地项目运行器）不会读取你的 `.env`，也不接受含 `.env` 的 ZIP。
-每次运行会注入 `OPENAI_BASE_URL`（平台的 OpenAI 兼容模型代理，只支持 chat completions）和
-`OPENAI_API_KEY`（本次运行的临时凭证，不是你的密钥）。`model_factory.py` 优先读取这两个变量，
-没有时才回退到上面的 `MODEL_BASE_URL` 和各服务商密钥，所以同一份代码本地和平台都能用。
-模型名读取 `OPENAI_MODEL` 或 `MODEL_NAME`；在平台上可以留空，代理会使用本队在「参赛」页设置的
-地址、默认模型和密钥。填写模型名时，代理会把它原样转发给本队服务商，因此可以在不同步骤使用不同的模型（费用由本队承担）。平台上要启用模型，把 `MODEL_PROVIDER` 设为 `openai`（写在 `observer.project.json`
+每次运行时，本队在「参赛 → 密钥与网络」中保存的变量（例如 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`，
+也可以用 `survey26 env model --provider … --key - --model …` 写入）会作为环境变量提供给程序。`model_factory.py` 优先读取
+`OPENAI_BASE_URL` / `OPENAI_API_KEY`，没有时才回退到上面的 `MODEL_BASE_URL` 和各服务商密钥，所以同一份代码本地和平台都能用。
+程序直接调用本队的服务商（平台会设置 `HTTPS_PROXY`，常见 SDK 无需额外配置），费用由本队承担。模型名读取 `OPENAI_MODEL` 或
+`MODEL_NAME`，必须是服务商支持的模型名，不能留空。`OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` 是平台的会话接口，不是大模型接口，
+不要把模型请求发给它们。
+平台上要启用模型，把 `MODEL_PROVIDER` 设为 `openai`（写在 `observer.project.json`
 的 `environment` 中），并在构建步骤里安装依赖，见入门包 `README.md` 的 "Upload a complete project"。
 
 ## JSON-Lines 协议

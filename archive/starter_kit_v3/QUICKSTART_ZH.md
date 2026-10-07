@@ -50,7 +50,7 @@
 ## 想更进一步
 
 - 想在本地试更多天气：`python3 make_scenario.py --out scenarios/mine --seed 7 --days 30`，再运行 `python3 local_runner.py --scenario scenarios/mine --agent agent/minimal_agent.py`。
-- 想让大模型参与决策：本地运行时复制 `agent/.env.example` 为 `agent/.env`，填 `MODEL_PROVIDER` 与自己的 API key。平台上不上传 `.env`，智能体读取平台注入的 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（对应你在「参赛」页设置的密钥），做法见 `README.md` 的 "Upload a complete project"。跑通练习赛的队伍，队长可领取赞助兑换码（如 Kimi Coding Plan），兑换码即将发放。
+- 想让大模型参与决策：本地运行时复制 `agent/.env.example` 为 `agent/.env`，填 `MODEL_PROVIDER` 与自己的 API key。平台上不上传 `.env`，在「参赛 → 密钥与网络」中保存 `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`，智能体以环境变量读取并直接调用本队服务商，做法见 `README.md` 的 "Upload a complete project"。跑通练习赛的队伍，队长可领取赞助兑换码（如 Kimi Coding Plan），兑换码即将发放。
 - 完整的数据格式、协议和评分公式见网站「文档」页；`README.md` 是给工程师看的详细版。
 
 > 练习场景仍按旧规则计分（无异常标签、不能重复观测、不接受上报）；想演练正式赛的新机制，跑 `run_finals_preview` 或 `scenarios/finals-preview`（基线约 **8214 分**，示例智能体会自己发现并上报那次仪器故障）。
