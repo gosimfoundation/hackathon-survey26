@@ -213,7 +213,7 @@ select public.team_capacity();  -- {"limit":150,"teams":…,"remaining":…,"ful
 |---|---|---|
 | 10-04 16:00 | 网站切换为正式比赛 | **自动**：pg_cron 任务 `switch-to-competition-2026-10-04` 在该时刻把 `private.observer_site_mode` 切到 `online`，执行后自行删除。也可在「设置 → 切换为正式比赛」手动切（只要求三个正式场景都有评测包，不再要求校准）。 |
 | 10-04 16:00 之后 | 抽查 | 用测试队在「参赛」页评测一次；排行榜显示「线上榜」。 |
-| 10-07 21:59:59 | 送测窗口结束：正式赛关闭、最终版本锁定（对外截止仍为 15:59:59；之后的送测窗口内每队最多再提交 10 个版本） | 自动（`online.ends_at`）。不会自动启动隐藏决赛。 |
+| 10-07 21:59:59 | 送测窗口结束：正式赛关闭、最终版本锁定（对外截止仍为 15:59:59；之后的送测窗口内每队最多再提交 15 个版本） | 自动（`online.ends_at`）。不会自动启动隐藏决赛。 |
 | 10-07 21:59:59 之后（主办方指示后） | 隐藏决赛评测 | `python3 scripts/run-hidden-final.py`（先 dry run，再 `--apply --limit 5` 金丝雀，再 `--apply`；见 [操作手册](hidden-final-runbook.md)）。隐藏决赛与组委会验证赛程都在 colocated 模式下运行，不写逐步数据到数据库。 |
 | 核验后 | 公布 | 把 `final-hidden` 的 `leaderboard_mode` 设为 `published`；之后加密保存的密钥按规则自动删除。 |
 
