@@ -94,7 +94,7 @@ test('a team-restricted extra phase answered as the beta entry binds only throug
   assert.equal(entryPhaseId(state({ mode: 'competition', phase_id: 'online', extra_phase_id: 'ex' }, 'beta'), 'online'), 'beta')
 })
 
-test('Free Play (fun_phase_id) is one more choice once offered, and where the page starts after the online phase', () => {
+test('Open Play (fun_phase_id) is one more choice once offered, and where the page starts after the online phase', () => {
   const s = state({ mode: 'competition', phase_id: 'online', practice_phase_id: 'pp', project_phase_id: 'pp', extra_phase_id: 'ex', fun_phase_id: 'fun' })
   assert.equal(s.funPhaseId, 'fun')
   assert.equal(offersFunSwitch(s), true)
@@ -102,7 +102,7 @@ test('Free Play (fun_phase_id) is one more choice once offered, and where the pa
   assert.equal(entryPhaseId(s, 'online'), 'online')
   assert.deepEqual(entryPhaseIds(s), ['online', 'pp', 'pp', 'ex', 'fun'])
   const st = memory()
-  // Nothing remembered (or online): Free Play after the online phase ended, online before.
+  // Nothing remembered (or online): Open Play after the online phase ended, online before.
   assert.equal(initialEntryChoice(st, 'u1', true, true, true), 'fun')
   assert.equal(initialEntryChoice(st, 'u1', false, true, true), 'online')
   rememberEntryChoice(st, 'u1', 'practice')
