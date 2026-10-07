@@ -95,12 +95,12 @@ class LLMClient:
         self.ok = 0
         self.failed = 0
 
-    def _request(self, system: str, user: dict, timeout: float) -> dict:
+    def _request(self, system: str, user: dict, timeout: float, max_tokens: int = 2000) -> dict:
         body = json.dumps({
             "model": self.model,
             "messages": [{"role": "system", "content": system},
-                         {"role": "user", "content": json.dumps(user, separators=(",", ":"))}],
-            "max_tokens": 2000,
+                         {"role": "user", "content": json.dumps(user, ensure_ascii=False, separators=(",", ":"))}],
+            "max_tokens": max_tokens,
         }).encode("utf-8")
         request = urllib.request.Request(self.base_url + "/chat/completions", data=body, method="POST",
                                          headers={"Content-Type": "application/json",
