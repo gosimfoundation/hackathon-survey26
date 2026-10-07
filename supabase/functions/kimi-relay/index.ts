@@ -223,6 +223,15 @@ Deno.serve(async (request) => {
     if (request.method === "POST" && path.endsWith("/chat/completions")) return await chat(request);
     if (request.method === "GET" && path.endsWith("/models")) {
       await rpc("kimi_relay_check", { p_hash: await tokenHashOf(request) });
+      // The provider's own model list, fetched with a pool key (the first that answers).
+      for (const slot of SLOTS) {
+        const upstream = await fetch(BASE + "/models", {
+          headers: { "authorization": "Bearer " + KEYS.get(slot), "accept": "application/json" },
+          signal: AbortSignal.timeout(15000),
+        }).catch(() => null);
+        if (upstream?.ok) return Response.json(await upstream.json(), { headers: cors });
+        await upstream?.body?.cancel();
+      }
       return Response.json({ object: "list", data: [{ id: MODEL, object: "model", owned_by: "kimi" }] }, {
         headers: cors,
       });
