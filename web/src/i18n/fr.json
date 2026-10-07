@@ -827,7 +827,7 @@
       "relay": "Ne pas enregistrer (relais de page)",
       "relay_help": "La clé reste uniquement dans cette page et n'est jamais stockée sur le serveur. Gardez cette page ouverte jusqu'à la fin de chaque évaluation ; les appels de modèle échouent lorsqu'elle est fermée. Si votre équipe est vérifiée parmi les premières, vous devrez aussi ouvrir cette page au moment convenu avec les organisateurs.",
       "relay_deletes": "Ce choix supprime la clé enregistrée.",
-      "usage": "Votre projet continue d'utiliser OPENAI_BASE_URL et OPENAI_API_KEY fournis pour chaque exécution ; les appels vont à votre point d'accès et à votre modèle.",
+      "usage": "Votre projet lit les variables enregistrées par votre équipe dans « Keys and network » (par exemple OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) et appelle directement votre fournisseur ; le modèle doit être un nom pris en charge par ce fournisseur. OBSERVER_API_URL est l'interface de session de la plateforme, pas un point d'accès de modèle.",
       "limits": "Chaque exécution permet jusqu'à {calls} appels de modèle, au plus {concurrency} à la fois. Les jetons ne sont pas plafonnés (ils sont payés par la clé de votre équipe).",
       "limits_tokens": "Chaque exécution permet jusqu'à {calls} appels de modèle et {tokens} jetons, au plus {concurrency} appels à la fois.",
       "saved_title": "API de modèle enregistrée",
