@@ -1,6 +1,6 @@
 // kimi-relay — temporary OpenAI-compatible Kimi relay for contestants' LOCAL development.
 // See _shared/kimi-relay.ts and supabase/migrations/20261005090000_kimi_relay.sql.
-// Secrets: the key pool KIMI_RELAY_KEY, KIMI_RELAY_KEY_2 … KIMI_RELAY_KEY_9 (slots 1…9; never logged,
+// Secrets: the key pool KIMI_RELAY_KEY, KIMI_RELAY_KEY_2 … KIMI_RELAY_KEY_50 (slots 1…50; never logged,
 // stored or returned — the database only knows slot numbers), optional KIMI_RELAY_BASE / KIMI_RELAY_MODEL.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sha256Hex } from "../_shared/cli-gateway.ts";
@@ -16,7 +16,7 @@ import {
 } from "../_shared/kimi-relay.ts";
 
 const KEYS = new Map<number, string>();
-for (let slot = 1; slot <= 9; slot++) {
+for (let slot = 1; slot <= 50; slot++) {
   const key = Deno.env.get(slot === 1 ? "KIMI_RELAY_KEY" : "KIMI_RELAY_KEY_" + slot);
   if (key) KEYS.set(slot, key);
 }
