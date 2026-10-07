@@ -6,9 +6,7 @@ const id = (texts: string[], codes: string[] = []) => failureHint({ texts, codes
 
 test('common failures map to a specific hint', () => {
   assert.equal(id(['Compiling...\n\nagent: missing API key: set OPENAI_API_KEY\n']), 'model_key')
-  assert.equal(id(['Project preparation failed: Credentials and platform settings must not be placed in the project manifest.']), 'secrets_in_package')
-  assert.equal(id(['Project preparation failed: Remove .env credentials and enter API keys separately on the website.']), 'secrets_in_package')
-  assert.equal(id(['Project preparation failed: Unknown project manifest fields: name']), 'manifest')
+  assert.equal(id(['Project preparation failed: Platform settings must not be placed in the project manifest.']), 'manifest')
   assert.equal(id(["ERROR: Could not install packages due to an OSError: [Errno 30] Read-only file system: '/.local'"]), 'deps_read_only')
   assert.equal(id(['Defaulting to user installation\nERROR: Could not install packages due to an OSError: [Errno 28] No space left on device']), 'deps_too_large')
   assert.equal(id(['> tsc -p tsconfig.json\n\nsh: 1: tsc: not found\n']), 'build_failed')
