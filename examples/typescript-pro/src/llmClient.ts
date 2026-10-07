@@ -47,7 +47,7 @@ export function loadDotenv(path: string): void {
 const sleep = (seconds: number) => new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, seconds) * 1000));
 
 /** 429, 5xx, timeout, network trouble or an unusable reply: worth another try after a pause. */
-class RetryableError extends Error {
+export class RetryableError extends Error {
   constructor(message: string, readonly retryAfterSeconds: number | null = null) {
     super(message);
   }
@@ -124,7 +124,7 @@ export class LLMClient {
   }
 
   /** One HTTP attempt -> the JSON object in the reply. */
-  async request(system: string, user: Json, timeout: number): Promise<Json> {
+  async request(system: string, user: Json, timeout: number, maxTokens = 2000): Promise<Json> {
     if (timeout <= 0) throw new Error("timeout");
     let response: Response;
     try {
@@ -137,7 +137,7 @@ export class LLMClient {
             { role: "system", content: system },
             { role: "user", content: JSON.stringify(user) },
           ],
-          max_tokens: 2000,
+          max_tokens: maxTokens,
         }),
         signal: AbortSignal.timeout(Math.max(1, Math.round(timeout * 1000))),
       });

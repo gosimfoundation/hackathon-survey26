@@ -2198,7 +2198,7 @@
     "example_python_pro_desc": "A readable rule-based example (Python standard library only): greedy required-first scheduling, a conservative instrument-fault rule and an optional LLM reader for staff notes.",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
-    "example_typescript_pro_desc": "The earlier, search-based Python Pro agent ported to TypeScript (Node.js 22+, built-ins only): the same planner and LLM stages, decision-for-decision identical, about 6x less CPU.",
+    "example_typescript_pro_desc": "The TypeScript port of the readable rule-based Python Pro (Node.js 22+, built-ins only): greedy required-first scheduling, a conservative instrument-fault rule and an optional LLM reader for staff notes, with the same decisions.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_rust_pro_desc": "The earlier, search-based python-pro ported to Rust: the same planner, fault handling and LLM stages, at about 1/30 of the CPU time per decision.",
     "flow2": "Reference",
