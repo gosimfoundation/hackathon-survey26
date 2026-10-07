@@ -113,7 +113,7 @@ const words = computed(() => pick({
   downloadAll: 'Download all results (ZIP)', downloadAllProgress: 'Downloading {done}/{total}…',
   downloadAllDone: 'All results downloaded.', downloadAllPartial: 'Downloaded — some cards failed; see errors.txt in the ZIP.',
   downloadAllFailed: 'Could not download any card’s result. Try again, or download them individually below.',
-  api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Save your variables (for example OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) in Keys and network; your program calls the provider directly, and the model must be a name the provider supports. OBSERVER_API_URL is the platform's session interface, not a model endpoint.', callName: 'Model call name',
+  api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Save your variables (for example OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) in Keys and network; your program calls the provider directly, and the model must be a name the provider supports. OBSERVER_API_URL is the platform session interface, not a model endpoint.', callName: 'Model call name',
   shared: 'Organizer API', own: 'Team API', modelNames: 'Model names, separated by commas', endpoint: 'API endpoint', key: 'API key',
   apiName: 'API name', edit: 'Edit', limit: 'Daily token limit', saveKey: 'Save encrypted key', disable: 'Disable', enabled: 'Enabled', disabled: 'Disabled',
   evidence: 'Design award evidence', evidenceHelp: 'Describe the architecture and reproducible steps. This does not change performance scores.',
