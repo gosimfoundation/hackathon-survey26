@@ -20,6 +20,22 @@ _RUNTIME_ENV = {"OBSERVER_API_URL", "OBSERVER_RUN_TOKEN", "OBSERVER_RUN_ID", "OB
 # Team egress (project_platform.team_egress): the platform's own proxy settings.
 _PROXY_ENV = {"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "NO_PROXY", "no_proxy", "NODE_USE_ENV_PROXY"}
 _HOST_ENTRY = re.compile(r"^[a-z0-9.-]{1,253}:\d{1,3}(?:\.\d{1,3}){3}$")
+# The image filesystem is read-only, so ~/.local (pip --user), ~/.cache, the npm
+# cache/global prefix and a read-only CARGO_HOME fail during dependency install.
+# The build gets writable replacements inside its own disposable workspace, and the
+# run step reuses them only when the build created them. A HOME or CARGO_HOME that is
+# already writable, and an npm prefix the project chose, are left unchanged; PATH is
+# only appended to. No limit, mount or network setting changes.
+_WRITABLE_HOME = "/workspace/.observer-home"
+_WRITABLE_SETUP = (
+    'if [ ! -w "${HOME:-/}" ]; then HOME=' + _WRITABLE_HOME + '; export HOME; mkdir -p "$HOME"; fi\n'
+    'if [ -n "${CARGO_HOME:-}" ] && [ ! -w "$CARGO_HOME" ]; then CARGO_HOME="$HOME/.cargo"; export CARGO_HOME; '
+    'PATH="$PATH:$CARGO_HOME/bin"; fi\n'
+    'if [ -z "${NPM_CONFIG_PREFIX:-}${npm_config_prefix:-}" ]; then NPM_CONFIG_PREFIX="$HOME/.npm-global"; '
+    'export NPM_CONFIG_PREFIX; fi\n'
+    'PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin:${NPM_CONFIG_PREFIX:-$npm_config_prefix}/bin"; export PATH\n'
+)
+_RUN_SETUP = "if [ -d " + _WRITABLE_HOME + " ]; then\n" + _WRITABLE_SETUP + "fi\n"
 
 
 @dataclass(frozen=True)
@@ -96,7 +112,7 @@ class DockerWorkspace:
         if not self.manifest.build:
             return ""
         env = dict(self.manifest.environment)
-        script = "set -eu\n" + "\n".join(shlex.join(command) for command in self.manifest.build)
+        script = "set -eu\n" + _WRITABLE_SETUP + "\n".join(shlex.join(command) for command in self.manifest.build)
         command = self._command(name=self.name + "-build", environment=env) + [self.image, "-c", script]
         # Disk output is bounded by the container's file ulimit only for its own
         # files; drain build stdout/stderr through the bounded transport buffer.
@@ -160,7 +176,7 @@ class DockerWorkspace:
         env = {**dict(self.manifest.environment), **team_env, **run_environment}
         command = self._command(name=self.name, environment=env, network=self.network or "bridge", hosts=hosts,
                                 dns=dns)
-        command += [self.image, "-c", "exec " + shlex.join(self.manifest.run)]
+        command += [self.image, "-c", _RUN_SETUP + "exec " + shlex.join(self.manifest.run)]
         secrets = tuple(value for key, value in run_environment.items() if key.endswith(("TOKEN", "KEY")))
         if team is not None:
             secrets += tuple(team_env[name] for name in team["secrets"] if len(team_env[name]) >= 4)

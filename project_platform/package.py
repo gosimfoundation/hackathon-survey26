@@ -14,7 +14,6 @@ from .manifest import MANIFEST_NAME, ProjectError, relative_path
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 MAX_EXPANDED_BYTES = 100 * 1024 * 1024
 MAX_FILES = 10_000
-_ENV_TEMPLATES = {".env.example", ".env.sample", ".env.template"}
 
 
 @dataclass(frozen=True)
@@ -29,9 +28,6 @@ def _validate_source_path(path: str) -> str:
     parts = path.split("/")
     if any(part.casefold() == ".git" for part in parts):
         raise ProjectError("Do not include .git history in a project ZIP.")
-    for part in parts:
-        if (part == ".env" or part.startswith(".env.")) and part not in _ENV_TEMPLATES:
-            raise ProjectError("Remove .env credentials and enter API keys separately on the website.")
     return path
 
 

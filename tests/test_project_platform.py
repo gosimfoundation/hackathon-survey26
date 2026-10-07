@@ -51,11 +51,15 @@ def test_complete_non_python_project_round_trip(tmp_path):
 
 
 @pytest.mark.parametrize("path", ["../escape", "/absolute", "C:/drive", "src/../../escape",
-                                 "src\\escape", "src//agent", ".git/config",
-                                 ".env", "nested/.env.production"])
-def test_zip_rejects_unsafe_paths_and_credential_files(path):
+                                 "src\\escape", "src//agent", ".git/config"])
+def test_zip_rejects_unsafe_paths(path):
     with pytest.raises(ProjectError):
         read_project_zip(archive([(path, "not-a-real-key")]))
+
+
+def test_zip_accepts_env_files():
+    files = read_project_zip(archive([("p/.env", "K=v"), ("p/nested/.env.production", "K=v"), ("p/agent.py", "x")]))
+    assert [f.path for f in files] == [".env", "agent.py", "nested/.env.production"]
 
 
 def test_zip_rejects_symlinks():
@@ -90,13 +94,27 @@ def test_content_and_executable_bit_are_part_of_revision():
 @pytest.mark.parametrize("changes", [
     {"run": "python agent.py"}, {"run": []}, {"run": ["-c", "oops"]},
     {"working_directory": "../other"}, {"image": "--privileged"},
-    {"protocol": "unknown"}, {"environment": {"SUPABASE_SERVICE_ROLE_KEY": "secret"}},
-    {"environment": {"OPENAI_API_KEY": "secret"}}, {"environment": {"OBSERVER_RUN_ID": "another"}},
-    {"privileged": True},
+    {"protocol": "unknown"}, {"protocol": "observer-v1"}, {"environment": {"SUPABASE_SERVICE_ROLE_KEY": "secret"}},
+    {"environment": {"OBSERVER_RUN_ID": "another"}}, {"environment": {"GITHUB_TOKEN": "x"}},
+    {"schema_version": "observer-project-v2"}, {"schema_version": "v2"}, {"schema_version": True},
 ])
 def test_invalid_or_privileged_manifest_is_rejected(changes):
     with pytest.raises(ProjectError):
         ProjectManifest.parse(manifest(**changes))
+
+
+@pytest.mark.parametrize("changes", [
+    {"name": "my-agent", "entry_point": "agent.py", "privileged": True}, {"schema_version": "observer-project-v1.0"},
+    {"schema_version": "v1"}, {"schema_version": 1}, {"protocol": "jsonl"}, {"protocol": "JSONL-v4"},
+    {"protocol": "jsonl-v1"}, {"environment": {"OPENAI_API_KEY": "own-key", "DB_PASSWORD": "x"}},
+])
+def test_extra_fields_and_near_miss_labels_are_accepted(changes):
+    parsed = ProjectManifest.parse(manifest(**changes))
+    canonical = parsed.as_dict()
+    assert set(canonical) == {"schema_version", "protocol", "image", "run", "build", "working_directory", "environment"}
+    assert canonical["schema_version"] == "observer-project-v1" and canonical["protocol"] == "jsonl-v2"
+    if "environment" not in changes:
+        assert parsed.digest == ProjectManifest.parse(manifest()).digest
 
 
 def test_manifest_digest_is_canonical_and_immutable():

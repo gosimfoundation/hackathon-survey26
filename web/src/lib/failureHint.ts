@@ -22,15 +22,10 @@ const RULES: Rule[] = [
     en: 'Your program could not find a model key. Save OPENAI_API_KEY (and its _BASE_URL / _MODEL) under Participate → Keys and network, then try again.',
     zh: '程序没找到模型密钥：请在「参赛 → 密钥与网络」保存 OPENAI_API_KEY 等变量（以及对应的 _BASE_URL、_MODEL）后再试。',
     link: KEYS }],
-  [/Credentials and platform settings must not be placed|Remove \.env credentials/i, {
-    id: 'secrets_in_package',
-    en: 'The package contains keys or a .env file. Remove them from the project and observer.project.json, and save keys under Participate → Keys and network instead.',
-    zh: '项目里带了密钥或 .env 文件：请从项目和 observer.project.json 中删掉，改在「参赛 → 密钥与网络」中保存。',
-    link: KEYS }],
-  [/Unknown project manifest fields|schema_version must be|Project paths cannot be absolute|environment must be an object|build must be|run contains an invalid|run must be|Add observer\.project\.json|AssertionError: observer\.project\.json/i, {
+  [/platform settings must not be placed|schema_version must be|Project paths cannot be absolute|environment must be an object|build must be|run contains an invalid|run must be|Add observer\.project\.json|AssertionError: observer\.project\.json/i, {
     id: 'manifest',
-    en: 'observer.project.json is not valid. Start from the one in an official example (schema_version observer-project-v1, only the documented fields, relative paths).',
-    zh: 'observer.project.json 格式不对：建议从官方示例复制一份再改（schema_version 为 observer-project-v1，只用文档里的字段，路径用相对路径）。',
+    en: 'observer.project.json is not valid. Start from the one in an official example (schema_version observer-project-v1, relative paths).',
+    zh: 'observer.project.json 格式不对：建议从官方示例复制一份再改（schema_version 为 observer-project-v1，路径用相对路径）。',
     link: EXAMPLES }],
   [/No space left on device|Errno 28|ENOSPC/i, {
     id: 'deps_too_large',
@@ -39,8 +34,8 @@ const RULES: Rule[] = [
     link: DEPS }],
   [/Read-only file system|os error 30|EROFS|\/\.npm\/_logs|not owned or is not writable/i, {
     id: 'deps_read_only',
-    en: 'Dependency install failed: system folders are read-only. Install into the project folder (e.g. pip install --target .deps, with PYTHONPATH=/workspace/.deps; for Rust set CARGO_HOME, for npm set NPM_CONFIG_CACHE).',
-    zh: '依赖安装失败：系统目录是只读的。请把依赖装到项目目录里（如 pip install --target .deps 并设置 PYTHONPATH=/workspace/.deps；Rust 设置 CARGO_HOME，npm 设置 NPM_CONFIG_CACHE）。',
+    en: 'A write to a read-only system folder failed. Install dependencies in the "build" steps of observer.project.json (HOME and the pip, npm and cargo caches are writable there), and while running write files only under /workspace or /tmp.',
+    zh: '写入只读的系统目录失败：请在 observer.project.json 的 build 步骤中安装依赖（构建时 HOME 以及 pip、npm、cargo 缓存都可写），运行时只往 /workspace 或 /tmp 写文件。',
     link: DEPS }],
   [/ModuleNotFoundError|No module named|Cannot find module|tsc: not found|command not found|: not found\b|Could not open requirements file|could not compile|error\[E\d+\]|npm (?:ERR|error)|ResolutionImpossible|No matching distribution/i, {
     id: 'build_failed',

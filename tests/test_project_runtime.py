@@ -170,6 +170,25 @@ def test_container_build_can_write_private_workspace_with_capabilities_dropped(t
     assert (root/'built.txt').read_text()=='compiled'
 
 
+@pytest.mark.skipif(not os.environ.get('OBSERVER_TEST_PYTHON_IMAGE'),reason='Explicit container image required')
+def test_build_gets_a_writable_home_that_the_run_step_reuses(tmp_path):
+    from project_platform.docker_runtime import DockerWorkspace
+    from project_platform.manifest import ProjectManifest
+    root=tmp_path/'private-project';root.mkdir(mode=0o700)
+    manifest=ProjectManifest.parse({'schema_version':'observer-project-v1','image':os.environ['OBSERVER_TEST_PYTHON_IMAGE'],
+      'build':[['sh','-c','mkdir -p "$HOME/.local/lib" "$CARGO_HOME/registry" && echo ok > "$HOME/.local/lib/x"']],
+      'environment':{'CARGO_HOME':'/usr/local/cargo'},'run':['python3','agent.py']})
+    with DockerWorkspace(root,manifest,manifest.image) as runtime:
+        runtime.build()
+    assert (root/'.observer-home/.local/lib/x').read_text()=='ok\n'
+    assert (root/'.observer-home/.cargo/registry').is_dir()
+
+
+def test_run_step_keeps_its_environment_without_a_build():
+    from project_platform.docker_runtime import _RUN_SETUP
+    assert _RUN_SETUP.startswith('if [ -d /workspace/.observer-home ]; then')
+
+
 def test_agent_log_is_the_scrubbed_bounded_participant_output():
     from project_platform.diagnostics import AGENT_LOG_LIMIT, agent_log
     token='obs_'+RUN+'.'+'x'*43

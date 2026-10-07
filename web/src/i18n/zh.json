@@ -2268,7 +2268,7 @@
       },
       {
         "q": "Python 智能体可以使用 numpy 等第三方库吗？",
-        "a": "可以。请在项目根目录的 requirements.txt 中列出依赖，并在 observer.project.json 的 build 中写明安装命令，平台在评测开始前的构建步骤中执行（构建时可以联网，耗时不计入每张卡的 900 秒）。评测容器的系统目录只读，请把依赖安装到项目目录内，例如 \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]]，并在 \"environment\" 中设置 \"PYTHONPATH\": \"/workspace/.deps\"；直接执行 pip install -r requirements.txt 会因目录只读而失败。只放 requirements.txt 而不写 build，依赖不会被自动安装。智能体运行期间除模型 API 外无法访问网络，运行时下载或安装依赖不会成功。其他语言同理，例如 npm ci、cargo build。建议先在「练习赛」中提交一次，确认构建和运行正常。"
+        "a": "可以。请在项目根目录的 requirements.txt 中列出依赖，并在 observer.project.json 的 build 中写明安装命令，平台在评测开始前的构建步骤中执行（构建时可以联网，耗时不计入每张卡的 900 秒）。例如 \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"-r\", \"requirements.txt\"]]。评测容器的系统目录只读，但构建时 HOME 以及 pip、npm、cargo 的缓存会指向项目内的可写目录，所以 pip install（包括 --user）、npm ci、cargo build 都可以照常使用；安装到项目目录（--target .deps 并设置 \"PYTHONPATH\": \"/workspace/.deps\"）的写法也仍然可用。只放 requirements.txt 而不写 build，依赖不会被自动安装。智能体运行期间除模型 API 外无法访问网络，运行时下载或安装依赖不会成功。其他语言同理，例如 npm ci、cargo build。建议先在「练习赛」中提交一次，确认构建和运行正常。"
       },
       {
         "q": "智能体可以同时使用多个模型或多个服务商吗？",
