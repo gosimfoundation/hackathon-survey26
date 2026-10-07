@@ -2112,7 +2112,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website "
                     "(https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
         epilog="Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, "
-               "7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: " + SITE + "/cli")
+               "7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. "
+               "Sophon: an unscored easter-egg problem beyond the main track (see the guide's Sophon section). Guide: " + SITE + "/cli")
     p.add_argument("--version", action="version", version="survey26 " + __version__)
     sub = p.add_subparsers(dest="group", metavar="COMMAND")
 
