@@ -207,3 +207,11 @@ def test_agent_log_is_the_scrubbed_bounded_participant_output():
     value=agent_log('build\n',''.join(f'line {i:07d}\n' for i in range(400000)),(token,))
     assert len(value.encode())<=AGENT_LOG_LIMIT+64 and value.endswith('line 0399999\n')
     assert 'line 0000000' not in value and value.startswith('[platform] earlier output was truncated\n')
+
+
+def test_default_build_time_and_unpacked_size_limits():
+    from project_platform.docker_runtime import RuntimeLimits
+    from project_platform.package import MAX_ARCHIVE_BYTES, MAX_EXPANDED_BYTES
+    limits=RuntimeLimits()
+    assert limits.build_seconds==1200 and limits.cpus==2.0 and limits.memory_mb==2048 and limits.processes==128
+    assert MAX_ARCHIVE_BYTES==50*1024*1024 and MAX_EXPANDED_BYTES==300*1024*1024

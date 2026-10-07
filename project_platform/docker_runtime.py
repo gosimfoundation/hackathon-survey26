@@ -43,7 +43,7 @@ class RuntimeLimits:
     memory_mb: int = 2048
     cpus: float = 2.0
     processes: int = 128
-    build_seconds: int = 600
+    build_seconds: int = 1200
 
     def __post_init__(self):
         if not (128 <= self.memory_mb <= 8192 and 0.25 <= self.cpus <= 4 and
