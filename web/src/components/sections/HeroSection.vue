@@ -11,10 +11,10 @@ import HeroCredits from './HeroCredits.vue'
 import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
-const { current, next, nextStart, nextStartsAt, usingFallback, countdown, loaded } = usePhaseClock()
+const { current, next, nextStart, nextStartsAt, postDeadline, usingFallback, countdown, loaded } = usePhaseClock()
 const heroTitleLines = computed(() => t('hero.titleLines') as string[])
 const pad = (n: number) => String(n).padStart(2, '0')
-const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
+const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : postDeadline.value ? pick('The online competition has closed · Up to 10 more versions per team may still be submitted, and the final version chosen, until Oct 8 05:59:59 (UTC+8)', '正式赛已截止 · 截止后每队仍可提交最多 10 个版本并选定送测版本，至 10 月 8 日 05:59:59（UTC+8）') : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
 const parts = computed(() => [
   { v: String(countdown.value.days), l: t('phase_clock.days') },
   { v: pad(countdown.value.hours), l: t('phase_clock.hours') },

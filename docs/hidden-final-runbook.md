@@ -19,7 +19,7 @@
 
 v4 卡（含观测请求）只能在 colocated 模式下运行：`final-hidden` 已设 `colocated=true`、`runtime_seconds=900`、`board_layout=cards_overall`，4 张卡都有评测包（与 A–D 同一批构建，含观测请求文件）。预览输出里的 `target phase:` 一行会再核对一次。
 
-## 2 · 赛前检查（10-07 延长期结束前完成）
+## 2 · 赛前检查（10-07 送测窗口结束前完成）
 
 1. 迁移已部署：`python3 scripts/deploy-observer-backend.py` 输出的 `pending` 为空。
 2. 阶段配置：`python3 scripts/configure-v4-phases.py --status`，确认 `final-hidden` 为 sealed、colocated、900 s、4 张隐藏卡、`leaderboard_mode=hidden`。
@@ -27,7 +27,7 @@ v4 卡（含观测请求）只能在 colocated 模式下运行：`final-hidden` 
    `python3 scripts/run-hidden-final.py --team <测试队 slug> --before-freeze`（预览）→ 加 `--apply` 实跑 → `--status` 看进度 → `--results` 看结果。测试队是隐藏队伍，不参与排名，公布后普通选手在榜上也看不到它。
 4. 模型密钥：预览输出会标出仍为「不保存（relay）」或「加密保存但没有密钥」的队伍。规则要求调用模型的队伍在截止前改为加密保存；截止前可再发一次提醒。
 
-> **2026-10-07 截止延长**：`online.ends_at` 已从 10-07 15:59:59 UTC 改为 **10-07 21:59:59 UTC**（北京时间 10-08 05:59:59），最终版本同时在该时刻锁定。延长期（15:59:59 UTC 之后）每队最多再提交 5 个新版本（数据库触发器 `observer_revision_extension_cap`）；最终版本可选本队任意已确认版本。21:59:59 UTC 时只发生冻结、最终版本锁定、正式赛关闭，**不会自动启动 E–H**。
+> **2026-10-07 截止后送测窗口**：对外截止时间仍是 10-07 15:59:59 UTC（北京时间 23:59:59）。`online.ends_at` 设为 **10-07 21:59:59 UTC**（北京时间 10-08 05:59:59），即送测窗口结束：此前每队截止后最多再提交 10 个版本（数据库触发器 `observer_revision_extension_cap`），可评测并从任意已确认版本中选定最终版本；之后最终版本锁定、正式赛关闭。21:59:59 UTC 时只发生冻结、最终版本锁定、正式赛关闭，**不会自动启动 E–H**。
 5. runner 分钟：预览输出的 `runner capacity:` 一行显示本月所有启用 runner 组织剩余分钟总数，下面逐个列出每个组织的剩余分钟（已用/上限）和其已分配队伍最多需要的分钟；`! AGENTIC-OBSERVER26-runner-N: needs …` 列出分钟不够的组织。`public pool:` 一行说明公开仓库 runner 池是否承接本阶段的 run（不耗分钟）以及大约能承接多少分钟。处理方法见第 4 节。
 
 ## 3 · 截止后执行（10-07 21:59:59 UTC 之后，且只在主办方明确指示后手动执行）
