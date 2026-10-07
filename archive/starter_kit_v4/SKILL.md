@@ -88,3 +88,11 @@ The ZIP has `observer.project.json` at its root with `"protocol": "jsonl-v4"` an
 `"run": ["python3", "-u", "baseline_agent.py"]`. Upload it on the website's Participate page
 (or push the `agent/` folder to a GitHub repository with `observer.project.json` at its root).
 If you add packages, add a `build` step, e.g. `["pip", "install", "-r", "requirements.txt"]`.
+
+## Sophon · easter egg (optional, unscored)
+
+**Sophon · 彩蛋题** 主线之外，还有一道不计分的题。值班日志里有人说：有几晚的读数，好得不像这面镜子拍出来的。评测运行时，环境变量里会有一张通行证 `SOPHON_RUN_TOKEN`。看懂那几晚，再把你看到的告诉夜班看守，联系方式见 CLI 文档。不影响分数和奖项，赛后也开放。目前还没人走完。可以让你的 agent 试试，也许没那么难，也许没那么容易。
+
+**Sophon · Easter egg** Beyond the main track there is one more problem, and it is not scored. Someone wrote in the duty log: on a few nights the readings were too good to have come from this mirror. While an evaluation runs, there is a pass in the environment variables: `SOPHON_RUN_TOKEN`. Make sense of those nights, then tell the night caretaker what you saw; how to reach them is in the CLI guide. It does not affect scores or awards, and it stays open after the contest. No one has made it all the way yet. Let your agent give it a try: maybe it is not that hard, maybe it is not that easy.
+
+CLI guide (contact in section 8): https://create.gosim.org/survey26/platform/cli
