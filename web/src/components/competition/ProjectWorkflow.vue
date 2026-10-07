@@ -12,6 +12,8 @@ import TeamEnvironment from './TeamEnvironment.vue'
 import KimiPlanPanel from '../dashboard/KimiPlanPanel.vue'
 import ApiTokensPanel from '../dashboard/ApiTokensPanel.vue'
 import RunLogs from './RunLogs.vue'
+import FailureHintLine from './FailureHintLine.vue'
+import { failureHint } from '../../lib/failureHint'
 import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
@@ -496,6 +498,12 @@ function withdraw(revision_id: string) {
   void action(async () => { await portal('withdraw', { revision_id }); if (review.value?.id === revision_id) review.value = null },
     words.value.withdrawn, 'withdraw:' + revision_id)
 }
+// Failed versions get a friendly next step under their error; withdrawn ones need none.
+function revisionHint(r: { status: string; error?: string | null; archived_at?: string | null }) {
+  return r.status === 'failed' && r.error && !r.archived_at && !/^Withdrawn/.test(r.error) ? failureHint({ texts: [r.error] }) : null
+}
+const runFailed = (run: { status: string; score_summary?: { termination_reason?: string } | null }) =>
+  run.status === 'failed' || run.score_summary?.termination_reason === 'agent_error'
 function toggleLogs(key: string) { openLogs.value = openLogs.value === key ? '' : key }
 function chooseMode() {
   const mode = modeChoice.value, hadKey = !!savedModel.value
@@ -874,7 +882,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 </span>
               </div>
               <p v-if="v.r.error && !v.r.archived_at" class="errors cw-sub" role="status" data-testid="revision-error">{{ revisionErrorText(v.r.error, locale) }}<template v-if="v.r.status === 'failed' && v.r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></p>
-              <div v-if="openLogs === 'rev:'+v.r.id" class="cw-sub"><RunLogs :target="{ revision_id: v.r.id, test_run_id: v.r.public_test?.run_id }" :label="v.title + ' · ' + when(v.r.created_at)" :file-stem="'public-test-' + v.title" :statuses="statuses" @close="openLogs = ''" /></div>
+              <FailureHintLine v-if="revisionHint(v.r)" :hint="revisionHint(v.r)!" class="cw-sub" />
+              <div v-if="openLogs === 'rev:'+v.r.id" class="cw-sub"><RunLogs :target="{ revision_id: v.r.id, test_run_id: v.r.public_test?.run_id }" :failed="v.r.status === 'failed'" :reason="v.r.error" :label="v.title + ' · ' + when(v.r.created_at)" :file-stem="'public-test-' + v.title" :statuses="statuses" @close="openLogs = ''" /></div>
               <section v-if="review?.id === v.r.id" tabindex="-1" class="cw-sub cw-review" data-testid="project-review" aria-live="polite">
                 <div class="cw-row-head"><h3>{{ words.review }}</h3><p v-if="review.public_test.passed" class="pill ok">{{ words.testPassed }}</p>
                   <button type="button" class="cw-link cw-grow-left" @click="review = null">{{ words.close }}</button></div>
@@ -925,7 +934,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 </div>
               </div>
               <template v-for="run in b.observer_runs" :key="'log'+run.id">
-                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
               </template>
             </article>
           </template>
@@ -975,7 +984,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
                 <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
                 <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
-                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
               </div>
             </div>
           </article>
@@ -1140,11 +1149,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span class="meta">{{ when(r.created_at) }}</span>
             <span v-if="r.source_ref || r.source_subdir" class="meta break-all" data-testid="revision-source">{{ [r.source_ref, r.source_subdir].filter(Boolean).join(' · ') }}</span>
             <span v-if="r.error && !r.archived_at" class="errors" role="status" data-testid="revision-error">{{ revisionErrorText(r.error, locale) }}<template v-if="r.status === 'failed' && r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></span>
+            <FailureHintLine v-if="revisionHint(r)" :hint="revisionHint(r)!" />
             <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
             <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" :aria-busy="pending === 'withdraw:'+r.id" @click="withdraw(r.id)">{{ pending === 'withdraw:'+r.id ? words.working : words.withdraw }}</button>
             <button type="button" class="btn sm" :aria-expanded="openLogs === 'rev:'+r.id" data-testid="revision-logs" @click="toggleLogs('rev:'+r.id)">{{ words.logs }}</button>
-            <RunLogs v-if="openLogs === 'rev:'+r.id" :target="{ revision_id: r.id, test_run_id: r.public_test?.run_id }" :label="p.title + ' · ' + when(r.created_at)" :file-stem="'public-test-' + p.title" :statuses="statuses" @close="openLogs = ''" />
+            <RunLogs v-if="openLogs === 'rev:'+r.id" :target="{ revision_id: r.id, test_run_id: r.public_test?.run_id }" :failed="r.status === 'failed'" :reason="r.error" :label="p.title + ' · ' + when(r.created_at)" :file-stem="'public-test-' + p.title" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         <button v-if="hiddenCount" type="button" class="log-link mt-4" @click="showWithdrawn = !showWithdrawn">{{ showWithdrawn ? words.hideWithdrawn : words.showWithdrawn + ' (' + hiddenCount + ')' }}</button>
@@ -1257,7 +1267,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
             <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
             <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
-            <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+            <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         </template>
