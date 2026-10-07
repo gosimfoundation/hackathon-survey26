@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canChooseFinal, canClearFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../src/lib/projectEvaluation.ts'
+import { canChooseFinal, canClearFinal, canFreezeFinal, canWithdraw, countedEvaluations, finalRole, finalVersionFor, recentDuplicate, visibleProjects, withdrawnCount } from '../src/lib/projectEvaluation.ts'
 
 const batches = [
   { revision_id: 'a', phase_id: 'p', status: 'scored', quota_refunded: false },
@@ -64,6 +64,13 @@ test('the final version: chosen or default, changeable until the deadline', () =
   assert.ok(!canChooseFinal({ ...chosen, locked: true }, 'r1', before))
   assert.ok(canClearFinal(chosen, before) && !canClearFinal(defaulted, before) && !canClearFinal(chosen, after))
   assert.ok(!canChooseFinal(null, 'r1', before) && !canClearFinal(null, before))
+
+  // 选定冻结: captain only, explicit choice only, before the deadline; once frozen nothing changes.
+  assert.ok(canFreezeFinal({ ...chosen, is_captain: true }, before))
+  assert.ok(!canFreezeFinal(chosen, before) && !canFreezeFinal({ ...defaulted, is_captain: true }, before))
+  assert.ok(!canFreezeFinal({ ...chosen, is_captain: true }, after))
+  const frozen = { ...chosen, is_captain: true, frozen_at: '2026-10-06T00:00:00Z' }
+  assert.ok(!canFreezeFinal(frozen, before) && !canChooseFinal(frozen, 'r1', before) && !canClearFinal(frozen, before))
 })
 
 test('a self-check shows the mean and range per card and overall over its scored evaluations', async () => {

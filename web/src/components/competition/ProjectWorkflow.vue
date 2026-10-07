@@ -9,6 +9,7 @@ import { inspectSourceNames, zipEntryNames, ZipWithoutCodeError } from '../../li
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
+import FinalFreeze from './FinalFreeze.vue'
 import KimiPlanPanel from '../dashboard/KimiPlanPanel.vue'
 import ApiTokensPanel from '../dashboard/ApiTokensPanel.vue'
 import RunLogs from './RunLogs.vue'
@@ -320,6 +321,10 @@ function errorMessage(e: unknown) {
     team_domain_not_public: t('submit.team_env.domain_not_public'),
     invalid_egress_route: pick('Choose direct, China route or overseas route.', '请选择直连、回国代理或海外代理。'),
     egress_route_unavailable: pick('Egress routes are not offered right now; evaluations connect directly.', '出网线路暂未开放，评测直接连接。'),
+    final_version_frozen: pick('Your team has frozen its final version; it can no longer be changed. Contact the organizers if this is a mistake.', '本队已选定冻结送测版本，不能再更改。如有误操作请联系主办方。'),
+    final_version_not_chosen: pick('Choose a version with “Set as final version” before freezing.', '请先「设为最终版本」明确选择一个版本，再选定冻结。'),
+    final_version_changed: pick('The final version was just changed by a teammate. Review it and try again.', '送测版本刚被队友修改，请确认后再试。'),
+    captain_required: pick('Only the team captain can freeze the final version.', '只有队长可以选定冻结送测版本。'),
     final_version_locked: pick('The online phase has ended; the final version can no longer change.', '正式赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
@@ -498,6 +503,21 @@ function setFinal(revision_id: string | null) {
   if (!final || (revision_id === null && !window.confirm(words.value.finalClearConfirm))) return
   void action(async () => { await portal('set_final_version', { phase_id: final.phase_id, revision_id }) },
     revision_id ? words.value.finalSaved : words.value.finalCleared, 'final:' + (revision_id ?? 'clear'))
+}
+// 选定冻结: the chosen version's creation time and best formal score shown in the confirmation dialog.
+const freezeInfo = computed(() => {
+  const id = finalVersion.value?.chosen_revision_id
+  const rev = id ? (data.value?.projects ?? []).flatMap(p => p.observer_revisions).find(r => r.id === id) : null
+  const scores = (data.value?.batches ?? []).filter(b => b.revision_id === id && b.phase_id === finalVersion.value?.phase_id
+    && b.status === 'scored' && b.score != null).map(b => b.score as number)
+  return { label: id ? `${titles.value.get(id) ?? ''} · ${id.slice(0, 8)}` : '', createdAt: rev?.created_at ?? null,
+    bestScore: scores.length ? Math.max(...scores) : (finalVersion.value?.best_revision_id === id ? finalVersion.value?.best_score ?? null : null) }
+})
+function freezeFinal(revision_id: string) {
+  const final = finalVersion.value
+  if (!final) return
+  void action(async () => { await portal('freeze_final_version', { phase_id: final.phase_id, revision_id }) },
+    pick('Final version frozen.', '送测版本已冻结。'), 'freeze:' + revision_id)
 }
 function withdraw(revision_id: string) {
   if (!window.confirm(words.value.withdrawConfirm)) return
@@ -1020,6 +1040,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
             <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
           </p>
+          <FinalFreeze :final="finalVersion" :label="freezeInfo.label" :created-at="freezeInfo.createdAt" :best-score="freezeInfo.bestScore" :busy="busy" @freeze="freezeFinal" />
           <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
@@ -1233,6 +1254,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
           <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
         </p>
+        <FinalFreeze :final="finalVersion" :label="freezeInfo.label" :created-at="freezeInfo.createdAt" :best-score="freezeInfo.bestScore" :busy="busy" @freeze="freezeFinal" />
         <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
           <span>{{ v.title }}</span>
           <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>

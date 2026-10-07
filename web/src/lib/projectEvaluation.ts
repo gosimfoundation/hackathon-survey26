@@ -52,6 +52,10 @@ export type FinalVersion = {
   revision_id: string | null; source: 'chosen' | 'best' | null
   chosen_revision_id: string | null; chosen_by: string | null; chosen_at: string | null
   best_batch_id: string | null; best_revision_id: string | null; best_score: number | null
+  /** 选定冻结: set once the captain froze the explicit choice; the choice can then no longer change. */
+  frozen_at?: string | null; frozen_by?: string | null
+  /** The caller is the team captain; the team name is typed to confirm a freeze. */
+  is_captain?: boolean; team_name?: string | null
 }
 
 /** The final version shown for the selected phase: its own entry, else the first one. */
@@ -64,14 +68,23 @@ export function finalRole(final: FinalVersion | null, revisionId: string): 'chos
   return final && final.revision_id === revisionId ? final.source : null
 }
 
+/** The choice is still open: before the deadline and not frozen by the captain. */
+export function finalOpen(final: FinalVersion | null, now = Date.now()): final is FinalVersion {
+  return !!final && !final.locked && !(final.deadline && Date.parse(final.deadline) <= now) && !final.frozen_at
+}
+
 /** A team can still change its choice: before the deadline, never for the version it already chose. */
 export function canChooseFinal(final: FinalVersion | null, revisionId: string, now = Date.now()): boolean {
-  if (!final || final.locked || (final.deadline && Date.parse(final.deadline) <= now)) return false
-  return final.chosen_revision_id !== revisionId
+  return finalOpen(final, now) && final.chosen_revision_id !== revisionId
 }
 
 export function canClearFinal(final: FinalVersion | null, now = Date.now()): boolean {
-  return !!final && !final.locked && !(final.deadline && Date.parse(final.deadline) <= now) && final.chosen_revision_id != null
+  return finalOpen(final, now) && final.chosen_revision_id != null
+}
+
+/** 选定冻结 is offered to the captain only, for an explicit choice (never the default), while the choice is open. */
+export function canFreezeFinal(final: FinalVersion | null, now = Date.now()): boolean {
+  return finalOpen(final, now) && !!final.is_captain && final.source === 'chosen' && !!final.chosen_revision_id
 }
 
 /** Evaluations in one self-check ("evaluate 3 times and average", observer_create_repeat_batches); the hidden final averages as many. */
