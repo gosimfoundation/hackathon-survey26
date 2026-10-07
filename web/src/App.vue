@@ -15,6 +15,7 @@ import FriendsFab from './components/layout/FriendsFab.vue'
 import PinnedAnnouncementDialog from './components/layout/PinnedAnnouncementDialog.vue'
 import KimiPlanDialog from './components/layout/KimiPlanDialog.vue'
 import QuotaResetDialog from './components/layout/QuotaResetDialog.vue'
+import FinalChoiceReminder from './components/layout/FinalChoiceReminder.vue'
 import TeamRequestDialog from './components/layout/TeamRequestDialog.vue'
 import ProfileCardDialog from './components/ProfileCardDialog.vue'
 import { useDeepLink } from './composables/useDeepLink'
@@ -49,6 +50,7 @@ useDeepLink()
   <PinnedAnnouncementDialog />
   <KimiPlanDialog />
   <QuotaResetDialog />
+  <FinalChoiceReminder />
   <TeamRequestDialog />
   <ProfileCardDialog />
 </template>
