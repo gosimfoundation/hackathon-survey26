@@ -18,7 +18,7 @@ import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition, entryPhase } from '../../stores/competition'
-import { entryPhaseIds, offersExtraSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
+import { entryPhaseIds, offersExtraSwitch, offersFunSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
 import { tabFromQuery } from '../../lib/deepLink'
 import { activeEvaluations, canCancel, canStop, stopConfirmKey, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
@@ -225,7 +225,7 @@ const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === p
 // below follow it; otherwise every evaluation is listed as before. A chosen phase that has ended (online after
 // its deadline) is read-only: no phase is selected, so nothing can start, while its records, logs, downloads
 // and the locked final version stay visible.
-const phaseSwitch = computed(() => offersPracticeSwitch(competition) || offersExtraSwitch(competition))
+const phaseSwitch = computed(() => offersPracticeSwitch(competition) || offersExtraSwitch(competition) || offersFunSwitch(competition))
 function followEntry() {
   const wanted = entryPhase.value
   if (!phaseSwitch.value || !wanted) return

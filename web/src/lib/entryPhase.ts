@@ -2,10 +2,11 @@
 // practice_phase_id in competition mode). The 参赛 page evaluates in the online phase by default; a person can
 // switch to practice, and the choice is remembered per user in this browser. Organizers may also offer an optional
 // extra (unscored) phase, answered as extra_phase_id in either mode; it adds a third choice, 'extra'.
+// Free Play (娱乐赛), answered as fun_phase_id once it has started (after the online phase closes), adds 'fun'.
 import type { StorageLike } from './quest'
 
-export type EntryChoice = 'online' | 'practice' | 'extra'
-export interface CompetitionState { mode: 'practice' | 'competition'; phaseId: string | null; betaPhaseId: string | null; projectPhaseId: string | null; practicePhaseId: string | null; extraPhaseId: string | null }
+export type EntryChoice = 'online' | 'practice' | 'extra' | 'fun'
+export interface CompetitionState { mode: 'practice' | 'competition'; phaseId: string | null; betaPhaseId: string | null; projectPhaseId: string | null; practicePhaseId: string | null; extraPhaseId: string | null; funPhaseId: string | null }
 
 export const entryStorageKey = (userId: string) => `survey26.entry.v1.${userId}`
 
@@ -18,7 +19,9 @@ export function parseCompetition(data: unknown): Omit<CompetitionState, 'betaPha
     // Only meaningful next to the competition; practice mode keeps using project_phase_id.
     practicePhaseId: mode === 'competition' ? id(d.practice_phase_id) : null,
     // Optional extra (unscored) phase, in either mode.
-    extraPhaseId: id(d.extra_phase_id) }
+    extraPhaseId: id(d.extra_phase_id),
+    // Free Play (unscored), once it has started.
+    funPhaseId: id(d.fun_phase_id) }
 }
 
 /** Whether the 正式赛 / 练习赛 switch is offered. */
@@ -27,20 +30,23 @@ export const offersPracticeSwitch = (s: CompetitionState) => s.mode === 'competi
 /** Whether the extra (unscored) phase is offered as a third choice. */
 export const offersExtraSwitch = (s: Pick<CompetitionState, 'extraPhaseId'>) => !!s.extraPhaseId
 
+/** Whether Free Play is offered as a choice. */
+export const offersFunSwitch = (s: Pick<CompetitionState, 'funPhaseId'>) => !!s.funPhaseId
+
 /** A remembered 'extra' counts only while the extra phase is offered; otherwise online, as before. */
-export function readEntryChoice(storage: StorageLike | null, userId: string | null | undefined, extraOffered = false): EntryChoice {
+export function readEntryChoice(storage: StorageLike | null, userId: string | null | undefined, extraOffered = false, funOffered = false): EntryChoice {
   if (!userId) return 'online'
   try {
     const v = storage?.getItem(entryStorageKey(userId))
-    return v === 'practice' ? 'practice' : v === 'extra' && extraOffered ? 'extra' : 'online'
+    return v === 'practice' ? 'practice' : v === 'extra' && extraOffered ? 'extra' : v === 'fun' && funOffered ? 'fun' : 'online'
   } catch { return 'online' }
 }
 
-/** Where the page starts: once the online phase has ended, practice unless the offered extra phase was remembered
- * (online stays viewable, read-only). */
-export function initialEntryChoice(storage: StorageLike | null, userId: string | null | undefined, onlineEnded: boolean, extraOffered = false): EntryChoice {
-  const remembered = readEntryChoice(storage, userId, extraOffered)
-  return onlineEnded && remembered !== 'extra' ? 'practice' : remembered
+/** Where the page starts: once the online phase has ended, Free Play when offered (else practice), unless another
+ * open choice was remembered (online stays viewable, read-only). */
+export function initialEntryChoice(storage: StorageLike | null, userId: string | null | undefined, onlineEnded: boolean, extraOffered = false, funOffered = false): EntryChoice {
+  const remembered = readEntryChoice(storage, userId, extraOffered, funOffered)
+  return onlineEnded && remembered === 'online' ? (funOffered ? 'fun' : 'practice') : remembered
 }
 
 export function rememberEntryChoice(storage: StorageLike | null, userId: string | null | undefined, choice: EntryChoice) {
@@ -51,6 +57,7 @@ export function rememberEntryChoice(storage: StorageLike | null, userId: string 
 /** The phase the evaluate button binds to first. Practice mode is unchanged (beta entry, project board, global). */
 export function entryPhaseId(s: CompetitionState, choice: EntryChoice): string | null {
   if (offersExtraSwitch(s) && choice === 'extra') return s.extraPhaseId
+  if (offersFunSwitch(s) && choice === 'fun') return s.funPhaseId
   if (offersPracticeSwitch(s) && choice === 'practice') return s.practicePhaseId
   // A team-restricted extra phase is also its team's beta entry (my_observer_phase); it is reached through the
   // extra choice only, so the other choices bind as for everyone else.
@@ -61,5 +68,5 @@ export function entryPhaseId(s: CompetitionState, choice: EntryChoice): string |
 
 /** Phases the workspace may evaluate in (the workflow still keeps only the open ones). */
 export function entryPhaseIds(s: CompetitionState): string[] {
-  return [s.phaseId, s.betaPhaseId, s.projectPhaseId, s.practicePhaseId, s.extraPhaseId].filter((x): x is string => !!x)
+  return [s.phaseId, s.betaPhaseId, s.projectPhaseId, s.practicePhaseId, s.extraPhaseId, s.funPhaseId].filter((x): x is string => !!x)
 }

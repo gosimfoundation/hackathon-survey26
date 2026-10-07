@@ -40,6 +40,19 @@ select count(*) from observer_batches where phase_id='049d6029-343d-4d16-80d5-94
 
 为 0 后再开始。
 
+**娱乐赛（`after-party`）**：10-07 21:59:59 UTC 起开放、无结束时间，任务卡同正式赛（A–D、A1–D1），不计分、不进决赛，也不改变正式赛的最终版本和榜单（`counts_for_final=false`，最终版本和决赛只看 `online`）。它的评测与决赛共用 runner（各组织分钟数、公开池），决赛 `--apply` 前先暂停，结果公布后再恢复：
+
+```sql
+-- 暂停：不能再发起娱乐赛评测；排队中的娱乐赛 run 不再派发（保持排队），正在运行的照常跑完；榜单和记录照常可看
+update observer_phase_settings set projects_enabled=false where phase_id=(select id from phases where slug='after-party');
+-- 恢复
+update observer_phase_settings set projects_enabled=true where phase_id=(select id from phases where slug='after-party');
+-- 还在跑的娱乐赛评测
+select count(*) from observer_batches where phase_id=(select id from phases where slug='after-party') and status in ('queued','running');
+```
+
+公开池单独开关：`select public.observer_set_public_pool_phase('after-party', false);`（恢复传 `true`）。
+
 ```bash
 # 1. 预览：每队的最终版本、来源（chosen/best）、模型方式、估算
 python3 scripts/run-hidden-final.py

@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadSuperBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_OLD_TAB, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
-import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
+import { FUN_SLUG, LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { competition, loadCompetition } from '../stores/competition'
@@ -37,7 +37,9 @@ const visiblePhases = computed(() => {
   // Main boards first (正式赛, 练习赛, the final); the debug board (slug 'practice') goes last, set apart.
   const main = LEADERBOARD_PAGE_SLUGS.filter(slug => slug !== 'practice')
   const order = ['online', ...main.filter(slug => slug !== 'online')]
-  const listed = order.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p)
+  // Free Play gets its tab once it has started (organizers see it earlier, as a preview).
+  const listed = order.map(slug => phases.value.find(p => p.slug === slug))
+    .filter((p): p is Phase => !!p && (p.slug !== FUN_SLUG || p.status !== 'upcoming' || !!isAdmin.value))
   const debug = phases.value.find(p => p.slug === 'practice')
   const slug = route.params.phase as string | undefined
   const extra = isAdmin.value && slug && !listed.some(p => p.slug === slug) ? phases.value.find(p => p.slug === slug) : undefined
@@ -57,6 +59,7 @@ const phase = computed<Phase | null>(() => {
 const tabLabel = (p: Phase) => LEADERBOARD_TAB_LABEL_KEYS[p.slug] ? t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]!) : (locale.value === 'zh' ? p.name_zh : p.name_en) || p.slug
 // Extra phase board: scores don't matter; the Sophon boards sit above the rows.
 const isExtra = computed(() => !!phase.value && phase.value.id === competition.extraPhaseId)
+const isFun = computed(() => phase.value?.slug === FUN_SLUG)
 
 // One short plain line replaces all status badges: no extra wording beyond these two cases.
 const statusLine = computed(() => {
@@ -175,7 +178,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
-          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" @update:model-value="pickCard" />
+          <p v-else-if="isFun" class="notice mb-6" data-testid="board-fun-note">{{ t('leaderboard.fun_board') }}</p>
+          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :hide-old="isFun" :model-value="cardTab" @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="visible && !cardMode" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <p v-if="!visible" class="text2 py-12">{{ t('leaderboard.hidden') }}</p>
           <SkeletonRows v-else-if="boardLoading && !entries.length" :rows="8" :cols="6" :label="t('common.loading')" />
