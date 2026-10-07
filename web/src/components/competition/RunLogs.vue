@@ -7,13 +7,24 @@ import { portal } from '../../lib/observerPortal'
 import { triggerDownload } from '../../lib/storage'
 import { bytes } from '../../lib/format'
 import { agentLogFileName, loadLogs, type AgentLogView, type LogTarget, type Logs } from '../../lib/runLogs'
+import { failureHint, type FailureHint } from '../../lib/failureHint'
+import FailureHintLine from './FailureHintLine.vue'
 
-const props = defineProps<{ target: LogTarget; label: string; fileStem: string; statuses: Record<string, string> }>()
+const props = defineProps<{ target: LogTarget; label: string; fileStem: string; statuses: Record<string, string>
+  /** The run or version failed (or the card ended with agent_error); its stored error, if any. */
+  failed?: boolean; reason?: string | null }>()
 const emit = defineEmits<{ close: [] }>()
 const { pick } = useI18n()
 const logs = ref<Logs | null>(null), failed = ref(''), downloading = ref(false), downloadError = ref('')
 const isRun = computed(() => 'run_id' in props.target)
 const agent = computed<AgentLogView | null>(() => logs.value?.agent ?? null)
+// A friendly next step for a failure, from the failed steps' codes and output plus the agent.log tail.
+const hint = computed<FailureHint | null>(() => {
+  if (!logs.value) return null
+  const bad = logs.value.diagnostics.filter(d => d.status === 'failed')
+  if (!props.failed && !bad.length) return null
+  return failureHint({ codes: bad.map(d => d.code), texts: [props.reason, ...bad.map(d => d.log), agent.value?.log] })
+})
 const w = computed(() => pick({
   title: 'Logs', loading: 'Loading logs…', failed: 'Logs could not be loaded', retry: 'Try again', close: 'Close',
   privacy: 'Visible only to your team and the organizers. Values of your secret team variables and platform credentials are replaced with [REDACTED].',
@@ -71,6 +82,7 @@ onMounted(load)
     <p v-if="!logs && !failed" class="help mt-3" role="status">{{ w.loading }}</p>
     <p v-if="failed" class="errors mt-3" role="alert">{{ w.failed }} ({{ failed }}) <button type="button" class="btn sm ml-2" @click="load">{{ w.retry }}</button></p>
     <template v-if="logs">
+      <FailureHintLine v-if="hint" :hint="hint" class="mt-3" />
       <h4 class="mt-4">{{ isRun ? w.agentRun : w.agentVersion }}</h4>
       <template v-if="agent?.available">
         <p class="help">{{ w.agentHelp }}</p>
