@@ -12,7 +12,7 @@ from typing import Iterable
 from .manifest import MANIFEST_NAME, ProjectError, relative_path
 
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
-MAX_EXPANDED_BYTES = 100 * 1024 * 1024
+MAX_EXPANDED_BYTES = 300 * 1024 * 1024
 MAX_FILES = 10_000
 
 
