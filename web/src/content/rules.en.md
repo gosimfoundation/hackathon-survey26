@@ -25,7 +25,7 @@ The fourth card of each set (δ, D, H) is an extreme card: less observable time 
 | Competition | Oct 5 00:00 – Oct 7 23:59:59 | Submit complete projects; every evaluation runs once on each of the cards A–D and A1–D1; the online board and the super board update live; choose your final version |
 | Hidden-card final evaluation | After Oct 7 23:59:59 | Organizers evaluate each team's final version 3 times on the hidden cards E–H and average each card |
 | Verification and results | After the hidden evaluation completes; expected before Oct 10 | Organizers verify the top teams, then publish the final standings (hidden-card scores only) |
-| Awards Day | Oct 17 | GOSIM Shenzhen conference (top three teams invited) |
+| Awards Day | Oct 17 | GOSIM Shenzhen conference (first- and second-prize teams invited) |
 
 ### Practice rules
 
