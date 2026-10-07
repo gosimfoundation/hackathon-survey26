@@ -14,7 +14,7 @@ const { t, tf, pick, locale } = useI18n()
 const { current, next, nextStart, nextStartsAt, postDeadline, usingFallback, countdown, loaded } = usePhaseClock()
 const heroTitleLines = computed(() => t('hero.titleLines') as string[])
 const pad = (n: number) => String(n).padStart(2, '0')
-const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : postDeadline.value ? pick('The online competition has closed · Up to 10 more versions per team may still be submitted, and the final version chosen, until Oct 8 05:59:59 (UTC+8)', '正式赛已截止 · 截止后每队仍可提交最多 10 个版本并选定送测版本，至 10 月 8 日 05:59:59（UTC+8）') : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
+const nextName = computed(() => next.value ? pick(next.value.name_en, next.value.name_zh) : postDeadline.value ? pick('The online competition has closed · To let everyone keep debugging and avoid rushed choices at a hard cutoff, each team may still submit up to 15 more versions. The final version can be any of your team\'s confirmed versions, including any from before the deadline, and can no longer change after Oct 8 05:59:59 (UTC+8)', '正式赛已截止 · 为方便大家继续调试，避免硬截止带来的仓促选择，截止后每队仍可提交最多 15 个版本；送测版本可从本队任意已确认版本中选择（包括截止前的任何版本），10 月 8 日 05:59:59（UTC+8）后不可再更改') : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
 const parts = computed(() => [
   { v: String(countdown.value.days), l: t('phase_clock.days') },
   { v: pad(countdown.value.hours), l: t('phase_clock.hours') },
@@ -95,7 +95,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 
           <div class="phase-strip phase-strip-live mt-9 reveal reveal-delay-5" data-testid="phase-strip">
             <div class="phase-strip-next" data-testid="phase-next">
-              <span class="phase-strip-label">{{ t('phase_clock.next') }}</span>
+              <span class="phase-strip-label">{{ postDeadline && !next ? pick('Final version locks in', '距送测版本锁定') : t('phase_clock.next') }}</span>
               <p v-if="nextStart && next?.starts_at" class="phase-strip-stage">
                 <b>{{ nextStart.name }}</b> · <time :datetime="next.starts_at" :title="nextStart.moment">{{ nextStart.day }}</time> · <span>{{ nextStart.left }}</span>
               </p>

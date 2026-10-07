@@ -112,8 +112,8 @@
   "zh": "本队今天的项目准备次数已用完（每天的次数与评测次数相同，可用 survey26 quota 查看），每天北京时间 8 点（UTC 0 点）重置。"
  },
  "extension_version_limit": {
-  "en": "After the deadline each team may submit at most 10 new versions; your team has used all 10. You can still evaluate and choose any confirmed version.",
-  "zh": "截止后每队最多再提交 10 个版本（已用 10/10）。已有的已确认版本仍可评测，也可选为送测版本。"
+  "en": "After the deadline each team may submit at most 15 new versions; your team has used all 15. You can still evaluate and choose any confirmed version.",
+  "zh": "截止后每队最多再提交 15 个版本（已用 15/15）。已有的已确认版本仍可评测，也可选为送测版本。"
  },
  "daily_limit": {
   "en": "The daily evaluation limit has been reached.",
