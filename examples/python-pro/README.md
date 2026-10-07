@@ -12,7 +12,7 @@ configuration, bulletins, forecasts, observation requests and its own results); 
 
 | Card | A | B | C | D | A1 | B1 | C1 | D1 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,809 |
+| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,659 |
 
 Scores move by a few percent between runs (machine speed changes the CPU budget, fault timing varies).
 
