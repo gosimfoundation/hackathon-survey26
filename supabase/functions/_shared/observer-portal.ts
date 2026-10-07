@@ -129,6 +129,7 @@ const known = new Set([
   "invalid_upload_path",
   "preparation_limit",
   "preparation_daily_limit",
+  "extension_version_limit",
   "revision_not_found",
   "revision_not_ready",
   "stale_approval",
@@ -316,6 +317,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         model_bases: d.modelBases.filter((base) => base.startsWith("https://")),
         // Informational like the quota; an older database without the RPC shows no choice.
         final_versions: finals.error ? null : finals.data,
+        // New versions left in the deadline extension window (null outside it or on an older database).
+        extension: await optionalUserRpc("observer_extension_versions"),
       };
     }
     case "upload": {

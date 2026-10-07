@@ -39,7 +39,7 @@ const EXIT_FAILED: i32 = 9;
 
 const AUTH_CODES: &[&str] = &["invalid_token", "cli_tokens_disabled", "account_banned", "account_unavailable", "login_required",
     "no_token", "banned", "not_authenticated"];
-const LIMIT_CODES: &[&str] = &["daily_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
+const LIMIT_CODES: &[&str] = &["daily_limit", "extension_version_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
     "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"];
 const NOT_FOUND_CODES: &[&str] = &["revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
     "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
