@@ -1,109 +1,84 @@
-# python-pro -- a strong reference agent for participant-agent-protocol-v4
+# python-pro -- a readable rule-based example agent for participant-agent-protocol-v4
 
 [中文说明见 README.zh.md](README.zh.md)
 
-A high-scoring example agent for the GOSIM survey26 telescope-survey challenge, written to show how far a
-careful planner plus a few well-placed model calls can go. Standard library only. It uses only what the
-protocol gives an agent at run time (catalogue, public score configuration, bulletins, forecasts and its
-own results) and the public engine code in the starter kit. It never reads card files.
+An example agent for the GOSIM survey26 telescope-survey challenge that shows the essentials in a few hundred
+lines of standard-library Python: required targets first, basic sky maths, a conservative instrument-fault rule
+and an optional model that reads staff notes. It is meant as a starting point to read and improve, not as a
+competitive entry. It uses only what the protocol gives an agent at run time (catalogue, public score
+configuration, bulletins, forecasts, observation requests and its own results); it never reads card files.
 
-## Results (local engine, Kimi `k3`)
+## Results (local engine, rules only, `OBSERVER_MODEL_DISABLED=1`)
 
-| Card | Starter-kit baseline | python example | **python-pro** |
-|---|---:|---:|---:|
-| practice α | 3,617 | -- | **7,127 / 7,151** |
-| practice β | 4,122 | -- | **6,106 / 6,344** |
-| practice γ | 4,030 | -- | **6,749 / 6,814** |
-| practice δ | 3,047 | -- | **6,474 / 6,268** |
-| local L1 | -- | 4,459 | **6,225** |
-| local L2 | -- | -- | **6,411** |
+| Card | A | B | C | D | A1 | B1 | C1 | D1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,809 |
 
-Practice cards: two runs each with the search level pinned (`PRO_FIXED_LEVEL=0`) so a busy laptop does not
-change the plan; L1/L2: one run each with `run_local.py` and the normal 900 s clock. With the normal clock
-practice α scored 7,198 and finished in 605 s on a heavily loaded machine. Runs differ mostly through the
-timing of instrument-fault reports. For scale: on 2026-10-03 the best single-card practice scores on the
-platform were about 7,400-7,900, so this agent is a strong starting point, not the ceiling.
+Scores move by a few percent between runs (machine speed changes the CPU budget, fault timing varies).
 
 ## Layout
 
 ```
-agent.py          entry point: protocol loop, pacing, instrument-fault reporting, model stages wiring
-planner.py        one search for pointing + fibres + duration + program; learning from results
+agent.py          entry point: protocol loop, waits, the instrument-fault rule (FaultWatch), pacing
+planner.py        greedy required-first scheduler; learns factors and sky quality from the hits
 skymath.py        public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
-advisor.py        the model stages: night plan, fault review, paid-report confirmation
-llm_client.py     OpenAI-compatible chat client running calls on background threads
+log_reader.py     optional model stage: reads free-text staff notes attached to observation requests
+llm_client.py     OpenAI-compatible chat client (standard library, background threads)
 observer.project.json   platform manifest (python3 -u agent.py)
 pack_agent.py     zip this folder for upload (.env is never packed)
-.env.example      copy to .env and set an API key for local runs
+.env.example      copy to .env and set an API key for local runs with the model
 ```
 
-## Where the model is used (two stages every night, plus one before a paid report)
+## How it decides (planner.py)
 
-At the start of every night the agent starts two calls in the background:
+1. **Candidates.** Every target that is above the altitude limit now and in ten minutes, and still has value:
+   `value = 50 (unfinished required target: the penalty it avoids) + weight x (1 - factor so far) + request reward`.
+   Its priority multiplies the value by *sky quality now / best quality it can ever get* (airmass and Moon from
+   the public formulas, so targets near transit and away from the Moon come first) and by an urgency factor
+   when few nights are left for it.
+2. **Exposure time.** For each of the best few candidates (the *anchors*) the planner computes the exposure
+   that brings it to its goal: completion factor 0.5 x 1.3 for a required target, factor 0.9 (at most 30
+   minutes) for the others. A required target that cannot reach its goal in one hour tonight waits for a better sky.
+3. **Field.** The pointing puts the anchor on a central fibre; every other fibre takes the neighbour that
+   gains most from the same exposure (targets near a fibre edge are skipped). The anchor whose field earns
+   the most per second wins. That is the whole search: no refinement, no look-ahead.
+4. **Program.** DARK / BRIGHT / BACKUP from the predicted sky quality of the assigned targets.
 
-1. **Night plan** (natural-language understanding, plan adaptation). The model reads tonight's forecast
-   and the current bulletin and answers `{"bad_night", "avoid_directions"}`. `bad_night` decides whether
-   the planner spends one-hour exposures on faint required targets tonight or saves them for a better
-   night; `avoid_directions` down-weights the named sectors all night. Only sectors that a notice actually
-   names are accepted.
-2. **Fault review** (data parsing, action decision). The model reads the agent's own hour-by-hour quality
-   table (E = quality level / band level, the sky scale, the usual clear-sky scale, report history) and
-   answers `{"fault_likely": 0..1}`. Tonight's paid fault reports follow it: with a low
-   value the agent does not pay for a probe on the hour-by-hour E signal alone (only the three-low-nights
-   persistence rule may still report); otherwise the rule's paid probes go ahead, after the model's own
-   confirmation below. (`PRO_MODEL_FREE_PROBE=1` also lets a high value spend a free probe when the sky scale
-   drops; it is off because on the practice cards it spent free probes on unannounced weather.)
+Learning: a hit's score is `weight x factor x program multiplier`. The planner keeps a conservative factor per
+target (it assumes the program matched) and the *sky quality* = observed / predicted factor of unsaturated
+hits; the median of the last eight exposures scales all predictions.
 
-Before any **paid** fault report (one that would cost 150 if wrong) the model sees the evidence and may
-veto it.
+Bulletins: rain or storm over the whole sky closes the site (wait); a terrain obstruction or rocket launch
+blocks its direction low in the sky; directional weather down-weights its sector.
 
-Calls never stall the survey: they run on background threads, and a night start waits for the answers
-only as long as the remaining wall clock allows (about 20 s at most on a 38-night card; less on long
-cards, where late answers are applied when they arrive). Any failure, timeout or invalid answer leaves the
-rule-based value in place for that night.
+## Instrument faults (agent.py, `FaultWatch`)
 
-## What makes the planner strong
+A fault lowers the instrument efficiency until somebody reports it; weather and earthquakes lower the quality
+too, and a report does not repair those. The rule compares each exposure's quality with the usual level since
+the last repair (75th percentile) and reports only:
 
-1. **One search for pointing, fibres, duration and program**, maximising `gain - lambda * T`. Gain is
-   incremental over each target's best exposure so far (only the best exposure counts); lambda is a price
-   for telescope time that follows the recent best gain rate and is scaled by how tight the season is.
-2. **Where to point**: fields centred on the 12 most valuable targets (each placed on all 16 fibres), plus
-   the 20 densest patches of remaining science, then refined by small pointing shifts.
-3. **Required targets** get a bonus weighted by the probability of reaching factor 0.5, and wait for a sky
-   close to the best they will ever get (and for a night not forecast bad).
-4. **Programs from saturated hits.** A saturated hit shows the program multiplier exactly, so it tells
-   whether the declared program matched. The band level is fitted to those hits, and does not follow the
-   quality level, which an instrument fault lowers but the band does not.
-5. **Instrument faults.** Weather lowers both the quality level and the band; a fault lowers only the
-   quality. The agent reports when `E = quality / band` stays low, and uses the free false-report allowance before
-   paid probes. Earthquakes need care: per the participant guide they lower instrument efficiency too, the loss
-   fades night by night, and a report does not repair it. So the agent does not probe in the first 12 hours
-   after an earthquake notice appears, and while the earthquake's effect may last it probes only on a new step
-   down in E from the preceding hours. On 12 local cards this alone saved most of the free probes that used to
-   go to earthquake drops (+0.9% in total).
-6. **Hidden pointing offset (Hard-mode cards).** The participant guide says such cards add a fixed,
-   unannounced offset to every pointing. The agent scores candidate offsets on a grid scaled to the fibre
-   pitch (widening it if the best candidate sits on its edge), infers the offset from which assigned
-   targets hit or missed, and commands `desired - offset`.
-7. **Observation requests** get all-or-nothing value per remaining target (including targets already
-   observed earlier: only exposures inside the request window count).
-8. **Pace on the fair clock.** The platform charges normalized CPU time inside the agent's turns (waits
-   are free) and caps real time per card. The agent measures its own CPU time per decision
-   (`time.process_time`), compares it with `wallclock.remaining_real_cpu_seconds` spread over the decisions
-   still to come, and also keeps the real-time cap (`wall_remaining_seconds`) in view; older runners that
-   only send `remaining_seconds` are paced on real time.
+- after two exposures in a row below 10 % of the usual level (a collapse weather rarely explains), or
+- while free wrong reports are left: when the median of the last eight exposures stays below half of the
+  usual level, with no all-sky weather and no earthquake in the bulletin.
 
-## Configuration (.env)
+After a wrong report it waits until the quality recovers. Once the free allowance is used up, only a
+collapse is reported, at most once a day.
+
+## Optional model: staff notes (log_reader.py)
+
+Some cards attach longer free-text notes from the observatory staff to observation requests. With an API key
+the agent sends every new note once to the model and turns the JSON answer into three rules: announced
+closures -> wait, bad sectors -> down-weight, announced instrument problems -> report. Calls run on
+background threads and never stall the survey; without a key, or when the platform runs an evaluation
+without a model (`OBSERVER_MODEL_DISABLED=1`), the agent simply runs on its rules.
 
 ```
-OPENAI_API_KEY=sk-...                       # required (KIMI_API_KEY also accepted)
+OPENAI_API_KEY=sk-...                            # optional (KIMI_API_KEY also accepted)
 OPENAI_BASE_URL=https://api.kimi.com/coding/v1   # default; outside mainland China: https://api.kimi.ai/coding/v1
-OPENAI_MODEL=k3                             # default
+OPENAI_MODEL=k3                                  # default
 ```
 
-Without a key the agent exits at start-up with `missing API key: set OPENAI_API_KEY`, except under `OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): then it needs no key and runs on its rules only, so you can compare with and without an LLM. On the platform
-`OPENAI_BASE_URL` / `OPENAI_API_KEY` are injected automatically. `k3` accepts only its default
-temperature, so the client sends none.
+On the platform `OPENAI_BASE_URL` / `OPENAI_API_KEY` are injected automatically.
 
 ## Running locally
 
@@ -112,21 +87,17 @@ python3 ../_local/runner/run_local.py --inherit-env --card ../_local/cards/L1 --
 python3 pack_agent.py --out ../python-pro-agent.zip
 ```
 
-Every constant at the top of `planner.py` and `agent.py` can be overridden with `PRO_<NAME>` environment
-variables (for example `PRO_LAMBDA_FRAC=0.5`). `PRO_FIXED_LEVEL=0` pins the search level, which makes
-local comparisons reproducible on a busy machine (the platform run uses the adaptive pace).
+## Ideas for doing better
 
-## Where you can still beat it
-
-- **Faster fault detection.** A fault can lower quality a lot, and each night it goes unreported can cost
-  more than a paid probe. Deliberate diagnostic exposures could separate faults from unannounced weather.
-- **Program choice under announced weather.** Mismatches cluster in hours with all-sky weather notices.
-- **Season-level scheduling** of faint required targets on the best nights.
-- **Partial exposures that get redone.** About a tenth of fibre-time goes to exposures that a later, longer
-  exposure of the same target replaces. `PRO_PARTIAL_DISCOUNT<1` discounts partial exposures of targets a
-  season plan expects to complete; it helped on the four practice cards and hurt on eight others, so it is off.
-- **Better use of the model**, e.g. letting it read the whole forecast week and plan which nights to spend
-  on which part of the sky.
+- **Search more.** Try more pointings per decision (several fibres for the anchor, dense patches of remaining
+  science, small shifts) and more exposure times, and price telescope time instead of maximising gain per second.
+- **Plan the season.** Faint required targets need the best nights; decide which nights to spend on which
+  part of the sky instead of acting greedily.
+- **Read the program band from the hits.** A saturated hit shows the program multiplier exactly, so it tells
+  whether the declared program matched.
+- **Better fault detection.** Weather and an instrument fault look alike in one exposure; compare quality
+  with the sky band, across directions and across nights, and use the free reports wisely.
+- **Use the model more**, e.g. for the forecast or to judge a suspected fault.
 
 ## License
 
