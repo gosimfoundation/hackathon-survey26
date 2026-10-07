@@ -142,9 +142,11 @@ undisclosed seeds and sizes; test on several seeds and at least one long (≥ 90
    `xai`, `zai`, `moonshot`, `dashscope`, `minimax`), `MODEL_NAME`, the matching `*_API_KEY`, and
    `MODEL_BASE_URL` for OpenAI-compatible providers; then `python3 -m pip install -r agent/requirements.txt` and
    re-run step 2. `agent.log` prints `minimal-agent provider=<name>`; `deterministic fallback (...)` means the
-   configuration is incomplete. On the platform `.env` is never uploaded: each run gets `OPENAI_BASE_URL` (the
-   platform's model proxy, chat completions) and `OPENAI_API_KEY` (a temporary run credential); `model_factory.py`
-   reads them first, and the proxy uses the endpoint, model and key the team set on the Participate page.
+   configuration is incomplete. On the platform `.env` is never uploaded: the variables your team saved in Participate → Keys
+   and network (for example `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, or via `survey26 env model
+   --provider … --key - --model …`) reach the program as environment variables, and `model_factory.py` reads
+   `OPENAI_BASE_URL` / `OPENAI_API_KEY` first. The program calls your provider directly (the platform sets
+   `HTTPS_PROXY`); the model must be a name that provider supports. `OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` are the platform's session interface, not a model endpoint; do not send model requests to them.
    Packages are installed there only by a `build` step in `agent/observer.project.json` (see `README.md`,
    "Upload a complete project"), so keep `requirements.txt` to installable package names.
    An LLM call per decision multiplies wall-clock use: cap it with `LLM_TOP_K_CANDIDATES`,

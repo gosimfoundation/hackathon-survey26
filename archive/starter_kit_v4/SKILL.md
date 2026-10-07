@@ -71,8 +71,10 @@ Do not read `cards/` from the agent. On the platform the agent only has its own 
 
 ## 5. Optional: use a model
 
-`agent/llm_hook.py` calls `OPENAI_BASE_URL/chat/completions` with `OPENAI_API_KEY` (the platform injects
-both). Turn it on with `"USE_LLM": "1"` in `agent/observer.project.json`. Keep calls rare (once per night
+`agent/llm_hook.py` calls `OPENAI_BASE_URL/chat/completions` with `OPENAI_API_KEY` and model `OPENAI_MODEL`.
+On the platform these are the variables your team saved in Participate → Keys and network (or with
+`survey26 env model --provider … --key - --model …`); the call goes directly to your provider (the platform
+sets `HTTPS_PROXY`), and the model must be a name that provider supports. `OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` are the platform's session interface, not a model endpoint; do not send model requests to them. Turn it on with `"USE_LLM": "1"` in `agent/observer.project.json`. Keep calls rare (once per night
 or for rare decisions), with short timeouts and a rule-based fallback. For local tests put the variables
 in `agent/.env`. Never commit or pack `.env`.
 
