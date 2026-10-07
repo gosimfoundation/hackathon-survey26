@@ -24,6 +24,7 @@ import { tabFromQuery } from '../../lib/deepLink'
 import { activeEvaluations, canCancel, canStop, stopConfirmKey, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
+import { EVENT_TIME_ZONE } from '../../lib/phaseSchedule'
 import { cancelEvaluation, stopEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
@@ -77,7 +78,7 @@ const modelForm = ref({ base_url: '', model: '', key: '' })
 const teamEgress = computed(() => data.value?.team_environment?.enabled === true)
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
-const when = (value: string | null | undefined) => formatDateTime(value, locale.value)
+const when = (value: string | null | undefined, timeZone?: string) => formatDateTime(value, locale.value, timeZone)
 const sentences = (...parts: string[]) => parts.join(['zh', 'ja'].includes(locale.value) ? '' : ' ')
 let timer: ReturnType<typeof setInterval> | undefined
 // When the last portal load started (the periodic refresh waits 30 s or 60 s from it, see dashboardRefresh).
@@ -134,7 +135,7 @@ const words = computed(() => pick({
   noModelHelp: 'For comparing your agent with and without an LLM: the program gets none of the variables tagged “model” under Keys and network (API keys, base URLs, model names) and OBSERVER_MODEL_DISABLED=1. Everything else, network access included, is unchanged. Applies to the next “Evaluate” or “Evaluate 3 times and average” only; it counts as an ordinary evaluation. The hidden final always uses your normal configuration.',
   noModelOn: 'The next evaluation runs without a model.',
   stages: 'Each evaluation first runs A–D together, then A1–D1 automatically, and counts as 1 evaluation. A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program\'s run time). If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing.',
-  finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
+  finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: ' You can change the choice until ', finalDeadlineZone: ' (UTC+8).',
   finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
@@ -200,7 +201,7 @@ const words = computed(() => pick({
   noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入正式赛排行榜。隐藏卡决赛始终使用本队的正常配置。',
   noModelOn: '接下来的评测将不提供模型。',
   stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。调用模型的程序请在遇到 429（限流）时等待后重试，不要直接报错。',
-  finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
+  finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至 ', finalDeadlineZone: '（UTC+8）',
   finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
@@ -1030,7 +1031,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <section v-if="finalVersion" class="panel mt-4" data-testid="final-version">
           <h2 id="final">{{ words.final }}</h2>
           <p class="help">{{ words.finalIntro }}</p>
-          <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
+          <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
           <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
           <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
           <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
@@ -1243,7 +1244,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <section v-if="finalVersion" class="panel mb-6" data-testid="final-version">
         <h2 id="final">{{ words.final }}</h2>
         <p class="help">{{ words.finalIntro }}</p>
-        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
+        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
         <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
         <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>

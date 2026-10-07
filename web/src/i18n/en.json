@@ -2796,7 +2796,7 @@
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [
         "50 evaluations per team per day; each runs your agent on the task cards A–D and A1–D1, 900 s per card; the Overall board shows the mean over A–D and the Super board the total over all 8 cards.",
-        "Choose your final version before the competition ends.",
+        "The final version can be changed until Oct 8 09:00 UTC+8; it cannot change after that.",
         "The final ranking uses only that version's score on the hidden cards E–H (3 evaluations per card, averaged, then the mean over E–H)."
       ],
       "s3_cta": "Go to Participate",
