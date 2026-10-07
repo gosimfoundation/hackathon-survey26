@@ -85,8 +85,8 @@ export function usePhaseClock() {
   const usingFallback = computed(() => false)
   /** After the announced deadline of the current phase, while late submissions are still accepted. */
   const postDeadline = computed(() => inPostDeadlineWindow(current.value, now.value))
-  /** Counts down to the announced deadline only; no countdown after it. */
-  const currentEndsAt = computed<string | null>(() => postDeadline.value ? null : displayEndsAt(current.value))
+  /** Counts down to the announced deadline; after it, to the final-version lock (`ends_at`). */
+  const currentEndsAt = computed<string | null>(() => postDeadline.value ? current.value?.ends_at ?? null : displayEndsAt(current.value))
   const nextStartsAt = computed<string | null>(() => next.value?.starts_at ?? currentEndsAt.value)
   const countdown = computed(() => countdownParts(nextStartsAt.value, now.value))
   /** "10月5日开赛（北京时间） · 还有 9 天": the event's own time zone, as in the brief and rules. */
