@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { loadPhases, phaseStatus, type Phase } from '../lib/data'
 import { EVENT_TIME_ZONE, startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhase, type ScheduledPhaseRow } from '../lib/phaseSchedule'
 import { useI18n } from './useI18n'
+import { displayEndsAt, inPostDeadlineWindow } from '../lib/officialDeadline'
 
 // One shared fetch for every clock on the page (header + hero); refreshed at most once a minute.
 const shared = ref<Phase[]>([])
@@ -82,7 +83,11 @@ export function usePhaseClock() {
   })
   /** Kept for display consumers; an unavailable schedule never invents a stage. */
   const usingFallback = computed(() => false)
-  const nextStartsAt = computed<string | null>(() => next.value?.starts_at ?? current.value?.ends_at ?? null)
+  /** After the announced deadline of the current phase, while late submissions are still accepted. */
+  const postDeadline = computed(() => inPostDeadlineWindow(current.value, now.value))
+  /** Counts down to the announced deadline; after it, to the end of the post-deadline window. */
+  const currentEndsAt = computed<string | null>(() => postDeadline.value ? current.value?.ends_at ?? null : displayEndsAt(current.value))
+  const nextStartsAt = computed<string | null>(() => next.value?.starts_at ?? currentEndsAt.value)
   const countdown = computed(() => countdownParts(nextStartsAt.value, now.value))
   /** "10月5日开赛（北京时间） · 还有 9 天": the event's own time zone, as in the brief and rules. */
   const nextStart = computed(() => {
@@ -98,5 +103,5 @@ export function usePhaseClock() {
   })
   const nextLine = computed(() => nextStart.value ? tf('phase_clock.next_line', nextStart.value) : '')
 
-  return { phases, loaded, current, next, nextStartsAt, nextStart, nextLine, usingFallback, countdown, now }
+  return { phases, loaded, current, next, nextStartsAt, postDeadline, nextStart, nextLine, usingFallback, countdown, now }
 }

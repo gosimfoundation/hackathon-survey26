@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { displayEndsAt } from '../lib/officialDeadline'
 import UserAvatar from '../components/UserAvatar.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -157,7 +158,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <p class="text2">{{ phaseCopy(phase, locale).description }}</p>
           <p class="text3 mt-3 text-sm">{{ phaseCopy(phase, locale).facts.join(' · ') }}</p>
           <dl class="kv mt-8">
-            <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
+            <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(displayEndsAt(phase)) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
             <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in allCards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
             <dd v-else class="flex flex-wrap gap-2"><span v-for="s in sortedScenarios" :key="s.id" class="pill" :title="s.slug">{{ scenarioLabel(s.slug, s.name, locale) }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
