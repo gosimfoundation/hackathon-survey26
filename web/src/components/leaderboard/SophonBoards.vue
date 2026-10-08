@@ -54,6 +54,18 @@ async function submit() {
     if (body?.solved) { flag.value = ''; await load() }
   } finally { busy.value = false }
 }
+type Hint = { no: number; name: string; hints: string[] }
+const hintList = ref<Hint[] | null>(null)
+const hintNote = ref('')
+async function askHint() {
+  busy.value = true
+  try {
+    const { data, error } = await supabase.functions.invoke('sophon/desk/hint', { method: 'GET', headers: { 'x-sophon-site': '1' } })
+    const body = data ?? (error && 'context' in error ? await (error as { context: Response }).context.json().catch(() => null) : null)
+    hintList.value = Array.isArray(body?.hints) ? body.hints : []
+    hintNote.value = body?.message ?? pick('No answer.', '没有回应。')
+  } finally { busy.value = false }
+}
 async function download(name: string) {
   const { data } = await supabase.functions.invoke('sophon/desk/files/' + name, { method: 'GET', headers: { 'x-sophon-site': '1' } })
   if (data?.url) window.location.href = data.url
@@ -78,7 +90,15 @@ async function download(name: string) {
       <p class="mt-3 flex flex-wrap gap-3 text-sm">
         <button type="button" class="btn sm" @click="download('sophon-card-public.zip')">{{ pick('Card files', '卡片公开文件') }}</button>
         <button type="button" class="btn sm" @click="download('sophon-local.zip')">{{ pick('Local card', '本地卡') }}</button>
+        <button type="button" class="btn sm" :disabled="busy" data-testid="sophon-hint-button" @click="askHint">{{ pick('Ask Johnny for a hint', '向 Johnny 要提示') }}</button>
       </p>
+      <div v-if="hintList" class="card mt-3 p-4" data-testid="sophon-hints">
+        <p class="text2 text-sm">{{ hintNote }}</p>
+        <div v-for="h in hintList" :key="h.no" class="mt-3">
+          <p class="label">#{{ h.no }} {{ h.name }}</p>
+          <ol class="mt-1 list-decimal pl-5 text-sm"><li v-for="(x, i) in h.hints" :key="i">{{ x }}</li></ol>
+        </div>
+      </div>
     </section>
     <div class="mb-4 flex gap-2">
       <button v-for="b in (['total', 'debug', 'auto'] as const)" :key="b" type="button" class="btn sm" :class="{ primary: tab === b }" @click="tab = b">{{ boardLabel(b) }}</button>
