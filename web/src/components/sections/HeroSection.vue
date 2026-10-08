@@ -8,6 +8,7 @@ import { meteorShower } from '../../lib/eggs'
 import SkyConsole from './SkyConsole.vue'
 import HeroGalaxy from './HeroGalaxy.vue'
 import HeroCredits from './HeroCredits.vue'
+import FinalProgress from '../competition/FinalProgress.vue'
 import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
@@ -100,6 +101,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
                 <b>{{ nextStart.name }}</b> · <time :datetime="next.starts_at" :title="nextStart.moment">{{ nextStart.day }}</time> · <span>{{ nextStart.left }}</span>
               </p>
               <p v-else class="phase-strip-stage is-quiet">{{ loaded ? nextName : '…' }}<template v-if="nextStartsAt"> · {{ fmtUtc(nextStartsAt) }} UTC</template></p>
+              <FinalProgress v-if="hiddenFinalLive" tone="dark" />
               <div v-if="nextStartsAt" class="phase-countdown" role="timer" :aria-label="t('phase_clock.countdown_aria')">
                 <span v-for="p in parts" :key="p.l"><b class="phase-countdown-value">{{ p.v }}</b><small>{{ p.l }}</small></span>
               </div>

@@ -29,6 +29,7 @@ import { cancelEvaluation, stopEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
+import FinalProgress from './FinalProgress.vue'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
@@ -1033,6 +1034,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <p class="help">{{ words.finalIntro }}</p>
           <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
           <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+          <FinalProgress v-if="finalVersion.locked" mine />
           <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
           <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
             <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
@@ -1247,6 +1249,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
         <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
         <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+        <FinalProgress v-if="finalVersion.locked" mine />
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
         <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
           <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
