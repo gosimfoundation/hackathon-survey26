@@ -23,6 +23,11 @@ export function inPostDeadlineWindow(p: PhaseLike | null | undefined, now = Date
 export const HIDDEN_FINAL_START = '2026-10-08T04:00:00Z'
 const FINAL_VERSION_LOCK = '2026-10-08T01:00:00Z'
 
+/** True from the announced start of the hidden-card evaluation on (until its results are published). */
+export function hiddenFinalRunning(now = Date.now()): boolean {
+  return now >= Date.parse(HIDDEN_FINAL_START)
+}
+
 /** True between the final-version lock and the announced start of the hidden-card evaluation. */
 export function beforeHiddenFinal(now = Date.now()): boolean {
   return now >= Date.parse(FINAL_VERSION_LOCK) && now < Date.parse(HIDDEN_FINAL_START)

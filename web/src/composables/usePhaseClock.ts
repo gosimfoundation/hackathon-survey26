@@ -3,7 +3,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { loadPhases, phaseStatus, type Phase } from '../lib/data'
 import { EVENT_TIME_ZONE, startDay, startMoment, timeLeft, upcomingPublicPhases, type ScheduledPhase, type ScheduledPhaseRow } from '../lib/phaseSchedule'
 import { useI18n } from './useI18n'
-import { beforeHiddenFinal, displayEndsAt, HIDDEN_FINAL_START, inPostDeadlineWindow } from '../lib/officialDeadline'
+import { beforeHiddenFinal, displayEndsAt, HIDDEN_FINAL_START, hiddenFinalRunning, inPostDeadlineWindow } from '../lib/officialDeadline'
 
 // One shared fetch for every clock on the page (header + hero); refreshed at most once a minute.
 const shared = ref<Phase[]>([])
@@ -89,7 +89,9 @@ export function usePhaseClock() {
   const currentEndsAt = computed<string | null>(() => postDeadline.value ? current.value?.ends_at ?? null : displayEndsAt(current.value))
   /** After the final-version lock, until the announced start of the hidden-card evaluation. */
   const hiddenFinalWait = computed(() => beforeHiddenFinal(now.value))
-  const nextStartsAt = computed<string | null>(() => hiddenFinalWait.value ? HIDDEN_FINAL_START : next.value?.starts_at ?? currentEndsAt.value)
+  /** The hidden-card evaluation is under way: no countdown, a status line instead. */
+  const hiddenFinalLive = computed(() => hiddenFinalRunning(now.value))
+  const nextStartsAt = computed<string | null>(() => hiddenFinalLive.value ? null : hiddenFinalWait.value ? HIDDEN_FINAL_START : next.value?.starts_at ?? currentEndsAt.value)
   const countdown = computed(() => countdownParts(nextStartsAt.value, now.value))
   /** "10月5日开赛（北京时间） · 还有 9 天": the event's own time zone, as in the brief and rules. */
   const nextStart = computed(() => {
@@ -105,5 +107,5 @@ export function usePhaseClock() {
   })
   const nextLine = computed(() => nextStart.value ? tf('phase_clock.next_line', nextStart.value) : '')
 
-  return { phases, loaded, current, next, nextStartsAt, postDeadline, hiddenFinalWait, nextStart, nextLine, usingFallback, countdown, now }
+  return { phases, loaded, current, next, nextStartsAt, postDeadline, hiddenFinalWait, hiddenFinalLive, nextStart, nextLine, usingFallback, countdown, now }
 }
