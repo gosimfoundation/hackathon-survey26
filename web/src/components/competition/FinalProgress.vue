@@ -14,7 +14,8 @@ const stateLabel = (s: FinalCardState) => s === 'done' ? pick('done', '已完成
 
 <template>
   <div v-if="progress && !props.mine" class="final-progress" :class="`is-${props.tone}`" role="status" data-testid="final-progress">
-    <p>{{ pick(`Evaluations finished: ${n(progress.runs_done)} / ${n(progress.runs_total)} · Teams finished: ${n(progress.teams_done)} / ${n(progress.teams_total)}`, `已完成评测 ${n(progress.runs_done)} / ${n(progress.runs_total)} 次 · 已跑完 ${n(progress.teams_done)} / ${n(progress.teams_total)} 队`) }}</p>
+    <p v-if="progress.stage === 'review'" data-testid="final-progress-review">{{ pick('Scoring complete · under manual review', '已评分完成，正在人工审核') }}</p>
+    <p v-else>{{ pick(`Evaluations finished: ${n(progress.runs_done)} / ${n(progress.runs_total)} · Teams finished: ${n(progress.teams_done)} / ${n(progress.teams_total)}`, `已完成评测 ${n(progress.runs_done)} / ${n(progress.runs_total)} 次 · 已跑完 ${n(progress.teams_done)} / ${n(progress.teams_total)} 队`) }}</p>
     <progress :value="share" max="1" :aria-label="pick('Hidden-card evaluation progress', '隐藏卡评测进度')"></progress>
   </div>
   <p v-else-if="progress?.my_cards?.length && props.mine" class="final-progress-mine help mt-2" role="status" data-testid="final-progress-mine">
