@@ -8,6 +8,8 @@ export interface FinalProgress {
   runs_total: number
   runs_done: number
   runs_running: number
+  /** 'review': every evaluation is scored and the organizers are reviewing the results (no scores shown). */
+  stage?: 'running' | 'review'
   my_cards?: { card: string, state: FinalCardState }[] | null
 }
 
