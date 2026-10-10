@@ -218,6 +218,7 @@
     "console": {
       "title": "Official example replay",
       "replay_note": "Local practice card L1 · {nights} nights · {actions} decisions",
+      "replay_note_card": "Held-out card {card} · {nights} nights · {actions} decisions",
       "paused": "Paused",
       "pause": "Pause",
       "resume": "Resume",

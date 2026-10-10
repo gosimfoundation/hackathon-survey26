@@ -218,6 +218,7 @@
     "console": {
       "title": "官方示例回放",
       "replay_note": "本地练习卡 L1 · {nights} 夜 · {actions} 次决策",
+      "replay_note_card": "决赛卡 {card} · {nights} 夜 · {actions} 次决策",
       "paused": "已暂停",
       "pause": "暂停",
       "resume": "继续",

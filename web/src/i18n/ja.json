@@ -343,6 +343,7 @@
     "console": {
       "title": "公式サンプルのリプレイ",
       "replay_note": "公開練習場 {nights} 夜 · {actions} 回の判断",
+      "replay_note_card": "決勝カード {card} · {nights} 夜 · {actions} 回の判断",
       "paused": "一時停止中",
       "pause": "一時停止",
       "resume": "再開",

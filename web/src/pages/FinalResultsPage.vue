@@ -215,7 +215,7 @@ onUnmounted(() => { void resetToDemoReplay() })
             >{{ cardLabel(c) }}</button>
           </div>
           <div v-if="replayState === 'ready'" class="replay-stage">
-            <SkyConsole :title="`${selected.name} · 卡 ${cardLabel(replayCard)} 观测回放`" />
+            <SkyConsole :title="`${selected.name} · 卡 ${cardLabel(replayCard)} 观测回放`" :card="cardLabel(replayCard)" />
           </div>
           <div v-else class="replay-pending">
             <p>{{ replayState === 'loading' ? '回放加载中…' : '回放生成中' }}</p>

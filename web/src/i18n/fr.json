@@ -343,6 +343,7 @@
     "console": {
       "title": "Rejeu de l’exemple officiel",
       "replay_note": "Terrain d'entraînement public · {nights} nuits · {actions} décisions",
+      "replay_note_card": "Carte finale {card} · {nights} nuits · {actions} décisions",
       "paused": "En pause",
       "pause": "Pause",
       "resume": "Reprendre",
