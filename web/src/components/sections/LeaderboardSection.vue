@@ -34,7 +34,8 @@ const scenarioTabs = computed(() => boardScenarios(phase.value))
 const cardBoard = ref<CardBoard | null>(null)
 const baselines = ref<BaselineRow[]>([])
 // Like the full board: the super board opens by default where the phase has one; null (总榜) once picked.
-const cardWanted = ref<string | null>(SUPER_TAB)
+// Home mini board (10-10 owner): open the daily board's Overall tab; the super board stays on the full page.
+const cardWanted = ref<string | null>(null)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const superMode = computed(() => isSuperTab(cardBoard.value, cardTab.value))
@@ -123,7 +124,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" hide-old @update:model-value="pickCard" />
+          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" hide-old hide-super @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="!hidden && !cardMode" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <div v-if="loading" class="py-6"><SkeletonRows :rows="6" :cols="5" :label="t('leaderboard.loading')" /></div>
           <div v-else-if="!entries.length" class="grid min-h-80 place-items-center py-16 text-center">

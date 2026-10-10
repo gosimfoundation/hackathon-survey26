@@ -7,14 +7,14 @@ import { scenarioLabel } from '../../lib/scenarioLabels'
 // Card boards: one tab per card (labelled from the card slug, localized — see scenarioLabels.ts) and,
 // where the phase ranks an overall mean, an Overall tab first. null stands for the overall tab.
 // Where the phase has added cards (A1-D1): then the super board's tab, the old super board's (unless hideOld) and one tab per added card.
-const props = defineProps<{ layout: BoardLayout; cards: BoardCard[]; extraCards?: BoardCard[]; modelValue: string | null; hideOld?: boolean }>()
+const props = defineProps<{ layout: BoardLayout; cards: BoardCard[]; extraCards?: BoardCard[]; modelValue: string | null; hideOld?: boolean; hideSuper?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [slug: string | null] }>()
 const { t, locale } = useI18n()
 const label = (slug: string | null) => slug === null ? t('leaderboard.overall') : slug === SUPER_TAB ? t('leaderboard.super_board')
   : slug === SUPER_OLD_TAB ? t('leaderboard.super_old_board')
   : scenarioLabel(slug, [...props.cards, ...(props.extraCards ?? [])].find(c => c.slug === slug)?.name ?? slug, locale.value)
 const tabs = computed(() => cardBoardTabs({ layout: props.layout, cards: props.cards, extraCards: props.extraCards ?? [] })
-  .filter(slug => !(props.hideOld && slug === SUPER_OLD_TAB)).map(slug => ({ slug, label: label(slug) })))
+  .filter(slug => !(props.hideOld && slug === SUPER_OLD_TAB) && !(props.hideSuper && (slug === SUPER_TAB || slug === SUPER_OLD_TAB))).map(slug => ({ slug, label: label(slug) })))
 </script>
 
 <template>
