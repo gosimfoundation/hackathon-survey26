@@ -20,6 +20,8 @@ import BoardCardTabs from '../components/leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
 import SophonBoards from '../components/leaderboard/SophonBoards.vue'
 import FinalProgress from '../components/competition/FinalProgress.vue'
+import FinalResultsPage from './FinalResultsPage.vue'
+import { isSupabaseConfigured } from '../lib/supabase'
 import { useFinalProgress } from '../composables/useFinalProgress'
 
 const { t, tf, locale, pick } = useI18n()
@@ -55,6 +57,12 @@ const visiblePhases = computed(() => {
 const { progress: finalProgress } = useFinalProgress()
 const finalPlaceholderTab = computed(() => !phasesLoading.value && !visiblePhases.value.some(p => p.slug === 'final-hidden'))
 const finalPlaceholder = computed(() => finalPlaceholderTab.value && route.params.phase === 'final-hidden')
+// Local preview without a database: /leaderboard/final-hidden renders the bundled final-results
+// snapshot page directly (the data lives in content/final/results.json). Production — where
+// Supabase is configured — keeps its placeholder/published-board behavior untouched.
+// 10-10 (owner: publish): the hidden-final tab always renders the curated results snapshot (organizer team
+// excluded, best-of closeout for the two unfinished teams) — the database board's own aggregation would differ.
+const localFinalBoard = computed(() => route.params.phase === 'final-hidden')
 // Without a slug the default stays among the original three boards, so the final never displaces them.
 const defaultPhases = computed(() => visiblePhases.value.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug)))
 const phase = computed<Phase | null>(() => {
@@ -161,7 +169,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
-      <p v-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
+      <FinalResultsPage v-if="localFinalBoard" :embedded="true" />
+      <p v-else-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
       <div v-else-if="finalPlaceholder" class="mt-12" data-testid="board-final-placeholder">
         <p class="text2">{{ pick('Final ranking: each team\'s final version is evaluated 3 times on each of the hidden cards E, F, G and H; each card shows the mean of its 3 evaluations, and the final score is the mean over E–H.', '最终排名：每队的送测版本在隐藏任务卡 E、F、G、H 上各评测 3 次，每张卡取 3 次的平均分，最终成绩为 E–H 四张卡的平均分。') }}</p>
         <p class="notice mt-6">{{ finalProgress?.stage === 'review' ? pick('The final evaluation is complete. To keep it fair, every evaluation that had a model-call error was run again, so every team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', '决赛评测已全部完成。为保证公平，凡是出现模型调用错误的评测都已重新运行，每支队伍的成绩都来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。') : pick('The hidden-card evaluation is under way. Results are published after verification.', '隐藏卡评测进行中，成绩经核验后公布。') }}</p>
@@ -171,7 +180,12 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <tbody><tr><td class="m">—</td><td class="text3">{{ pick('Not yet published', '尚未公布') }}</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td></tr></tbody>
         </table></div>
       </div>
-      <p v-else-if="!phase" class="text2 mt-8">{{ t('leaderboard.no_phases') }}</p>
+      <div v-else-if="!phase" class="mt-8">
+        <p class="text2">{{ t('leaderboard.no_phases') }}</p>
+        <p v-if="!isSupabaseConfigured" class="mt-4">
+          <router-link to="/leaderboard/final-hidden" class="text-[#78a6ff] underline" data-testid="link-final-results">查看决赛成绩</router-link>
+        </p>
+      </div>
 
       <div v-else class="mt-12 grid gap-12 lg:grid-cols-[.52fr_1.48fr] lg:gap-14">
         <div class="lg:sticky lg:top-28 lg:self-start">

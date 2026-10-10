@@ -19,6 +19,10 @@ const router = createRouter({
     { path: '/about', component: () => import('./pages/AboutPage.vue') , meta: { page: 'about' }},
     { path: '/resources', component: () => import('./pages/ResourcesPage.vue') , meta: { page: 'resources' }},
     { path: '/leaderboard/:phase?', component: () => import('./pages/LeaderboardPage.vue') , meta: { page: 'leaderboard' }},
+    // Local-only page for paper figures: the 3D replay sky alone, frozen at ?p=<loop progress>.
+    { path: '/fig/sky', component: () => import('./pages/FigSkyPage.vue') , meta: { page: 'home' }},
+    // Local style preview of the hidden-final results page (snapshot data; not linked in nav yet).
+    { path: '/final-results', component: () => import('./pages/FinalResultsPage.vue') , meta: { page: 'final-results' }},
     { path: '/announcements', component: () => import('./pages/AnnouncementsPage.vue') , meta: { page: 'announcements' }},
     { path: '/teammates', component: () => import('./pages/TeammatesPage.vue') , meta: { page: 'teammates' }},
     { path: '/register', component: () => import('./pages/RegisterPage.vue') , meta: { page: 'register' }},
