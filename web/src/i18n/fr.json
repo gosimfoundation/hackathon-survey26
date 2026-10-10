@@ -11,6 +11,14 @@
       "about": {
         "title": "À propos",
         "description": "L'organisateur, le mécène et le comité scientifique du hackathon Agentic Observer."
+      },
+      "final-results": {
+        "title": "Résultats de la finale",
+        "description": "Classement final des cartes cachées : totaux, moyennes par carte, détails par run et replays 3D."
+      },
+      "fig-sky": {
+        "title": "Figure de replay",
+        "description": "Rendu fixe du replay 3D (figure du papier)."
       }
     },
     "wordmark_note": "Agentic Observer"

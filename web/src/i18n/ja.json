@@ -11,6 +11,14 @@
       "about": {
         "title": "運営",
         "description": "Agentic Observer ハッカソンの主催者、スポンサー、科学委員会。"
+      },
+      "final-results": {
+        "title": "決勝結果",
+        "description": "隠しカード決勝の最終順位：総合点・カード別平均・各評価の明細と3D観測リプレイ。"
+      },
+      "fig-sky": {
+        "title": "観測リプレイ図",
+        "description": "3D観測リプレイの静止レンダリング（論文用）"
       }
     },
     "wordmark_note": "Agentic Observer"

@@ -97,6 +97,14 @@
       "about": {
         "title": "组委会",
         "description": "智能体巡天黑客松的主办方、赞助方和科学委员会。"
+      },
+      "final-results": {
+        "title": "决赛成绩",
+        "description": "隐藏卡决赛最终排名：总分、E–H 四卡均分、每次评测明细与观测回放。"
+      },
+      "fig-sky": {
+        "title": "观测回放图",
+        "description": "3D 观测回放的定格渲染（论文用图）"
       }
     }
   },
