@@ -74,6 +74,15 @@ async function download(name: string) {
 
 <template>
   <div data-testid="sophon-boards">
+    <section class="card mb-8 p-4" data-testid="sophon-how-to-start">
+      <p class="label mb-2">{{ pick('How to start', '怎么开始玩') }}</p>
+      <ol class="list-decimal space-y-1 pl-5 text-sm">
+        <li>{{ pick('Sophon is a puzzle hidden in a special task card; it does not count toward any ranking. Flags look like SOPHON{...} and are handed in in the box below.', 'Sophon 是藏在一张特别任务卡里的解谜彩蛋，不计入任何排名。flag 长这样：SOPHON{...}，在下面的框里提交。') }}</li>
+        <li>{{ pick('First, look at the sky: on the Competition page switch to "Sophon" and run your agent on the Sophon card (you can practise first with the "Local card" below). Something is written in that sky; after the run the ground station checks it and leaves you a receipt, and the receipt holds a flag.', '第一步，先看天：在「参赛」页切到「Sophon」，用你的智能体跑一次 Sophon 任务卡（也可以先下载下面的「本地卡」在自己电脑上练）。这片天空里写着东西，跑完后地面站会检查你的评测并给你留一张回执，回执里就有 flag。') }}</li>
+        <li>{{ pick('Then go to the front desk: create a personal API token in the Dashboard and call GET https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/desk with the header Authorization: Bearer YOUR_TOKEN. The desk tells you which door is next, where to hand flags in and where your receipts are. Tell Johnny what the sky said and the first door opens.', '然后去前台：在「控制台」创建一个个人 API 令牌，用它访问 GET https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/desk（请求头 Authorization: Bearer 你的令牌）。前台会告诉你下一扇门在哪、flag 交到哪、回执在哪。把天空写的话告诉 Johnny，第一扇门就开了。') }}</li>
+        <li>{{ pick('From there, go door by door: each one you get through gives a flag. Stuck? Press "Ask Johnny for a hint".', '之后一扇门一扇门往里走，每过一扇门拿一个 flag。卡住了就点「向 Johnny 要提示」。') }}</li>
+      </ol>
+    </section>
     <section v-if="finishers.length" class="mb-8" data-testid="sophon-finishers">
       <p class="label mb-3">{{ pick('Mission log', '通关记录') }}</p>
       <article v-for="f in finishers" :key="f.board + f.team_name" class="card mb-3 p-4" data-testid="sophon-finisher">
