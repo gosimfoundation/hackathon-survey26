@@ -5,10 +5,12 @@
  * (gen_final_preview.py); live data wiring comes after the style is approved.
  * TODO(preview): strings are hard-coded zh; move to i18n before publishing.
  */
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import PageHead from '../components/layout/PageHead.vue'
 import SkyConsole from '../components/sections/SkyConsole.vue'
 import { hasRunReplay, loadRunReplay, resetToDemoReplay } from '../composables/useReplayClock'
+import { portal } from '../lib/observerPortal'
+import { useAuth } from '../stores/auth'
 import results from '../content/final/results.json'
 
 interface RunRow {
@@ -46,6 +48,31 @@ const dur = (r: RunRow) => {
 }
 const statusLabel = (s: string) =>
   ({ scored: '已出分', failed: '失败', cancelled: '已取消', running: '在跑', queued: '排队' }[s] ?? s)
+
+// --- a team's own counted runs: result ZIP (agent.log included) -------------------------------
+// 10-10 owner: every team can download the logs behind its own score. observer-portal's download_result
+// reads with the participant's token, so RLS limits it to the caller's team and keeps a sealed final
+// phase closed until its results are published; the button only shows on the caller's own team.
+const { team: myTeam, refreshMeCached } = useAuth()
+onMounted(() => { void refreshMeCached() })
+const isMine = computed(() => Boolean(selected.value && myTeam.value?.id === selected.value.team_id))
+const downloading = ref<string | null>(null)
+const downloadNote = ref('')
+async function downloadRun(r: RunRow, n: number) {
+  downloading.value = r.run_id; downloadNote.value = ''
+  try {
+    const { url } = await portal<{ url: string }>('download_result', { run_id: r.run_id })
+    const u = new URL(url)
+    if (u.protocol !== 'https:' && u.hostname !== '127.0.0.1') throw new Error('invalid_download')
+    const a = document.createElement('a'); a.href = u.href; a.rel = 'noreferrer'
+    a.download = `${cardLabel(r.card)}-${n}-${r.run_id.slice(0, 8)}.zip`; a.click()
+  } catch (e) {
+    const code = e instanceof Error ? e.message : ''
+    downloadNote.value = code === 'result_not_ready' ? '这次评测的结果包暂不可下载（成绩正式公布后开放）。' : '下载失败，请稍后再试。'
+  } finally {
+    downloading.value = null
+  }
+}
 
 const runsOf = computed(() => {
   if (!selected.value) return new Map<string, RunRow[]>()
@@ -156,15 +183,23 @@ onUnmounted(() => { void resetToDemoReplay() })
           </li>
         </ul>
         <div class="team-detail-runs">
+          <p v-if="isMine" class="mine-note">这是你的队伍：每次计入成绩的评测都可以下载结果包（含运行日志 agent.log）。</p>
+          <p v-if="isMine && downloadNote" class="mine-note warn">{{ downloadNote }}</p>
           <div v-for="c in cards" :key="c" class="run-card-block">
             <h3>卡 {{ cardLabel(c) }}</h3>
             <table class="data-table run-table">
               <tbody>
-                <tr v-for="r in runsOf.get(c) ?? []" :key="r.run_id" :class="{ dim: r.counted === false }">
+                <tr v-for="(r, i) in runsOf.get(c) ?? []" :key="r.run_id" :class="{ dim: r.counted === false }">
                   <td class="num">{{ num(r.score) }}</td>
                   <td>{{ fmtTime(r.started_at) }}</td>
                   <td>{{ dur(r) }}</td>
                   <td>{{ statusLabel(r.status) }}<template v-if="r.reruns">（重跑 {{ r.reruns }} 次）</template><template v-if="r.counted === false">（未计入）</template><template v-else-if="selected?.best_of">（计入）</template></td>
+                  <td v-if="isMine" class="r">
+                    <button
+                      v-if="r.status === 'scored' && r.counted !== false" type="button" class="run-download"
+                      :disabled="downloading === r.run_id" @click="downloadRun(r, i + 1)"
+                    >{{ downloading === r.run_id ? '准备中…' : '下载日志' }}</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -225,6 +260,13 @@ th.r, td.r { text-align: right; }
 .team-detail-cards b { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 500; color: #f5f5f5; }
 .card-tag { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .65rem; letter-spacing: .12em; color: #78a6ff; }
 .team-detail-runs { padding: 1rem 1.25rem; }
+.mine-note { margin: 0 0 .75rem; font-size: .8rem; color: #b8c4d6; }
+.mine-note.warn { color: #f0b46a; }
+.run-download {
+  padding: .2rem .6rem; font-size: .72rem; color: #e6edf6; background: transparent;
+  border: 1px solid rgba(255,255,255,.25); border-radius: 3px; cursor: pointer; white-space: nowrap;
+}
+.run-download:disabled { opacity: .5; cursor: default; }
 .run-card-block h3 { margin: 1rem 0 .3rem; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .7rem; letter-spacing: .12em; color: #858585; font-weight: 400; }
 .run-table td { padding: .35rem .5rem; font-size: .8rem; border-bottom: 1px solid rgba(255,255,255,.05); }
 .run-table tr.dim td { opacity: .38; }
