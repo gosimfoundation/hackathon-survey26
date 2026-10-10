@@ -33,7 +33,7 @@ export interface Sky3DFrame {
   version: number
 }
 
-const props = defineProps<{ highlight?: string | null }>()
+const props = defineProps<{ highlight?: string | null; figure?: boolean }>()
 const emit = defineEmits<{ unavailable: []; ready: [] }>()
 const { t, tf } = useI18n()
 
@@ -929,7 +929,8 @@ function build(THREE: typeof import('three'), renderer: InstanceType<typeof impo
     <div ref="insetBox" class="sky3d-inset" :class="`is-${inset.mode}`">
       <p class="sky3d-inset-title">{{ t('hero.console.sky3d.inset_title') }}</p>
       <canvas ref="insetCanvas" aria-hidden="true"></canvas>
-      <p class="sky3d-inset-foot">{{ insetFoot }}</p>
+      <!-- Figure mode (paper renders) drops the live fibre-count caption but keeps the inset itself. -->
+      <p v-if="!props.figure" class="sky3d-inset-foot">{{ insetFoot }}</p>
     </div>
     <p class="sky3d-hint" aria-hidden="true">{{ t(touch ? 'hero.console.sky3d.hint_touch' : 'hero.console.sky3d.hint') }}</p>
     <div v-if="!ready" class="sky3d-loading">{{ t('hero.console.sky3d.loading') }}</div>
