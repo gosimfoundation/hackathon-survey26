@@ -97,6 +97,14 @@
       "about": {
         "title": "About",
         "description": "The organizer, sponsor and scientific committee of the Agentic Observer Hackathon."
+      },
+      "final-results": {
+        "title": "Final results",
+        "description": "Final hidden-card standings: totals, per-card means, per-run details and 3D observation replays."
+      },
+      "fig-sky": {
+        "title": "Observation replay figure",
+        "description": "Still render of the 3D observation replay (paper figure)."
       }
     }
   },
