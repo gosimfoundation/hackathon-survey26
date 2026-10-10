@@ -795,11 +795,14 @@
     "invite_link": "Lien d’invitation",
     "copy_link": "Copier le lien",
     "copy_fallback": "Échec de la copie. Sélectionnez le code ou le lien et copiez-le manuellement.",
+    "opensource_repo": "Dépôt open source (matériel de prix, facultatif)",
+    "opensource_repo_hint": "https://github.com/org/depot",
     "errors": {
       "recipient_unavailable": "Cette personne ne peut pas recevoir cette invitation.",
       "team_unavailable": "Cette équipe n’est plus disponible.",
       "invitation_not_found": "Cette demande ne vous est pas adressée.",
-      "invitation_finished": "Cette demande a déjà été traitée."
+      "invitation_finished": "Cette demande a déjà été traitée.",
+      "invalid_repo_url": "Cette adresse de dépôt semble incorrecte ; elle doit ressembler à https://github.com/org/depot."
     },
     "solo": "Participer en solo (1 clic)",
     "solo_lede": "En solo ? Créez en un clic une équipe d’une personne à votre nom. Vous pourrez ensuite augmenter la taille et inviter des coéquipiers.",

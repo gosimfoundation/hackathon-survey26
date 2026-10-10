@@ -1752,6 +1752,8 @@
     "max_size": "Max size (1–3)",
     "project_idea": "Approach (optional)",
     "github_repo": "Repository (optional)",
+    "opensource_repo": "Open-source repository (award material, optional)",
+    "opensource_repo_hint": "https://github.com/org/repo",
     "invite_code": "Invite code",
     "create": "Create team",
     "join": "Join team",
@@ -1780,7 +1782,8 @@
       "recipient_unavailable": "This person cannot currently receive a team invitation.",
       "team_unavailable": "This team is no longer available.",
       "invitation_not_found": "This request is not addressed to you.",
-      "invitation_finished": "This request has already been handled."
+      "invitation_finished": "This request has already been handled.",
+      "invalid_repo_url": "That repository URL looks wrong; it should look like https://github.com/org/repo."
     },
     "members": "Members",
     "copy_code": "Copy code",
