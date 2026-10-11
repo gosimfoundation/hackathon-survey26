@@ -39,7 +39,7 @@ watch(() => route.query.invite, value => {
 }, { immediate: true })
 const inviteLink = computed(() => team.value
   ? new URL(router.resolve({ path: '/team', query: { invite: team.value.invite_code } }).href, window.location.origin).href : '')
-const editForm = ref({ name: '', max_size: 3, github_repo: '', project_idea: '', is_locked: false })
+const editForm = ref({ name: '', max_size: 3, github_repo: '', opensource_repo: '', project_idea: '', is_locked: false })
 const isLeader = computed(() => Boolean(team.value && me.value && team.value.leader_id === me.value.id))
 
 const errorText = (e: unknown) => describeError(e, i18n, ['team.errors', 'friends.errors', 'team'])
@@ -54,7 +54,7 @@ async function load() {
       const { data, error } = await supabase.rpc('team_members', { p_team_id: team.value.id })
       if (error) throw error
       members.value = (data ?? []) as Member[]
-      editForm.value = { name: team.value.name, max_size: team.value.max_size, github_repo: team.value.github_repo ?? '', project_idea: team.value.project_idea ?? '', is_locked: team.value.is_locked }
+      editForm.value = { name: team.value.name, max_size: team.value.max_size, github_repo: team.value.github_repo ?? '', opensource_repo: team.value.opensource_repo ?? '', project_idea: team.value.project_idea ?? '', is_locked: team.value.is_locked }
     }
   } catch (e) { flash.error(errorText(e)) }
   finally {
@@ -96,6 +96,8 @@ const saveTeam = () => run(async () => {
     p_max_size: Number(editForm.value.max_size), p_is_locked: editForm.value.is_locked,
     p_name: team.value && editForm.value.name.trim() !== team.value.name ? editForm.value.name.trim() : null,
   })
+  // opensource_repo lives outside update_team on purpose; either RPC failing surfaces the error.
+  await rpc('set_opensource_repo', { p_url: editForm.value.opensource_repo.trim() })
   invalidateBoardCache()
 }, t('flash.team_saved'))
 const inviteByUid = () => {
@@ -160,6 +162,7 @@ onMounted(load)
               <label class="field"><span>{{ t('team.name') }}</span><input data-testid="team-name-edit" v-model="editForm.name" type="text" required minlength="2" maxlength="60"></label>
               <label class="field"><span>{{ t('team.max_size') }}</span><input v-model.number="editForm.max_size" type="number" :min="members.length" max="3"></label>
               <label class="field"><span>{{ t('team.github_repo') }}</span><input v-model="editForm.github_repo" type="text"></label>
+              <label class="field full"><span>{{ t('team.opensource_repo') }}</span><input data-testid="team-opensource-repo-edit" v-model="editForm.opensource_repo" type="url" maxlength="255" :placeholder="t('team.opensource_repo_hint')"></label>
               <label class="field full"><span>{{ t('team.project_idea') }}</span><textarea v-model="editForm.project_idea"></textarea></label>
             </div>
             <label class="check"><input v-model="editForm.is_locked" type="checkbox"> {{ t('team.locked') }}</label>
@@ -168,6 +171,8 @@ onMounted(load)
         </template>
         <dl v-else class="kv mt-8">
           <dt>{{ t('team.github_repo') }}</dt><dd>{{ team.github_repo || '—' }}</dd>
+          <dt>{{ t('team.opensource_repo') }}</dt>
+          <dd><a v-if="team.opensource_repo" :href="team.opensource_repo" target="_blank" rel="noopener noreferrer">{{ team.opensource_repo }}</a><template v-else>—</template></dd>
           <dt>{{ t('team.project_idea') }}</dt><dd class="whitespace-pre-line">{{ team.project_idea || '—' }}</dd>
         </dl>
       </div>

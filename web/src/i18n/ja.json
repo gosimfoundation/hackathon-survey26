@@ -343,6 +343,7 @@
     "console": {
       "title": "公式サンプルのリプレイ",
       "replay_note": "公開練習場 {nights} 夜 · {actions} 回の判断",
+      "replay_note_card": "決勝カード {card} · {nights} 夜 · {actions} 回の判断",
       "paused": "一時停止中",
       "pause": "一時停止",
       "resume": "再開",
@@ -795,11 +796,14 @@
     "invite_link": "招待リンク",
     "copy_link": "招待リンクをコピー",
     "copy_fallback": "コピーできませんでした。招待コードまたはリンクを選択して手動でコピーしてください。",
+    "opensource_repo": "オープンソースリポジトリ（受賞資料・任意）",
+    "opensource_repo_hint": "https://github.com/組織/リポジトリ",
     "errors": {
       "recipient_unavailable": "現在、この参加者に招待を送れません。",
       "team_unavailable": "このチームには現在参加できません。",
       "invitation_not_found": "このリクエストの受信者ではありません。",
-      "invitation_finished": "このリクエストは処理済みです。"
+      "invitation_finished": "このリクエストは処理済みです。",
+      "invalid_repo_url": "リポジトリのURL形式が正しくありません。https://github.com/組織/リポジトリ の形で入力してください。"
     },
     "solo": "ワンクリックで個人参加",
     "solo_lede": "一人でも参加できます。ワンクリックで自分の名前の 1 人チームを作成でき、あとから人数上限を上げて仲間を招待することもできます。",

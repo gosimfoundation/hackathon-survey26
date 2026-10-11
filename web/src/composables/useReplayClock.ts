@@ -1,3 +1,4 @@
+import { hasCompactReplay, loadCompactReplay } from '../lib/finalReplay'
 import { onMounted, onUnmounted, reactive, readonly } from 'vue'
 import type { OutcomeClass } from '../lib/report'
 import { prefersReducedMotion, type SkySite, type SkyTarget } from '../lib/skymap'
@@ -506,12 +507,13 @@ buildSegments()
 // run is only fetched when a page asks for it, and a run whose file has not been generated yet simply
 // is not in the map — the caller then shows its own "replay pending" state.
 const finalReplayLoaders = import.meta.glob('../content/final/replays/*.json')
+// 10-10 owner: every ranked team's replays, served compactly outside the bundle (lib/finalReplay.ts).
 /** run_id of the finalist replay currently loaded, or null while the demo is in force. */
 let activeRunId: string | null = null
 
 /** True when a replay file already exists for this run (same lookup loadRunReplay uses). */
 export function hasRunReplay(runId: string): boolean {
-  return `../content/final/replays/${runId}.json` in finalReplayLoaders
+  return `../content/final/replays/${runId}.json` in finalReplayLoaders || hasCompactReplay(runId)
 }
 
 function loadDemoReplay() {
@@ -527,11 +529,11 @@ function loadDemoReplay() {
  */
 export async function loadRunReplay(runId: string): Promise<boolean> {
   const loader = finalReplayLoaders[`../content/final/replays/${runId}.json`]
-  if (!loader) return false
   try {
-    const mod = (await loader()) as { default: RawReplay }
+    const raw = loader ? ((await loader()) as { default: RawReplay }).default : await loadCompactReplay(runId)
+    if (!raw) return false
     activeRunId = runId
-    setReplayData(mod.default, 'champion', runId)
+    setReplayData(raw, 'champion', runId)
     return true
   } catch {
     return false

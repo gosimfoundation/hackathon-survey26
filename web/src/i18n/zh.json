@@ -218,6 +218,7 @@
     "console": {
       "title": "官方示例回放",
       "replay_note": "本地练习卡 L1 · {nights} 夜 · {actions} 次决策",
+      "replay_note_card": "决赛卡 {card} · {nights} 夜 · {actions} 次决策",
       "paused": "已暂停",
       "pause": "暂停",
       "resume": "继续",
@@ -1752,6 +1753,8 @@
     "max_size": "人数上限（1–3）",
     "project_idea": "思路（可选）",
     "github_repo": "代码仓库（可选）",
+    "opensource_repo": "开源仓库地址（获奖材料，可选）",
+    "opensource_repo_hint": "https://github.com/组织/仓库",
     "invite_code": "邀请码",
     "create": "创建队伍",
     "join": "加入队伍",
@@ -1780,7 +1783,8 @@
       "recipient_unavailable": "对方目前无法接收组队邀请。",
       "team_unavailable": "这个队伍目前不可加入。",
       "invitation_not_found": "你不是这条请求的接收方。",
-      "invitation_finished": "这条请求已经处理完毕。"
+      "invitation_finished": "这条请求已经处理完毕。",
+      "invalid_repo_url": "开源仓库地址格式不正确，应形如 https://github.com/组织/仓库。"
     },
     "members": "成员",
     "copy_code": "复制邀请码",
