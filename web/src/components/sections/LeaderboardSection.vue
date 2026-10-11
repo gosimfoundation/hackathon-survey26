@@ -42,6 +42,11 @@ const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const superMode = computed(() => isSuperTab(cardBoard.value, cardTab.value))
 const tableCards = computed(() => cardBoard.value ? (superMode.value ? superCards(cardBoard.value) : cardBoard.value.cards) : [])
+// 10-11: visitors found the many boards confusing; the home section explains each board in one line and lights up
+// the one on screen. Only the final results decide the ranking.
+const GUIDE = ['final', 'fun', 'competition', 'super', 'cards'] as const
+const currentGuide = computed(() => boardSlug.value === FUN_SLUG ? 'fun' : superMode.value ? 'super'
+  : cardMode.value && cardTab.value !== null ? 'cards' : 'competition')
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
   : cardTab.value === SUPER_TAB ? tf('leaderboard.detail.board_card', { card: t('leaderboard.super_board') })
   : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, (cardBoard.value ? superCards(cardBoard.value) : []).find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
@@ -108,6 +113,13 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <span class="poster-kicker mt-14">{{ t('home.leaderboard.kicker') }}</span>
           <h2 class="section-title distressed-type mt-9">{{ t('home.leaderboard.title') }}</h2>
           <p class="mt-8 max-w-lg text-base leading-relaxed text-text-secondary md:text-lg">{{ t('home.leaderboard.lede') }}</p>
+          <router-link to="/final-results" class="final-cta mt-6" data-testid="home-final-cta">{{ t('home.leaderboard.final_cta') }} →</router-link>
+          <div class="board-guide mt-8 max-w-lg" data-testid="home-board-guide">
+            <p class="board-guide-title">{{ t('home.leaderboard.guide_title') }}</p>
+            <ul>
+              <li v-for="g in GUIDE" :key="g" :class="{ current: g === currentGuide, final: g === 'final' }">{{ t(`home.leaderboard.guide_${g}`) }}</li>
+            </ul>
+          </div>
 
           <div class="live-strip mt-12" :class="{ 'is-live': entries.length && !error }">
             <span class="live-strip-dot" aria-hidden="true"></span>
@@ -182,6 +194,24 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
 </template>
 
 <style scoped>
+.final-cta {
+  display: inline-block; border: 1px solid #315efb; background: rgba(49,94,251,.16); color: #fff; padding: .6rem 1rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .8rem; letter-spacing: .06em;
+  transition: background-color .2s ease;
+}
+.final-cta:hover { background: rgba(49,94,251,.3); }
+.final-cta:focus-visible { outline: 2px solid #78a6ff; outline-offset: 2px; }
+.board-guide-title {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .72rem; text-transform: uppercase; letter-spacing: .12em;
+  color: rgba(255,255,255,.55);
+}
+.board-guide ul { margin-top: .75rem; display: grid; gap: .5rem; }
+.board-guide li {
+  border-left: 2px solid rgba(255,255,255,.14); padding: .15rem 0 .15rem .75rem;
+  font-size: .9rem; line-height: 1.55; color: rgba(255,255,255,.6); transition: border-color .2s ease, color .2s ease;
+}
+.board-guide li.final { color: rgba(255,255,255,.85); }
+.board-guide li.current { border-left-color: #315efb; color: #fff; }
 .board-switch { display: flex; flex-wrap: wrap; gap: .5rem; }
 .board-switch button {
   border: 1px solid rgba(255,255,255,.2); background: rgba(6,6,7,.6); color: #b5b5b5; padding: .45rem .9rem; cursor: pointer;
