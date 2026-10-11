@@ -142,7 +142,10 @@ onUnmounted(() => { void resetToDemoReplay() })
       <div :class="props.embedded ? '' : 'wrap'">
         <PageHead v-if="!props.embedded" kicker="HIDDEN FINAL · E–H" title="决赛成绩"
           lede="每队每张卡跑 3 次取平均，四张卡再平均。点队名看 12 次明细。"
-          :note="`数据快照 ${generatedAt}（本地预览）`" />
+          :note="`数据快照 ${generatedAt}`" />
+
+        <!-- 10-10 owner: say on the board that some results were abnormal and were rerun -->
+        <p class="board-note">说明：个别评测因平台原因成绩异常，已按规则重跑，榜单采用重跑后的成绩；点队名可查看每次评测明细。</p>
 
         <div class="table-wrap">
           <table class="data-table">
@@ -228,6 +231,7 @@ onUnmounted(() => { void resetToDemoReplay() })
 
 <style scoped>
 .final-results { padding-top: 5.5rem; min-height: 100vh; background: #05060a; }
+.board-note { margin: 1.25rem 0 0; font-size: .82rem; line-height: 1.6; color: #b8c4d6; }
 .table-wrap { margin-top: 2rem; overflow-x: auto; border: 1px solid rgba(255,255,255,.12); }
 .data-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .data-table th {
