@@ -30,7 +30,7 @@ import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
 import FinalProgress from './FinalProgress.vue'
-import { useFinalProgress } from '../../composables/useFinalProgress'
+import { FINAL_PUBLISHED, useFinalProgress } from '../../composables/useFinalProgress'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
@@ -140,6 +140,7 @@ const words = computed(() => pick({
   stages: 'Each evaluation first runs A–D together, then A1–D1 automatically, and counts as 1 evaluation. A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program\'s run time). If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing.',
   finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: ' You can change the choice until ', finalDeadlineZone: ' (UTC+8).',
   finalLocked: 'The choice is locked. This version is being evaluated on the hidden cards E–H; results are published after verification.',
+  finalPublished: 'The choice is locked. The final results are published: see the Final tab of the leaderboard.',
   finalReview: 'The choice is locked. The final evaluation is complete: every evaluation that had a model-call error was run again, so your team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
@@ -207,6 +208,7 @@ const words = computed(() => pick({
   stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。调用模型的程序请在遇到 429（限流）时等待后重试，不要直接报错。',
   finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至 ', finalDeadlineZone: '（UTC+8）',
   finalLocked: '选择已锁定，这个版本正在参加隐藏任务卡 E–H 的评测，成绩经核验后公布。',
+  finalPublished: '选择已锁定。决赛成绩已公布，见排行榜「决赛」。',
   finalReview: '选择已锁定。决赛评测已全部完成：凡是出现模型调用错误的评测都已重新运行，你们队的成绩来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
@@ -1037,7 +1039,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <h2 id="final">{{ words.final }}</h2>
           <p class="help">{{ words.finalIntro }}</p>
           <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
-          <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
+          <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ FINAL_PUBLISHED ? words.finalPublished : finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
           <FinalProgress v-if="finalVersion.locked" mine />
           <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
           <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
@@ -1252,7 +1254,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <p class="help">{{ words.finalIntro }}</p>
         <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
         <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
-        <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
+        <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ FINAL_PUBLISHED ? words.finalPublished : finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
         <FinalProgress v-if="finalVersion.locked" mine />
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
         <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">

@@ -22,7 +22,7 @@ import SophonBoards from '../components/leaderboard/SophonBoards.vue'
 import FinalProgress from '../components/competition/FinalProgress.vue'
 import FinalResultsPage from './FinalResultsPage.vue'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { useFinalProgress } from '../composables/useFinalProgress'
+import { FINAL_PUBLISHED, useFinalProgress } from '../composables/useFinalProgress'
 
 const { t, tf, locale, pick } = useI18n()
 const route = useRoute()
@@ -159,7 +159,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
 <template>
   <main class="poster-canvas">
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
-    <section class="section tight"><div class="wrap">
+    <section class="section tight no-rule"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
         <template v-for="p in visiblePhases" :key="p.id">
           <router-link v-if="p.slug === 'practice' && finalPlaceholderTab" to="/leaderboard/final-hidden" :class="{ active: finalPlaceholder }" data-testid="board-tab-final-hidden">{{ t('leaderboard.tabs.final') }}</router-link>
@@ -173,7 +173,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
       <p v-else-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
       <div v-else-if="finalPlaceholder" class="mt-12" data-testid="board-final-placeholder">
         <p class="text2">{{ pick('Final ranking: each team\'s final version is evaluated 3 times on each of the hidden cards E, F, G and H; each card shows the mean of its 3 evaluations, and the final score is the mean over E–H.', '最终排名：每队的送测版本在隐藏任务卡 E、F、G、H 上各评测 3 次，每张卡取 3 次的平均分，最终成绩为 E–H 四张卡的平均分。') }}</p>
-        <p class="notice mt-6">{{ finalProgress?.stage === 'review' ? pick('The final evaluation is complete. To keep it fair, every evaluation that had a model-call error was run again, so every team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', '决赛评测已全部完成。为保证公平，凡是出现模型调用错误的评测都已重新运行，每支队伍的成绩都来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。') : pick('The hidden-card evaluation is under way. Results are published after verification.', '隐藏卡评测进行中，成绩经核验后公布。') }}</p>
+        <p class="notice mt-6">{{ FINAL_PUBLISHED ? pick('The final evaluation is complete and the results are published.', '决赛评测已全部完成，成绩已公布。') : finalProgress?.stage === 'review' ? pick('The final evaluation is complete. To keep it fair, every evaluation that had a model-call error was run again, so every team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', '决赛评测已全部完成。为保证公平，凡是出现模型调用错误的评测都已重新运行，每支队伍的成绩都来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。') : pick('The hidden-card evaluation is under way. Results are published after verification.', '隐藏卡评测进行中，成绩经核验后公布。') }}</p>
         <FinalProgress class="mt-3" />
         <div class="table-wrap mt-6"><table class="data-table">
           <thead><tr><th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">E</th><th class="r">F</th><th class="r">G</th><th class="r">H</th><th class="r">{{ pick('Mean', '平均') }}</th></tr></thead>

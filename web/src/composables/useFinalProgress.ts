@@ -13,6 +13,9 @@ export interface FinalProgress {
   my_cards?: { card: string, state: FinalCardState }[] | null
 }
 
+/** 10-11 owner: the final results are accepted as final and published; every final-stage line says so. */
+export const FINAL_PUBLISHED = true
+
 // One shared fetch for every progress line on the page; the database shares the counts for 30 s.
 const progress = ref<FinalProgress | null>(null)
 let users = 0

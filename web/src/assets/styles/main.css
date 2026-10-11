@@ -517,6 +517,8 @@ button:disabled { cursor: not-allowed; }
 .section.tight { padding: clamp(2.5rem, 5vw, 5rem) 0; }
 .section::after { position: absolute; top: 0; bottom: 0; left: clamp(1.5rem, 7vw, 7rem); width: 1px; pointer-events: none; content: ''; background: rgba(255,255,255,.08); }
 @media (max-width: 720px) { .section::after { display: none; } }
+/* the decorative margin rule runs straight through wide tables (leaderboard, final results; owner 10-10) */
+.section.no-rule::after { display: none; }
 .rule-y { border-top: 1px solid rgba(255,255,255,.2); border-bottom: 1px solid rgba(255,255,255,.2); }
 .rule-t { border-top: 1px solid rgba(255,255,255,.2); } .rule-b { border-bottom: 1px solid rgba(255,255,255,.2); }
 .rows > * { border-top: 1px solid rgba(255,255,255,.2); padding: 1.75rem 0; }
