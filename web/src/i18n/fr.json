@@ -505,10 +505,17 @@
     "leaderboard": {
       "kicker": "Classement",
       "title": "Classement en direct",
-      "lede": "Le classement se met à jour dès qu'une soumission est notée. Le tableau d'entraînement est indicatif ; celui de la compétition en ligne décide des prix.",
+      "lede": "La compétition est terminée. Le classement final est celui de la page Résultats de la finale ; les classements ci-dessous servent de référence et d’entraînement.",
       "signal_live": "Classement en direct",
       "signal_waiting": "En attente du signal",
-      "feed": "Données d'évaluation en direct"
+      "feed": "Données d'évaluation en direct",
+      "final_cta": "Voir le classement final",
+      "guide_title": "Que signifie chaque classement",
+      "guide_final": "Résultats de la finale : le seul classement qui compte. Cartes cachées E–H, moyenne des 12 évaluations de chaque équipe.",
+      "guide_fun": "Jeu libre : ouvert après la compétition sur les mêmes cartes. Soumissions à tout moment, sans effet sur le classement.",
+      "guide_competition": "Compétition · Général : la manche en ligne (4–8 oct.), moyenne des cartes A–D, meilleure évaluation complète de chaque équipe. Pour référence.",
+      "guide_super": "Super classement : A–D pondérées à 20 % et A1–D1 à 80 % dans une même évaluation, dernière évaluation complète de chaque équipe. Pour référence.",
+      "guide_cards": "Onglets Card A, Card A1… : le classement d’une seule carte."
     },
     "evaluation": {
       "kicker": "05 / Évaluation",

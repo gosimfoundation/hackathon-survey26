@@ -431,10 +431,17 @@
     "leaderboard": {
       "kicker": "Leaderboard",
       "title": "Live standings",
-      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D), and the super board the total over all 8 cards (A–D and A1–D1). All are feedback only; the final ranking uses only the hidden cards E–H.",
+      "lede": "The competition is over. The final ranking is on the Final results page; the boards here are for reference and practice only.",
       "signal_live": "Board live",
       "signal_waiting": "Awaiting benchmark signal",
-      "feed": "Live evaluation feed"
+      "feed": "Live evaluation feed",
+      "final_cta": "See the final ranking",
+      "guide_title": "What each board means",
+      "guide_final": "Final results: the only board that decides the ranking. Hidden cards E–H, the mean of each team's 12 evaluations.",
+      "guide_fun": "Open Play: opened after the competition on the same cards. Submit any time; it does not affect the ranking.",
+      "guide_competition": "Competition · Overall: the online round (Oct 4–8), the mean over cards A–D, each team's best complete evaluation. Reference only.",
+      "guide_super": "Super board: A–D weighted 20% and A1–D1 80% within one evaluation, each team's latest complete evaluation. Reference only.",
+      "guide_cards": "Card tabs (Card A, Card A1 …): one card ranked on its own."
     },
     "evaluation": {
       "kicker": "05 / Evaluation",
