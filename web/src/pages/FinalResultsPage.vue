@@ -20,8 +20,12 @@ interface RunRow {
   counted?: boolean
 }
 interface TeamRow {
-  team_id: string; name: string; rank: number; total: number
+  team_id: string; name: string; rank: number | null; total: number
   cards: Record<string, number | null>; runs: RunRow[]; best_of?: boolean
+  /** 10-11 owner: official baselines are listed for reference and hold no rank */
+  baseline?: boolean
+  /** the team's own open-source repository (team page field), when given */
+  repo?: string
 }
 
 const cards = results.cards as string[]
@@ -46,6 +50,8 @@ const dur = (r: RunRow) => {
   const m = Math.round((+new Date(r.finished_at) - +new Date(r.started_at)) / 60000)
   return m >= 60 ? `${Math.floor(m / 60)}h${m % 60}m` : `${m}m`
 }
+const rankClass = (t: TeamRow) => t.rank == null ? 'rank-base' : `rank-${Math.min(t.rank, 3)}`
+const safeRepo = (u?: string) => (u && /^https:\/\//.test(u) ? u : '')
 const statusLabel = (s: string) =>
   ({ scored: '已出分', failed: '失败', cancelled: '已取消', running: '在跑', queued: '排队' }[s] ?? s)
 
@@ -138,7 +144,7 @@ onUnmounted(() => { void resetToDemoReplay() })
 
 <template>
   <main :class="props.embedded ? '' : 'final-results'">
-    <section :class="props.embedded ? '' : 'section'">
+    <section :class="props.embedded ? '' : 'section no-rule'">
       <div :class="props.embedded ? '' : 'wrap'">
         <PageHead v-if="!props.embedded" kicker="HIDDEN FINAL · E–H" title="决赛成绩"
           lede="每队每张卡跑 3 次取平均，四张卡再平均。点队名看 12 次明细。"
@@ -146,6 +152,8 @@ onUnmounted(() => { void resetToDemoReplay() })
 
         <!-- 10-10 owner: say on the board that some results were abnormal and were rerun -->
         <p class="board-note">说明：个别评测因平台原因成绩异常，已按规则重跑，榜单采用重跑后的成绩；点队名可查看每次评测明细。</p>
+        <!-- 10-11 owner: the two official baselines run like a team, are listed for reference and hold no rank -->
+        <p class="board-note">标「基线」的两行是主办方官方示例程序（基础版、进阶版 Python）在同样四张卡上各跑 3 次的成绩，只作参照，不占名次；同样可以点开看评测明细和回放。</p>
 
         <div class="table-wrap">
           <table class="data-table">
@@ -156,9 +164,12 @@ onUnmounted(() => { void resetToDemoReplay() })
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in teams" :key="t.team_id" class="team-row" @click="selected = t">
-                <td><span class="rank" :class="`rank-${Math.min(t.rank, 3)}`">#{{ t.rank }}</span></td>
-                <td class="name">{{ t.name }}</td>
+              <tr v-for="t in teams" :key="t.team_id" class="team-row" :class="{ 'baseline-row': t.baseline }" @click="selected = t">
+                <td><span class="rank" :class="rankClass(t)">{{ t.rank == null ? '基线' : `#${t.rank}` }}</span></td>
+                <td class="name">{{ t.name }}<a
+                  v-if="safeRepo(t.repo)" class="repo-link" :href="safeRepo(t.repo)" target="_blank" rel="noopener noreferrer"
+                  title="开源仓库" @click.stop
+                >开源仓库 ↗</a></td>
                 <td class="r num total">{{ num(t.total) }}</td>
                 <td v-for="c in cards" :key="c" class="r num">{{ num(t.cards[c]) }}</td>
               </tr>
@@ -171,8 +182,9 @@ onUnmounted(() => { void resetToDemoReplay() })
     <div v-if="selected" class="team-detail" @click.self="selected = null">
       <section class="team-detail-panel" role="dialog" aria-modal="true" :aria-label="selected.name">
         <header class="team-detail-head">
-          <span class="team-detail-rank" :class="`rank-${Math.min(selected.rank, 3)}`">#{{ selected.rank }}</span>
+          <span class="team-detail-rank" :class="rankClass(selected)">{{ selected.rank == null ? '基线 · 不占名次' : `#${selected.rank}` }}</span>
           <h2 class="team-detail-name">{{ selected.name }}</h2>
+          <a v-if="safeRepo(selected.repo)" class="repo-link" :href="safeRepo(selected.repo)" target="_blank" rel="noopener noreferrer">开源仓库 ↗</a>
           <button type="button" class="team-detail-close" aria-label="关闭" @click="selected = null">×</button>
         </header>
         <div class="team-detail-total">
@@ -247,6 +259,11 @@ th.r, td.r { text-align: right; }
 .total { color: #f5f5f5; font-weight: 600; }
 .rank { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .8rem; color: #858585; }
 .rank-1 { color: #ffd76a; } .rank-2 { color: #cfd8e3; } .rank-3 { color: #d99a6c; }
+.rank-base { color: #78a6ff; letter-spacing: .08em; }
+.baseline-row td { background: rgba(120,166,255,.07); }
+.baseline-row .name { color: #a9c3ff; }
+.repo-link { margin-left: .6rem; font-size: .72rem; color: #78a6ff; text-decoration: none; white-space: nowrap; }
+.repo-link:hover { text-decoration: underline; }
 
 .team-detail { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; padding: 1.25rem; overflow-y: auto; background: rgba(3,4,8,.72); backdrop-filter: blur(6px); }
 .team-detail-panel { width: 100%; max-width: 40rem; margin: auto; border: 1px solid rgba(255,255,255,.2); background: #0a0c14; box-shadow: 0 30px 80px rgba(0,0,0,.55); font-variant-numeric: tabular-nums; max-height: 90vh; overflow-y: auto; }

@@ -9,7 +9,7 @@ import SkyConsole from './SkyConsole.vue'
 import HeroGalaxy from './HeroGalaxy.vue'
 import HeroCredits from './HeroCredits.vue'
 import FinalProgress from '../competition/FinalProgress.vue'
-import { useFinalProgress } from '../../composables/useFinalProgress'
+import { FINAL_PUBLISHED, useFinalProgress } from '../../composables/useFinalProgress'
 import { competition } from '../../stores/competition'
 
 const { t, tf, pick, locale } = useI18n()
@@ -17,7 +17,9 @@ const { current, next, nextStart, nextStartsAt, postDeadline, hiddenFinalWait, h
 const heroTitleLines = computed(() => t('hero.titleLines') as string[])
 const pad = (n: number) => String(n).padStart(2, '0')
 const { progress: finalProgress } = useFinalProgress()
-const nextName = computed(() => hiddenFinalLive.value ? (finalProgress.value?.stage === 'review'
+const nextName = computed(() => hiddenFinalLive.value ? (FINAL_PUBLISHED
+  ? pick('The final results are published · The ranking is decided by the final results; see the Final tab of the leaderboard.', '决赛成绩已公布 · 名次以决赛成绩为准，详见排行榜「决赛」。')
+  : finalProgress.value?.stage === 'review'
   ? pick('Final versions are locked · The final evaluation is complete and under manual review; results are published after the review.', '送测版本已锁定 · 决赛评测已全部完成，正在人工审核，审核通过后公布成绩。')
   : pick('Final versions are locked · The hidden-card evaluation is under way; results are published after verification.', '送测版本已锁定 · 隐藏卡评测进行中，成绩经核验后公布。')) : hiddenFinalWait.value ? pick('Final versions are locked · The hidden-card evaluation starts on Oct 8 at 12:00 UTC+8.', '送测版本已锁定 · 隐藏卡评测将于 10 月 8 日 12:00（UTC+8）开始。') : next.value ? pick(next.value.name_en, next.value.name_zh) : postDeadline.value ? pick('The online competition has closed · To let everyone keep debugging and avoid rushed choices at a hard cutoff, each team may still submit up to 15 more versions. The final version can be any of your team\'s confirmed versions, including any from before the deadline, and can no longer change after Oct 8 09:00 (UTC+8). Once the team has confirmed its final version, the captain may lock it early by clicking "Freeze selection" on the Participate page; after freezing, the final version can no longer be changed.', '正式赛已截止 · 为方便大家继续调试，避免硬截止带来的仓促选择，截止后每队仍可提交最多 15 个版本；送测版本可从本队任意已确认版本中选择（包括截止前的任何版本），10 月 8 日 09:00（UTC+8）后不可再更改。如已确认送测版本，队长可在「参赛」页面点击「选定冻结」提前锁定；冻结后送测版本不可再更改。') : usingFallback.value ? t('phase_clock.fallback_next') : current.value?.ends_at ? tf('phase_clock.ends', { name: pick(current.value.name_en, current.value.name_zh) }) : t('phase_clock.none_scheduled'))
 const parts = computed(() => [
@@ -100,7 +102,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 
           <div class="phase-strip phase-strip-live mt-9 reveal reveal-delay-5" data-testid="phase-strip">
             <div class="phase-strip-next" data-testid="phase-next">
-              <span class="phase-strip-label">{{ hiddenFinalLive ? pick('Hidden-card evaluation', '隐藏卡评测') : hiddenFinalWait ? pick('Hidden-card evaluation starts in', '距隐藏卡评测开始') : postDeadline && !next ? pick('Final version locks in', '距送测版本锁定') : t('phase_clock.next') }}</span>
+              <span class="phase-strip-label">{{ hiddenFinalLive ? (FINAL_PUBLISHED ? pick('Final results', '决赛成绩') : pick('Hidden-card evaluation', '隐藏卡评测')) : hiddenFinalWait ? pick('Hidden-card evaluation starts in', '距隐藏卡评测开始') : postDeadline && !next ? pick('Final version locks in', '距送测版本锁定') : t('phase_clock.next') }}</span>
               <p v-if="nextStart && next?.starts_at && !hiddenFinalWait && !hiddenFinalLive" class="phase-strip-stage">
                 <b>{{ nextStart.name }}</b> · <time :datetime="next.starts_at" :title="nextStart.moment">{{ nextStart.day }}</time> · <span>{{ nextStart.left }}</span>
               </p>

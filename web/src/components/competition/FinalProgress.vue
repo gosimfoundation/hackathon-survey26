@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '../../composables/useI18n'
-import { useFinalProgress, type FinalCardState } from '../../composables/useFinalProgress'
+import { FINAL_PUBLISHED, useFinalProgress, type FinalCardState } from '../../composables/useFinalProgress'
 
 /** Hidden-final progress: overall counts, or (mine) the visitor's own team's cards. Never scores. */
 const props = withDefaults(defineProps<{ tone?: 'dark' | 'light', mine?: boolean }>(), { tone: 'light', mine: false })
 const { pick } = useI18n()
 const { progress } = useFinalProgress()
 const n = (v: number) => v.toLocaleString('en-US')
-const share = computed(() => progress.value && progress.value.runs_total > 0 ? Math.min(1, progress.value.runs_done / progress.value.runs_total) : 0)
+const share = computed(() => FINAL_PUBLISHED ? 1 : progress.value && progress.value.runs_total > 0 ? Math.min(1, progress.value.runs_done / progress.value.runs_total) : 0)
 const stateLabel = (s: FinalCardState) => s === 'done' ? pick('done', '已完成') : s === 'running' ? pick('running', '进行中') : pick('waiting', '等待')
 </script>
 
 <template>
   <div v-if="progress && !props.mine" class="final-progress" :class="`is-${props.tone}`" role="status" data-testid="final-progress">
-    <p v-if="progress.stage === 'review'" data-testid="final-progress-review">{{ pick('Final evaluation complete · under manual review', '决赛评测已全部完成 · 正在人工审核') }}</p>
+    <p v-if="FINAL_PUBLISHED" data-testid="final-progress-published">{{ pick('Final evaluation complete · results published', '决赛评测已全部完成 · 成绩已公布') }}</p>
+    <p v-else-if="progress.stage === 'review'" data-testid="final-progress-review">{{ pick('Final evaluation complete · under manual review', '决赛评测已全部完成 · 正在人工审核') }}</p>
     <p v-else>{{ pick(`Evaluations finished: ${n(progress.runs_done)} / ${n(progress.runs_total)} · Teams finished: ${n(progress.teams_done)} / ${n(progress.teams_total)}`, `已完成评测 ${n(progress.runs_done)} / ${n(progress.runs_total)} 次 · 已跑完 ${n(progress.teams_done)} / ${n(progress.teams_total)} 队`) }}</p>
     <progress :value="share" max="1" :aria-label="pick('Hidden-card evaluation progress', '隐藏卡评测进度')"></progress>
   </div>
