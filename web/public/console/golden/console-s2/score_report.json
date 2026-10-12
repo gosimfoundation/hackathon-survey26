@@ -1,0 +1,58 @@
+{
+  "by_class": {
+    "BGS": 4.6128,
+    "ELG": 10.81753,
+    "LRG": 2.32376,
+    "QSO": 1.392377,
+    "Star": 0.9
+  },
+  "components": {
+    "observation_request_reward": 0,
+    "report_settlement": 0.0,
+    "required_penalty": -2050.0,
+    "sum_best_scores": 20.046466,
+    "uniformity_penalty": -117.680571
+  },
+  "counts": {
+    "decisions": 132,
+    "invalidated_observations": 0,
+    "observation_requests_completed": 0,
+    "observation_requests_issued": 0,
+    "observations": 297,
+    "observe_actions": 102,
+    "required_missing": 41,
+    "targets_observed": 297
+  },
+  "invalidations": [
+    {
+      "event_id": "V4ST0001",
+      "invalidated_observations": 0,
+      "window": [
+        0,
+        0
+      ]
+    }
+  ],
+  "observation_requests": [],
+  "scenario": "AOH console short card S2 (public, 2 nights, data loss)",
+  "schema_version": "v4-score-report-v1",
+  "sha256": {
+    "decisions": "6a07e6a943dfa07e4fc8b71e8da667fa0eb1314374e5c72259dc80dfdca7f724",
+    "messages": "8c5cde1896f3305ee5eb26ac27fa6e3ae233b021ca7516cff485d9e2a2c5fcc6",
+    "observations": "82985b3f3c4b47733d6f79bfc6147fa50fff951b8f1d91e67665d9b9bf5c0cac",
+    "scenario": "c733ffc762ecc43241eab7a6285aa3522eeb8439ac76ed50dbe84820b33da20e"
+  },
+  "termination": {
+    "detail": "",
+    "reason": "survey_complete"
+  },
+  "total": -2147.634105,
+  "uniformity_bands": {
+    "ra_320_330": 0.0,
+    "ra_330_340": 0.006231,
+    "ra_340_350": 0.119266,
+    "ra_50_60": 0.112903,
+    "ra_60_70": 0.022222,
+    "ra_70_80": 0.0
+  }
+}

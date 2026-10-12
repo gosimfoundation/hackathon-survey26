@@ -105,6 +105,26 @@
       "fig-sky": {
         "title": "Observation replay figure",
         "description": "Still render of the 3D observation replay (paper figure)."
+      },
+      "benchmark": {
+        "title": "AOH benchmark",
+        "description": "AOH: an open benchmark for autonomous survey operations: what it measures, how, and how to take part."
+      },
+      "benchmark-tasks": {
+        "title": "Benchmark tasks",
+        "description": "The AOH task sets: the Survey26 v1 set and four new tasks, with versions."
+      },
+      "benchmark-submit": {
+        "title": "Submit any time",
+        "description": "Submit to the AOH benchmark any time: no season, individuals welcome, one run is enough."
+      },
+      "benchmark-leaderboard": {
+        "title": "Benchmark leaderboards",
+        "description": "AOH scores by task and version, with official and human baselines."
+      },
+      "benchmark-survey26": {
+        "title": "Survey26 stress test",
+        "description": "The Survey26 competition: the first large stress test of the AOH benchmark."
       }
     }
   },

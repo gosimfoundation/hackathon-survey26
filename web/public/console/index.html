@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<script>/* cross-origin isolation via coi-sw.js (static hosting without headers) */(function(){var k='coi-reload-once';
+if(window.crossOriginIsolated){try{sessionStorage.removeItem(k)}catch(e){}return}
+if(!window.isSecureContext||!('serviceWorker' in navigator))return;
+function go(){try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){return}location.reload()}
+navigator.serviceWorker.register('coi-sw.js').then(function(reg){if(navigator.serviceWorker.controller||reg.active)go();else navigator.serviceWorker.addEventListener('controllerchange',go)}).catch(function(){})})();</script>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AOH 观测控制台</title>
+  <link rel="stylesheet" href="./console.css">
+</head>
+<body>
+  <header id="hdr">
+    <span class="cell"><span class="k">UTC</span><span id="clock-utc">—</span></span>
+    <span class="cell"><span class="k">本地 Local</span><span id="clock-local">—</span></span>
+    <span class="cell"><span class="k">夜晚 Night</span><span id="night">—</span></span>
+    <span class="cell"><span class="k">决策 Seq</span><span id="seq">—</span></span>
+    <span class="cell"><span class="k">分数 Score</span><span id="score">—</span></span>
+    <span class="cell" id="srccell" hidden><span class="k">来源 Src</span><span id="src-counts">—</span></span>
+    <span class="cell"><span class="k">玩家 Player</span><span id="who">—</span></span>
+  </header>
+
+  <div id="start-screen">
+    <h1>AOH 观测控制台 <span style="color:var(--dim)">Human Console</span></h1>
+    <label for="card-sel">任务 Task</label>
+    <select id="card-sel"></select>
+    <label>模式 Mode</label>
+    <div class="modes">
+      <label><input type="radio" name="mode" value="human" checked> 手动 Manual</label>
+      <label title="助手运行常规观测，你在关键节点决策 The assistant runs routine exposures; you decide at checkpoints">
+        <input type="radio" name="mode" value="assisted"> 辅助 Assisted (推荐 demo7 recommended)
+      </label>
+    </div>
+    <label for="name-in">昵称 Display name</label>
+    <input type="text" id="name-in" maxlength="24" placeholder="观测者 Observer">
+    <button id="start-btn" class="primary">开始 Start</button>
+  </div>
+
+  <div id="loading" hidden>
+    <h2>正在加载引擎与任务数据… Loading engine and card data…</h2>
+    <div id="load-bar"><div id="load-fill"></div></div>
+    <div id="load-text">0 / 0</div>
+  </div>
+
+  <main id="app" hidden>
+    <section id="sky-panel" class="panel">
+      <h2>天空图 Sky (点击设置指向 tap to point)</h2>
+      <div id="zoom-bar">
+        <button data-zoom="sky" class="zoom-btn">全天 All sky</button>
+        <button data-zoom="footprint" class="zoom-btn active">天区 Footprint</button>
+        <button data-zoom="field" class="zoom-btn">视场 Field</button>
+      </div>
+      <canvas id="sky"></canvas>
+      <div id="sky-info">—</div>
+    </section>
+
+    <section id="fibre-panel" class="panel">
+      <h2>光纤分配 Fibres</h2>
+      <div id="fibre-grid"></div>
+      <div class="fibre-bar">
+        <button id="autofill-btn">自动填充 Autofill</button>
+        <button id="clear-btn">清空 Clear</button>
+      </div>
+    </section>
+
+    <section id="checkpoint" class="panel" hidden>
+      <h2>检查点 Checkpoint</h2>
+      <div id="checkpoint-reason" class="cp-reason"></div>
+      <div id="checkpoint-night">
+        <div id="checkpoint-forecast" class="log"></div>
+        <div class="cp-plans">
+          <label><input type="radio" name="nightplan" value="assistant" checked> 交给助手 Let the assistant run</label>
+          <label><input type="radio" name="nightplan" value="closed"> 整晚关闭 Close for the night</label>
+          <label><input type="radio" name="nightplan" value="manual"> 我来手动 I'll do it by hand</label>
+        </div>
+        <fieldset id="callme">
+          <legend>遇到以下情况叫我 Call me when</legend>
+          <label><input type="checkbox" id="cm-bulletin" checked> 新快报/故障/数据丢失 New bulletin / fault / data loss</label>
+          <label><input type="checkbox" id="cm-request" checked> 新观测请求 New observation request</label>
+          <label><input type="checkbox" id="cm-report" checked> 助手要上报故障 Assistant wants to report</label>
+        </fieldset>
+        <button id="plan-go" class="primary">继续 Continue</button>
+      </div>
+      <div id="checkpoint-suggestion" class="cp-suggestion"></div>
+      <div class="cp-actions">
+        <button id="accept-btn" class="primary">接受 Accept</button>
+        <button id="resume-btn">继续自动 Resume auto</button>
+      </div>
+    </section>
+
+    <section id="conditions" class="panel">
+      <h2>天气与预报 Conditions &amp; Forecast</h2>
+      <div id="bulletin">—</div>
+      <div id="forecast" class="log"></div>
+    </section>
+
+    <section id="duty" class="panel">
+      <h2>值班日志 Duty log</h2>
+      <div id="requests"></div>
+      <div id="duty-log" class="log"></div>
+    </section>
+
+    <section id="last" class="panel">
+      <h2>上一动作结果 Last result</h2>
+      <div id="last-result">—</div>
+    </section>
+
+    <section id="score-panel" class="panel" hidden>
+      <h2>得分明细 Score breakdown</h2>
+      <div id="score-detail"></div>
+    </section>
+
+    <section id="lb-panel" class="panel" hidden>
+      <h2>排行榜 Leaderboard</h2>
+      <div id="leaderboard"></div>
+    </section>
+
+    <div id="errbar" hidden></div>
+
+    <div id="actionbar">
+      <span>曝光 Exposure <input type="number" id="exposure-in" min="60" max="3600" step="60" value="900"> s</span>
+      <select id="program-sel">
+        <option value="DARK">DARK</option>
+        <option value="BRIGHT">BRIGHT</option>
+        <option value="BACKUP">BACKUP</option>
+      </select>
+      <button id="observe-btn" class="primary">观测 Observe (o)</button>
+      <span class="sep"></span>
+      <button id="wait15-btn">等待15分 Wait 15m (w)</button>
+      <button id="wait60-btn">等待1小时 Wait 1h</button>
+      <button id="waitnight-btn">等到下一夜 Wait to next night</button>
+      <span class="sep"></span>
+      <button id="report-btn">上报故障 Report (r)</button>
+      <button id="stop-btn" class="danger">结束 Stop</button>
+      <span class="sep" id="assist-sep" hidden></span>
+      <button id="pause-btn" hidden>暂停 Pause</button>
+      <select id="speed-sel" hidden>
+        <option value="max" selected>速度 Speed: max</option>
+        <option value="10">速度 Speed: 10×</option>
+        <option value="1">速度 Speed: 1×</option>
+      </select>
+    </div>
+  </main>
+
+  <footer id="footer">引擎 engine sha256: <span id="engine-sha">—</span> ·
+    <a href="./golden.html">golden test</a> · <a href="./replay.html">回放 replay</a></footer>
+
+  <script src="./engine.js"></script>
+  <script type="module" src="./console-main.js"></script>
+</body>
+</html>

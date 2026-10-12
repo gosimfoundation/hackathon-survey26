@@ -1,0 +1,76 @@
+{
+  "by_class": {
+    "BGS": 136.121389,
+    "ELG": 326.738084,
+    "LRG": 154.082165,
+    "QSO": 132.555094,
+    "Star": 30.391091
+  },
+  "components": {
+    "observation_request_reward": 0.0,
+    "report_settlement": 0.0,
+    "required_penalty": -2650.0,
+    "sum_best_scores": 779.887824,
+    "uniformity_penalty": -18.262512
+  },
+  "counts": {
+    "decisions": 403,
+    "invalidated_observations": 0,
+    "observation_requests_completed": 0,
+    "observation_requests_issued": 1,
+    "observations": 1795,
+    "observe_actions": 240,
+    "required_missing": 53,
+    "targets_observed": 1795
+  },
+  "invalidations": [],
+  "observation_requests": [
+    {
+      "completed": false,
+      "completed_count": 1,
+      "completed_target_ids": [
+        "V4T002330"
+      ],
+      "completion_factor_threshold": 0.5,
+      "completion_reward": 100.0,
+      "deadline_utc": "2026-10-06T08:45:00Z",
+      "issued_at_utc": "2026-10-05T00:00:00Z",
+      "minimum_completed": 6,
+      "request_id": "V4RQ0001",
+      "reward": 0.0,
+      "target_ids": [
+        "V4T000160",
+        "V4T002330",
+        "V4T000311",
+        "V4T001021",
+        "V4T000532",
+        "V4T000716",
+        "V4T001836",
+        "V4T002258"
+      ]
+    }
+  ],
+  "scenario": "demo",
+  "schema_version": "v4-score-report-v1",
+  "sha256": {
+    "decisions": "8c0ab78fa11087962e094355e1937a6a2e2ef8134b6e1c9cf65c057a2acd659d",
+    "messages": "764321eaabddf3c96d4a7136d7f61f026a3c6a68d6e1cce7c8b4cc16e53a6f2c",
+    "observations": "97afa60f9012a9348288a15855f4b5ccd6a168340bdb2d2605e639e26ded3ef0",
+    "scenario": "a9648e0f6f398ff2bb96144f0a6bff14d90a9b4ad88846d4803c02e05c87e2df"
+  },
+  "termination": {
+    "detail": "",
+    "reason": "agent_finished"
+  },
+  "total": -1888.374689,
+  "uniformity_bands": {
+    "ra_0_10": 0.535354,
+    "ra_20_30": 0.172043,
+    "ra_30_40": 0.376518,
+    "ra_330_340": 0.268519,
+    "ra_340_350": 0.352014,
+    "ra_350_360": 0.418278,
+    "ra_40_50": 0.228571,
+    "ra_50_60": 0.347826
+  }
+}

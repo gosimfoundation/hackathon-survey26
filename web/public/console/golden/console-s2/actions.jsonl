@@ -1,0 +1,132 @@
+{"action": "observe", "pointing": {"alt_deg": 77.9479, "az_deg": 101.8962}, "assignments": {"6": "V4T000437", "5": "V4T000051", "13": "V4T000241", "7": "V4T000246", "11": "V4T000131", "12": "V4T000141", "3": "V4T000039"}, "duration_seconds": 60, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 71.7845, "az_deg": 65.0744}, "assignments": {"9": "V4T000503", "5": "V4T000425", "7": "V4T000144", "1": "V4T000583", "2": "V4T000684", "11": "V4T000391", "12": "V4T000167"}, "duration_seconds": 60, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 71.9909, "az_deg": 64.6741}, "assignments": {"6": "V4T000503", "5": "V4T000288", "9": "V4T000580", "1": "V4T000768", "7": "V4T000581", "12": "V4T000089"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 81.469, "az_deg": 102.3809}, "assignments": {"9": "V4T000182", "6": "V4T000709", "14": "V4T000241", "7": "V4T000085", "12": "V4T000524"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 84.7726, "az_deg": 108.3234}, "assignments": {"9": "V4T000182", "7": "V4T000085", "12": "V4T000605", "0": "V4T000597"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 87.7794, "az_deg": 134.3412}, "assignments": {"9": "V4T000182", "15": "V4T000559", "0": "V4T000207", "3": "V4T000033", "12": "V4T000063"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 88.6806, "az_deg": 351.7569}, "assignments": {"6": "V4T000343", "10": "V4T000237", "9": "V4T000436", "13": "V4T000440", "14": "V4T000897", "8": "V4T000802", "11": "V4T000372", "4": "V4T000233", "2": "V4T000485", "7": "V4T000376", "0": "V4T000808", "12": "V4T000424", "15": "V4T000640"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 88.0361, "az_deg": 323.7054}, "assignments": {"6": "V4T000278", "9": "V4T000331", "7": "V4T000183", "1": "V4T000553", "11": "V4T000219", "3": "V4T000567", "13": "V4T000651", "14": "V4T000055"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 87.1532, "az_deg": 223.1014}, "assignments": {"6": "V4T000555", "9": "V4T000602", "10": "V4T000618", "5": "V4T000534", "14": "V4T000591", "1": "V4T000601", "8": "V4T000011", "4": "V4T000501", "13": "V4T000119", "2": "V4T000536", "15": "V4T000019", "0": "V4T000431"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 89.7643, "az_deg": 299.6616}, "assignments": {"9": "V4T000461", "6": "V4T000629", "5": "V4T000249", "10": "V4T000863", "1": "V4T000243", "2": "V4T000448", "12": "V4T000366", "15": "V4T000082", "3": "V4T000040"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 86.3734, "az_deg": 271.0162}, "assignments": {"9": "V4T000461", "5": "V4T000727", "4": "V4T000701", "8": "V4T000338", "1": "V4T000893", "2": "V4T000142", "14": "V4T000082", "12": "V4T000730", "0": "V4T000322"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 82.955, "az_deg": 269.3367}, "assignments": {"10": "V4T000461", "9": "V4T000156", "8": "V4T000316", "2": "V4T000587", "12": "V4T000849", "0": "V4T000322"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 79.5373, "az_deg": 268.2396}, "assignments": {"10": "V4T000461", "0": "V4T000322", "12": "V4T000880"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 76.1214, "az_deg": 267.2911}, "assignments": {"10": "V4T000461", "0": "V4T000322"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 72.7081, "az_deg": 266.3991}, "assignments": {"9": "V4T000461", "0": "V4T000322"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 32.5388, "az_deg": 137.1131}, "assignments": {"9": "V4T000875", "5": "V4T000169", "4": "V4T000568", "14": "V4T000481", "8": "V4T000110", "2": "V4T000874", "0": "V4T000782", "7": "V4T000161", "3": "V4T000165", "12": "V4T000217"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 34.8635, "az_deg": 137.2188}, "assignments": {"10": "V4T000875", "5": "V4T000169", "15": "V4T000134", "8": "V4T000110", "14": "V4T000585", "0": "V4T000181", "3": "V4T000403", "12": "V4T000362"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 37.1803, "az_deg": 137.4809}, "assignments": {"6": "V4T000875", "5": "V4T000169", "8": "V4T000110", "15": "V4T000585", "7": "V4T000606", "0": "V4T000181", "12": "V4T000122"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 59.095, "az_deg": 262.9531}, "assignments": {"10": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 55.7056, "az_deg": 262.0826}, "assignments": {"10": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 53.4191, "az_deg": 140.8583}, "assignments": {"10": "V4T000406", "9": "V4T000570", "6": "V4T000102", "5": "V4T000790", "7": "V4T000837", "1": "V4T000496", "4": "V4T000787", "2": "V4T000479", "0": "V4T000054", "3": "V4T000560"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 55.5271, "az_deg": 143.0642}, "assignments": {"5": "V4T000406", "9": "V4T000570", "10": "V4T000748", "4": "V4T000355"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 57.5196, "az_deg": 145.7019}, "assignments": {"5": "V4T000406", "9": "V4T000570", "10": "V4T000595", "4": "V4T000283", "7": "V4T000634"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 59.3702, "az_deg": 148.8199}, "assignments": {"10": "V4T000406", "9": "V4T000045", "5": "V4T000790", "7": "V4T000634"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 61.0484, "az_deg": 152.4608}, "assignments": {"5": "V4T000406", "10": "V4T000570", "9": "V4T000025", "7": "V4T000634"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.6229, "az_deg": 152.7965}, "assignments": {"9": "V4T000737", "5": "V4T000825", "6": "V4T000382", "1": "V4T000491", "8": "V4T000841"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.0645, "az_deg": 157.4115}, "assignments": {"6": "V4T000737", "9": "V4T000226", "5": "V4T000620", "1": "V4T000491", "0": "V4T000716"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.6889, "az_deg": 166.6321}, "assignments": {"6": "V4T000406", "10": "V4T000045", "5": "V4T000790", "0": "V4T000851"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 63.6168, "az_deg": 158.3439}, "assignments": {"5": "V4T000805", "10": "V4T000766", "14": "V4T000821", "4": "V4T000259", "11": "V4T000846", "3": "V4T000067", "7": "V4T000215", "2": "V4T000546", "13": "V4T000785", "15": "V4T000814", "0": "V4T000865"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.7375, "az_deg": 163.4582}, "assignments": {"6": "V4T000805", "5": "V4T000687", "14": "V4T000821", "10": "V4T000712", "11": "V4T000114", "2": "V4T000546", "3": "V4T000873", "0": "V4T000683"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 63.5878, "az_deg": 166.7623}, "assignments": {"9": "V4T000573", "5": "V4T000031", "6": "V4T000009", "10": "V4T000557", "4": "V4T000457", "2": "V4T000819", "11": "V4T000740", "8": "V4T000419", "13": "V4T000360", "15": "V4T000769", "12": "V4T000445", "3": "V4T000839"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.2173, "az_deg": 172.0616}, "assignments": {"5": "V4T000573", "9": "V4T000300", "4": "V4T000457", "6": "V4T000523", "11": "V4T000707", "12": "V4T000329", "15": "V4T000546"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.526, "az_deg": 177.5983}, "assignments": {"5": "V4T000573", "9": "V4T000334", "4": "V4T000457", "11": "V4T000769"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.5018, "az_deg": 183.2095}, "assignments": {"10": "V4T000573", "11": "V4T000546"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.1458, "az_deg": 188.7215}, "assignments": {"5": "V4T000573"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 63.4717, "az_deg": 193.9748}, "assignments": {"9": "V4T000573"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.6491, "az_deg": 198.2217}, "assignments": {"5": "V4T000573"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 61.4523, "az_deg": 202.696}, "assignments": {"6": "V4T000573"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 58.91, "az_deg": 198.0146}, "assignments": {"9": "V4T000410", "6": "V4T000806", "8": "V4T000540", "13": "V4T000004", "7": "V4T000302", "3": "V4T000665", "2": "V4T000676", "0": "V4T000113", "4": "V4T000616"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 57.7484, "az_deg": 201.6636}, "assignments": {"5": "V4T000410", "9": "V4T000777", "6": "V4T000029", "13": "V4T000004", "3": "V4T000302", "2": "V4T000676", "4": "V4T000616"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 56.3944, "az_deg": 204.9474}, "assignments": {"5": "V4T000410", "6": "V4T000029", "9": "V4T000540", "13": "V4T000004", "3": "V4T000383", "7": "V4T000606"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 54.8727, "az_deg": 207.8604}, "assignments": {"6": "V4T000410", "3": "V4T000606"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 51.6331, "az_deg": 210.9441}, "assignments": {"6": "V4T000510", "9": "V4T000345", "10": "V4T000563", "5": "V4T000271", "11": "V4T000097", "2": "V4T000654", "13": "V4T000029", "7": "V4T000786", "0": "V4T000416", "1": "V4T000137", "4": "V4T000190", "3": "V4T000690"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 45.9755, "az_deg": 215.8047}, "assignments": {"5": "V4T000057", "11": "V4T000548", "2": "V4T000096", "9": "V4T000671", "13": "V4T000775", "8": "V4T000454", "14": "V4T000795", "0": "V4T000757", "12": "V4T000175", "4": "V4T000041"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 43.9461, "az_deg": 216.9869}, "assignments": {"9": "V4T000057", "8": "V4T000256", "2": "V4T000604", "13": "V4T000175", "12": "V4T000722"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 41.8659, "az_deg": 217.943}, "assignments": {"5": "V4T000057", "12": "V4T000884", "15": "V4T000898"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 39.7456, "az_deg": 218.6927}, "assignments": {"5": "V4T000057"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 37.5948, "az_deg": 219.2536}, "assignments": {"5": "V4T000057", "12": "V4T000335", "3": "V4T000248"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 35.4221, "az_deg": 219.6414}, "assignments": {"6": "V4T000057", "14": "V4T000201", "3": "V4T000248"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 38.0663, "az_deg": 213.4987}, "assignments": {"5": "V4T000408", "6": "V4T000652", "1": "V4T000758", "15": "V4T000639"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 36.1643, "az_deg": 214.0825}, "assignments": {"9": "V4T000408", "5": "V4T000108", "1": "V4T000446"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 34.2375, "az_deg": 214.5087}, "assignments": {"10": "V4T000408", "5": "V4T000108", "1": "V4T000446"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 32.2934, "az_deg": 214.7875}, "assignments": {"5": "V4T000408", "1": "V4T000446", "15": "V4T000153", "3": "V4T000105"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 32.0256, "az_deg": 218.8349}, "assignments": {"6": "V4T000498", "7": "V4T000066", "1": "V4T000052", "3": "V4T000760", "0": "V4T000125"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "wait", "duration_seconds": 900}
+{"action": "observe", "pointing": {"alt_deg": 33.3767, "az_deg": 104.8977}, "assignments": {"10": "V4T000658", "5": "V4T000318", "6": "V4T000104", "2": "V4T000739", "11": "V4T000719", "7": "V4T000710", "4": "V4T000020", "0": "V4T000765"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 35.0035, "az_deg": 105.7315}, "assignments": {"10": "V4T000182", "3": "V4T000016"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 38.3012, "az_deg": 104.8355}, "assignments": {"9": "V4T000182", "3": "V4T000016"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 41.6122, "az_deg": 103.9816}, "assignments": {"10": "V4T000182", "3": "V4T000016"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 44.9353, "az_deg": 103.1706}, "assignments": {"6": "V4T000182", "3": "V4T000016"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 46.7079, "az_deg": 96.8598}, "assignments": {"9": "V4T000808", "5": "V4T000781", "4": "V4T000850", "1": "V4T000655", "14": "V4T000582", "13": "V4T000350", "15": "V4T000791"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 50.1058, "az_deg": 95.7149}, "assignments": {"10": "V4T000808", "9": "V4T000610", "4": "V4T000850"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 53.5106, "az_deg": 94.5365}, "assignments": {"10": "V4T000808", "9": "V4T000610", "4": "V4T000850"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 56.9211, "az_deg": 93.3065}, "assignments": {"5": "V4T000808", "9": "V4T000610", "4": "V4T000850"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 60.3359, "az_deg": 91.9993}, "assignments": {"6": "V4T000808", "9": "V4T000610"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 61.5426, "az_deg": 76.7306}, "assignments": {"5": "V4T000744", "10": "V4T000361", "6": "V4T000682", "1": "V4T000179", "2": "V4T000295", "14": "V4T000852", "11": "V4T000317", "15": "V4T000793", "3": "V4T000395"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 64.8461, "az_deg": 73.4208}, "assignments": {"10": "V4T000744", "6": "V4T000257", "14": "V4T000852", "15": "V4T000793"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 68.0866, "az_deg": 69.3475}, "assignments": {"5": "V4T000744", "13": "V4T000822", "15": "V4T000793"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 71.229, "az_deg": 64.1383}, "assignments": {"6": "V4T000744"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 71.2031, "az_deg": 73.6793}, "assignments": {"5": "V4T000881", "10": "V4T000896", "6": "V4T000894", "4": "V4T000556", "13": "V4T000815", "7": "V4T000205", "14": "V4T000405", "11": "V4T000077", "12": "V4T000389", "15": "V4T000253", "0": "V4T000349"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 74.439, "az_deg": 68.53}, "assignments": {"6": "V4T000881", "5": "V4T000273", "12": "V4T000663"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 74.5701, "az_deg": 102.4716}, "assignments": {"9": "V4T000855", "5": "V4T000035", "10": "V4T000091", "13": "V4T000379", "6": "V4T000713", "2": "V4T000189", "7": "V4T000386", "0": "V4T000084", "15": "V4T000552", "12": "V4T000148", "3": "V4T000184"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 77.8983, "az_deg": 104.1145}, "assignments": {"10": "V4T000855", "9": "V4T000433", "5": "V4T000319", "13": "V4T000379", "7": "V4T000021", "15": "V4T000532", "4": "V4T000669"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 81.1898, "az_deg": 107.6147}, "assignments": {"9": "V4T000855", "10": "V4T000845", "13": "V4T000379", "4": "V4T000669"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 84.3747, "az_deg": 116.1168}, "assignments": {"10": "V4T000855", "9": "V4T000718", "13": "V4T000379", "15": "V4T000649"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 87.2226, "az_deg": 88.2248}, "assignments": {"9": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 89.3444, "az_deg": 280.1132}, "assignments": {"5": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 85.9332, "az_deg": 270.7155}, "assignments": {"10": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 82.5148, "az_deg": 269.1797}, "assignments": {"6": "V4T000461"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 77.9472, "az_deg": 255.851}, "assignments": {"10": "V4T000855", "6": "V4T000379", "15": "V4T000887"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 74.6193, "az_deg": 257.512}, "assignments": {"9": "V4T000855", "6": "V4T000379", "15": "V4T000178"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 71.2761, "az_deg": 258.2828}, "assignments": {"9": "V4T000855", "6": "V4T000379"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 67.9268, "az_deg": 258.5616}, "assignments": {"6": "V4T000855"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 63.928, "az_deg": 279.8393}, "assignments": {"9": "V4T000619", "6": "V4T000465", "10": "V4T000643", "8": "V4T000132", "2": "V4T000473", "4": "V4T000694", "1": "V4T000026", "11": "V4T000844", "12": "V4T000842", "7": "V4T000512", "3": "V4T000824", "0": "V4T000192"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 60.5476, "az_deg": 277.3043}, "assignments": {"10": "V4T000619", "9": "V4T000377", "6": "V4T000090", "8": "V4T000132", "1": "V4T000146", "4": "V4T000388", "7": "V4T000512", "3": "V4T000252"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 57.1492, "az_deg": 275.1252}, "assignments": {"9": "V4T000619", "10": "V4T000136", "8": "V4T000132", "4": "V4T000801", "7": "V4T000512"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 53.7398, "az_deg": 273.1981}, "assignments": {"6": "V4T000619", "10": "V4T000136", "8": "V4T000132"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 52.5209, "az_deg": 146.4831}, "assignments": {"5": "V4T000061", "9": "V4T000490", "2": "V4T000320", "11": "V4T000731", "7": "V4T000145", "4": "V4T000564", "12": "V4T000050"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 54.3516, "az_deg": 148.8118}, "assignments": {"10": "V4T000061", "9": "V4T000394", "6": "V4T000145", "11": "V4T000463", "12": "V4T000050"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 56.054, "az_deg": 151.5143}, "assignments": {"6": "V4T000061", "9": "V4T000157", "2": "V4T000145", "12": "V4T000050", "7": "V4T000092", "13": "V4T000079"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 51.6049, "az_deg": 159.5457}, "assignments": {"6": "V4T000520", "9": "V4T000294", "5": "V4T000065", "4": "V4T000832", "8": "V4T000471", "2": "V4T000163", "14": "V4T000705", "12": "V4T000435", "13": "V4T000407"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 50.8444, "az_deg": 162.2983}, "assignments": {"9": "V4T000015", "10": "V4T000522", "1": "V4T000519", "8": "V4T000792", "14": "V4T000163", "4": "V4T000044"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 51.8125, "az_deg": 164.8304}, "assignments": {"9": "V4T000015", "8": "V4T000792", "4": "V4T000044"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 52.6293, "az_deg": 167.5488}, "assignments": {"9": "V4T000015"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 53.2829, "az_deg": 170.4303}, "assignments": {"5": "V4T000015"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 53.7629, "az_deg": 173.444}, "assignments": {"6": "V4T000015"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.3539, "az_deg": 171.9625}, "assignments": {"9": "V4T000081", "6": "V4T000006", "1": "V4T000098", "12": "V4T000346", "4": "V4T000365", "3": "V4T000499", "2": "V4T000053", "15": "V4T000075", "0": "V4T000695"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.685, "az_deg": 176.9427}, "assignments": {"9": "V4T000081", "6": "V4T000006", "13": "V4T000346", "1": "V4T000053"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.7165, "az_deg": 182.0046}, "assignments": {"6": "V4T000081", "9": "V4T000632", "2": "V4T000006", "1": "V4T000053", "0": "V4T000724"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.8443, "az_deg": 178.42}, "assignments": {"10": "V4T000022", "5": "V4T000047", "2": "V4T000533"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.7865, "az_deg": 183.514}, "assignments": {"10": "V4T000022", "1": "V4T000411"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 62.4277, "az_deg": 188.5134}, "assignments": {"9": "V4T000022"}, "duration_seconds": 900, "program": "BACKUP"}
+{"action": "observe", "pointing": {"alt_deg": 61.7799, "az_deg": 193.2925}, "assignments": {"10": "V4T000022"}, "duration_seconds": 900, "program": "BACKUP"}

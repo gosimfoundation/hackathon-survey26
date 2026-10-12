@@ -1,0 +1,12 @@
+{
+  "note": "Fixed AI reference scores for the leaderboard (参考 AI Reference rows), computed once offline on this checkout.",
+  "commands": {
+    "probe": "python3 ../tools/golden_run.py cards/<card> golden/<card>  (official probe agent; totals from golden/<card>/score_report.json)",
+    "basic_example": "python3 tools_assist_cpython.py <card>  (official basic example, rule-only OBSERVER_MODEL_DISABLED=1)"
+  },
+  "cards": {
+    "console-s1": { "probe": -2445.267652, "basic_example": -2316.787852 },
+    "console-s2": { "probe": -2147.634105, "basic_example": -1276.056411 },
+    "demo7": { "probe": -1888.374689, "basic_example": 1250.708772 }
+  }
+}
