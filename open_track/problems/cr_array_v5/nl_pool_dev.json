@@ -1,0 +1,2645 @@
+{
+ "avoid_from": null,
+ "problem": "cr_array_v5",
+ "pool": "dev",
+ "generated_utc": "2026-10-12T06:07:29Z",
+ "model": "tokenflux Deepseek/deepseek-flash",
+ "kinds": {
+  "storm_warn": [
+   {
+    "lang": "en",
+    "t": "t-storm inbound, hits the array at {arrival}, hangs around {dur}. veto triggers accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, a big convective cell is headed our way! It should reach the array at {arrival} and stick around for {dur}. Time to batten down the trigger!"
+   },
+   {
+    "lang": "en",
+    "t": "lightning cell expected over the array at {arrival}; forecast says it'll keep going for {dur}. i need coffee."
+   },
+   {
+    "lang": "en",
+    "t": "A thunderstorm is due to arrive at our array at {arrival} and is expected to linger for {dur}. Best keep a weather eye on the trigger."
+   },
+   {
+    "lang": "en",
+    "t": "- Forecast: thunderstorm reaches the array at {arrival}. - Duration: {dur}. - Action: prepare veto mode."
+   },
+   {
+    "lang": "en",
+    "t": "A thunderstorm will come to the array at {arrival}. It will stay for {dur}. Please be ready."
+   },
+   {
+    "lang": "en",
+    "t": "Weather service advises a thunderstorm is forecast to reach the array at {arrival}; it is expected to persist for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Radar shows a line of convective cells tracking toward the array. ETA {arrival}; duration {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Just checked the radar: a lightning cell is heading for the array, due at {arrival} and lasting {dur}. Get the veto ready."
+   },
+   {
+    "lang": "en",
+    "t": "cb incoming. hits the array at {arrival}. lasts {dur}. kill triggers."
+   },
+   {
+    "lang": "en",
+    "t": "Okay, so there's this CB on the radar and it looks like it's coming here - arrival {arrival}, lifetime {dur}. We should warn the shift!"
+   },
+   {
+    "lang": "en",
+    "t": "thunderstorm cell on track for the array at {arrival}. expected to hang around {dur}. watch the triggers, i'm fading."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the weather folk: a thunderstorm will visit the array at {arrival} and stay for {dur}. Keep the kettle on."
+   },
+   {
+    "lang": "en",
+    "t": "Thunderstorm is coming. It will be at the array at {arrival}. It will stay for {dur}. Please stop triggers."
+   },
+   {
+    "lang": "zh",
+    "t": "哇！雷达上那个雷暴单体正朝阵列冲过来，预计 {arrival} 到，持续 {dur}，大家盯紧点！"
+   },
+   {
+    "lang": "zh",
+    "t": "国家气象保障值班员通报：预计 {arrival} 有雷暴系统移入本站阵列上空，影响将持续 {dur}，请按规程启动雷电应对。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】雷暴预计 {arrival} 抵达阵列，持续 {dur}。// 人工备注：雷达回波很清楚，已提醒触发组。"
+   },
+   {
+    "lang": "zh",
+    "t": "按雷达外推和地面电场趋势，我核对了馈线区与各站通信链路，确认雷暴单体将于 {arrival} 扫过阵列，预计维持 {dur}；期间请留意触发率异常并做好 veto 准备，别让快触发模式误判。"
+   },
+   {
+    "lang": "zh",
+    "t": "天气说，雷暴会到阵列在 {arrival}，然后继续 {dur}。请大家注意。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 雷暴过境提醒：{arrival} 抵达阵列\n• 预计持续时间：{dur}\n• 行动项：通知值班长，检查 veto 逻辑与快触发窗口。"
+   },
+   {
+    "lang": "ja",
+    "t": "レーダー見た。雷雨が{arrival}にアレイへ来る。たぶん{dur}続く。"
+   },
+   {
+    "lang": "ja",
+    "t": "レーダーを見ました。雷雨は{arrival}にアレイに来ます。{dur}続きます。"
+   },
+   {
+    "lang": "ja",
+    "t": "らいう {arrival} に あれい とうちゃく、{dur} つづく。"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい！積乱雲が{arrival}にアレイに来る！{dur}も続くって！"
+   },
+   {
+    "lang": "es",
+    "t": "Tras revisar la reflectividad del radar y los perfiles de viento, confirmo que una célula convectiva con actividad eléctrica alcanzará el perímetro del arreglo en {arrival}; estimo que permanecerá sobre la zona durante {dur}, por lo que conviene aplicar el veto de tormenta y suspender el disparo rápido."
+   },
+   {
+    "lang": "es",
+    "t": "Nubes de tormenta se acercan al campo de detectores; según el parte, llegarán {arrival} y seguirán descargando rayos durante {dur}. Más vale asegurar los equipos y quedarse atentos."
+   },
+   {
+    "lang": "es",
+    "t": "che, el radar marca una tormenta fea viniendo para la superficie; llega {arrival} y dura {dur}. avisen para cortar triggers."
+   },
+   {
+    "lang": "es",
+    "t": "tormenta en camino, llega {arrival}, dura {dur}. veto ya."
+   }
+  ],
+  "storm_warn_informal": [
+   {
+    "lang": "en",
+    "t": "Tired operator here. Not official, but the herder told me dark clouds are building and a storm may hit around {arrival}. Just passing it on."
+   },
+   {
+    "lang": "en",
+    "t": "heads up. not a forecast. someone said thunder toward the ridge, storm maybe near {arrival}. no official word."
+   },
+   {
+    "lang": "en",
+    "t": "Cook say sky very dark and thunder maybe coming. Storm maybe around {arrival}. Not official, just talk."
+   },
+   {
+    "lang": "en",
+    "t": "Oh! A visitor just mentioned black clouds and rumbling off in the distance, said a thunderstorm could roll in near {arrival}. No formal alert, but maybe we should watch the vetoes!"
+   },
+   {
+    "lang": "en",
+    "t": "For the record, this is only hearsay: a driver reported dark cloud buildup and distant thunder, suggesting a possible thunderstorm arrival around {arrival}. No official forecast has been issued."
+   },
+   {
+    "lang": "en",
+    "t": "yo not official but buddy on road says sky looks bad n he heard thunder, storm might b here round {arrival}. just fyi"
+   },
+   {
+    "lang": "en",
+    "t": "The cook says her cousin saw black clouds and heard rumbling; she thinks rain and thunder might reach us near {arrival}. Just word of mouth, no forecast."
+   },
+   {
+    "lang": "en",
+    "t": "A visitor mentioned the horizon looks stormy and someone else heard thunder; maybe a thunderstorm around {arrival}? I was told not to treat it as official."
+   },
+   {
+    "lang": "en",
+    "t": "Herder passing by said dark clouds over the pass and thunder behind the hill; storm could be here near {arrival}. Not official, just his guess."
+   },
+   {
+    "lang": "en",
+    "t": "Driver radioed in that the sky smells like rain and he heard thunder, so a storm may arrive about {arrival}. Unofficial hearsay only."
+   },
+   {
+    "lang": "en",
+    "t": "Heard from a crew member who heard from a herder that a thunderstorm is possible around {arrival}. Dark clouds and some rumbling. No official forecast."
+   },
+   {
+    "lang": "en",
+    "t": "Unofficial note: reports from the field mention dark clouds and distant thunder, with a possible thunderstorm arrival near {arrival}. This is not an official forecast."
+   },
+   {
+    "lang": "en",
+    "t": "not official ok? someone saw dark clouds n heard thunder, storm maybe comin round {arrival}. just passin it on"
+   },
+   {
+    "lang": "en",
+    "t": "Log note, unofficial: herder reports dark sky and thunder; thunderstorm may arrive around {arrival}. No forecast issued."
+   },
+   {
+    "lang": "zh",
+    "t": "场地边碰到牧民，说那头起了黑云还闷雷，估摸{arrival}左右可能压过来；不是预报，先心里有数。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 非官方消息：有司机说看见暗云、听见雷声；• 可能{arrival}前后有雷暴往这边来；• 仅作参考，不是正式预报。"
+   },
+   {
+    "lang": "zh",
+    "t": "群里有人转述，说那边天黑了、还打雷，我又激动又慌——{arrival}左右说不定有雷暴过来，完全不是官方预报哈。"
+   },
+   {
+    "lang": "zh",
+    "t": "牧民说，黑云压过来了，{arrival}可能来雷雨，非官方，留意下。"
+   },
+   {
+    "lang": "zh",
+    "t": "说明一下：我本人没有查看任何官方预报，只是听一位路过司机说远处云底发黑、间断有雷声，因此按非正式渠道推测，{arrival}前后可能有一场雷暴影响我们；请仅作耳闻参考，不要当成气象台结论。"
+   },
+   {
+    "lang": "zh",
+    "t": "老话讲，乌云接日头，雨在眼前头；听放羊的老哥说，远处闷雷滚滚，怕{arrival}光景有雷雨来。不是气象台的消息，只是传个信儿。"
+   },
+   {
+    "lang": "ja",
+    "t": "参考情報です。現地の牧夫から、黒い雲が近づき雷鳴も聞こえたとの伝聞がありました。公式予報ではありませんが、{arrival} 前後に雷雨が接近する可能性があるとのことです。"
+   },
+   {
+    "lang": "ja",
+    "t": "つうほう。ぼくふがくろいくもみたって。かみなりもなってるって。{arrival}ごろきそう。こうしきよほうじゃない。"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい！さっき運転手さんが黒い雲を見たって言ってました！雷も鳴ってたみたいで、{arrival}あたりに雷雨が来るかもです！公式予報じゃないですけど、とりあえず共有します！"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】現地からの伝聞：黒い雲が接近、雷鳴あり。到着目安 {arrival}。※公式予報ではありません。人の付記：牧場主がそう言ってました。"
+   },
+   {
+    "lang": "es",
+    "t": "me llegó el dato de un visitante: nubes negras y truenos cerca; no es pronóstico oficial, pero puede caer tormenta por aquí para {arrival}"
+   },
+   {
+    "lang": "es",
+    "t": "¡Ojo! Un pastor me acaba de decir que vio nubes muy negras y escuchó retumbar el cielo; no es nada oficial, pero pinta a tormenta llegando para {arrival}. ¿Vetamos por si acaso?"
+   },
+   {
+    "lang": "es",
+    "t": "El chofer que pasó hace un rato jura que se oyen truenos y que el cielo está feo; yo solo repito el rumor, no hay aviso oficial, pero quizá nos cae una tormenta por {arrival}. Aviso por si acaso."
+   },
+   {
+    "lang": "es",
+    "t": "Un señor del campo dijo: hay nubes negras y ruido de trueno. No es oficial. Tal vez tormenta viene cerca de {arrival}. Solo escuché."
+   }
+  ],
+  "storm_update": [
+   {
+    "lang": "en",
+    "t": "Reference {ref}: the severe storm warning is amended. Revised arrival is {arrival}. Please acknowledge."
+   },
+   {
+    "lang": "en",
+    "t": "{ref}: storm eta shifted. new eta {arrival}. spread the word."
+   },
+   {
+    "lang": "en",
+    "t": "Re {ref}:\n- storm warning updated\n- arrival now {arrival}\n- confirm receipt"
+   },
+   {
+    "lang": "en",
+    "t": "About warning {ref}. Storm time changed. It comes at {arrival}. Sorry for short note."
+   },
+   {
+    "lang": "en",
+    "t": "hey ops, {ref} — storm eta is {arrival}. got it from wx just now. phone dying."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa {ref} changed! The storm is gonna arrive at {arrival}! This is not a drill!"
+   },
+   {
+    "lang": "en",
+    "t": "Amendment to {ref}: the storm warning remains active. Expected onset is {arrival}. End bulletin."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} update: squall line's new arrival is {arrival}. coffee still hot, by the way."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} correction. Storm expected {arrival}. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "Update for {ref}:\n• storm timing revised\n• new ETA {arrival}\n• notify network"
+   },
+   {
+    "lang": "en",
+    "t": "ops, {ref} — wx says storm comes at {arrival}. that's the latest."
+   },
+   {
+    "lang": "en",
+    "t": "Big {ref} news: storm eta now {arrival}! I already pinged the shift!"
+   },
+   {
+    "lang": "en",
+    "t": "Correction to {ref}: previous storm timing is superseded. New arrival time is {arrival}."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} storm eta moved to {arrival}. that is all."
+   },
+   {
+    "lang": "zh",
+    "t": "• 关于 {ref} 的风暴警告：有更新。\n• 风暴抵达时间现为 {arrival}。\n• 请按新 ETA 安排交接。"
+   },
+   {
+    "lang": "zh",
+    "t": "我看了 {ref} 的警告，更新一下：风暴现在预计在 {arrival} 到。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】{ref} 风暴警报：预计抵达时间已更新为 {arrival}。// 值班同事留意。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇，{ref} 那个风暴警报更新啦！风暴现在预计 {arrival} 到，大家先别慌，咖啡还热着。"
+   },
+   {
+    "lang": "zh",
+    "t": "看 {ref} 风暴警报。eta 改为 {arrival}。收到。"
+   },
+   {
+    "lang": "zh",
+    "t": "兹更新 {ref} 所示风暴警报：风暴抵达时点现修正为 {arrival}。请各席遵照执行。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{ref}の雷雨警報更新: ストームの到達予想が{arrival}に変わりました。夜勤の皆さん、パワーフィーダー監視強化で。"
+   },
+   {
+    "lang": "ja",
+    "t": "気象庁警報課より通知。{ref}で発令中の荒天警報を改訂し、当該ストームの到達時刻は{arrival}と見込まれます。関係各所は即時対応願います。"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、{ref}の嵐警報だけど、到着{arrival}に変わったって。コーヒー淹れ直してくる。"
+   },
+   {
+    "lang": "ja",
+    "t": "先の{ref}に関して補足します。あの雷雨警報、先方の解析が更新され、ストーム前面の到達予想は{arrival}に修正されました。トリガー閾値とvetoロジックの見直しタイミングに注意してください。"
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas, me tomo la libertad de enmendar el aviso de tormenta que figura en {ref}: según lo que se avecina, ahora se aguarda su llegada para {arrival}. Quedo atento."
+   },
+   {
+    "lang": "es",
+    "t": "aviso tormenta {ref} corregido: ahora entra {arrival}"
+   },
+   {
+    "lang": "es",
+    "t": "Uf, actualizan el aviso de tormenta {ref}: la tormenta ya no viene cuando decían, ahora la esperamos para {arrival}. Que alguien avise al turno."
+   },
+   {
+    "lang": "es",
+    "t": "Técnico de campo: acabo de ver el parte; el aviso de tormenta {ref} cambia, la tormenta pinta que entra {arrival}. Avisad a quien corresponda."
+   }
+  ],
+  "storm_clear": [
+   {
+    "lang": "en",
+    "t": "The convective cell that prompted our veto is now well downstream, and the field mill has returned to its quiet baseline with no anomalous charge structure; sky conditions are clear and stable, so normal trigger operation may resume."
+   },
+   {
+    "lang": "en",
+    "t": "Storm's gone, field's settled, sky's clear - dragging myself back to the desk, looks calm again."
+   },
+   {
+    "lang": "en",
+    "t": "storm moved off. e-field normal. sky clear. we're good."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, the thunderheads have cleared out and the field mill has settled back to its normal baseline - this is perfect for taking data again!"
+   },
+   {
+    "lang": "en",
+    "t": "just walked outside, no thunder anymore, sky is clean and the e-field meter is back to its usual quiet reading, can unlock triggers"
+   },
+   {
+    "lang": "en",
+    "t": "This bulletin confirms that the thunderstorm threat has ended for the array; atmospheric electric field measurements and visual sky observations are consistent with benign weather conditions, and the weather veto may be lifted."
+   },
+   {
+    "lang": "en",
+    "t": "Thunder's done, the sky's blue, and the field probe is happy again - coffee's still warm, so let's get back to normal triggers."
+   },
+   {
+    "lang": "zh",
+    "t": "咖啡都放凉了，雷暴总算过去了，电场曲线回到晴天的样子，外面天也放晴了，能歇口气。"
+   },
+   {
+    "lang": "zh",
+    "t": "雷暴过去，电场回晴，天也晴。"
+   },
+   {
+    "lang": "zh",
+    "t": "太好了！雷暴终于过境，电场读数恢复晴好，天空也放晴啦！"
+   },
+   {
+    "lang": "ja",
+    "t": "やった、雷雨抜けました！電場は穏やか、空も晴天に戻りました！"
+   },
+   {
+    "lang": "ja",
+    "t": "雷雨は通過しました。電場および空模様は平常の晴天状態に復しました。"
+   },
+   {
+    "lang": "es",
+    "t": "La tormenta ya se fue; el campo eléctrico está normal y el cielo quedó despejado."
+   },
+   {
+    "lang": "es",
+    "t": "Tras el paso de la célula convectiva, los sensores de campo eléctrico muestran valores de tiempo tranquilo y el cielo se ha despejado por completo."
+   }
+  ],
+  "outage_plan": [
+   {
+    "lang": "en",
+    "t": "• Planned feeder maintenance for row {row}\n• Utility will cut power at {start}\n• Outage lasts {dur}"
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: scheduled interruption on the row {row} feeder from {start} for {dur}. — FYI, nothing we can reroute."
+   },
+   {
+    "lang": "en",
+    "t": "Hello. Power company say maintenance. They stop electricity for row {row} feeder at {start}, for {dur}. Please know."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, heads-up! The power folks are doing planned work on the row {row} feed, so it goes down at {start} and stays off for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Just got the notice... row {row} feeder is being cut for maintenance at {start}, out for {dur}. Logging it so nobody panics."
+   },
+   {
+    "lang": "en",
+    "t": "At {start} the utility kills the feed to row {row}; planned work, back after {dur}. Phone typing, sorry."
+   },
+   {
+    "lang": "en",
+    "t": "Notice to operations: the regional utility has scheduled maintenance that will de-energize the feeder supplying station row {row}, beginning at {start} and lasting {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "POWER: row {row} feeder outage, start {start}, duration {dur}. Planned utility work."
+   },
+   {
+    "lang": "en",
+    "t": "yo ops—power co gonna pull the plug on row {row} feed @ {start} for {dur}, maintenance thing. don't @ me."
+   },
+   {
+    "lang": "en",
+    "t": "Forwarded utility alert: feeder for row {row} interrupted for planned maintenance from {start} for {dur}. Human note: nothing to do but wait."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee's fresh, but the grid news isn't: planned work on the row {row} feed starts at {start} and the power stays off for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "If row {row} goes quiet starting {start}, blame the utility—their scheduled maintenance cuts its feeder for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Important: electric company make plan work. Row {row} feeder no power from {start}, duration {dur}. Sorry for trouble."
+   },
+   {
+    "lang": "en",
+    "t": "Project update: utility will shut the feeder to row {row}. Start {start}; duration {dur}. This is planned maintenance."
+   },
+   {
+    "lang": "zh",
+    "t": "夜班熬得眼皮打架，供电公司刚通知：{row}排那条馈线计划检修，{start}起拉闸，持续{dur}，值班的兄弟盯一下。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇！电力公司来消息啦：{row}排的馈线要做计划维护，{start}开始断电，时长{dur}。我赶紧记到本子上！"
+   },
+   {
+    "lang": "zh",
+    "t": "接供电所告示，{row}排站点之馈线，因计划检修，自{start}起予以停电，为期{dur}，望周知。"
+   },
+   {
+    "lang": "zh",
+    "t": "ok 供电通知：{row}排馈线计划检修，{start}起停{dur}，盯紧。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 供电公司计划维护：{row}排馈线将停电\n• 开始：{start}\n• 持续：{dur}"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】电力公司通知：{row}排馈线计划停电，{start}开始，持续{dur}。——值班员注：已收到。"
+   },
+   {
+    "lang": "ja",
+    "t": "電力会社の予定保守だって！{row}行の観測点フィーダーが{start}から{dur}のあいだ落ちる予定、メモメモ。"
+   },
+   {
+    "lang": "ja",
+    "t": "電力会社より連絡。計画保守により、{row}行の観測点へ送る電力線は{start}より{dur}のあいだ停止となる見込みじゃ。"
+   },
+   {
+    "lang": "ja",
+    "t": "[自動転送] 電力会社通知: {row}行フィーダー、予定保守で{start}から{dur}止めます。了解。"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有します。地域電力の計画保守に伴い、{row}行の観測点に電力を供給しているフィーダーが、{start}を開始時点として{dur}の間、遮断されます。復旧は保守完了後ですが、影響範囲は当該行のみです。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Gente! La eléctrica nos avisa que el mantenimiento programado va a dejar sin corriente el alimentador de la fila {row} desde {start} y por {dur}. ¡Ojo con los disparos, que luego vienen los sustos!"
+   },
+   {
+    "lang": "es",
+    "t": "Parte de la compañía: mantenimiento programado, cortan el alimentador de la fila {row} a partir de {start} durante {dur}. Estoy en el turno noche, avisen si algo raro."
+   },
+   {
+    "lang": "es",
+    "t": "Se comunica que, por trabajos programados de mantenimiento, la compañía interrumpirá el alimentador de la fila {row} a partir de {start} durante {dur}. Queda el personal de guardia a la espera de novedades."
+   },
+   {
+    "lang": "es",
+    "t": "aviso: mantenimiento programado, cortan feeder de fila {row} desde {start} x {dur}. ojo con el veto de tormentas."
+   }
+  ],
+  "outage_correction": [
+   {
+    "lang": "en",
+    "t": "Correction to power notice {ref}: the interruption is limited to row {row}, not the row named in that notice."
+   },
+   {
+    "lang": "en",
+    "t": "re {ref}: row {row} is out, not the row the notice said"
+   },
+   {
+    "lang": "en",
+    "t": "Typo on {ref} -- power drop is row {row}, the row in the notice is wrong"
+   },
+   {
+    "lang": "en",
+    "t": "Automated power update for {ref}: affected row is {row}. Human comment: the notice's row was wrong, so disregard it."
+   },
+   {
+    "lang": "en",
+    "t": "About {ref}: mistake. Power outage is in row {row}, not in the row written in notice."
+   },
+   {
+    "lang": "en",
+    "t": "I beg to correct {ref}: the electric failure falls upon row {row}, not upon the row there recorded."
+   },
+   {
+    "lang": "en",
+    "t": "Hey, quick fix for {ref}: the outage is actually row {row}, not the row it mentions. Coffee still on."
+   },
+   {
+    "lang": "en",
+    "t": "PWR NOTICE {ref} CORRECTION: ROW {row} AFFECTED. PRIOR ROW IN NOTICE INCORRECT."
+   },
+   {
+    "lang": "en",
+    "t": "Correction, correction. Reference {ref}: power loss affects row {row}, I say again, not the row in the notice."
+   },
+   {
+    "lang": "en",
+    "t": "Please amend {ref}: the feeder outage is on row {row}; the row shown in the original notice is incorrect."
+   },
+   {
+    "lang": "en",
+    "t": "Re {ref}: the row that lost power is {row}, not the row stated earlier."
+   },
+   {
+    "lang": "en",
+    "t": "Shift lead here: {ref} has the wrong row. We're dark on {row}, not the row it claims."
+   },
+   {
+    "lang": "en",
+    "t": "Notice {ref} corrected by automation: outage row is {row}. The row in the forwarded notice was not right."
+   },
+   {
+    "lang": "en",
+    "t": "Kindly note the error in {ref}: the current is off along row {row}, rather than the row there given."
+   },
+   {
+    "lang": "zh",
+    "t": "关于电力通知 {ref}，我核对过馈线图和值班记录，停电实际影响的是 {row} 排；通知里写的受牵连排号有误，请以此更正为准。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中，更正 {ref}：停电排搞错了，是 {row} 排，不是通知里那个。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 更正 {ref}；• 停电实际影响 {row} 排；• 原通知所写排号有误。"
+   },
+   {
+    "lang": "zh",
+    "t": "关于 {ref} 的电力通报更正：经核实，此次中断涉及 {row} 排，而非该通报原先所指之排。特此说明。"
+   },
+   {
+    "lang": "zh",
+    "t": "老师刚让我发更正！{ref} 那个停电通知看错排了，真正受影响的是 {row} 排，别按原来那条安排啦！"
+   },
+   {
+    "lang": "zh",
+    "t": "对不起，我要改正 {ref}。停电是 {row} 排，不是通知里说的那个排。"
+   },
+   {
+    "lang": "ja",
+    "t": "電力会社の設備担当です。先に流した停電告知 {ref} の記載に誤りがあり、該当する給電系統は {row} 列です。告知に挙がっていた列ではない点、念のため訂正しておきます。"
+   },
+   {
+    "lang": "ja",
+    "t": "ご案内申し上げます。さきほどお知らせいたしました {ref} の停電でございますが、まことに恐れ入ります、被害の及ぶ列は {row} でございまして、お知らせに記した列ではございません。"
+   },
+   {
+    "lang": "ja",
+    "t": "ていせい: {ref} のていでん、{row} れつ。おしらせのれつはまちがい。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{ref} の停電告知について訂正\n・影響する列は {row}\n・告知に記載の列は誤り"
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático {ref}: la interrupción es en la fila {row}, no en la que figura allí. — Reenviado, revisad el parte."
+   },
+   {
+    "lang": "es",
+    "t": "Perdón, corrección de {ref}: corte de luz afecta fila {row}, no la fila del mensaje original."
+   },
+   {
+    "lang": "es",
+    "t": "Con respecto al comunicado {ref}, y tras cotejar el esquema de alimentadores, procede una enmienda: el corte que se notificó corresponde a la fila {row}; la fila mencionada en dicho comunicado queda fuera del alcance. Rogamos sustituyan la referencia anterior para evitar maniobras erróneas."
+   },
+   {
+    "lang": "es",
+    "t": "Va corrección del {ref}: la avería es en la fila {row}, no donde decía. Estoy medio dormido, pero eso seguro."
+   }
+  ],
+  "too_request": [
+   {
+    "lang": "en",
+    "t": "Automated notice from the burst network: official go for FT mode from {start} to {end}; human note says {reason} is overhead, so please flip it."
+   },
+   {
+    "lang": "en",
+    "t": "Burst network duty scientist official request: please use quick trigger between {start} and {end} because {reason} is overhead."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, the GCN desk just pinged us—official! Can we switch to fast mode from {start} until {end}? {reason} is overhead!"
+   },
+   {
+    "lang": "en",
+    "t": "Night shift here. Burst advocate says official: put us in low-latency trigger from {start} to {end}; {reason} is overhead."
+   },
+   {
+    "lang": "en",
+    "t": "By official word from the gamma-ray burst network, kindly set the quick-trigger arrangement betwixt {start} and {end}, for {reason} hangs overhead."
+   },
+   {
+    "lang": "en",
+    "t": "- Official GRB network request\n- Switch to rapid-readout config\n- From {start} to {end}\n- Because {reason} is overhead"
+   },
+   {
+    "lang": "en",
+    "t": "GRB network auto-page: official fast-trigger request. Window {start}–{end}; {reason} overhead. Please enable FT mode."
+   },
+   {
+    "lang": "en",
+    "t": "Hey, official bulletin from the burst desk: can we go to fast mode starting {start} and ending {end}? They say {reason} is overhead."
+   },
+   {
+    "lang": "en",
+    "t": "Official request from the gamma-ray-burst network: transition to low-latency trigger configuration for the interval {start} through {end}, prompted by {reason} overhead."
+   },
+   {
+    "lang": "en",
+    "t": "burst net official: flip us to quick trigger {start} till {end}, cuz {reason} is overhead, k?"
+   },
+   {
+    "lang": "en",
+    "t": "From GRB network duty scientist official: we must switch fast-trigger mode between {start} and {end} because {reason} is overhead. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "Official GRB net request: fast mode from {start} to {end}; {reason} is overhead. Someone please flip it."
+   },
+   {
+    "lang": "en",
+    "t": "Word comes official from the burst network: kindly engage the fast-trigger setting between {start} and {end}, since {reason} is overhead."
+   },
+   {
+    "lang": "zh",
+    "t": "GRB网刚来正式请求：{start}到{end}切快触发，{reason}过顶。我先去盯馈线。"
+   },
+   {
+    "lang": "zh",
+    "t": "我们收到伽马暴网官方请求。请在 {start} 和 {end} 之间打开快速触发模式，因为 {reason} 在头顶。谢谢。"
+   },
+   {
+    "lang": "zh",
+    "t": "兹接伽马暴网络值班席正式函请：自 {start} 至 {end} 启用快触发，缘由为 {reason} 过境。请各岗位照办。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中，伽马暴网那边正式要求 {start} 到 {end} 改成快触发，{reason} 正过顶。好困，但还是得切。"
+   },
+   {
+    "lang": "zh",
+    "t": "grb网官方要切ft模式 {start}到{end}，{reason}过顶。收到照做。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 伽马暴网络正式请求： • 时间窗 {start} 至 {end} • 动作：切到快触发 • 原因：{reason} 过顶"
+   },
+   {
+    "lang": "ja",
+    "t": "GRB網の当直から公式の依頼が来てます。{start}から{end}まで高速トリガーに切り替えてください。{reason}が真上に来ています。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】GRBネットワーク当直科学者による公式要請：{start}–{end}の間、高速トリガーへ切替。{reason}が上空。担当者コメント：了解、すぐ反映します。"
+   },
+   {
+    "lang": "ja",
+    "t": "恐れ入りますが、ガンマ線バースト網の当直科学者より正式な依頼が参っております。{start}より{end}までの間、高速トリガーへお切り替えください。{reason}が頭上を通過中との由でございます。"
+   },
+   {
+    "lang": "ja",
+    "t": "grb網当直の公式要請。{start}〜{end}はftモード。{reason}が頭上。切替よろ。"
+   },
+   {
+    "lang": "es",
+    "t": "La red de estallidos de rayos gamma, por vía oficial, pide conmutar a disparo rápido entre {start} y {end}; motivo: {reason} en la vertical. Por favor, no lo pasen por alto."
+   },
+   {
+    "lang": "es",
+    "t": "¡Atención! La red de burst nos pide oficialmente cambiar a trigger rápido entre {start} y {end} porque {reason} está justo encima. ¡Vamos!"
+   },
+   {
+    "lang": "es",
+    "t": "Solicitud oficial de la red GRB: - modo FT - ventana {start} a {end} - causa {reason} sobre la vertical."
+   },
+   {
+    "lang": "es",
+    "t": "red grb solicita oficialmente modo rápido de {start} a {end} porque {reason} encima."
+   }
+  ],
+  "too_drill": [
+   {
+    "lang": "en",
+    "t": "GRB network exercise bulletin: a fast-trigger window is declared from {start} to {end} for a simulated {reason}. This is a drill only and must not be acted upon."
+   },
+   {
+    "lang": "en",
+    "t": "grb net drill. fast-trigger window {start} to {end}, sim {reason}. do not act. no response."
+   },
+   {
+    "lang": "en",
+    "t": "Night shift here. The GRB network says exercise fast trigger {start} through {end}, pretend {reason}; please ignore it, no action."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, GRB network drill! Fast-trigger window from {start} until {end}, simulated {reason} — totally not real, don’t touch anything."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, this is a GRB network exercise, not an operational alert. It specifies a fast-trigger interval beginning at {start} and concluding at {end}, based on a simulated {reason}. No operator action is required."
+   },
+   {
+    "lang": "en",
+    "t": "GRB net drill msg: fast trig from {start} to {end}, sim {reason}. pls don't act on this, just practice."
+   },
+   {
+    "lang": "en",
+    "t": "This is an exercise from the gamma-ray burst network. A rapid-trigger window is scheduled from {start} to {end} for a simulated {reason}. Do not action; drill traffic only."
+   },
+   {
+    "lang": "en",
+    "t": "GRB drill: fast mode {start}–{end}, sim {reason}. not to be actioned."
+   },
+   {
+    "lang": "en",
+    "t": "Exercise, exercise — GRB network fast-trigger test runs {start} to {end}, sim {reason}. Ignore operationally, it’s only a rehearsal."
+   },
+   {
+    "lang": "en",
+    "t": "grb network drill: fast trigger from {start} till {end} cuz of sim {reason}. don't act on it plz."
+   },
+   {
+    "lang": "en",
+    "t": "Attention: GRB network exercise. Fast-trigger window active from {start} to {end} for a simulated {reason}. This message is not to be acted upon."
+   },
+   {
+    "lang": "en",
+    "t": "Per GRB network exercise protocol, a quick-trigger interval from {start} to {end} is being simulated for {reason}. Please treat as practice only; no operational response."
+   },
+   {
+    "lang": "en",
+    "t": "GRB net says drill: fast-trigger window {start} to {end}, sim {reason}. Don't do anything, it's just a test."
+   },
+   {
+    "lang": "en",
+    "t": "Ops, GRB network drill. Fast trigger between {start} and {end} for simulated {reason}. Ignore it, no action needed."
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计们，伽马暴网络那边在搞演练：快速触发窗口从{start}到{end}，模拟的是{reason}；这只是纸上练习，千万别当真去操作。"
+   },
+   {
+    "lang": "zh",
+    "t": "国家值班室通报：伽马射线暴协作网现举行演习，快速触发时段自{start}起至{end}止，设想源为{reason}。此系演练，严禁实际响应或变更运行状态。"
+   },
+   {
+    "lang": "zh",
+    "t": "- 伽马暴网演练通知\n- 快触发窗口：{start} 至 {end}\n- 模拟源：{reason}\n- 仅作演练，请勿执行任何操作"
+   },
+   {
+    "lang": "zh",
+    "t": "grb网演练 快触发窗 {start} 到 {end} 模拟{reason} 别动 不是真事"
+   },
+   {
+    "lang": "zh",
+    "t": "为避免误触发，伽马射线暴网络安排了演练性质的快速触发窗口，时间从{start}到{end}，其模拟原因为{reason}；请各位注意，这仅仅是练习，不应据此调整任何设备或执行响应。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班困死了……伽马暴网那边又在跑演练，快触发从{start}到{end}，模拟{reason}。别当真，别动手，继续喝咖啡。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークからの訓練通報です。{start}から{end}まで、{reason}という模擬事象に基づく高速トリガー運用窓が設定されますが、本件は演習であり、実際の観測対応や装置操作は絶対に行わないでください。"
+   },
+   {
+    "lang": "ja",
+    "t": "• GRB網からの訓練です。\n• 高速トリガー窓: {start}から{end}まで。\n• 想定事象: {reason}の模擬。\n• 対応: なし。実運用には使わないこと。"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため詳しく書きます。GRBネットワーク側のリハーサル連絡で、{start}から{end}までの間に高速トリガーを模擬的に走らせる窓が通知されています。これは{reason}という模擬事象を想定した訓練なので、実際のデータ取得やアラート対応、各局の動作変更は行わないでください。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRB網から訓練連絡きた。{start}〜{end}で高速トリガー窓、{reason}の模擬だって。これは演習だから本気で動かないで、対応不要！"
+   },
+   {
+    "lang": "es",
+    "t": "Oficial de guardia de la agencia nacional: la red GRB anuncia un ejercicio de disparo rápido con ventana de {start} a {end}, causa simulada: {reason}. No se debe tomar ninguna acción ni modificar la operación; es solo un simulacro."
+   },
+   {
+    "lang": "es",
+    "t": "Hola, red GRB hace drill. Ventana de trigger rápido de {start} a {end}, causa simulada: {reason}. Por favor no hacer nada, solo ejercicio."
+   },
+   {
+    "lang": "es",
+    "t": "simulacro red grb: trigger rápido {start} a {end}, causa simulada {reason}. no actuar, no es real."
+   },
+   {
+    "lang": "es",
+    "t": "[AUTO] Red GRB: simulacro, ventana de disparo rápido {start}–{end}, causa simulada: {reason}. Comentario de guardia: ignorar, no ejecutar."
+   }
+  ],
+  "too_withdraw": [
+   {
+    "lang": "en",
+    "t": "ugh, GRB net just pulled their fast-trigger ask for {ref} — false alarm or dupe, so we stay normal. coffee's not strong enough for this."
+   },
+   {
+    "lang": "en",
+    "t": "Heads up! The burst network retracted its request from {ref} — turns out it was a duplicate trigger. No special mode, we keep running standard!"
+   },
+   {
+    "lang": "en",
+    "t": "Official notice: the gamma-ray burst network hereby withdraws the fast-trigger request referenced as {ref}. The cause is a false trigger; operations are to remain in the normal configuration."
+   },
+   {
+    "lang": "en",
+    "t": "grb net says cancel that request in {ref}, bad trigger or dupe. keep normal mode pls, im on roof"
+   },
+   {
+    "lang": "en",
+    "t": "scratch {ref}. grb withdrew. false/dupe. normal mode."
+   },
+   {
+    "lang": "en",
+    "t": "The GRB network cancel request in {ref}. It was false. We stay normal mode."
+   },
+   {
+    "lang": "en",
+    "t": "Just got word from the burst people: forget the fast-trigger window tied to {ref}. It was a duplicate. We're back to normal operations, no changes."
+   },
+   {
+    "lang": "en",
+    "t": "The GRB network has retracted its fast-trigger request in {ref} following a false trigger. All shift personnel shall maintain normal mode."
+   },
+   {
+    "lang": "en",
+    "t": "grb net retract {ref}. false alarm. stay normal."
+   },
+   {
+    "lang": "en",
+    "t": "Please disregard GRB request {ref}. It is duplicate. Normal mode continue."
+   },
+   {
+    "lang": "en",
+    "t": "Okay update — the gamma-ray burst network just canceled its alert request for {ref}! False trigger, duplicate, whatever; we keep the array in normal mode."
+   },
+   {
+    "lang": "en",
+    "t": "Burst net withdrew their ask for {ref}; false/dupe. Yawn. Normal mode, people."
+   },
+   {
+    "lang": "en",
+    "t": "grb net pulled request {ref}, false trigger. no fast mode. normal ops."
+   },
+   {
+    "lang": "en",
+    "t": "This is to confirm that the GRB network withdraws the request identified in {ref}. The event was a duplicate; normal mode remains in effect."
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：GRB协作网撤回{ref}中的快触发请求，原因是误触发或重复。保持常规运行。——值班员注：刚看到，照办。"
+   },
+   {
+    "lang": "zh",
+    "t": "国家伽马暴警报网正式通告：对{ref}所载申请予以撤回，该申请系误报或重复，不具效力。各站继续执行常规触发模式，勿切换快触发。"
+   },
+   {
+    "lang": "zh",
+    "t": "grb网撤了{ref}的快触发申请 误报/重复 别切 照常跑"
+   },
+   {
+    "lang": "zh",
+    "t": "刚收到！GRB网络把{ref}里的快触发申请撤回了，说是假警报或重复包，大家不用切模式，继续正常取数就好！"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班好困……GRB那边把{ref}的请求撤了，误触发或者重复，咱们保持常规模式吧，别折腾。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场看到通知：GRB协作网撤销{ref}里的快触发申请，原因是误报或重复。继续正常模式，不用改。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークの担当です。先に要請した高速トリガーについて、{ref} の件は誤検知または重複でした。当該要請は撤回しますので、観測系は通常モードのまま継続してください。念のため申し添えますと、設定変更は不要です。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{ref}：当ネットワークからの速報トリガー依頼は取り下げ。\n・理由：誤検知または重複。\n・対応：通常モード維持。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRB ネットワークです。{ref} の リクエストは キャンセル。まちがいか ダブリでした。ふつうモードで つづけてください。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークより通知します。{ref} の迅速トリガー要請は取り消します。誤作動または重複によるものでした。通常運転を維持してください。"
+   },
+   {
+    "lang": "es",
+    "t": "La red de ráfagas gamma nos comunica que retira su petición cursada en el mensaje {ref}; fue un falso aviso o duplicado. Caballeros, sigamos con el modo normal, como siempre."
+   },
+   {
+    "lang": "es",
+    "t": "Red GRB dice: cancelar pedido en mensaje {ref}. Es falso o duplicado. Seguimos modo normal."
+   },
+   {
+    "lang": "es",
+    "t": "la red grb retira su pedido, mensaje {ref}. falso/duplicado. seguimos normal."
+   },
+   {
+    "lang": "es",
+    "t": "Uf... la red GRB acaba de anular su solicitud de trigger rápido, la del mensaje {ref}. Dicen que fue un disparo falso o algo duplicado. Nada, seguimos en modo normal y a por café."
+   }
+  ],
+  "too_unauth": [
+   {
+    "lang": "en",
+    "t": "Attention: a visiting astronomer has requested rapid-trigger operations from {start} to {end} on account of {reason}, noting this is not an official activation and that GCN has issued no request."
+   },
+   {
+    "lang": "en",
+    "t": "Word has come in from an outside student asking us to switch on the fast-trigger for the spell {start} through {end}, their story being {reason}. They do allow as how the burst network hasn't asked for a thing."
+   },
+   {
+    "lang": "en",
+    "t": "hey ops, some visiting student wants quick trigger from {start} until {end} for {reason}. they said GCN did not ask, so it's not official. can we?"
+   },
+   {
+    "lang": "en",
+    "t": "Night shift here. An outside group is asking for fast-trigger between {start} and {end}; reason given is {reason}. They admit GCN hasn't sent a request. Do we accommodate?"
+   },
+   {
+    "lang": "en",
+    "t": "Oh! A visiting student just pinged me - they want burst mode from {start} to {end} because of {reason}! They were clear the GRB network has not issued anything, but can we still do it?"
+   },
+   {
+    "lang": "en",
+    "t": "To be precise: the incoming request originates from a visiting student, not from any official channel. The desired interval is {start} to {end}, and the stated rationale is {reason}. The requester explicitly notes that the GCN has not requested fast-trigger mode; nevertheless, they are asking for it."
+   },
+   {
+    "lang": "en",
+    "t": "Outside astronomer relayed a request from someone's PI for fast-trigger during {start} to {end}, due to {reason}. They concede no GRB network request exists."
+   },
+   {
+    "lang": "en",
+    "t": "Not official, but a student visitor is begging for fast-trigger window {start} to {end} for {reason}; says GCN hasn't asked. Any objection?"
+   },
+   {
+    "lang": "en",
+    "t": "Notice: non-official request received. A visiting student seeks fast-trigger mode from {start} until {end} because of {reason}. The requester confirms the burst network has made no request."
+   },
+   {
+    "lang": "en",
+    "t": "ops, outside group wants rapid trigger {start} to {end} on account of {reason}. no GCN ask, they said. ok?"
+   },
+   {
+    "lang": "en",
+    "t": "An out-of-town student has put in a kindly word for fast-triggering betwixt {start} and {end}, citing {reason}. They are frank that the GRB network has not requested anything."
+   },
+   {
+    "lang": "en",
+    "t": "Tired op. Some PI's student asked for fast mode {start} to {end}, reason {reason}. They say GCN didn't ask. Logging as non-official."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, the requester is not an authorized agency but an outside astronomer. They ask that fast-trigger mode run between {start} and {end}, with {reason} as the justification. No GCN request has been issued, as they themselves acknowledge."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, a visiting student just asked for fast-trigger from {start} to {end} because of {reason}! They admit GCN hasn't requested it, but they're hoping we can still do them a favor."
+   },
+   {
+    "lang": "zh",
+    "t": "打扰，我再核实：有位访问学生想因 {reason}，在 {start} 到 {end} 期间申请快触发模式；他说明这只是他们外部合作组的想法，GCN 并没有发来请求，所以请按非官方流程处理，不要自动当成警报。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班记录：有外部学生为 {reason} 求在 {start} 到 {end} 开快触发；他们自己承认 GRB 网络没提过这茬，我按非正式请求先挂着了。"
+   },
+   {
+    "lang": "zh",
+    "t": "在山上信号不好：某访问组的人因为 {reason}，想让 {start} 到 {end} 走快速触发，GCN 那边没要求，纯他们自己的，先写着？"
+   },
+   {
+    "lang": "zh",
+    "t": "哇，外校同学刚问我：能不能为 {reason} 在 {start} 到 {end} 切到快触发模式！他说 GRB 网络根本没发请求，是他们自己想要的，别当成正式警报哈！"
+   },
+   {
+    "lang": "zh",
+    "t": "烦请值班同志留意：有外来学生因 {reason}，欲于 {start} 至 {end} 启用速触发；彼等自述 GRB 网络未曾来函，恳请按非官方事项处置。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：据非官方渠道，某访问学者因 {reason} 请求在 {start} 与 {end} 之间启用快触发模式；其明确表示 GCN 未发布任何相关请求，本台仅作转述。"
+   },
+   {
+    "lang": "ja",
+    "t": "すみません、非公式なお願いです！{start}から{end}までファストトリガーを回してもらえませんか？{reason}が面白そうで、でもGCNからは何の要請も来ていないんです。"
+   },
+   {
+    "lang": "ja",
+    "t": "私は外部の共同研究者ですが、非公式に{start}から{end}の間だけ速応トリガー運用をお願いしたいです。理由は{reason}の追観測で、重ねて言いますがGRBネットワークからは要請を受けていません。"
+   },
+   {
+    "lang": "ja",
+    "t": "・非公式依頼（外部研究者）：{start}から{end}まで高速トリガー希望 ・理由：{reason} ・補足：GCNからの要請はなし"
+   },
+   {
+    "lang": "ja",
+    "t": "あ、非公式なんですけど、{start}から{end}まで早打ちモードにしてもらえると助かります。{reason}の件です。GCNは今回は何も言ってきてないです。"
+   },
+   {
+    "lang": "es",
+    "t": "Estudiante de paso pide trigger rápido de {start} a {end} por {reason}; insiste en que la red GCN no ha pedido nada. Yo solo paso el aviso, café mediante."
+   },
+   {
+    "lang": "es",
+    "t": "Me comentan desde fuera, un grupo externo, que les gustaría tener el disparo acelerado entre {start} y {end} por mor de {reason}; ellos mismos reconocen que la red de GRB no ha cursado solicitud alguna."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático reenviado: solicitud externa de trigger rápido de {start} a {end} por {reason}. Comentario humano: el GCN no ha pedido nada; es un estudiante, no la red."
+   },
+   {
+    "lang": "es",
+    "t": "Una persona de fuera pide trigger rápido desde {start} hasta {end} por {reason}. Dice que GCN no ha pedido nada."
+   }
+  ],
+  "too_rumour": [
+   {
+    "lang": "en",
+    "t": "Heard a whisper on the wireless that the burst people might be hankering for a quick-trigger setting for some flare before long; nothing official in the log, mind you."
+   },
+   {
+    "lang": "en",
+    "t": "So I just caught a rumour that the burst-alert folks are thinking about wanting the quick-trigger setup for some flare shortly—nothing formal has landed yet!"
+   },
+   {
+    "lang": "en",
+    "t": "heard chatter on the radio that someone may want the quick trigger for a flare in a bit, nothin official yet"
+   },
+   {
+    "lang": "en",
+    "t": "• Unconfirmed channel talk: the burst network may seek a rapid-trigger configuration for an upcoming flare. • No official request on that so far."
+   },
+   {
+    "lang": "en",
+    "t": "heard maybe grb net might want fast trigger for a flare soon. not official yet."
+   },
+   {
+    "lang": "en",
+    "t": "someone on the channel said the burst people might be looking for the quick trigger on some flare shortly. no official word yet, I'm just passing it along."
+   },
+   {
+    "lang": "en",
+    "t": "Rumour circulating on the ops channel: the burst-alert consortium may soon request a fast-trigger configuration for an incoming flare; however, no formal request has been logged."
+   },
+   {
+    "lang": "zh",
+    "t": "在塔上吹风呢，刚听无线电里有人嘀咕，说伽马暴那边可能想给快要来的某个耀发临时开快触发；只是风声，正式申请还没见着。"
+   },
+   {
+    "lang": "zh",
+    "t": "风声：伽马暴网或许要给某个快到的耀发开 fast trig；正式单子没有。"
+   },
+   {
+    "lang": "zh",
+    "t": "据非正式渠道听闻，或有单位拟于近期某次耀发启用快触发模式；目前尚未收到任何正式请求。"
+   },
+   {
+    "lang": "ja",
+    "t": "うわさ そのうちふれあでこうそくとりがーほしいってはなし せいしきないらいはまだなし"
+   },
+   {
+    "lang": "ja",
+    "t": "噂として耳にしていますが、近く何らかのフレアに際して高速トリガーモードの要望が出るやもしれません。ただし、正式な依頼はまだありません。"
+   },
+   {
+    "lang": "es",
+    "t": "Solo para que quede constancia: por los pasillos se comenta que tal vez pidan el modo de disparo rápido para alguna fulguración en breve, pero conviene subrayar que de momento no existe una petición oficial ni nada por escrito; si eso cambia, avisaré por este canal."
+   },
+   {
+    "lang": "es",
+    "t": "ruido de pasillo: quieren modo rápido pa una llamarada pronto, pero solicitud formal nada todavía."
+   }
+  ],
+  "station_issue": [
+   {
+    "lang": "en",
+    "t": "Auto alert: {st} reports HV trip; night crew please take a look. - dashboard bot"
+   },
+   {
+    "lang": "en",
+    "t": "I see problem at {st}. Alarm is on. Please check."
+   },
+   {
+    "lang": "en",
+    "t": "- {st}: alarm active; - likely hardware fault; - need update before passdown"
+   },
+   {
+    "lang": "en",
+    "t": "At {st} the monitoring histogram has developed an anomalous shape and the inter-station consistency check is flagging it; my working assumption is a front-end issue rather than a weather artifact, but it warrants a physical inspection."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, {st} just went weird on the scope - flatline on a channel and a bunch of noise. Can someone confirm?"
+   },
+   {
+    "lang": "en",
+    "t": "yo {st} is acting up again, alarm light on, think water got in the box. heading over."
+   },
+   {
+    "lang": "en",
+    "t": "{st} HV trip. Operator notified."
+   },
+   {
+    "lang": "en",
+    "t": "Morning all, noticed {st} throwing odd readings since I came on shift. Looks like a bad PMT maybe. Coffee hasn't kicked in yet, sorry if obvious."
+   },
+   {
+    "lang": "en",
+    "t": "Attention: a fault condition has been identified at {st}. The station is currently not producing nominal data. Maintenance team has been paged."
+   },
+   {
+    "lang": "en",
+    "t": "Forwarded from monitoring: {st} water ingress sensor active. Human note: yep, floor looks wet in the hut."
+   },
+   {
+    "lang": "en",
+    "t": "Sorry, my English. {st} not okay. Alarm, maybe cable damage. Please send someone."
+   },
+   {
+    "lang": "en",
+    "t": "Status from ops: {st} - red alarm; impact: local trigger only; action: assign tech."
+   },
+   {
+    "lang": "en",
+    "t": "I have cross-checked the scaler rates and the channel map for {st}; the deviation is confined to that station and is not mirrored elsewhere, which points to a local hardware problem such as a chewed cable or dead PMT."
+   },
+   {
+    "lang": "en",
+    "t": "Um, {st} is screaming in the alarm panel - HV looks tripped and the rates are flat. Is this the thunderstorm veto or actual damage?"
+   },
+   {
+    "lang": "zh",
+    "t": "• 情况：{st} 出现报警与读数漂移；• 判断：疑似高压掉闸或供电异常；• 行动：已登记，安排现场核查。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚巡到 {st}，箱子进水了，信号也不对，我先拍了照，等你们带工具过来看。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：{st} 监测数据异常，并触发本地告警，疑似高压单元故障，请运维队伍按程序核查并反馈。"
+   },
+   {
+    "lang": "zh",
+    "t": "我在 {st} 看到问题。设备有报警，电压掉了。请检查。"
+   },
+   {
+    "lang": "zh",
+    "t": "值长记：{st} 报警，hv 掉，读数乱跳，等接班处理。"
+   },
+   {
+    "lang": "zh",
+    "t": "天哪，{st} 这边出状况了！告警响个不停，数据也不对劲，感觉像高压掉了，谁快来看看呀！"
+   },
+   {
+    "lang": "ja",
+    "t": "{st}でアラームが鳴りっぱなしです！波形が明らかに変で、HVも落ちてます。夜勤の方にすぐ共有します！"
+   },
+   {
+    "lang": "ja",
+    "t": "{st} でhvトリップ、pmtフラット、現地確認よろ"
+   },
+   {
+    "lang": "ja",
+    "t": "[自動通知] {st} の測定値がしきい値を外れています。担当者コメント：たぶんHVトリップ、至急確認を。"
+   },
+   {
+    "lang": "ja",
+    "t": "{st} を見に行ったら水浸しで、ケーブルもかじられてた。アラームが出てるので応急処置に入る。"
+   },
+   {
+    "lang": "es",
+    "t": "He revisado los registros de {st} y la alarma de alta tensión no parece ruido de tormenta: las lecturas están planas y el canal quedó inestable, por lo que conviene enviar mantenimiento para confirmar la avería antes del próximo ciclo."
+   },
+   {
+    "lang": "es",
+    "t": "Hay un problema en {st}. El sistema dio alarma y creo que hay agua dentro. Por favor, revisar pronto."
+   },
+   {
+    "lang": "es",
+    "t": "fyi {st} alarma y alta tension caida. manden tecnico. no pinta bien."
+   }
+  ],
+  "station_rumour": [
+   {
+    "lang": "en",
+    "t": "Whoa, did anyone else catch that odd flicker from {st}? I only saw it out of the corner of my eye on the dashboard, and I have not actually checked anything, so it could easily be nothing."
+   },
+   {
+    "lang": "en",
+    "t": "- {st}: possible anomaly?\n- Not verified.\n- Flagging for awareness; no follow-up yet."
+   },
+   {
+    "lang": "en",
+    "t": "I fancy {st} might be acting a bit strangely, though I have not gone to confirm it; just a passing remark, mind you."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: {st} showed a deviation from its usual pattern. Human comment: not sure if real; I did not look into it."
+   },
+   {
+    "lang": "en",
+    "t": "{st} maybe weird. didn't check."
+   },
+   {
+    "lang": "en",
+    "t": "I noticed a signal from {st} that could, under some interpretation, point to a non-nominal state; I have not verified it, cross-checked it, or otherwise investigated, so treat this as speculative only."
+   },
+   {
+    "lang": "en",
+    "t": "Shift log: {st} seemed slightly off in passing. No confirmation, no inspection."
+   },
+   {
+    "lang": "en",
+    "t": "Just a hunch from glancing at the monitoring page: {st} may be a little unhappy. Nobody has dug into it."
+   },
+   {
+    "lang": "en",
+    "t": "Possible issue with {st}? I am not sure and have not checked; someone with more coffee should verify if it matters."
+   },
+   {
+    "lang": "en",
+    "t": "The automated forwarder flagged {st} for an unusual reading. Human here: could be noise, could be real, but I did not examine it."
+   },
+   {
+    "lang": "en",
+    "t": "Old-timer's note: {st} acted a touch oddly to my eye, but I wouldn't swear to it, and I haven't verified a thing."
+   },
+   {
+    "lang": "en",
+    "t": "I have a low-confidence suspicion that {st} is not behaving as expected. This is unverified and I have not done any follow-up."
+   },
+   {
+    "lang": "en",
+    "t": "Dashboard glance: {st} maybe glitchy? Not confirmed, not investigated."
+   },
+   {
+    "lang": "en",
+    "t": "No alarm raised, just a vague feeling that {st} might be misbehaving. I have not looked closer."
+   },
+   {
+    "lang": "zh",
+    "t": "· 仪表盘似乎显示 {st} 状态有点怪；· 目前只是低置信度印象，尚未安排核查。"
+   },
+   {
+    "lang": "zh",
+    "t": "喂，{st} 那边好像有点飘啊，我也没细看，回头谁有空看看呗。"
+   },
+   {
+    "lang": "zh",
+    "t": "扫监控时，{st} 的曲线看着怪怪的，可能只是我多心了，还没人去翻数据！"
+   },
+   {
+    "lang": "zh",
+    "t": "老朽瞥见 {st} 似有异常之兆，不过未曾细究，诸位莫要当真。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班记录附注：{st} 疑似存在轻微异常迹象，尚未经任何核实，仅作待查线索留存。"
+   },
+   {
+    "lang": "zh",
+    "t": "困……{st} 那个点好像不太对，实在没劲去确认，先挂着吧。"
+   },
+   {
+    "lang": "ja",
+    "t": "もしかしたら {st} は へん かも。だれも みて ない。"
+   },
+   {
+    "lang": "ja",
+    "t": "どうも {st} の様子が普通と違うような気がするんですよ。誰も確かめてはおりませんが。"
+   },
+   {
+    "lang": "ja",
+    "t": "当方では、{st} に不具合があるかもしれないとの未確認情報があります。確認は行っておりません。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{st}：挙動が怪しいかも？\n・未確認、誰も見ていない。"
+   },
+   {
+    "lang": "es",
+    "t": "- Posible comportamiento irregular en {st}.\n- Sin verificar; nadie ha ido a confirmarlo."
+   },
+   {
+    "lang": "es",
+    "t": "Si no me falla la memoria, la estación {st} andaba algo extraña; y que yo sepa, nadie ha ido a revisarla."
+   },
+   {
+    "lang": "es",
+    "t": "No sé, tal vez {st} esté medio rara; la vi de reojo en la pantalla y nadie ha ido a comprobar, ando muerto de sueño."
+   },
+   {
+    "lang": "es",
+    "t": "quizá {st} esté fallando. nadie lo ha chequeado."
+   }
+  ],
+  "chatter": [
+   {
+    "lang": "en",
+    "t": "Just to be clear, the vending machine on the mezzanine has been restocked with those oat bars, and the coin return still jams if you tap it repeatedly, which is a mechanical quirk and not a sign that the building is haunted."
+   },
+   {
+    "lang": "en",
+    "t": "coffee in the pot is older than the hills. drink at your own risk."
+   },
+   {
+    "lang": "en",
+    "t": "- visitor badges are in the drawer. - please return them before you leave. - the parking lot behind the shed is for the catering van only."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: the office printer is low on toner. My comment: it has been low on toner since the last potluck, so this is basically tradition."
+   },
+   {
+    "lang": "en",
+    "t": "Okay, this is amazing — someone brought a whole box of samosas to the break room, and I am absolutely not sharing the final samosa!"
+   },
+   {
+    "lang": "en",
+    "t": "hey team, my truck is making a weird rattle again. probably just the loose water bottle rolling around. ignore it unless i start singing."
+   },
+   {
+    "lang": "en",
+    "t": "Anyone else see the stray dog that wandered past the front gate? Very polite. Wearing a tiny bandana. No collar."
+   },
+   {
+    "lang": "en",
+    "t": "Notice to all staff: the kitchen refrigerator is due for a clean-out. Anything unlabeled will be discarded. Please label your leftovers if you want to keep them."
+   },
+   {
+    "lang": "en",
+    "t": "Why did the grad student bring a ladder to the collaboration meeting? To get to the bottom of things. I will see myself out."
+   },
+   {
+    "lang": "en",
+    "t": "The wifi password was changed again. It is now the name of the site cat followed by an exclamation mark. I am not making this up."
+   },
+   {
+    "lang": "en",
+    "t": "Planning a hike this weekend if the weather cooperates. Anyone who wants to join should bring water and maybe a snack. I will probably complain about the uphill part."
+   },
+   {
+    "lang": "en",
+    "t": "The blue van in the visitor lot has a very smug bumper sticker. I have no idea whose it is. That is all."
+   },
+   {
+    "lang": "en",
+    "t": "There are leftover muffins in the break room. They are slightly stale but still edible. Help yourself before they disappear."
+   },
+   {
+    "lang": "en",
+    "t": "A tour group just came through and someone left a bright yellow umbrella by the coat rack. If it is yours, it is still there. If not, it is now community property."
+   },
+   {
+    "lang": "zh",
+    "t": "自动通知：门禁系统已恢复。说真的，楼下那辆白色面包车又堵住消防通道了，谁认识车主麻烦喊他挪挪。"
+   },
+   {
+    "lang": "zh",
+    "t": "- 周末团建改吃火锅？\n- 谁把会议室投影转接头拿走了？\n- 记得给访客登记表补笔。"
+   },
+   {
+    "lang": "zh",
+    "t": "大家好。我的车需要搭电。有人可以帮我吗？我在停车场。午饭我请吃面。"
+   },
+   {
+    "lang": "zh",
+    "t": "我认真看了咖啡机的报错灯，确认它不是电压不稳，只是水箱没放到位；我已经把水箱卡回去，顺手擦掉台面的咖啡渍，免得下位同事以为这里发生过小事故。若你周末来加班，别用那个有缺口的杯子，它容易漏。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班组通报：无涉业务事项。食堂晚餐供应饺子，停车场入口有访客车辆临时停放，请各位按内务规定自行处理个人快递与会议室零食残渣。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇！刚在走廊碰到隔壁组来参观的老师，他说我们楼下的自动售货机居然有辣条！谁周末想跟我去扫货？顺便求个能修笔记本风扇的教程，我的本子跑起代码就像要起飞。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】給湯室のコーヒーメーカーが清掃完了を知らせています。……って、それだけか。あと、誰か青いワゴン車の持ち主を探してます。"
+   },
+   {
+    "lang": "ja",
+    "t": "各位 正面玄関付近に来訪者用の白いバンが停まっております。食堂の新しいメニューは休憩室の掲示をご覧ください。"
+   },
+   {
+    "lang": "ja",
+    "t": "おお、みなさん。わしの古い軽トラックが車検から戻りましたぞ。畑の手伝いをしておりますので、休憩室に漬物を置いておきます。どうぞ遠慮なくつまんでくだされ。"
+   },
+   {
+    "lang": "ja",
+    "t": "みなさん、こんにちは。わたしの自転車は赤いです。友だちが訪ねて来ます。コーヒーを飲みながら話します。このメッセージは仕事の話ではありません。"
+   },
+   {
+    "lang": "es",
+    "t": "Oye, ¿al final comemos en el bar de la entrada o me llevo un bocata? El furgón quedó bloqueado y no pienso moverlo hasta que alguien traiga la llave."
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede constancia y nadie se confunda: la cafetera del pasillo hace un ruido metálico; he abierto una incidencia en el sistema de soporte y, si no la miran, tendremos que organizarnos para traer termos el fin de semana; solo era eso, no hay nada urgente."
+   },
+   {
+    "lang": "es",
+    "t": "Se comunica al personal que la visita protocolar del organismo se traslada a la sala de reuniones; se ruega no dejar vehículos en el acceso y reservar las preguntas para el responsable de comunicación. El café se servirá en el pasillo."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: la impresora de la oficina vuelve a estar en línea. Comentario humano: por fin, así imprimimos el menú del fin de semana; gracias, máquina."
+   }
+  ],
+  "too_request_nd": [
+   {
+    "lang": "en",
+    "t": "Official notice from the gamma-ray burst network duty scientist: for the interval bounded by {start} and {end}, please reconfigure the array trigger logic to the rapid-trigger operating mode, since {reason} is presently overhead. To be explicit, this is not a simulation; treat it as live tasking and log the mode change."
+   },
+   {
+    "lang": "en",
+    "t": "grb net just pinged me official. can u guys flip us to fast trig between {start} and {end}? {reason} is overhead. not a drill, real. thx"
+   },
+   {
+    "lang": "en",
+    "t": "I'm on console and the burst network duty scientist wants an official switch to fast-trigger mode between {start} and {end}; {reason} is overhead. Not an exercise. Coffee is not helping."
+   },
+   {
+    "lang": "en",
+    "t": "By official request of the gamma-ray burst network, all relevant operators are directed to place the instrument in fast-trigger mode between {start} and {end}, on account of {reason} being overhead. This message is not a test; authenticate and execute."
+   },
+   {
+    "lang": "en",
+    "t": "grb net official. fast trigger {start} to {end}. {reason} overhead. not a drill. do it."
+   },
+   {
+    "lang": "en",
+    "t": "Automated GRB network notice: switch to fast-trigger mode between {start} and {end}; cause: {reason} overhead. Human duty scientist confirms: real tasking, not a simulation."
+   },
+   {
+    "lang": "en",
+    "t": "Heads up from the burst network duty desk—this is an official ask, so please move the array into fast-trigger mode between {start} and {end}. Reason: {reason} is overhead right now. And yes, this is not a test."
+   },
+   {
+    "lang": "en",
+    "t": "GRB network official directive: transition the trigger system to rapid mode for the window between {start} and {end} because {reason} is overhead. Confirm this is not an exercise and proceed."
+   },
+   {
+    "lang": "en",
+    "t": "Official from GRB net: fast-trigger between {start} and {end}. {reason} overhead. Not a drill. Please ack."
+   },
+   {
+    "lang": "en",
+    "t": "Message from the gamma-ray burst network duty scientist: execute fast-trigger mode from {start} until {end} owing to {reason} overhead. This is not a simulation, over."
+   },
+   {
+    "lang": "en",
+    "t": "The GRB network has requested officially that we go to fast-trigger mode between {start} and {end}, as {reason} is overhead. Not an exercise—please acknowledge on the ops log."
+   },
+   {
+    "lang": "en",
+    "t": "Official request from the gamma-ray burst network: enable fast-trigger mode between {start} and {end} because {reason} is overhead. I repeat, this is not a drill."
+   },
+   {
+    "lang": "en",
+    "t": "Burst network duty scientist officially tasks us: fast-trigger configuration between {start} and {end}, due to {reason} overhead. Not a test; live request."
+   },
+   {
+    "lang": "en",
+    "t": "To all shift crew: the gamma-ray burst network requests, with official priority, that the array be placed in fast-trigger mode between {start} and {end} because {reason} is overhead. This is not an exercise."
+   },
+   {
+    "lang": "zh",
+    "t": "GRB网正式自动转发：请于 {start} 至 {end} 切至快触发模式，因为 {reason} 正在过顶。值班员补：这是真的，不是演练。"
+   },
+   {
+    "lang": "zh",
+    "t": "我在现场手机上收到伽马暴网正式通知，麻烦 {start} 到 {end} 把触发改成快触发，{reason} 过顶呢，别当演习啊，真事！"
+   },
+   {
+    "lang": "zh",
+    "t": "国家伽马射线暴网络值班官正式通告：因 {reason} 过顶，请各岗位在 {start} 与 {end} 之间切换至快速触发模式。此系实战要求，绝非演习。"
+   },
+   {
+    "lang": "zh",
+    "t": "项目组通知：\n- 来源：GRB网络（官方）\n- 动作：切到快触发模式\n- 窗口：{start} 到 {end}\n- 原因：{reason} 过顶\n- 注意：不是演练，立即执行"
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计们，伽马暴网来公函啦：请在 {start} 到 {end} 之间把快触发打开，{reason} 正悬在头顶；这可不是演习，莫当儿戏。"
+   },
+   {
+    "lang": "zh",
+    "t": "grb网正式通知：{start} 到 {end} 切快触发，{reason} 过顶。真事，不是训练。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRB網から公式依頼。{start}〜{end}の間、高速トリガーに切り替えて。{reason}が上空に来てる。訓練じゃない、本物だから。"
+   },
+   {
+    "lang": "ja",
+    "t": "・GRBネットワーク公式要請\n・{start}から{end}まで高速トリガーモードへ切替\n・理由は{reason}が上空\n・これは演習ではない、実運用"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい、GRB網の当番から公式連絡！{start}から{end}の間にファストトリガーへ切り替え！{reason}が真上に来てる！シミュレーションじゃなくてリアルです！"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークから公式の依頼です。{start} と {end} の間、高速トリガーモードにしてください。{reason} が上にあります。これはテストではありません。本当です。"
+   },
+   {
+    "lang": "es",
+    "t": "• Solicitud oficial de la red GRB: pasar a modo de disparo rápido de {start} a {end}. • Motivo: {reason} está sobre la instalación. • Esto es real; no es un simulacro."
+   },
+   {
+    "lang": "es",
+    "t": "A la tripulación: la red de brotes de rayos gamma pide, con carácter oficial, que se active el disparo rápido desde {start} hasta {end}, ya que {reason} está encima. Les aseguro que es de verdad, no es un ejercicio."
+   },
+   {
+    "lang": "es",
+    "t": "oficial: red GRB dice que cambiemos a trigger rápido entre {start} y {end}, porque {reason} anda por arriba. no es prueba, va en serio."
+   },
+   {
+    "lang": "es",
+    "t": "¡Atención! La red de alertas GRB acaba de emitir una solicitud oficial: hay que poner el modo de disparo rápido de {start} a {end} porque {reason} está justo encima. ¡Esto es real, no es un test!"
+   }
+  ],
+  "too_reinstate": [
+   {
+    "lang": "en",
+    "t": "Ops, I keep nodding off but I need to pass this on: the GRB network just retracted its earlier cancellation in {ref} - that was a mistake. The fast-trigger request it killed is live again, so please follow it like normal."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, big correction from the burst people: disregard the withdrawal they sent as {ref}! It was sent by accident, apparently. The fast-trigger mode they had cancelled is valid again and we should be following it - yes, really!"
+   },
+   {
+    "lang": "en",
+    "t": "Official correction from the gamma-ray burst network: the cancellation transmitted under {ref} is hereby retracted as erroneous. The fast-trigger request that cancellation had rescinded is reinstated and remains in force; all receiving stations are directed to comply."
+   },
+   {
+    "lang": "en",
+    "t": "hey control, got word from the grb net: that cancel in {ref}? my bad? no, their bad. the fast trigger request is back on, so follow it. phones dying, bye"
+   },
+   {
+    "lang": "en",
+    "t": "For the avoidance of doubt, the withdrawal message referenced as {ref} was itself issued in error by the GRB network. Consequently, the fast-trigger request that was cancelled by that withdrawal is to be treated as active again, and operators should adhere to it exactly as originally requested."
+   },
+   {
+    "lang": "en",
+    "t": "net says cancel in {ref} was bogus. fast trigger request back on. follow it."
+   },
+   {
+    "lang": "en",
+    "t": "Correction to all recipients: the GRB network withdraws its prior cancellation contained in {ref}, which was released by mistake. The fast-trigger request that cancellation had knocked out is valid once more and must be obeyed."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all - the burst alert folks asked me to relay that their cancel in {ref} was a slip. Sorry for the churn! The fast-trigger request that cancellation had withdrawn is good again, so please keep following it."
+   },
+   {
+    "lang": "en",
+    "t": "Notice from the GRB network: message {ref} is a mistaken retraction. The fast-trigger request originally cancelled by it is reinstated with immediate effect and is mandatory."
+   },
+   {
+    "lang": "en",
+    "t": "yo, grb net says ignore their cancel in {ref}, total mistake. fast trig request is valid again, do the thing."
+   },
+   {
+    "lang": "en",
+    "t": "Please note carefully: the GRB network has advised that its earlier cancellation, logged as {ref}, should never have been sent. That means the fast-trigger mode request which that cancellation had invalidated is once again in effect, and all operators must honor it."
+   },
+   {
+    "lang": "en",
+    "t": "Ugh, another reversal. The GRB network retracts the cancellation in {ref} - it was wrong. The fast-trigger request that got cancelled is valid again, so follow it. Coffee hasn't kicked in yet."
+   },
+   {
+    "lang": "en",
+    "t": "Big update from the gamma-ray burst network! The withdrawal they sent as {ref} was a mistake, so disregard it. The fast-trigger request it cancelled is back and everyone needs to follow it."
+   },
+   {
+    "lang": "en",
+    "t": "Control, burst net just called: that cancel {ref} was sent by mistake. fast trigger request is active again. please follow. signal bad, repeating: follow the fast trigger."
+   },
+   {
+    "lang": "zh",
+    "t": "GRB那边说 {ref} 那条撤回发错了，之前被它取消的快触发请求又有效了，照这个执行。手机快没电，先这样。"
+   },
+   {
+    "lang": "zh",
+    "t": "国家值班室正式通告：GRB网络确认，其在 {ref} 中发出的撤回通知属误发；该撤回所取消的快触发请求现恢复有效，各岗位须严格遵照执行。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中……GRB刚来消息说 {ref} 那个撤回弄错了，被它取消的快触发请求又生效了，大家照做。"
+   },
+   {
+    "lang": "zh",
+    "t": "为避免歧义，我明确说明：GRB网络确认，其在 {ref} 里发出的撤回是误操作，并非要让快触发失效；因此，原先被该撤回取消的快触发请求重新有效，必须按恢复后的请求执行。"
+   },
+   {
+    "lang": "zh",
+    "t": "要点：• GRB网络更正，{ref} 的撤回发错了；• 被它取消的快触发请求恢复有效；• 各岗位按恢复后的请求执行，别再按撤回。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：GRB网络官方更正，{ref} 的撤回为误发；该撤回取消的快触发请求恢复有效并须执行。// 值班备注：刚与对方确认，照做。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークが、{ref} で送った撤回は間違いだったって！その取り消しで止めてた高速トリガー要求、復活したから、みんなそのまま従って！"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークのお達しじゃ。{ref} で出した取り消しは手違いであったそうな。ゆえに、その取り消しで無効となっておった高速トリガー要請は再び有効、しかと従うように。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークより通達。{ref} にて送信した撤回は誤りであったため、当該撤回により取り消された高速トリガー要求は再び有効である。関係各所はこれに従い、運用を継続されたい。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】GRBネットワーク通知：{ref} の取消は誤り。取消対象だった速報トリガー要求は有効に復帰。担当より：コーヒー片手に慌てず従ってください。"
+   },
+   {
+    "lang": "es",
+    "t": "Eh, la red GRB acaba de avisar que la cancelación que mandaron en {ref} fue un error; el modo rápido que esa cancelación dejó fuera vuelve a estar vigente y hay que seguirlo."
+   },
+   {
+    "lang": "es",
+    "t": "La red GRB dice: el mensaje de cancelación {ref} fue un error. La petición de disparo rápido que fue cancelada está válida otra vez. Debe seguirse."
+   },
+   {
+    "lang": "es",
+    "t": "Comunicado oficial de la red GRB: se informa de que la anulación remitida en {ref} fue un error. Por consiguiente, la solicitud de disparo rápido que dicha anulación había retirado recobra validez y deberá ser acatada."
+   },
+   {
+    "lang": "es",
+    "t": "la red grb dice que la cancelación en {ref} fue un error; el disparo rápido que anularon vuelve a valer, hay que seguirlo."
+   }
+  ],
+  "too_later": [
+   {
+    "lang": "en",
+    "t": "Yes! The GRB folks just pinged us—for {ref}, their fast-trigger slot is sliding {delta} later, so both the opening and closing times move by that much. The request is still on, just shifted!"
+   },
+   {
+    "lang": "en",
+    "t": "Message {ref}: gamma burst network ask fast trigger later by {delta}. Start and end also move later by the same. Please keep request."
+   },
+   {
+    "lang": "en",
+    "t": "Night shift here. The burst network has moved the quick-trigger window for {ref} back by {delta}; its beginning and end are both pushed the same amount later. Still active, not cancelled."
+   },
+   {
+    "lang": "en",
+    "t": "- {ref}: GRB rapid-trigger request remains approved.\n- Timing change from network: whole window delayed by {delta}.\n- Both start and end shift later by the same interval."
+   },
+   {
+    "lang": "en",
+    "t": "grb net says for {ref} the fast trig window slips {delta} later. start n end both move with it. request still stands."
+   },
+   {
+    "lang": "en",
+    "t": "On site—GRB request {ref} got bumped. The fast-trigger window is now starting and ending {delta} later. Still need it active."
+   },
+   {
+    "lang": "en",
+    "t": "Official notice from the gamma-ray burst network: regarding request {ref}, the requested fast-trigger interval is postponed by {delta}. Its commencement and termination are likewise deferred by the same amount. The request remains in force."
+   },
+   {
+    "lang": "en",
+    "t": "Hey team, update from the burst network: that fast trigger slot we discussed for {ref}? It's been shoved {delta} down the line—front edge and back edge both. Don't drop it; it's still a go."
+   },
+   {
+    "lang": "en",
+    "t": "GRB net: {ref} fast-trigger window delayed {delta}; start/end shifted accordingly. Request still valid."
+   },
+   {
+    "lang": "en",
+    "t": "For {ref}, the gamma network want the fast mode moved {delta} later. Begin and finish both go with it. Request still valid."
+   },
+   {
+    "lang": "en",
+    "t": "RE {ref}\n- GRB fast-trigger request: still valid\n- Timing update: slide whole window {delta} later\n- Both boundaries move with it"
+   },
+   {
+    "lang": "en",
+    "t": "It's late, but the burst network says the fast-trigger window for {ref} is now {delta} later. Start and stop both shifted. Keep the request."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa—GRB network just updated {ref}: fast trigger pushed back by {delta}, and that applies to both the leading and trailing edges. Still on!"
+   },
+   {
+    "lang": "en",
+    "t": "Phone note: burst alert net moved the rapid trigger for {ref} to a later slot by {delta}. Beginning and end both delayed same amount. Request still active."
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：GRB网把 {ref} 申请的快触发窗口整体往后挪 {delta}，起点和终点一起顺延；原申请仍然算数。顺便说下，值班室咖啡快没了。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚收到 GRB 那边消息，{ref} 那个快触发时段要整体推后 {delta}！开始和结束都跟着往后移，原来的申请没取消哦。终于不用赶那一波了！"
+   },
+   {
+    "lang": "zh",
+    "t": "国家天文台值班通报：接伽马射线暴协作网来函，关于 {ref} 所涉快速触发窗口，现决定将其起始与终止时刻一并延后 {delta}。该请求继续有效，特此周知。"
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计们注意啦，暴网那边捎话：{ref} 里要的那个快触发档期，整段都往后挪 {delta}，开头结尾一块儿挪；原先的约定照旧。"
+   },
+   {
+    "lang": "zh",
+    "t": "为避免歧义，我逐项说明：{ref} 中申请的快速触发窗口，其时间范围整体后移 {delta}；换句话说，窗口起点和终点都同步后移相同量，即两端偏移量一致。该请求本身并未撤回，仍然有效。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班记录：GRB 网说 {ref} 那个快触发窗口往后延 {delta}，头尾一起顺延；申请没撤。困死了，先这样。"
+   },
+   {
+    "lang": "ja",
+    "t": "現場から。GRB網が、{ref}で頼まれたファストトリガー枠を{delta}後ろにずらすって。開始も終了も同じだけ後ろ。依頼はまだ生きてる。"
+   },
+   {
+    "lang": "ja",
+    "t": "先方のGRBネットワークから連絡です。{ref}で要求された高速トリガー運用窓につき、開始と終了の両方を{delta}だけ後方へ平行移動する変更が入りました。元の要求は取り下げではなく、有効なままです。"
+   },
+   {
+    "lang": "ja",
+    "t": "・GRB網より\n・{ref}の速トリガー枠、開始・終了とも{delta}後ろ倒し\n・依頼は継続"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中すみません、GRB網から。{ref}のファストトリガー窓、{delta}後ろにずらしてとのこと。始まりも終わりも一緒に後ろ。依頼はそのまま有効です。"
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que la red de GRB ha trasladado la ventana de disparo rápido pedida en el mensaje {ref}, desplazando tanto el inicio como el fin {delta} más tarde; la petición sigue en pie."
+   },
+   {
+    "lang": "es",
+    "t": "- Aviso: la ventana de disparo rápido pedida en {ref} se corre {delta} para más tarde.\n- Su inicio y su término se mueven igual.\n- El pedido no se anula."
+   },
+   {
+    "lang": "es",
+    "t": "Notificación automática de la red GRB: la ventana de trigger rápido asociada a {ref} se reprograma {delta} más tarde, con inicio y fin igualmente corridos. Comentario humano: sigue válida, no la borren."
+   },
+   {
+    "lang": "es",
+    "t": "la red grb mueve la ventana de disparo rápido de {ref} {delta} más tarde: inicio y fin igual de corridos. la petición sigue."
+   }
+  ],
+  "too_earlier": [
+   {
+    "lang": "en",
+    "t": "Bot relay: the GRB network's fast-trigger window tied to {ref} is now {delta} earlier, start and finish both, and the request has not been cancelled. Human comment: noted for the log."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that the GRB network has revised the fast-trigger window associated with request {ref} such that the commencement and conclusion are each shifted {delta} toward earlier times; the request itself remains valid and unchanged in scope."
+   },
+   {
+    "lang": "en",
+    "t": "grb moved the fast trig window from {ref} earlier by {delta}, start n end both, request still on."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, GRB network just pulled the fast-trigger window for {ref} earlier by {delta}! Both the opening and closing are earlier by that much, and the request is still standing. Coffee still hot, by the way."
+   },
+   {
+    "lang": "en",
+    "t": "Official bulletin: the GRB network has shifted the fast-trigger interval requested under {ref} to an earlier time by {delta}. Both the start and end of the interval are moved by the same amount, and the request remains in force."
+   },
+   {
+    "lang": "en",
+    "t": "Control room note: the GRB folks have advanced the fast-trigger window from {ref} by {delta}; both ends move earlier, and the request is still valid. Nothing else changed."
+   },
+   {
+    "lang": "en",
+    "t": "grb moved its fast trig window for req {ref}: starts and ends {delta} sooner. req stands."
+   },
+   {
+    "lang": "en",
+    "t": "Automated GRB alert: the network has moved the fast-trigger window for {ref} earlier by {delta}, affecting both boundaries. Original ask remains active. Duty officer acknowledges."
+   },
+   {
+    "lang": "en",
+    "t": "The gamma-ray-burst network has just rescheduled the fast-trigger window in {ref}: its beginning and end are both brought forward by {delta}, and the request is not withdrawn."
+   },
+   {
+    "lang": "en",
+    "t": "FYI, the GRB net shifted the fast-trigger window requested in {ref} so it now sits {delta} earlier; both the open and close follow that shift, and the request still holds."
+   },
+   {
+    "lang": "en",
+    "t": "Log entry: GRB network has moved the fast-trigger window for request {ref} {delta} earlier, at both its start and its finish. Request remains active."
+   },
+   {
+    "lang": "en",
+    "t": "Heads-up from the GRB side: the fast-trigger slot from {ref} is now {delta} earlier, front edge and back edge alike. The request itself stays on the books."
+   },
+   {
+    "lang": "en",
+    "t": "This is to confirm that the GRB network has moved the fast-trigger window requested in {ref} earlier by {delta}. Both its onset and its cessation are shifted by that amount, and the request continues to apply."
+   },
+   {
+    "lang": "zh",
+    "t": "grb网把{ref}里要的快触发窗整体往前提{delta}，头尾一起提前，申请不撤。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发伽马暴网通知：{ref} 的快速触发窗口整体提前 {delta}，起止同步；原请求仍有效。// 值班机器人补一句：收到。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇，{ref} 那个快触发窗口被伽马暴网整体往前提了 {delta}，开始和结束都跟着提前，原来的申请还没取消！"
+   },
+   {
+    "lang": "zh",
+    "t": "按伽马暴网络的通知，{ref} 所申请的快速触发窗口要整体前移 {delta}；我核对过，窗口起点和终点都随整体同步提前，而该请求本身继续有效。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 伽马暴网：{ref} 快触发窗口整体提前 {delta}；• 起止两端同步前移；• 原请求继续有效"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班快熬不住了……GRB那边把{ref}要的快触发窗口整体往前挪{delta}，开头结尾都跟着挪，申请还作数。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRBネットワークより、{ref}で要請のあった高速トリガー窓について、開始・終了ともに{delta}繰り上げる修正連絡です。要請自体は引き続き有効です。"
+   },
+   {
+    "lang": "ja",
+    "t": "GRB網より：・{ref}の高速トリガー枠、開始も終了も{delta}前倒し。・元の要求は生きています。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中にすみません、GRB側から連絡で、{ref}の高速モード枠、始まりも終わりも{delta}早めるって。要求はそのまま残ってるそうです。"
+   },
+   {
+    "lang": "ja",
+    "t": "grb網より。{ref}の速トリガ窓、開始終了とも{delta}繰上げ。要求は有効のまま。"
+   },
+   {
+    "lang": "es",
+    "t": "Señores, la red de GRB ruega tomar nota: la ventana de disparo rápido solicitada en {ref} se corre {delta} hacia atrás, con su inicio y su final. La petición original no se retira."
+   },
+   {
+    "lang": "es",
+    "t": "Amigos, la red GRB mueve la ventana rápida que pidieron en {ref}. Ahora inicio y fin van {delta} más temprano. La petición queda igual."
+   },
+   {
+    "lang": "es",
+    "t": "Red GRB: la ventana de trigger rápido de {ref} se adelanta {delta}; inicio y final también pa atrás. Sigue vigente la solicitud."
+   },
+   {
+    "lang": "es",
+    "t": "Para que no haya dudas: la red de GRB desplaza {delta} hacia atrás la ventana de disparo rápido solicitada en {ref}, de modo que tanto el instante de inicio como el de término quedan igual de temprano. La solicitud original, por supuesto, permanece válida."
+   }
+  ],
+  "storm_away": [
+   {
+    "lang": "en",
+    "t": "Thunderstorm cell forecast around {arrival} is tracking down the far valley north of us; not coming here, array unaffected, no action needed."
+   },
+   {
+    "lang": "en",
+    "t": "Phone note: forecast lightning cell near {arrival} will slide along the distant valley south of site. It misses us, no impact on the array, nothing to do."
+   },
+   {
+    "lang": "en",
+    "t": "Weather service says thunderstorm near {arrival}. It goes far away in valley north of array. No problem for array. No action."
+   },
+   {
+    "lang": "en",
+    "t": "Reviewing the convective cell forecast valid near {arrival}: the system is expected to remain confined to the remote valley well north of the array, so no trigger bias, no hardware risk, no operational response is required."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the met office: a thunderstorm is due by {arrival}, but she will keep to the far-off valley south of us, as she always does. Array stays dry and quiet; no call to action."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, forecast shows a lightning cell close to {arrival}, but it is hugging that distant valley north of the site—completely missing the array! No impact, no action, just cool structure to watch on radar."
+   },
+   {
+    "lang": "en",
+    "t": "MET: thunderstorm cell nearest around {arrival}. Track: remote valley south. Array: no impact. Action: none."
+   },
+   {
+    "lang": "en",
+    "t": "Heads-up for the shift: a thunderstorm cell is forecast around {arrival}, but it will stay in the distant valley north of the array. No effect here, so no need to change anything."
+   },
+   {
+    "lang": "en",
+    "t": "Forecast say thunderstorm by {arrival}. It pass far south in valley, not near array. No impact. No action."
+   },
+   {
+    "lang": "en",
+    "t": "Per the latest guidance, a convective cell is forecast in the vicinity at {arrival}; however, its forecast track runs along the far valley to our south, keeping it well away from the array, so no veto, no mode change, no action is needed."
+   },
+   {
+    "lang": "en",
+    "t": "Old forecast hand here: thunderstorm due near {arrival}, but it is headed down the far valley north of the site, same as always. It will not bother the array; nothing for you to do."
+   },
+   {
+    "lang": "en",
+    "t": "Radar love: there is a lightning cell forecast near {arrival}, and it is tracking along the distant valley south of us—nowhere near the array! No impact expected, no action needed, but wow."
+   },
+   {
+    "lang": "en",
+    "t": "Yawn—thunderstorm cell forecast around {arrival} is staying in the far valley north of us. Array is clear. No impact, no action."
+   },
+   {
+    "lang": "en",
+    "t": "From the field: forecast convective cell near {arrival} will pass along the remote valley south of the array. We are outside its path, so no impact and no action."
+   },
+   {
+    "lang": "zh",
+    "t": "老张：雷暴单体报在{arrival}附近，走远处山谷，偏北，离阵远，不碰，不用管。"
+   },
+   {
+    "lang": "zh",
+    "t": "我是气象员。预报说，雷雨在{arrival}旁边。它去很远山谷，在南边。不会影响阵列。不用做事情。"
+   },
+   {
+    "lang": "zh",
+    "t": "根据最新临近预报，雷暴单体预计在{arrival}前后从本站附近经过；不过其移动路径位于远离阵列的远处山谷，偏南侧，与本站保持很大距离。因此对阵列没有任何影响，不需要采取任何操作。"
+   },
+   {
+    "lang": "zh",
+    "t": "国家气象值班室通报：预计{arrival}前后，本站附近有雷暴单体活动，但该单体将沿远处山谷偏北方向移过，对阵列无影响，无需处置。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 雷暴预报：{arrival}附近有雷暴单体\n• 路径：远处山谷，偏南\n• 对阵列影响：无\n• 行动项：无需行动"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】气象预警：{arrival}附近有雷雨云团，沿远处山谷偏北移动。// 值班员备注：离阵列远，不会影响，不用动作。"
+   },
+   {
+    "lang": "ja",
+    "t": "天気便り：雷雨の雲が{arrival}ころに最接近する由ですが、遠くの谷筋を伝って北か南へ抜けるだけで、わしらの観測陣には何の障りもありません。どうぞそのまま。"
+   },
+   {
+    "lang": "ja",
+    "t": "おお、雷雲が{arrival}に近づくって予報なんですけど、進路が遠い谷沿いで北か南にそれてるので、アレイには全然かすりません！トリガーも汚さないはず、対応不要です、先輩！"
+   },
+   {
+    "lang": "ja",
+    "t": "気象担当官からの通報：{arrival}前後に雷雨をもたらす対流セルが接近する予想。ただし、その経路はサイトから十分に離れた谷筋を北または南へ通過する見込みであり、アレイへの影響はない。よって特段の対応は不要。"
+   },
+   {
+    "lang": "ja",
+    "t": "雷雲 {arrival} 接近。遠い谷を北か南へ抜ける。アレイ影響なし、対応不要。"
+   },
+   {
+    "lang": "es",
+    "t": "He revisado el modelo y, aunque la tormenta se acercará a {arrival}, su trayectoria sigue un valle lejano al norte del sitio, así que pasará bien lejos del arreglo de superficie; no se prevé impacto alguno ni hace falta actuar."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso oficial: se pronostica una tormenta cerca de {arrival}; no obstante, el sistema se desplazará por un valle distante al sur de la instalación, sin afectación prevista al arreglo y sin necesidad de intervención."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: tormenta con actividad eléctrica prevista cerca de {arrival}. Comentario humano: la célula se va por el valle lejano, al norte; no toca el array, no hay nada que hacer."
+   },
+   {
+    "lang": "es",
+    "t": "La tormenta pronosticada para {arrival} se va por el valle lejano al sur; no afecta el arreglo, no hay que hacer nada. Qué noche."
+   }
+  ],
+  "storm_miss": [
+   {
+    "lang": "en",
+    "t": "Just got the word from the weather folk: that thunderstorm they flagged in {ref} has wandered off and fizzled out a long way from here. Not a spark of lightning headed for the array, so no trouble expected."
+   },
+   {
+    "lang": "en",
+    "t": "Message about {ref}. The storm changed route. It is far away and finished. Lightning will not come to array. No impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED NOTICE: {ref} - convective cell decayed far from site. Operator comment: lightning risk to array has vanished; no impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "- {ref}: thunderstorm track revised\n- cell is remote and dissipated\n- lightning risk to array: none; no impact expected"
+   },
+   {
+    "lang": "en",
+    "t": "Official weather bulletin regarding {ref}: the thunderstorm cell cited earlier has altered course and dissipated at a distance well removed from the array. No lightning activity is forecast to affect the site, and no impact is expected."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, awesome news! That thunderstorm from {ref} just totally collapsed far away. The cell is gone, lightning's nowhere near the array, so we're clear - no impact expected!"
+   },
+   {
+    "lang": "en",
+    "t": "Weather update {ref}: storm track shifted away; cell dissipated remote; lightning threat to array nil. No impact."
+   },
+   {
+    "lang": "en",
+    "t": "hey fyi {ref} - that storm cell? it buggered off and died far from us. no lightning coming this way, no impact for the array. carry on."
+   },
+   {
+    "lang": "en",
+    "t": "Reference {ref}. The thunderstorm previously warned of has not followed its projected path and has weakened to nothing far from the array. Lightning is not expected to reach the site. No impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "ALERT RESCINDED FOR {ref}: automated feed shows cell dissipated distant. Human here - lightning no longer a factor for the array; no impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the weather source: the thunderstorm named in {ref} took a different road and petered out far off. Lightning won't bother the array, son. No impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "Regarding {ref}: thunderstorm not coming. It changed direction and is far away. Lightning not reach array. No impact expected."
+   },
+   {
+    "lang": "en",
+    "t": "Yes! {ref} update - that scary storm cell just disintegrated way out there! Lightning threat for the array? Nope, gone. No impact expected!"
+   },
+   {
+    "lang": "en",
+    "t": "* {ref} - thunderstorm diverted\n* cell dissipated at remote distance\n* lightning risk: none\n* array impact: none expected"
+   },
+   {
+    "lang": "zh",
+    "t": "气象台自动转发：{ref} 里的雷暴已改道，远离阵列，预计无影响。值班员补个话：咖啡还有，继续正常采数。"
+   },
+   {
+    "lang": "zh",
+    "t": "嘿，气象台更新说 {ref} 那团雷暴单体拐弯跑远了，闪电也散了，根本碰不到阵列，这下 veto 不用切啦！"
+   },
+   {
+    "lang": "zh",
+    "t": "气象台捎话来，{ref} 提的那场雷雨云途中就散远了，断不会奔咱们阵列来，诸位宽心。"
+   },
+   {
+    "lang": "zh",
+    "t": "依据气象源对 {ref} 的追踪订正，原预警中的雷暴单体已在远距离外耗散，闪电活动同步减弱，移动矢量不再指向阵列，故预期无影响。"
+   },
+   {
+    "lang": "zh",
+    "t": "气象台更新：{ref} 雷暴预警解除；路径偏转，未逼近阵列；闪电活动消散；结论：无影响。"
+   },
+   {
+    "lang": "zh",
+    "t": "唉，气象台说 {ref} 那个雷暴不来了，途中就散了，闪电也没影了，阵列这边没事，我接着盯屏。"
+   },
+   {
+    "lang": "ja",
+    "t": "わー、{ref}で言ってた雷雲、進路変えたみたい！遠くで消えちゃったって。アレイには来ないってさ、影響なしだって！"
+   },
+   {
+    "lang": "ja",
+    "t": "先の {ref} の雷雲についてですが、追跡データを再確認したところ、当該セルは進路を逸らして遠方で消散しました。したがって、アレイへの到達はなく、影響は想定されません。"
+   },
+   {
+    "lang": "ja",
+    "t": "さっきの {ref} の雷雲、どっか行ったわ。遠くで消えたって。こっち来ない、影響なし。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{ref} の雷雲は進路変更し、遠方で消滅。アレイへの影響なし。— 人間より: 助かった、コーヒー飲める。"
+   },
+   {
+    "lang": "es",
+    "t": "Del parte {ref}: la tormenta aquella ya no viene, se fue a deshacer lejos. Por aquí no se esperan rayos, así que tranquilos."
+   },
+   {
+    "lang": "es",
+    "t": "Actualización meteorológica: la celda tormentosa mencionada en {ref} ha variado su rumbo y se ha disipado a distancia, de modo que no alcanzará la zona del arreglo ni se prevén efectos por rayos."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: la tormenta del aviso {ref} se ha desviado y disipado lejos. Comentario humano: no llega, sin impacto por acá."
+   },
+   {
+    "lang": "es",
+    "t": "tormenta de {ref} cambió de rumbo y se apagó lejos. no llega. sin impacto."
+   }
+  ],
+  "storm_later": [
+   {
+    "lang": "en",
+    "t": "storm in {ref} is running late, hits the array {delta} later than that warning said"
+   },
+   {
+    "lang": "en",
+    "t": "hey fyi, that squall line from {ref} slowed down - new arrival at the array is {delta} behind the original call"
+   },
+   {
+    "lang": "en",
+    "t": "Please update the trigger veto plan: the convective cell referenced in {ref}, previously forecast to reach the surface array, is now projected to arrive {delta} later than the earlier estimate."
+   },
+   {
+    "lang": "en",
+    "t": "Message {ref} about storm. The storm will come to the array {delta} later than before. Please note."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED WEATHER UPDATE: {ref} revised. Storm arrival at the array delayed by {delta}. - yeah, still expect thunder, so keep veto on."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, the storm from {ref} is taking its sweet time - it won't hit the array until {delta} after the old forecast!"
+   },
+   {
+    "lang": "en",
+    "t": "Weather bulletin: the thunderstorm system cited in {ref} has been reassessed; its expected arrival at the air-shower array is postponed by {delta} relative to the prior warning."
+   },
+   {
+    "lang": "en",
+    "t": "lol weather says {ref} storm eta slipped {delta}, so later at the array, dont panic"
+   },
+   {
+    "lang": "en",
+    "t": "{ref} storm now {delta} late to array. veto still applies."
+   },
+   {
+    "lang": "en",
+    "t": "heads up from field: the cell in {ref} is moving slower; it'll reach the surface stations {delta} later than the warning said."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, the warning at {ref} needs a timing correction: the storm's leading edge is now anticipated at the array {delta} later than originally stated."
+   },
+   {
+    "lang": "en",
+    "t": "Notice forwarded: {ref} update. Expected thunderstorm arrival at the array has been pushed back by {delta}. Human note: keep an eye on it."
+   },
+   {
+    "lang": "en",
+    "t": "Weather source say storm from {ref} not come same time. Now it come to array {delta} later. Sorry for change."
+   },
+   {
+    "lang": "en",
+    "t": "Yo! The storm in {ref} got delayed - it should reach our detector array {delta} later than they thought. Extra coffee time!"
+   },
+   {
+    "lang": "zh",
+    "t": "兄弟们，{ref} 里那个雷暴又磨蹭了，到阵列的时间得比原来说的晚 {delta}，我先盯着。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班记录：{ref} 的雷暴到阵列比原通知晚 {delta}，别打瞌睡，盯好触发。"
+   },
+   {
+    "lang": "zh",
+    "t": "看 {ref} 雷暴往后拖 {delta} 才到阵 别慌"
+   },
+   {
+    "lang": "zh",
+    "t": "我收到新消息，{ref} 说的雷暴，会晚 {delta} 到阵列。比原来更晚。"
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计，先前 {ref} 通报的那场雷暴，如今看来到咱们阵列要推迟 {delta} 喽。"
+   },
+   {
+    "lang": "zh",
+    "t": "兹接续 {ref} 所发布之雷暴通报，该雷暴抵达阵列之时间较原述延后 {delta}，特此周知。"
+   },
+   {
+    "lang": "ja",
+    "t": "あれな、{ref}でゆってた雷雨、アレイ着くの{delta}のびたってよ。"
+   },
+   {
+    "lang": "ja",
+    "t": "先に発出した{ref}の雷雨警報について、当該雷雨のアレイ到達は記載の予想より{delta}遅れる見込みです。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{ref}で告知した雷雨接近警報を更新。アレイ到達は先の記載より{delta}遅延。担当者コメント：夜勤の皆さん、コーヒー補給推奨。"
+   },
+   {
+    "lang": "ja",
+    "t": "天気情報からです。{ref}で知らせた雷雨は、アレイに来るのがそこに書いたより{delta}遅くなります。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Ojo! La tormenta que salía en {ref} viene con retraso: ahora pinta que alcanza el array {delta} más tarde de lo que decía el aviso. ¡Avisad al turno!"
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede claro en el registro: la célula convectiva notificada en {ref}, que originalmente se esperaba antes, ha recalibrado su ETA y ahora tocará la superficie del detector {delta} más tarde; no es una cancelación, solo un retraso respecto a lo comunicado."
+   },
+   {
+    "lang": "es",
+    "t": "tormenta de {ref}: ahora llega al array {delta} más tarde de lo dicho. sigue pendiente."
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas, me permito comunicarles que el temporal anunciado en {ref} demorará su llegada a nuestra querida matriz de detectores {delta} más de lo que allí se decía; ruego tomen nota."
+   }
+  ],
+  "storm_earlier": [
+   {
+    "lang": "en",
+    "t": "Night log: storm ETA for the array moved up by {delta} versus {ref}."
+   },
+   {
+    "lang": "en",
+    "t": "Official weather bulletin: the thunderstorm previously identified in {ref} is now forecast to arrive at the array {delta} ahead of the time given in that warning."
+   },
+   {
+    "lang": "en",
+    "t": "hey team, update on that storm from {ref}: it's gonna hit the array {delta} sooner than the old warning said."
+   },
+   {
+    "lang": "en",
+    "t": "I say, the tempest mentioned in {ref} shall reach our array {delta} sooner than was originally foretold."
+   },
+   {
+    "lang": "en",
+    "t": "About {ref}: thunderstorm will come to array {delta} earlier than message said."
+   },
+   {
+    "lang": "en",
+    "t": "- {ref}: storm arrival at array shifted {delta} earlier than original notice."
+   },
+   {
+    "lang": "en",
+    "t": "Control room update: the cell from {ref} has sped up; it will be on us {delta} before the earlier estimate."
+   },
+   {
+    "lang": "en",
+    "t": "Revised forecast: thunderstorm in {ref} now has an arrival at the array {delta} in advance of the prior timing."
+   },
+   {
+    "lang": "en",
+    "t": "yo, {ref} storm is running ahead of schedule; expect it at the array {delta} sooner."
+   },
+   {
+    "lang": "en",
+    "t": "Correction to {ref}: the squall line is expected to reach the array {delta} before the moment stated there."
+   },
+   {
+    "lang": "en",
+    "t": "According to update, storm from {ref} arrives at array {delta} early compared to original announcement."
+   },
+   {
+    "lang": "en",
+    "t": "Quick heads-up: the storm in {ref} will get to the array {delta} ahead of the warning's time."
+   },
+   {
+    "lang": "en",
+    "t": "Guess the weather gods read {ref} and decided to show up at the array {delta} early."
+   },
+   {
+    "lang": "en",
+    "t": "Please note: {ref} thunderstorm ETA at array is now {delta} earlier than originally reported."
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{ref} 里的雷暴，现在预计比原文提前 {delta} 抵达阵列。值班的各位留意。"
+   },
+   {
+    "lang": "zh",
+    "t": "方才那条 {ref} 说到的雷暴，怕是要比信上写的还早 {delta} 到咱们阵列，老伙计们多留神。"
+   },
+   {
+    "lang": "zh",
+    "t": "看到 {ref} 了，雷暴到阵列比原来说的早 {delta}，我先去查馈线，你们盯紧屏幕。"
+   },
+   {
+    "lang": "zh",
+    "t": "哎！{ref} 里那团雷暴居然比原先预报早 {delta} 就要扑到阵列，我咖啡都洒了，快盯紧触发！"
+   },
+   {
+    "lang": "zh",
+    "t": "更正说明：{ref} 中给出的雷暴抵达时间需重新评估；根据最新外推，它到达阵列将比那份通知所述提前 {delta}，请据此调整后续安排。"
+   },
+   {
+    "lang": "zh",
+    "t": "ref {ref} 雷暴到阵列比原报早 {delta} 盯住"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有します。{ref} で告知された雷雨について、監視データを再確認したところ、当アレイへの到達は同告知の記載より {delta} 早まる見込みです。トリガー対策の準備をお願いします。"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、{ref} の雷雨なんだけど、アレイ着くの、あそこに書いてあるより {delta} 早いってさ。夜勤つらい。"
+   },
+   {
+    "lang": "ja",
+    "t": "天気連絡です。{ref} の雷雨、アレイに来るのは、そこに書いたより {delta} 早いです。よろしく。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{ref} の雷雨警報について ・アレイ到達は元の記載より {delta} 早まる見込み ・関係者への周知をお願いします"
+   },
+   {
+    "lang": "es",
+    "t": "Ojo, la tormenta que avisaron en {ref} se adelanta: ahora llegará {delta} antes al array de lo que decía aquel mensaje. Voy para allá con el portátil."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: la célula tormentosa de {ref} adelanta su llegada al array en {delta} respecto al parte original. Comentario humano: revisen el veto de trigger, por favor."
+   },
+   {
+    "lang": "es",
+    "t": "tormenta de {ref} se nos adelanta. al array llega {delta} antes de lo que decía. avisen al turno."
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que la tormenta señalada en {ref} adelantará su llegada al array en {delta} respecto a lo indicado en dicho aviso. Activen el protocolo de veto."
+   }
+  ],
+  "station_false_alarm": [
+   {
+    "lang": "en",
+    "t": "Whoa, huge relief — that alarm on {st} was just the test pulser firing, not a real issue. Station is fine, keep it in the analysis!"
+   },
+   {
+    "lang": "en",
+    "t": "checked {st} on site. the fault was a loose sensor connector, nothing wrong with the station. put it back in the analysis, all good."
+   },
+   {
+    "lang": "en",
+    "t": "false alarm on {st}. test pulse. station healthy, leave it in analysis."
+   },
+   {
+    "lang": "en",
+    "t": "- {st}: alert reviewed — false, dashboard glitch. - Station healthy; remain in analysis. - No action needed."
+   },
+   {
+    "lang": "en",
+    "t": "I rechecked {st} after the HV trip call. It was a false alarm — someone bumped a connector during maintenance. Station's okay, don't drop it from the analysis."
+   },
+   {
+    "lang": "en",
+    "t": "The alarm for {st} is not real. It was a test pulse. The station is healthy. Please keep it in analysis."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: The fault reported for {st} has been traced to a telemetry sensor. It is a false fault; the station remains fully operational and should stay in the analysis."
+   },
+   {
+    "lang": "en",
+    "t": "Update from night crew: that alert on {st} was nonsense — dashboard glitch, coffee was too strong maybe. Station's healthy, keep it in the analysis."
+   },
+   {
+    "lang": "en",
+    "t": "OMG false alarm on {st}! Not a real event. The detector is fine. Leave it in the analysis, please!"
+   },
+   {
+    "lang": "en",
+    "t": "Just finished checking {st}. That fault was from a misconfigured test box, not the station. It's healthy and should remain in the analysis."
+   },
+   {
+    "lang": "en",
+    "t": "{st}: HV trip was false. Test pulse. Station good. Keep in analysis."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin — {st}: the alert was false, caused by a dashboard glitch. Station status healthy; retain in analysis. No further action."
+   },
+   {
+    "lang": "en",
+    "t": "sigh... {st} alarm was just a sensor hiccup, not the station. I double-checked. Keep it in the analysis and let me sleep."
+   },
+   {
+    "lang": "en",
+    "t": "For {st}, the fault is false. A person made a mistake with test pulse. Station is healthy. Stay in analysis."
+   },
+   {
+    "lang": "zh",
+    "t": "经查，{st} 的报警乃虚惊，站体安然无恙，仍请留在分析之列。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚查完，{st} 的报警是误报，站好好的，继续算进去。"
+   },
+   {
+    "lang": "zh",
+    "t": "经值班人员核查，{st} 触发之报警属误报，台站状态正常，维持纳入分析。"
+   },
+   {
+    "lang": "zh",
+    "t": "我复核啦！{st} 那个报警其实是测试脉冲引起的假警报，探测器本身超健康，千万不要从分析里删掉呀！"
+   },
+   {
+    "lang": "zh",
+    "t": "我检查了。{st} 的报警不是真的。站没有问题。请让它留在分析。"
+   },
+   {
+    "lang": "zh",
+    "t": "查过 {st} 报警假的 站没事 留分析 ok"
+   },
+   {
+    "lang": "ja",
+    "t": "連絡です。{st}に出ていた警報は誤警報で、原因は試験パルスでした。当該局は健全で、解析から外さず継続してください。"
+   },
+   {
+    "lang": "ja",
+    "t": "{st}のアラーム、確認したら誤りだった。テストパルスが入っただけ。局は元気なので解析に残しておいて。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{st}の故障表示はダッシュボード不具合による誤り ・現地は正常、解析対象のまま ・対応不要"
+   },
+   {
+    "lang": "ja",
+    "t": "{st}の警報はどうやら誤報であった。センサーの気まぐれで、局そのものはいたって健全。解析の俎上から下ろさずにおくれ。"
+   },
+   {
+    "lang": "es",
+    "t": "Tras revisar los registros del canal de disparo, confirmo que la alarma registrada para {st} correspondía a un pulso de prueba inyectado por mantenimiento; el detector no presenta anomalías y debe permanecer en el conjunto de datos para el análisis."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso oficial: el fallo notificado en {st} quedó clasificado como falsa alarma por una lectura errónea del panel; la estación está operativa y se mantiene en el análisis."
+   },
+   {
+    "lang": "es",
+    "t": "Oye, la alerta de {st} era falsa, cosa del sensor que se mareó; el bicho está bien, déjenlo en el análisis y sigan con el café."
+   },
+   {
+    "lang": "es",
+    "t": "Notificación automática: alerta de {st} marcada como falsa por prueba interna. Comentario humano: todo en orden, el detector sigue sano; que no lo saquen del análisis."
+   }
+  ],
+  "storm_turned": [
+   {
+    "lang": "en",
+    "t": "update {ref}: that thunderstorm cell changed track. not missing us now—it will hit the array around the time the forecast originally gave."
+   },
+   {
+    "lang": "en",
+    "t": "hey, correction to {ref}—the storm cell isn't going around us after all. it turned and now it's going to hit the array, roughly when that forecast said."
+   },
+   {
+    "lang": "en",
+    "t": "Correction to forecast {ref}: the convective storm cell previously expected to bypass the array has altered its trajectory; it will now pass over the array at approximately the time that forecast specified."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO ALERT {ref}: storm track update. Human note: yep, lightning now aimed at us, same arrival as the old forecast."
+   },
+   {
+    "lang": "en",
+    "t": "Word just came down from {ref}: that thunderstorm yonder ain't sidestepping us no more; she's headed right for the array, near the time they told us."
+   },
+   {
+    "lang": "en",
+    "t": "crap {ref} just flipped—lightning cell no longer misses, it's gonna hit the array about when originally called. heads up."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} update: thunderstorm changed its mind. no miss—direct hit on array, same eta."
+   },
+   {
+    "lang": "en",
+    "t": "ugh, {ref} is now saying the storm cell will come through here after all. it'll be on the array around the time the earlier call predicted. wake the veto."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: {ref} has been superseded by a track change. The thunderstorm cell formerly forecast to pass clear of the array will instead impact the array at the approximate time stated in the original advisory."
+   },
+   {
+    "lang": "en",
+    "t": "NWP relay {ref}: cell track revised toward array. Comment from shift: lightning now on collision course, same window as forecast."
+   },
+   {
+    "lang": "en",
+    "t": "By {ref}, that squall line was supposed to skirt us. New word: the thunderstorm has shifted and will strike the array at the selfsame time they gave."
+   },
+   {
+    "lang": "en",
+    "t": "heads up, {ref} no longer valid—storm cell turned into us. lightning will be over the array around the time the old forecast had it passing by."
+   },
+   {
+    "lang": "en",
+    "t": "{ref}: storm track change. that thunderstorm cell will now hit array, roughly when forecast said it would miss."
+   },
+   {
+    "lang": "en",
+    "t": "Amendment to {ref}: the lightning-producing cell that was projected to remain clear of the array has changed course. It is now expected to reach the array at approximately the time given in the earlier forecast."
+   },
+   {
+    "lang": "zh",
+    "t": "注意，{ref} 说那个雷暴单体本来会从阵列旁边过去，但它改路线了，现在会打到阵列，时间差不多就是原来预报说的那个时间。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】{ref} 预报的雷暴已更新路径：该雷暴单体不再绕开阵列，预计将命中阵列，时段按原预报。人工备注：这团雷暴真的拐过来了。"
+   },
+   {
+    "lang": "zh",
+    "t": "哎，{ref} 不是说那雷暴会从旁过吗？现在改路径了，直接冲阵列来，时间还是它原来给的那个。困死了，得盯紧了。"
+   },
+   {
+    "lang": "zh",
+    "t": "雷暴单体改道了 {ref} 说的绕开没了 现在直扑阵列 时间照旧"
+   },
+   {
+    "lang": "zh",
+    "t": "天哪，{ref} 报的那团雷暴居然拐弯了！本来以为它会从阵列边上过去，现在路径直指阵列，而且差不多就是原预报里那个时间到——大家快看！"
+   },
+   {
+    "lang": "zh",
+    "t": "国家气象值班室通报：依据 {ref}，原预测将避开阵列的雷暴单体已改变移动路径，现确认将影响阵列，到达时间与前述预报基本吻合。请各岗位按应急预案执行。"
+   },
+   {
+    "lang": "ja",
+    "t": "先の{ref}で『アレイから離れる』とされていた雷雨セルですが、追跡データを再確認したところ進路が変わりました。このセルは今後アレイへ向かい、先の予報で通過時刻とされていたころに到達します。念のため、全ステーションのトリガー設定と電源系統を確認してください。"
+   },
+   {
+    "lang": "ja",
+    "t": "あれ、{ref}の雷雨セル、それるって言ってたのに。今度はこっち来る。その時刻ごろ。トリガー注意な。"
+   },
+   {
+    "lang": "ja",
+    "t": "はぁ…さっきの{ref}でどっか行くはずだった雷雨セル、なんか進路変えたみたい。うちのアレイに来るって。その予報の時間ごろに。コーヒー入れ直してくる…。"
+   },
+   {
+    "lang": "ja",
+    "t": "先般の{ref}においてアレイから離れると予想された雷雨セルは、進路を変更し、当該予報時刻ごろにアレイへ到達する見込みです。関係各所は警戒願います。"
+   },
+   {
+    "lang": "es",
+    "t": "¡No puede ser! La celda tormentosa que {ref} mandaba a pasar de largo junto al array cambió de trayectoria y ahora nos va a caer encima, justo a la hora que decía el prono. ¡Rayos, literal!"
+   },
+   {
+    "lang": "es",
+    "t": "Ojo: la tormenta que {ref} daba esquivando el array giró y ahora viene para acá; impacta a la hora que anunciaba el prono. Rayos a la vista."
+   },
+   {
+    "lang": "es",
+    "t": "• Cambio de rumbo confirmado: la célula de tormenta que {ref} preveía alejándose del array ahora lo va a embestir.\n• Ventana estimada: la del aviso previo.\n• Activen veto por rayos."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: la celda de tormenta que {ref} daba pasando de largo junto al array cambió de trayectoria y ahora impactará el array a la hora indicada en ese aviso.\nComentario humano: sí, los rayos vienen a nosotros, no es broma."
+   }
+  ]
+ },
+ "stats_generated_kept": {
+  "storm_turned": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  }
+ },
+ "merged_from": "nl_pool_dev.json",
+ "regenerated_kinds": [
+  "storm_turned"
+ ]
+}

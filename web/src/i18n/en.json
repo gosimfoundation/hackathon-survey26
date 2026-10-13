@@ -125,6 +125,10 @@
       "benchmark-survey26": {
         "title": "Survey26 stress test",
         "description": "The Survey26 competition: the first large stress test of the AOH benchmark."
+      },
+      "open": {
+        "title": "Open track: four new tasks",
+        "description": "Submit to the four new AOH tasks: individuals welcome, any subset of tasks, one run per submission."
       }
     }
   },

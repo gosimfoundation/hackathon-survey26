@@ -25,6 +25,8 @@ const router = createRouter({
     { path: '/benchmark/submit', component: () => import('./pages/benchmark/BenchmarkSubmitPage.vue') , meta: { page: 'benchmark-submit' }},
     { path: '/benchmark/leaderboard', component: () => import('./pages/benchmark/BenchmarkLeaderboardPage.vue') , meta: { page: 'benchmark-leaderboard' }},
     { path: '/benchmark/survey26', component: () => import('./pages/benchmark/BenchmarkSurvey26Page.vue') , meta: { page: 'benchmark-survey26' }},
+    // Open track for the four new tasks (2026-10-13, migration 20261013000000_open_track): individuals, any subset, one run.
+    { path: '/open', component: () => import('./pages/OpenTrackPage.vue') , meta: { page: 'open' }},
     { path: '/leaderboard/:phase?', component: () => import('./pages/LeaderboardPage.vue') , meta: { page: 'leaderboard' }},
     // Local-only page for paper figures: the 3D replay sky alone, frozen at ?p=<loop progress>.
     { path: '/fig/sky', component: () => import('./pages/FigSkyPage.vue') , meta: { page: 'home' }},

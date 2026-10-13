@@ -23,9 +23,10 @@ const fresh = benchTasks.filter(t => t.set === 'new')
             <router-link to="/start" class="btn">{{ pick('Getting started', '入门') }}</router-link></p>
         </div>
         <div class="card">
-          <span class="label accent">{{ pick('New tasks · channel in preparation', '新任务 · 提交通道准备中') }}</span>
-          <h3>{{ pick('Practise locally today', '现在可以先在本地练习') }}</h3>
-          <p>{{ pick('Download a kit, write agent.py (Python standard library only), and score it on the public practice seeds 0–9 with the included runner. Official scores use secret seeds and secret texts that stay on the server; the online channel will accept one run per submission and any subset of the four tasks.', '下载题包，写一个 agent.py（只用 Python 标准库），用题包自带的运行器在公开练习种子 0–9 上打分。正式成绩使用保存在服务器端的保密种子和保密文字；线上通道开通后，每次提交跑一次即可，四道题任选。') }}</p>
+          <span class="label accent">{{ pick('New tasks · open track', '新任务 · 开放赛道') }}</span>
+          <h3>{{ pick('Practise locally, then submit', '先在本地练习，再提交') }}</h3>
+          <p>{{ pick('Download a kit, write agent.py (Python standard library only), and score it on the public practice seeds 0–9 with the included runner. Official scores use secret seeds and secret texts that stay on the server; the open track accepts one run per submission and any subset of the four tasks.', '下载题包，写一个 agent.py（只用 Python 标准库），用题包自带的运行器在公开练习种子 0–9 上打分。正式成绩使用保存在服务器端的保密种子和保密文字；在开放赛道提交，每次跑一次即可，四道题任选。') }}</p>
+          <p class="bs-actions"><router-link to="/open" class="btn primary">{{ pick('Open track', '进入开放赛道') }}</router-link></p>
           <ul class="bs-list">
             <li v-for="t in fresh" :key="t.id"><a :href="KITS_BASE + 'kits/' + t.kit" class="bs-link">{{ pick(t.en, t.zh) }} · {{ t.kit }}</a></li>
           </ul>
