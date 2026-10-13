@@ -51,9 +51,9 @@ test('the open track has a static route, a page title in both languages and a be
   assert.ok(benchmarkNavItems.some(i => i.to === '/open'))
 })
 
-test('the executor key is pinned in the bundle and stays off until a real RSA key is put there', () => {
+test('the executor key is pinned in the bundle (real RSA key since the 2026-10-13 launch) and junk keys stay off', () => {
   const pinned = JSON.parse(readFileSync(new URL('../src/lib/executorKey.json', import.meta.url), 'utf8'))
-  assert.equal(executorKeyFrom(pinned), null)
+  assert.ok(executorKeyFrom(pinned))
   assert.equal(executorKeyFrom({ kty: 'EC', n: 'x', e: 'y' }), null)
   assert.ok(executorKeyFrom({ kty: 'RSA', n: 'abc', e: 'AQAB' }))
 })
