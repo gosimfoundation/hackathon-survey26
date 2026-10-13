@@ -13,6 +13,8 @@ import { mainNavItems, maxFold, moreNavItems, participateItem, type NavItem } fr
 import { computed } from 'vue'
 import { accountMenuItems } from '../../lib/accountLinks'
 import UserAvatar from '../UserAvatar.vue'
+import { siteView, setSiteView } from '../../composables/useView'
+import { benchmarkNavItems, benchmarkSubmit } from '../../lib/benchmarkNav'
 
 const { t, pick, toggleLocale, locale } = useI18n()
 const route = useRoute()
@@ -93,6 +95,15 @@ onMounted(() => document.addEventListener('click', closeAccountOnOutside))
 onUnmounted(() => document.removeEventListener('click', closeAccountOnOutside))
 watch(() => route.fullPath, () => { mobileOpen.value = false; moreOpen.value = false; seriesOpen.value = false; accountOpen.value = false })
 
+// Site view switch (2026-10-12 trial): competition (unchanged default) <-> benchmark.
+const consoleHref = `${import.meta.env.BASE_URL}console/index.html`
+const paperHref = 'https://s26-agents-8ebd56.vercel.app/paper/'
+function switchView() {
+  const next = siteView.value === 'benchmark' ? 'competition' : 'benchmark'
+  setSiteView(next)
+  router.push(next === 'benchmark' ? '/benchmark' : '/')
+}
+
 async function logout() {
   mobileOpen.value = false
   accountOpen.value = false
@@ -130,7 +141,14 @@ async function logout() {
         </div>
       </div>
 
-      <nav class="hidden items-center gap-3 lg:flex xl:gap-5">
+      <nav v-if="siteView === 'benchmark'" class="hidden items-center gap-3 lg:flex xl:gap-5" data-testid="bench-nav">
+        <router-link v-for="item in benchmarkNavItems" :key="item.to" :to="item.to!"
+          class="main-link inline-flex h-10 items-center whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] transition-colors hover:text-[#78a6ff]"
+          :class="(item.to === '/benchmark' ? route.path === '/benchmark' : isActive(item.to!)) ? 'text-[#78a6ff]' : 'text-white/50'">{{ pick(item.en, item.zh) }}</router-link>
+        <a :href="consoleHref" class="main-link inline-flex h-10 items-center whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] text-white/50 transition-colors hover:text-[#78a6ff]">{{ pick('Human console', '人类操作台') }}</a>
+        <a :href="paperHref" target="_blank" rel="noopener" class="main-link inline-flex h-10 items-center whitespace-nowrap font-mono text-xs uppercase tracking-[.06em] text-white/50 transition-colors hover:text-[#78a6ff]">{{ pick('Paper', '论文') }} ↗</a>
+      </nav>
+      <nav v-else class="hidden items-center gap-3 lg:flex xl:gap-5">
         <router-link
           v-for="item in items"
           :key="item.to"
@@ -152,7 +170,8 @@ async function logout() {
       </nav>
 
       <div class="flex items-center gap-1 sm:gap-2">
-        <router-link :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
+        <router-link v-if="siteView === 'benchmark'" :to="benchmarkSubmit.to!" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="bench-submit">{{ pick(benchmarkSubmit.en, benchmarkSubmit.zh) }}</router-link>
+        <router-link v-else :to="participateItem.to" class="inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap bg-[#315efb] px-2 sm:px-3 text-sm font-semibold text-white hover:bg-[#244bda]" data-testid="primary-submit">{{ t(participateItem.key) }}</router-link>
         <router-link v-if="isLoggedIn" to="/dashboard" class="dash-btn hidden h-10 shrink-0 items-center justify-center whitespace-nowrap border px-3 text-sm font-semibold sm:inline-flex" :class="{ active: dashActive() }" data-testid="nav-dashboard">{{ t('nav.dashboard') }}<span v-if="pendingAll" class="nav-count" data-testid="nav-dashboard-count">{{ badgeText(pendingAll) }}</span></router-link>
         <router-link v-if="isLoggedIn" :to="bellTarget(badge)" class="relative flex h-10 w-10 shrink-0 items-center justify-center text-white/80"
           :aria-label="bellText" :title="bellText" data-testid="team-notifications">
@@ -160,6 +179,10 @@ async function logout() {
           <span v-if="bellCount" class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white" data-testid="notification-dot">{{ badgeText(bellCount) }}</span>
         </router-link>
         <span v-if="fullMoon" class="moon-chip hidden md:inline-flex" :title="pick('Full moon tonight.', '今晚满月。')">🌕</span>
+        <button data-testid="view-toggle" type="button" @click="switchView" class="view-toggle hidden h-10 items-center justify-center whitespace-nowrap border border-white/25 px-2 font-mono text-[.68rem] uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white sm:inline-flex"
+          :title="siteView === 'benchmark' ? pick('Switch to the competition view (the hackathon site)', '切换到比赛视图（黑客松网站）') : pick('Trial: view AOH as a benchmark', '试用：以基准视角浏览 AOH')">
+          {{ siteView === 'benchmark' ? pick('⇄ Competition', '⇄ 比赛视图') : pick('⇄ Benchmark', '⇄ 基准视图') }}
+        </button>
         <button data-testid="lang-toggle" type="button" @click="toggleLocale" class="inline-flex h-10 min-w-10 items-center justify-center whitespace-nowrap border border-white/25 px-2 font-mono text-xs uppercase text-white/55 transition-colors hover:border-white/60 hover:text-white">
           {{ nextLocaleLabel }}
         </button>
@@ -192,8 +215,17 @@ async function logout() {
         </div>
       </div>
       <p v-if="nextLine" class="mb-2 font-mono text-[.68rem] leading-relaxed tracking-[.06em] text-white/60" data-testid="menu-next-phase">{{ nextLine }}</p>
+      <button type="button" class="block w-full border-b border-white/10 py-3 text-left text-base text-[#78a6ff]" data-testid="mobile-view-toggle" @click="switchView">{{ siteView === 'benchmark' ? pick('⇄ Switch to the competition view', '⇄ 切换到比赛视图') : pick('⇄ Try the benchmark view', '⇄ 试用基准视图') }}</button>
+      <template v-if="siteView === 'benchmark'">
+        <router-link v-for="item in benchmarkNavItems" :key="item.to" :to="item.to!" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ pick(item.en, item.zh) }}</router-link>
+        <a :href="consoleHref" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ pick('Human console', '人类操作台') }}</a>
+        <a :href="paperHref" target="_blank" rel="noopener" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ pick('Paper', '论文') }} ↗</a>
+        <router-link :to="benchmarkSubmit.to!" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ pick(benchmarkSubmit.en, benchmarkSubmit.zh) }}</router-link>
+      </template>
+      <template v-else>
       <router-link v-for="item in items" :key="item.to" :to="item.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(item.key) }}</router-link>
       <router-link :to="participateItem.to" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t(participateItem.key) }}</router-link>
+      </template>
       <router-link v-if="isLoggedIn && pendingTeamActions" to="/team#requests" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-team-requests">{{ pick('Team requests waiting for you', '待处理的组队请求') }} <span class="nav-count">{{ badgeText(pendingTeamActions) }}</span></router-link>
       <router-link v-if="isLoggedIn && pendingFriendRequests" to="/profile#friends" class="block border-b border-white/10 py-3 text-base text-white transition-colors" data-testid="mobile-friend-requests">{{ pick('Friend requests waiting for you', '待处理的好友请求') }} <span class="nav-count">{{ badgeText(pendingFriendRequests) }}</span></router-link>
       <router-link v-if="isAdmin" to="/admin" class="block border-b border-white/10 py-3 text-base text-white/60 transition-colors hover:text-white">{{ t('nav.admin') }}</router-link>

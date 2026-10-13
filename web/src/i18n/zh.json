@@ -105,6 +105,26 @@
       "fig-sky": {
         "title": "观测回放图",
         "description": "3D 观测回放的定格渲染（论文用图）"
+      },
+      "benchmark": {
+        "title": "AOH 基准",
+        "description": "AOH：自主巡天运行的公共基准——测什么、怎么测、怎么参加。"
+      },
+      "benchmark-tasks": {
+        "title": "基准任务",
+        "description": "AOH 基准的任务集：Survey26 v1 任务集与四道新任务，带版本号。"
+      },
+      "benchmark-submit": {
+        "title": "随时提交",
+        "description": "AOH 基准随时可以提交：不限赛期、个人可参加、可只跑一次。"
+      },
+      "benchmark-leaderboard": {
+        "title": "基准排行榜",
+        "description": "按任务和版本查看 AOH 基准成绩、官方基线和人类基线。"
+      },
+      "benchmark-survey26": {
+        "title": "Survey26 检验",
+        "description": "Survey26 比赛：AOH 基准的第一次大规模压力测试。"
       }
     }
   },

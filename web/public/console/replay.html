@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<script>/* cross-origin isolation via coi-sw.js (static hosting without headers) */(function(){var k='coi-reload-once';
+if(window.crossOriginIsolated){try{sessionStorage.removeItem(k)}catch(e){}return}
+if(!window.isSecureContext||!('serviceWorker' in navigator))return;
+function go(){try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){return}location.reload()}
+navigator.serviceWorker.register('coi-sw.js').then(function(reg){if(navigator.serviceWorker.controller||reg.active)go();else navigator.serviceWorker.addEventListener('controllerchange',go)}).catch(function(){})})();</script>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AOH 回放 Replay</title>
+  <link rel="stylesheet" href="./console.css">
+</head>
+<body>
+  <header id="hdr">
+    <span class="cell"><span class="k">UTC</span><span id="clock-utc">—</span></span>
+    <span class="cell"><span class="k">夜晚 Night</span><span id="night">—</span></span>
+    <span class="cell"><span class="k">帧 Frame</span><span id="frame">—</span></span>
+    <span class="cell"><span class="k">分数 Score</span><span id="score">—</span></span>
+  </header>
+
+  <main id="replay-app" style="max-width: 720px; margin: 0 auto; padding: 10px;">
+    <section class="panel">
+      <h2>回放 Replay an actions.jsonl</h2>
+      <p style="color:var(--dim)">选择任务并载入一局下载的 actions.jsonl；回放通过同一引擎
+        (mode=replay) 运行并复算得分。Pick the card and load a downloaded actions.jsonl;
+        the file replays through the same engine (mode=replay) and the score is recomputed.</p>
+      <div id="replay-controls">
+        <select id="card-sel"></select>
+        <input type="file" id="file-in" accept=".jsonl,.txt">
+        <button id="start-btn" class="primary">开始回放 Start replay</button>
+      </div>
+      <div id="replay-status">—</div>
+    </section>
+
+    <section class="panel" id="play-panel" hidden>
+      <h2>天空动画 Sky animation</h2>
+      <canvas id="replay-sky"></canvas>
+      <div id="replay-controls">
+        <button id="play-btn">播放 Play</button>
+        <button id="prev-btn">上一帧 Prev</button>
+        <button id="next-btn">下一帧 Next</button>
+        <label>速度 Speed <input type="range" id="speed-in" min="0" max="500" step="20" value="80"> ms/帧</label>
+      </div>
+      <div id="action-line">—</div>
+    </section>
+
+    <section class="panel" id="score-panel" hidden>
+      <h2>得分明细 Score breakdown</h2>
+      <div id="score-detail"></div>
+    </section>
+  </main>
+
+  <footer id="footer">引擎 engine sha256: <span id="engine-sha">—</span> · <a href="./index.html">控制台 console</a></footer>
+
+  <script src="./engine.js"></script>
+  <script type="module" src="./console-replay.js"></script>
+</body>
+</html>
