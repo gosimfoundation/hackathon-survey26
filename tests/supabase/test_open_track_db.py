@@ -264,3 +264,24 @@ def test_hidden_bundle_object_is_service_only(hs, service):
     assert st >= 400
     st, _ = Client(hs.url).download("open-private", "hidden-test.bundle")
     assert st >= 400
+
+
+def test_executor_auth_user_path(hs, service):
+    """Asymmetric-JWT projects: the executor signs in as a listed auth user (migration 20261013000100).
+    Only listed users pass the guard; the listed user still cannot act as the engine or read private tables."""
+    drain(service, Client(hs.url, jwt_encode({"role": "open_executor", "exp": 4102444800})), "pre-u")
+    ex, ex_uid = user(hs)
+    other, _ = user(hs)
+    for c in (ex, other):  # not listed yet: rejected
+        assert c.rpc("open_exec_claim", {"p_worker": "u"})[0] >= 400
+    with psycopg.connect(hs.db_uri, autocommit=True) as conn:
+        conn.execute("insert into private.open_executor_users(user_id, note) values (%s, 'test')", (ex_uid,))
+    sub, _ = user(hs)
+    assert sub.rpc("open_submit", {"p_problems": ["cr_array_v5"], "p_zip_base64": agent_zip()})[0] == 200
+    done = drain(service, ex, "u")
+    assert done
+    assert other.rpc("open_exec_claim", {"p_worker": "u2"})[0] >= 400
+    for name, args in [("open_engine_claim", {"p_worker": "u"}), ("open_requeue_stale", {"p_minutes": 0})]:
+        assert ex.rpc(name, args)[0] >= 400, name
+    for table in ("open_submission_files", "open_run_details", "open_messages", "open_executor_users"):
+        assert ex.select(table)[0] >= 400

@@ -55,12 +55,32 @@ class BadSubmission(RuntimeError):
 class ExecClient:
     """PostgREST RPC as the open_executor role (anon key at the gateway, executor JWT as the identity)."""
 
-    def __init__(self, url: str, anon_key: str, token: str, timeout: float = 60):
+    def __init__(self, url: str, anon_key: str, token: str = "", timeout: float = 60,
+                 email: str = "", password: str = ""):
         self.url, self.anon, self.token, self.timeout = url.rstrip("/"), anon_key, token, timeout
+        self.email, self.password, self.expires = email, password, float("inf")
+        if not token:  # sign in as the dedicated executor auth user (see migration 20261013000100)
+            self.login()
+
+    def login(self) -> None:
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(f"{self.url}/auth/v1/token?grant_type=password", method="POST",
+                                     data=json.dumps({"email": self.email, "password": self.password}).encode(),
+                                     headers={"apikey": self.anon, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                d = json.loads(r.read())
+        except urllib.error.HTTPError as exc:
+            raise SupabaseError(exc.code, "executor sign-in failed", req.full_url) from exc
+        self.token = d["access_token"]
+        self.expires = time.time() + float(d.get("expires_in", 3600)) - 300  # renew 5 minutes early
 
     def rpc(self, name: str, args: dict):
         import urllib.error
         import urllib.request
+        if self.email and time.time() > self.expires:
+            self.login()
         req = urllib.request.Request(f"{self.url}/rest/v1/rpc/{name}", data=json.dumps(args).encode(), method="POST",
                                      headers={"apikey": self.anon, "Authorization": f"Bearer {self.token}",
                                               "Content-Type": "application/json"})
@@ -307,7 +327,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--once", action="store_true", help="exit once no run has appeared for --idle-seconds")
     ap.add_argument("--idle-seconds", type=float, default=0)
     a = ap.parse_args(argv)
-    supa = ExecClient(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"], os.environ["OPEN_EXECUTOR_TOKEN"])
+    supa = ExecClient(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"], os.environ.get("OPEN_EXECUTOR_TOKEN", ""),
+                      email=os.environ.get("OPEN_EXECUTOR_EMAIL", ""), password=os.environ.get("OPEN_EXECUTOR_PASSWORD", ""))
     pem = os.environ.get("OPEN_TRACK_KEY_PRIVATE", "")
     worker = os.environ.get("OPEN_WORKER_ID", f"exec-{os.getpid()}")
     docker("pull", IMAGE, check=False, timeout=600)
