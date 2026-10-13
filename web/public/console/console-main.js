@@ -48,6 +48,7 @@ function commit(action, source) {
   updateSourceCounts();
   S.engine.sendReply({ type: 'action', action, source });
   S.pending = false;
+  S.lastSource = source;
   if (S.assist) S.assist.noteManualCommit();
   setButtons();
 }
@@ -58,6 +59,7 @@ function commitSuggestion(source) {
   updateSourceCounts();
   S.engine.sendReply({ type: 'action', use_suggestion: true, source });
   S.pending = false;
+  S.lastSource = source;
   if (S.assist) S.assist.noteManualCommit();
   setButtons();
 }
@@ -187,7 +189,17 @@ function onMessage(m) {
   }
   // answer message
   if (S.policy) { S.policy.onAnswer(ctx(), m); setButtons(); return; }
-  if (m.error) { showError(m.error); return; }
+  if (m.error) {
+    // A rejected action (no 'q') leaves the engine waiting on the same snapshot: hand control back.
+    if (!m.q && !S.pending && !S.done) {
+      if (S.lastSource && S.sourceCounts[S.lastSource] > 0) S.sourceCounts[S.lastSource] -= 1;
+      updateSourceCounts();
+      S.pending = true;
+      setButtons();
+    }
+    showError(m.error);
+    return;
+  }
   if (m.q === 'field' && S.pointing &&
       Math.abs(m.alt_deg - S.pointing.alt_deg) < 0.02 && Math.abs(m.az_deg - S.pointing.az_deg) < 0.02) {
     S.lastField = m;

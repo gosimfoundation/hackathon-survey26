@@ -56,6 +56,27 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           SIMULATE_FAIL: ${{ github.event.inputs.simulate_fail || 'false' }}
         run: python3 scripts/db_watchdog.py
+      # open-worker.yml's own `schedule` did not fire once in its first 2.5 h (2026-10-13), so this
+      # chain - which does run every few minutes - starts it: when the open track is on, no open-worker
+      # run is queued or running, and the last one started 25+ minutes ago. The worker exits when the
+      # queue is idle, so a submission waits at most ~30 min. Never fails the watchdog.
+      - name: Kick the open-track worker (fallback for its unreliable schedule)
+        if: always() && vars.OPEN_TRACK_ENABLED == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          active=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow open-worker.yml --limit 20 \
+            --json status --jq '[.[] | select(.status != "completed")] | length')
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow open-worker.yml --limit 1 \
+            --json createdAt --jq '.[0].createdAt // ""')
+          age=999999
+          if [ -n "$last" ]; then age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) )); fi
+          echo "open-worker: active=$active last_start_age=${age}s"
+          if [ "$active" = "0" ] && [ "$age" -ge 1500 ]; then
+            gh workflow run open-worker.yml --repo "$GITHUB_REPOSITORY" --ref main
+            echo "dispatched open-worker"
+          fi
       - name: Self-redispatch (fallback for an unreliable schedule trigger)
         if: always()
         env:
