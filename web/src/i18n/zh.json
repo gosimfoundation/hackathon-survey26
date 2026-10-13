@@ -125,6 +125,10 @@
       "benchmark-survey26": {
         "title": "Survey26 检验",
         "description": "Survey26 比赛：AOH 基准的第一次大规模压力测试。"
+      },
+      "open": {
+        "title": "开放赛道：四道新题",
+        "description": "提交 AOH 的四道新题：个人即可参加，题目任选，每次提交跑一次。"
       }
     }
   },

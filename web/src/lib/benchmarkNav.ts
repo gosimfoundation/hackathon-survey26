@@ -6,6 +6,7 @@ export const benchmarkNavItems: BenchNavItem[] = [
   { en: 'Tasks', zh: '任务', to: '/benchmark/tasks' },
   { en: 'Leaderboards', zh: '排行榜', to: '/benchmark/leaderboard' },
   { en: 'Survey26 test', zh: 'Survey26 检验', to: '/benchmark/survey26' },
+  { en: 'Open track', zh: '开放赛道', to: '/open' },
 ]
 
 export const benchmarkSubmit: BenchNavItem = { en: 'Submit', zh: '提交', to: '/benchmark/submit' }

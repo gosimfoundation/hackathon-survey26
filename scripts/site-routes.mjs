@@ -42,6 +42,7 @@ export const STATIC_ROUTES = {
   'benchmark/submit': 'benchmark-submit',
   'benchmark/leaderboard': 'benchmark-leaderboard',
   'benchmark/survey26': 'benchmark-survey26',
+  open: 'open',
   announcements: 'announcements',
   teammates: 'teammates',
   register: 'register',

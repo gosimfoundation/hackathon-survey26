@@ -1,0 +1,65 @@
+name: Open track worker
+
+# Evaluates open-track submissions for the four new AOH tasks (open_track/, migration
+# 20261013000000_open_track). Two jobs on two separate machines:
+#   engine   - trusted: hidden bundle key, task environments, official replay scores; never runs participant code.
+#   executor - runs participant agents in network-less containers beside a metered model proxy; has the
+#              model-key decryption key and an open_executor JWT (four functions only), never the service
+#              key or the hidden bundle key.
+# Each job reads its secret from its own GitHub environment, so neither machine holds the other's.
+# Off until the repository variable OPEN_TRACK_ENABLED is 'true'. Both jobs exit when the queue is idle.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: open-track-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    if: ${{ vars.OPEN_TRACK_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    environment: open-engine
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install cryptography==50.0.2
+      - name: Evaluate queued runs (trusted side)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPEN_TRACK_BUNDLE_KEY: ${{ secrets.OPEN_TRACK_BUNDLE_KEY }}
+          OPEN_TRACK_BUNDLE_OBJECT: open-private/hidden-v1.bundle
+          OPEN_WORKER_ID: engine-${{ github.run_id }}
+        run: python -m open_track.engine --once --max-seconds 6600
+
+  executor:
+    if: ${{ vars.OPEN_TRACK_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    environment: open-executor
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install cryptography==50.0.2
+      - name: Run participant agents (isolated containers)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          OPEN_EXECUTOR_TOKEN: ${{ secrets.OPEN_EXECUTOR_TOKEN }}
+          OPEN_TRACK_KEY_PRIVATE: ${{ secrets.OPEN_TRACK_KEY_PRIVATE }}
+          # pin by digest before enabling (docker image inspect python:3.12-slim --format '{{index .RepoDigests 0}}')
+          OPEN_AGENT_IMAGE: ${{ vars.OPEN_AGENT_IMAGE || 'python:3.12-slim' }}
+          OPEN_PROXY_DNS: ""
+          OPEN_WORKER_ID: exec-${{ github.run_id }}
+        run: python -m open_track.executor --once --idle-seconds 300 --max-seconds 6600

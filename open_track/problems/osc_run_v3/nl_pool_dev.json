@@ -1,0 +1,1572 @@
+{
+ "problem": "osc_run_v3",
+ "pool": "dev",
+ "generated_utc": "2026-10-12T02:28:38Z",
+ "model": "tokenflux Deepseek/deepseek-flash",
+ "kinds": {
+  "outage_plan": [
+   {
+    "lang": "en",
+    "t": "• Utility bulletin: {core} enters a scheduled refuelling shutdown on {start}; expected length {dur}.\n• Please align maintenance and staffing plans."
+   },
+   {
+    "lang": "en",
+    "t": "Auto-forward from the grid operator: reactor {core} will go down for a planned fuel swap at {start}, for {dur}. — ops bot; human here says calendar it."
+   },
+   {
+    "lang": "en",
+    "t": "Power company tell us: reactor {core} planned refuelling stop begin {start}, stay stop for {dur}. Please note."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, the utility has formally scheduled reactor {core} for a planned refuelling outage starting {start}; the anticipated outage length is {dur}, and this remains a planned evolution rather than a forced trip."
+   },
+   {
+    "lang": "en",
+    "t": "utility says {core} gets planned refuel break starting {start}, lasts {dur}. log it."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the power company: {core} is to be taken down for refuelling on {start}, and they reckon it'll stay out for {dur}. Thought you'd want to know."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: The power utility has announced that reactor {core} will begin a planned refuelling shutdown at {start}, with a duration of {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee-room heads-up: the utility says {core} is going into a scheduled refuelling outage at {start}; they're quoting {dur}. Don't panic, it's planned."
+   },
+   {
+    "lang": "en",
+    "t": "The grid operator advises that reactor {core} will commence a planned refuelling outage at {start} and remain offline for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "FW from the power company: planned refuel outage — unit {core}, start {start}, duration {dur}. Human note: put it on the board."
+   },
+   {
+    "lang": "en",
+    "t": "Hello. Power company informs planned refuelling outage for {core} start {start}, last {dur}. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "Per the utility's schedule, {core} is set for a planned refuelling outage beginning {start}; the stated outage duration is {dur}. Please distinguish this from the earlier HV, flasher, and water-leak concerns; it is an announced refuelling shutdown."
+   },
+   {
+    "lang": "en",
+    "t": "{core} refuelling outage, planned, starts {start}, {dur} on the board. utility says so."
+   },
+   {
+    "lang": "en",
+    "t": "Just heard from the grid folk: {core} is being taken down for a planned refuelling stop at {start}, for {dur}. Mark your diaries, friends."
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计们，供电那头捎来口信：{core}计划自{start}起换料大修，前后得{dur}，大家心里有个数。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚看到电力公司的公告，说{core}要从{start}开始计划停堆换料，持续{dur}，太好了，这段时间正好调探测器的本底！"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班留个记录：电网来函，{core}计划于{start}停堆换料，工期{dur}。咖啡见底了，先顶着。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 电力公司公告：{core}计划换料大修\n• 开始：{start}\n• 持续：{dur}"
+   },
+   {
+    "lang": "zh",
+    "t": "电网说 {core} 计划换料停堆，{start} 起，{dur}。完。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通告：电力公司已发布计划，{core}反应堆将于{start}起进行换料大修，预计持续{dur}。特此记录。"
+   },
+   {
+    "lang": "ja",
+    "t": "でんりょくよりれんらく。{core} は {start} から {dur} のねんりょうこうかんていしにはいる。よてい。"
+   },
+   {
+    "lang": "ja",
+    "t": "電力自動通知: {core} の計画燃料交換停止、開始 {start}、期間 {dur}。担当メモ: 了解、予定表に反映。"
+   },
+   {
+    "lang": "ja",
+    "t": "現場より。電力から連絡、{core} は {start} から {dur} の燃料交換停止に入る予定だって。了解。"
+   },
+   {
+    "lang": "ja",
+    "t": "ご連絡申し上げます。電力会社の発表によれば、{core} につきまして、{start} より {dur} の燃料交換のための計画停止がございます。"
+   },
+   {
+    "lang": "es",
+    "t": "He revisado el calendario de mantenimiento y, para que quede constancia, la compañía eléctrica anuncia oficialmente una parada programada de recarga de combustible en el reactor {core}; el inicio queda fijado para {start} y la parada se extenderá durante {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "Noche tranquila por ahora; la empresa avisa que el reactor {core} se va a parada programada de recarga desde {start} y estará así {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "La compañía de energía anuncia: reactor {core} tiene parada planeada para recargar combustible. Empieza {start}. Dura {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "• Anuncio de la compañía eléctrica: parada programada de recarga para el reactor {core}. • Inicio: {start}. • Duración: {dur}."
+   }
+  ],
+  "outage_correction": [
+   {
+    "lang": "en",
+    "t": "ref {ref}: {core} outage now kicks off {start}, runs {dur}. scrap earlier."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO FWD: {ref} updated. {core} outage start corrected to {start}; expected span {dur}. (bot note: ignore prior schedule.)"
+   },
+   {
+    "lang": "en",
+    "t": "Corrigendum to bulletin {ref}. The scheduled outage of reactor {core} is hereby revised: commencement {start}, duration {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "ugh, {ref} changed again. {core} now down from {start}, for {dur}. coffee not helping."
+   },
+   {
+    "lang": "en",
+    "t": "Pray amend notice {ref}: the {core} reactor's outage shall commence {start} and endure {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Sorry, correction notice {ref}. For {core}, new start {start}, and it continues {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Update to {ref}: {core} outage shifted to {start}; length now {dur}. Not a drill."
+   },
+   {
+    "lang": "en",
+    "t": "Please replace {ref}: {core} outage begins {start}, stays out {dur}. Thanks."
+   },
+   {
+    "lang": "en",
+    "t": "Per {ref}: {core} outage moves to {start}; window is {dur}. Night shift sends."
+   },
+   {
+    "lang": "en",
+    "t": "Correction: see {ref}. {core} outage start is {start}; total length {dur}. Apologies for confusion."
+   },
+   {
+    "lang": "en",
+    "t": "Revised outage notice {ref}: {core} begins {start}, lasts {dur}. This supersedes earlier."
+   },
+   {
+    "lang": "en",
+    "t": "Notice {ref} amendment: {core} outage now set for {start}, with duration {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Heads up, {ref} is wrong on timing. {core} outage starts {start} and runs {dur}. I'm on break."
+   },
+   {
+    "lang": "en",
+    "t": "Correction to {ref}: {core} outage new start {start}, new duration {dur}. End of message."
+   },
+   {
+    "lang": "zh",
+    "t": "• 更正 {ref}：{core} 停堆改从 {start} 开始，持续 {dur}。\n• 其他不变，散会后我再核对。"
+   },
+   {
+    "lang": "zh",
+    "t": "兹更正 {ref} 所载事项：{core} 反应堆停运现调整为 {start} 起始，延续 {dur}。特此通告。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚看到更新！{ref} 那个通知要改：{core} 的停堆现在从 {start} 才开始，持续 {dur}！我先去盯数据啦～"
+   },
+   {
+    "lang": "zh",
+    "t": "现场说下：{ref} 要更新，{core} 停堆改到 {start} 起，撑 {dur}。信号不好先这样。"
+   },
+   {
+    "lang": "zh",
+    "t": "ref {ref} 修正：{core} 停堆从 {start} 开始，持续 {dur}。ok"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】原通知 {ref} 更新：{core} 停堆改至 {start} 开始，持续 {dur}。\n（人注：这次是真的，别再来问。）"
+   },
+   {
+    "lang": "ja",
+    "t": "・{ref} の訂正\n・{core} の停止は開始が {start}\n・長さは {dur}"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、{ref} の訂正だけど、{core} の停止、開始が {start} になって、そのあと {dur} 続く感じ。夜勤中にごめん。"
+   },
+   {
+    "lang": "ja",
+    "t": "{ref} を修正します。{core} の停止は {start} から。期間は {dur}。"
+   },
+   {
+    "lang": "ja",
+    "t": "先に流した {ref} について、誤りがあったため訂正いたします。対象は {core} の停止で、開始は {start} に、継続時間は {dur} に読み替えてください。"
+   },
+   {
+    "lang": "es",
+    "t": "Distinguidos colegas, me permito enmendar el aviso {ref}: la parada del reactor {core} queda fijada para dar comienzo {start} y tendrá una extensión de {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "¡Ojo! Rectificación del comunicado {ref}: el paro del reactor {core} ahora arranca {start} y se alarga {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "Corrección para el aviso {ref}. El reactor {core} tiene nueva parada: empieza {start}, dura {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "- Corrección a {ref}\n- Reactor {core}: nueva parada\n- Inicio: {start}\n- Duración: {dur}"
+   }
+  ],
+  "scram": [
+   {
+    "lang": "en",
+    "t": "• {core}: automatic trip at {at}\n• Unplanned shutdown\n• Restart expected in {restart}"
+   },
+   {
+    "lang": "en",
+    "t": "Ugh, {core} scrammed on us at {at}. Automatic, unplanned. Restart expected in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: reactor {core} emergency shutdown at {at}; automatic protection initiated. Operator comment: restart expected in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa—{core} just scrammed automatically at {at}, totally unplanned! They say it should restart in {restart}. Background runs will be interesting."
+   },
+   {
+    "lang": "en",
+    "t": "{core} auto-tripped at {at}, unplanned. Crew expects restart in {restart}. Typing with gloves, sorry."
+   },
+   {
+    "lang": "en",
+    "t": "Notification: reactor {core} underwent an unplanned automatic shutdown at {at}. Restart is expected in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Shift log: {core} tripped automatically at {at}—unplanned. Estimated back in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Just got word: {core} had an automatic scram at {at}, not planned. They're projecting restart in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "{core} auto scram at {at}. Unplanned. Next restart in {restart}. Will update."
+   },
+   {
+    "lang": "en",
+    "t": "Attention: {core} experienced an automatic reactor trip at {at}. This was unplanned. Anticipated restart in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Reactor {core} auto-tripped at {at}; unplanned. Restart expected in {restart}. Also the flasher runs are noisy again, unrelated."
+   },
+   {
+    "lang": "en",
+    "t": "yo {core} did an auto scram at {at}, wasn't planned. restart in {restart}, per plant."
+   },
+   {
+    "lang": "en",
+    "t": "Reactor {core}: unplanned automatic shutdown at {at}. Restart expected in {restart}."
+   },
+   {
+    "lang": "en",
+    "t": "Power company advises {core} tripped automatically at {at}; the shutdown was unplanned. They expect restart in {restart}."
+   },
+   {
+    "lang": "zh",
+    "t": "自动告警转发：{core} 在 {at} 非计划自动停堆，预计 {restart} 重启。值班备注：收到，先别刷屏。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：{core} 于 {at} 发生非计划自动紧急停堆，现按程序处理，预计 {restart} 恢复运行。请各相关方保持关注。"
+   },
+   {
+    "lang": "zh",
+    "t": "记：{core} {at} 跳堆，非计划自动，预计 {restart} 重启。"
+   },
+   {
+    "lang": "zh",
+    "t": "给大伙儿提个醒，{core} 在 {at} 自己跳堆了，非计划自动的，说是 {restart} 就能重新开起来。"
+   },
+   {
+    "lang": "zh",
+    "t": "项目通报：- {core} 于 {at} 非计划自动停堆；- 原因按厂内流程跟进；- 预计 {restart} 重启。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场消息：{core} 在 {at} 自己跳堆了，非计划自动停堆，我这边看预计 {restart} 重启。"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、{core} が {at} にスクラム踏んだって。再立ち上げは {restart} らしい。"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい！{core} が {at} に自動緊急停止！復帰は {restart} だって！"
+   },
+   {
+    "lang": "ja",
+    "t": "ご報告申し上げます。{core} は {at} に予期せぬ自動停止となりました。再始動は {restart} の由にございます。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{core}：{at} に自動緊急停止 ・再起動見込み：{restart}"
+   },
+   {
+    "lang": "es",
+    "t": "A la atención de la sala de control: el reactor {core} ha sufrido un disparo automático no previsto a las {at}; se aguarda que vuelva a marchar en {restart}. Un saludo cordial, ya saben que estoy de apoyo."
+   },
+   {
+    "lang": "es",
+    "t": "Reactor {core} hizo parada de emergencia automática no planificada a las {at}. Nos dicen que reinicio en {restart}. Gracias."
+   },
+   {
+    "lang": "es",
+    "t": "Se comunica que el reactor {core} ha experimentado una parada automática de emergencia no programada a las {at}. La reanudación de operación está prevista en {restart}. Fin del comunicado."
+   },
+   {
+    "lang": "es",
+    "t": "• Reactor {core}: parada automática no programada a las {at}. • Rearranque previsto en {restart}."
+   }
+  ],
+  "temp_event": [
+   {
+    "lang": "en",
+    "t": "Chiller hiccup down in the hall; central-detector LS temp moved by {dk}. Energy scale needs a fresh look."
+   },
+   {
+    "lang": "en",
+    "t": "The refrigerating apparatus misbehaved, and the liquid scintillator temperature has shifted by {dk}. In my day we would not trust the energy scale until it was checked again."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO: HVAC fault cleared, residual LS temperature delta {dk}. Human note: energy-scale calibration likely stale."
+   },
+   {
+    "lang": "en",
+    "t": "Because the chilled-water loop lost regulation, the central detector's liquid-scintillator temperature changed by {dk}; because light yield and timing drift with temperature, the energy scale should be revalidated before we use the data."
+   },
+   {
+    "lang": "en",
+    "t": "Be advised: an anomaly in the detector cooling system produced a liquid-scintillator temperature variation of {dk}. This condition affects the energy-scale calibration; please assess and document."
+   },
+   {
+    "lang": "en",
+    "t": "Cooling messed up, LS temp moved by {dk}. Energy scale is probably off. Coffee not helping."
+   },
+   {
+    "lang": "en",
+    "t": "yo chiller went weird, ls temp changed by {dk}, energy scale gonna need a look"
+   },
+   {
+    "lang": "en",
+    "t": "Pray note: the refrigerating apparatus failed; the liquid scintillator registereth a temperature change of {dk}. Reckon the energy scale wants attention."
+   },
+   {
+    "lang": "en",
+    "t": "Notice from slow control: a chiller fault is associated with a central-detector LS temperature change of {dk}. Comment: energy scale not to be trusted until recalculated."
+   },
+   {
+    "lang": "en",
+    "t": "The HVAC fault altered the thermal environment of the central detector, and consequently the liquid-scintillator temperature changed by {dk}; this matters because the energy scale is temperature-sensitive and must be corrected."
+   },
+   {
+    "lang": "en",
+    "t": "This bulletin reports a cooling-loop malfunction that led to a liquid-scintillator temperature shift of {dk}. The shift is relevant to the energy-scale determination."
+   },
+   {
+    "lang": "en",
+    "t": "HVAC acting up at the detector; LS temperature changed by {dk}. Need to redo energy-scale checks."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED: chiller anomaly, LS temp delta {dk}. Human: energy calibration affected."
+   },
+   {
+    "lang": "en",
+    "t": "Chiller gave us trouble; central detector LS temp is off by {dk}. Energy scale won't be happy."
+   },
+   {
+    "lang": "zh",
+    "t": "冷却回路这边有点异常，空调/冷水机组没能把液闪温度稳住，结果中心探测器温度相对参考状态偏移了 {dk}；这个偏移会直接影响能量刻度，分析前务必按温度修正处理，别忽略。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：因冷却系统故障，中心探测器液闪温度发生 {dk} 变化。该变化对能量刻度有影响，请各岗位按规程关注后续校准。"
+   },
+   {
+    "lang": "zh",
+    "t": "HVAC 有问题，液闪温度变了 {dk}。这个对能量刻度很重要，请检查。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场看，冷水机那边出毛病了，液闪温度飘了 {dk}，能量刻度会受影响，先记着。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班上报：冷却那边不太对，液闪温度动了 {dk}，能量刻度估计得改，我先眯会儿，你们接着看。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动告警转发：冷却系统异常，中心探测器液闪温度变化 {dk}。人工备注：能量刻度会受此影响，请留意。"
+   },
+   {
+    "lang": "ja",
+    "t": "[自動通知] 中央検出器の冷却系異常でLS温度が{dk}変化。エネルギー較正に影響。担当者より一言: チラー警報、確認はコーヒー後で。"
+   },
+   {
+    "lang": "ja",
+    "t": "ちらーけいほう。ちゅうおうのえきしんおんど {dk} へんか。えねすけーるにひびく。ようちゅうい。"
+   },
+   {
+    "lang": "ja",
+    "t": "・冷却系トラブルで中央検出器の液シン温度が{dk}変動 ・エネルギー較正に影響あり ・至急、状況と対応方針を共有ください"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、チラー止まってたみたいで、中央の液シン温度が{dk}変わっちゃった。これエネルギー再構成に効くやつだから、あとで見ときます。"
+   },
+   {
+    "lang": "es",
+    "t": "El chiller del detector central se puso raro y la temperatura del LS cambió {dk}; esto nos va a mover la escala de energía, aviso por si hay que recalibrar. Qué noche..."
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede claro: una falla en el lazo de enfriamiento/HVAC del detector central provocó una variación de {dk} en la temperatura del centelleador líquido. Como el rendimiento de luz depende de la temperatura, la escala de energía queda afectada. Conviene revisar la calibración antes de usar estos datos."
+   },
+   {
+    "lang": "es",
+    "t": "• Problema de climatización/chiller en el detector central. • La temperatura del LS varió {dk}. • Impacto: la escala de energía puede desplazarse; priorizar verificación."
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que una anomalía en el sistema de refrigeración del detector central produjo un cambio de {dk} en la temperatura del líquido centelleador, lo que incide en la determinación de la escala de energía."
+   }
+  ],
+  "temp_minor": [
+   {
+    "lang": "en",
+    "t": "Slow-control chit here: the hall thermometer drifted by {dk}, but our scintillator bath never budged; the energy calibration is just as it was."
+   },
+   {
+    "lang": "en",
+    "t": "yo ops, env temp in the electronics room moved {dk}. cd/ls side is stable, no shift in e-scale. all good"
+   },
+   {
+    "lang": "en",
+    "t": "We see temperature change {dk} in water pool. Liquid scintillator is not changed. Energy scale no change."
+   },
+   {
+    "lang": "en",
+    "t": "[auto] env sensor update: delta T {dk} at water pool. Human note: CD/LS stable, calib fine."
+   },
+   {
+    "lang": "en",
+    "t": "Facilities bulletin: a temperature excursion of {dk} was recorded in the experimental hall. The central liquid-scintillator detector remained thermally stable, and the energy scale is unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, hall temp jumped by {dk}! But the LS is totally chill - no, I mean stable - and the energy scale didn't flinch."
+   },
+   {
+    "lang": "en",
+    "t": "Ops: electronics room ambient changed {dk}. Scintillator hasn't moved, e-cal same. Coffee still bad."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: water-pool temp delta {dk}. Comment from shift: no CD/LS change, no energy-scale impact."
+   },
+   {
+    "lang": "en",
+    "t": "Temperature in hall changed by {dk}. Central detector liquid stable. Energy scale not affected."
+   },
+   {
+    "lang": "en",
+    "t": "Duty log, old style: the hall environs moved by {dk}, yet the liquid scintillator held steady and the energy scale stayed put."
+   },
+   {
+    "lang": "en",
+    "t": "Notice from operations: ambient temperature variation of {dk} occurred in the electronics room. Neither the central detector nor the liquid scintillator changed; energy-scale response remains nominal."
+   },
+   {
+    "lang": "en",
+    "t": "temp in wp moved {dk}, but ls/cd stable. no cal shift. carry on"
+   },
+   {
+    "lang": "en",
+    "t": "Just saw the water-pool thermometer move {dk} - not the LS! Energy scale looks untouched, so no panic."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO: pool temp delta {dk}. Shift note: CD stable, LS stable, energy scale unchanged."
+   },
+   {
+    "lang": "zh",
+    "t": "慢控制系统记录：实验厅环境温度变化 {dk}，该变化局限于实验厅暖通回路，中央探测器液闪温度未受影响，保持稳定；能量刻度无需调整，物理数据质量不变。请知悉。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场看过了，电子学间温度动了 {dk}，就那边的事；液闪和中心探测器稳得很，能量刻度没动。手机打字，见谅。"
+   },
+   {
+    "lang": "zh",
+    "t": "诸位同事：老朽在水池边巡视，察觉水温较前有 {dk} 之变，然此乃水池环境之变，中央液闪依旧安稳如常，能量标尺未受牵动，特此禀报。"
+   },
+   {
+    "lang": "zh",
+    "t": "哎我刚看慢控！水池那边温度跳了 {dk}！重点：只是水池，不是中心探测器液闪，液闪稳稳的，能标纹丝没动，数据放心用！"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中。实验厅温度变化 {dk}，困。只涉及厅内环境，液闪没动，能量刻度也没漂。继续盯。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动通知】慢控温度告警：电子学间温度变化 {dk}。值班备注：仅限电子学间环境，中央液闪温度稳定，能量刻度无影响。"
+   },
+   {
+    "lang": "ja",
+    "t": "現場からです。実験ホールの気温が{dk}動きました。液体シンチと中心検出器は安定のまま、エネルギースケールにも影響なしです。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中、電子機器室の温度が{dk}ずれた。中心検出器側は安定していて、エネルギー目盛りは変わってない。眠い。"
+   },
+   {
+    "lang": "ja",
+    "t": "水プールの温度が{dk}変わりました。液体シンチレーターはそのままです。エネルギーはだいじょうぶです。"
+   },
+   {
+    "lang": "ja",
+    "t": "記録として残します。実験ホール空調側の温度変化は{dk}でしたが、液体シンチレータおよび中心検出器の温度は安定を維持しており、エネルギー較正に系統的な影響は生じていません。"
+   },
+   {
+    "lang": "es",
+    "t": "Aviso rapidito: un cambio térmico de {dk} en la sala experimental; el detector central ni se enteró y la escala de energía sigue igual."
+   },
+   {
+    "lang": "es",
+    "t": "Hay un cambio de temperatura de {dk} en la sala de electrónica. El líquido centelleador está estable. No hay efecto en la escala de energía."
+   },
+   {
+    "lang": "es",
+    "t": "¡Gente! Acabo de ver un cambio de temperatura de {dk} en la piscina de agua, pero el detector central no se movió nada; la escala de energía sigue igualita. ¡Todo bajo control!"
+   },
+   {
+    "lang": "es",
+    "t": "Turno noche: se registró un cambio térmico de {dk} en la sala experimental; el líquido centelleador permanece estable y la escala de energía no presenta cambios. Voy por café."
+   }
+  ],
+  "quake_felt": [
+   {
+    "lang": "en",
+    "t": "Whoa, the seismo feed just flagged a magnitude {mag} event {dist} from here, and I felt the desk shake while I was grabbing coffee!"
+   },
+   {
+    "lang": "en",
+    "t": "This is a formal notice from the national seismic duty desk: an earthquake of magnitude {mag} occurred {dist} away, and ground shaking was reported at the detector site."
+   },
+   {
+    "lang": "en",
+    "t": "Seismology says earthquake magnitude {mag}. Distance {dist} away. We feel shaking in detector hall."
+   },
+   {
+    "lang": "en",
+    "t": "quake m{mag}, {dist} out. felt it on site."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED ALERT: Seismic event, magnitude {mag}, distance {dist} from site. Human note: yes, we felt that shaking in the control room."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, the seismic monitoring stream reports a magnitude {mag} earthquake whose epicenter is {dist} distant from our location; I want to confirm that the shaking was clearly felt here at the site, possibly through the floor slab."
+   },
+   {
+    "lang": "en",
+    "t": "Hey team, just got pinged by the seismology feed: magnitude {mag}, {dist} away, and the whole control room felt the tremor. Anyway, coffee is fresh."
+   },
+   {
+    "lang": "en",
+    "t": "Seismic event confirmed: magnitude {mag}, distance {dist} away. Site experienced felt shaking. Immediate action not requested."
+   },
+   {
+    "lang": "en",
+    "t": "The regional network is calling it a magnitude {mag} quake, {dist} from us, and yes, we felt the shaking at the site."
+   },
+   {
+    "lang": "en",
+    "t": "Feed: M{mag} quake, {dist} from site. Staff addendum: felt on site, lamps swayed."
+   },
+   {
+    "lang": "en",
+    "t": "Heads up, team. A magnitude {mag} quake went off {dist} from us, and the shaking made it all the way to our underground cavern. I'm logging it."
+   },
+   {
+    "lang": "en",
+    "t": "The central detector may have picked up a transient from a magnitude {mag} earthquake located {dist} away; humans in the hall also felt the ground move. Please note for calibration review."
+   },
+   {
+    "lang": "en",
+    "t": "seismo says mag {mag} {dist} out n we definitely felt it here lol"
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: A magnitude {mag} earthquake occurred {dist} from the site. Felt shaking has been confirmed at the site."
+   },
+   {
+    "lang": "zh",
+    "t": "• 地震信息：震级{mag}，震中距此{dist}\n• 现场报告有震感"
+   },
+   {
+    "lang": "zh",
+    "t": "哎，刚晃了一下。台网说震级{mag}，震中离咱们{dist}。我在值班室，确实有感。"
+   },
+   {
+    "lang": "zh",
+    "t": "正式通报：据测定，{dist}外发生震级{mag}地震，本站观测到明显震感。"
+   },
+   {
+    "lang": "zh",
+    "t": "哥们，刚地动了！手机弹窗说震级{mag}，在{dist}外。我站这儿脚底下都有感觉。"
+   },
+   {
+    "lang": "zh",
+    "t": "[自动转发] 地震速报：震级{mag}，距本站{dist}。// 控制室这边确实晃了。"
+   },
+   {
+    "lang": "zh",
+    "t": "地震。震级{mag}，离这里{dist}远。我在这里感觉到摇。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中。{dist}先でM{mag}の地震、こっちも揺れた。以上。"
+   },
+   {
+    "lang": "ja",
+    "t": "地震です。{dist}離れたところでM{mag}。ここでも揺れを感じました。"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい、{dist}先でM{mag}の地震！解析室でもしっかり揺れた、みんな大丈夫？"
+   },
+   {
+    "lang": "ja",
+    "t": "地震の規模は{mag}、震源は{dist}先。当サイトでも揺れを観測しました。"
+   },
+   {
+    "lang": "es",
+    "t": "Queridos colegas, me permito avisarles que el servicio sismológico reporta un temblor de magnitud {mag} cuyo epicentro quedó a {dist}; por acá, en nuestra casa, el suelo se dejó sentir."
+   },
+   {
+    "lang": "es",
+    "t": "Operador de turno: sismo M {mag}, a {dist} de la sala. Se sintió el remezón, y el café no ayudó."
+   },
+   {
+    "lang": "es",
+    "t": "Hubo terremoto. Magnitud {mag}. A {dist} de aquí. Nosotros sentimos temblor aquí."
+   },
+   {
+    "lang": "es",
+    "t": "El oficial de guardia informa: se registró un sismo de magnitud {mag} a {dist} de esta instalación. El movimiento fue percibido en el sitio."
+   }
+  ],
+  "quake_far": [
+   {
+    "lang": "en",
+    "t": "seismo feed: mag {mag}, {dist} out. didn't feel it here. no local triggers."
+   },
+   {
+    "lang": "en",
+    "t": "Quake, magnitude {mag}, {dist} away. I didn't feel anything, and the local channels show nothing. Coffee hasn't kicked in either."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, there was a magnitude {mag} event {dist} away! Nobody here felt it, though, and none of our local readouts picked up anything."
+   },
+   {
+    "lang": "en",
+    "t": "Got a seismo ping: M {mag}, {dist} from us. Not felt on site. No local hits on the gear."
+   },
+   {
+    "lang": "en",
+    "t": "The national seismological service reports an earthquake of magnitude {mag} at a distance of {dist}. It was not felt at the site, and no local instruments registered the event."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the seismic wire: a quake of magnitude {mag}, {dist} hence. We felt no tremor at the site, and the local recorders stayed silent."
+   },
+   {
+    "lang": "en",
+    "t": "feed says mag {mag}, {dist} off. no shake here. nothing on local sensors."
+   },
+   {
+    "lang": "en",
+    "t": "Just logged: magnitude {mag}, {dist} away. Not felt at site. Local DAQ quiet. Back to staring at screens."
+   },
+   {
+    "lang": "en",
+    "t": "Seismo alert - magnitude {mag}, {dist} out! I asked around: nobody felt it, and the local monitoring shows no signal."
+   },
+   {
+    "lang": "en",
+    "t": "seismic feed: {mag} mag, {dist} away. Site didn't feel it. No local triggers on any channel."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: a magnitude {mag} earthquake occurred {dist} away. No site personnel reported shaking, and no local seismic equipment recorded any motion."
+   },
+   {
+    "lang": "en",
+    "t": "Seismic wire says magnitude {mag}, {dist} distant. No tremor did we feel at the site, and the local instruments gave no sign."
+   },
+   {
+    "lang": "en",
+    "t": "Ops note: quake mag {mag}, {dist} out. Felt on site? Negative. Local channels? Silent."
+   },
+   {
+    "lang": "en",
+    "t": "Feed just spat out magnitude {mag}, {dist} away. Nobody on site felt a thing, and our local rigs registered nothing."
+   },
+   {
+    "lang": "zh",
+    "t": "台网通报：在距本站 {dist} 处发生震级 {mag} 的地震；我按流程复核过，本站没有震感，本地监测系统也没有触发任何记录。"
+   },
+   {
+    "lang": "zh",
+    "t": "速报：震级 {mag}，{dist} 外。这里没感觉，本地也没触发记录。"
+   },
+   {
+    "lang": "zh",
+    "t": "地震消息：震级 {mag}，离这里 {dist}。我们这边没有感觉，机器也没有记到。"
+   },
+   {
+    "lang": "zh",
+    "t": "据地震台传信，{dist} 之外有 {mag} 之地动；老朽这边并无震感，案头仪器也未留下痕迹。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】地震通报：震级 {mag}，距离 {dist}。备注：本站无感，本地告警未触发。"
+   },
+   {
+    "lang": "zh",
+    "t": "困。地震速报：震级 {mag}，离我们 {dist}。这儿没晃，本地也没记到。"
+   },
+   {
+    "lang": "ja",
+    "t": "地震計網からの自動アラートです。{dist}離れた場所で{mag}の地震が記録されましたが、当サイトの加速度計と地震計はどちらも閾値未満で、体感はなく、ローカル記録も残っていません。念のため中央検出器と水槽ベトーのログも確認しましたが、異常は見当たりません。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中に地震速報。{dist}で{mag}の地震があったみたい。こっちは揺れなし、装置も何も拾ってない。とりあえずメモ。"
+   },
+   {
+    "lang": "ja",
+    "t": "遠く{dist}の地で{mag}の地震があった由。当地ではゆれを感じず、器械の記録にも何も現れておりません。ご安心ください。"
+   },
+   {
+    "lang": "ja",
+    "t": "{dist} で {mag} の地震。ここでは感じない。ローカルで何も登録しない。"
+   },
+   {
+    "lang": "es",
+    "t": "Acabo de cruzar el feed del servicio sismológico: evento de magnitud {mag} localizado a {dist}; en nuestra estación no se sintió ni quedó traza alguna en los canales locales, así que para nuestro detector esto es ruido de fondo y no requiere acción."
+   },
+   {
+    "lang": "es",
+    "t": "Sismo de magnitud {mag} a {dist}. Nadie lo sintió por aquí y los registros locales siguen limpios. A dormir, supongo."
+   },
+   {
+    "lang": "es",
+    "t": "• Evento sísmico: magnitud {mag}, distancia {dist}.\n• Impacto en el sitio: nulo; no fue sentido.\n• Instrumentación local: sin señal asociada.\n• Seguimos sin acciones."
+   },
+   {
+    "lang": "es",
+    "t": "Parte sísmico: se ha detectado un terremoto de magnitud {mag} con epicentro a {dist}. La instalación no reporta percepción alguna ni actividad en sus equipos locales. No se declara alerta."
+   }
+  ],
+  "hv_trip_cd": [
+   {
+    "lang": "en",
+    "t": "HV tripped on a few central PMT sectors, and I re-ramped them from the phone."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, several central-detector PMT sectors lost high voltage all at once, and we brought them back up!"
+   },
+   {
+    "lang": "en",
+    "t": "hv trip on some central pmt sectors. re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "The high voltage to a number of the central detector's photomultiplier sectors gave way, and we brought them up again."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: high-voltage trip on multiple central-detector PMT sectors. Human comment: re-ramp completed."
+   },
+   {
+    "lang": "en",
+    "t": "A high-voltage trip condition affected several of the central detector's PMT sectors; after checking the interlocks I stepped through the re-ramp procedure, and those sectors have been re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Several central PMT sectors dropped their HV; all were re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Had an HV trip in a few central detector PMT sectors, but they are ramped back up."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: a high-voltage trip occurred in multiple central-detector PMT sectors. The affected sectors have been re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "few central pmt sectors hv tripped lol, reramped."
+   },
+   {
+    "lang": "en",
+    "t": "Central detector PMT sectors: HV trip; re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "High voltage tripped out on some PMT sectors in the central detector; they have been re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Those central PMT sectors that lost high voltage? Brought back up."
+   },
+   {
+    "lang": "en",
+    "t": "Multiple central-detector photomultiplier sectors experienced an HV trip and were re-ramped."
+   },
+   {
+    "lang": "zh",
+    "t": "中央探测器的若干PMT扇区高压跳闸了，我们后来把它们重新升压了。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 中央探测器PMT：若干扇区高压跳闸；• 处置：已重新升压。"
+   },
+   {
+    "lang": "zh",
+    "t": "中央探测器有几块PMT扇区高压跳了，不过已经重新爬坡回来啦！"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：中央探测器若干光电倍增管扇区发生高压跳闸，现已完成重新升压。"
+   },
+   {
+    "lang": "zh",
+    "t": "中央探头那边有几个光电管分区的高压掉了闸，后来又把电压一点点升回去啦。"
+   },
+   {
+    "lang": "zh",
+    "t": "咖啡先放一边——中央探测器PMT几个扇区高压跳了，已重新升压。"
+   },
+   {
+    "lang": "ja",
+    "t": "中央検出器のPMTセクターがいくつか高電圧トリップしました。もう再ランプしました。"
+   },
+   {
+    "lang": "ja",
+    "t": "・中央検出器PMTセクター複数でHVトリップ\n・再ランプ完了"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中、中央検出器のPMTセクターが複数高圧トリップ。もう再昇圧してある。コーヒー切れ。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動通知: 中央検出器PMTセクター複数で高電圧トリップを検知。再ランプ済み。担当者メモ: 今のところ安定。"
+   },
+   {
+    "lang": "es",
+    "t": "Se produjo un disparo de alta tensión en varios sectores de PMT del detector central, que ya fueron re-rampados."
+   },
+   {
+    "lang": "es",
+    "t": "disparo de at en varios sectores de pmt del detector central; ya se volvieron a rampear."
+   },
+   {
+    "lang": "es",
+    "t": "Hubo un trip de alta tensión en algunos sectores de PMT del detector central. Después los re-rampeamos."
+   },
+   {
+    "lang": "es",
+    "t": "AVISO AUTOMÁTICO: disparo de alta tensión en varios sectores de PMT del detector central. Comentario de turno: ya se les volvió a rampar."
+   }
+  ],
+  "hv_trip_veto": [
+   {
+    "lang": "en",
+    "t": "Whoa, the HV just tripped on a handful of veto PMTs in the water pool, not the central detector, and they're already re-ramped!"
+   },
+   {
+    "lang": "en",
+    "t": "HV trip happened only for some PMTs in water pool veto. Not central detector. Now they are re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "- HV trip: limited to a few water-pool veto PMTs, outer detector only.\n- Central detector unaffected.\n- Action: re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: HV channel trip detected on a few water-pool veto PMTs; central detector channels unaffected. Human note: veto HV re-ramped, all good."
+   },
+   {
+    "lang": "en",
+    "t": "Be advised that the high-voltage trip affected only a limited number of veto photomultipliers mounted in the water pool, leaving the central detector unaffected; those channels have since been re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Seems the high voltage gave out on just a sprinkling of the water-pool veto tubes, not the main detector, and the crew has brought them back up again."
+   },
+   {
+    "lang": "en",
+    "t": "HV trip: few water-pool veto PMTs only; CD untouched; re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Small HV trip on the outer veto PMTs in the water pool—just a few of them—nothing in the central detector, and they're ramped back up now."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: A high-voltage trip occurred on a small subset of water-pool veto PMTs. The central detector was not involved. Those PMTs have been re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "so hv tripped on a few veto pmts in the water pool, not the central detector, and we already ramped em back"
+   },
+   {
+    "lang": "en",
+    "t": "ALERT forwarded: Veto HV trip, water-pool PMTs, quantity few. Central detector: no trip. Status: re-ramped. (Shift comment: just the outer pool, all quiet now.)"
+   },
+   {
+    "lang": "en",
+    "t": "Only few veto PMTs in water pool had HV trip. Central detector no trip. They are re-ramped now."
+   },
+   {
+    "lang": "en",
+    "t": "Scope: HV trip only on a few water-pool veto PMTs (outer detector). Central detector: clear. Follow-up: re-ramped."
+   },
+   {
+    "lang": "en",
+    "t": "Word is the high voltage tripped on merely a few of the pool veto phototubes, sparing the central detector, and the lads have since ramped them back."
+   },
+   {
+    "lang": "zh",
+    "t": "• 水池 veto 区少数 PMT 高压跳闸，中心探测器无涉；• 已重新升压；• 记录一下，继续观察。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动告警】外层水池 veto 若干光电倍增管高压掉电；值机备注：只跳了这几个，中心探测器没事，现已重新加高压。"
+   },
+   {
+    "lang": "zh",
+    "t": "检查了一遍：这次高压跳闸只发生在水池 veto 的少数几路光电倍增管上，中心探测器的管子没有参与；跳闸原因按常规保护处理，相关通道已经逐路重新升到工作点。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚听说外头水池那几根 veto 管子的高压跳了，中央的大罐子没牵连；老规矩，已经重新把高压给它们加上去了。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：本轮高压跳闸仅涉及水池反符合系统的少量光电倍增管，中心探测器未受影响，相关通道已完成重新升压。"
+   },
+   {
+    "lang": "zh",
+    "t": "消息：水池 veto 的几个 PMT 高压跳了，不是中心探测器。现在它们已经重新加高压，好了。"
+   },
+   {
+    "lang": "ja",
+    "t": "眠い… HVトリップは水槽外側ベトーPMTの少数だけ。中央検出器は無事。再ランプ済み。あとコーヒー切らした。"
+   },
+   {
+    "lang": "ja",
+    "t": "HVトリップ、水槽のベトーPMTが少しだけ。中央検出器ではなし。再ランプもうした。大丈夫。"
+   },
+   {
+    "lang": "ja",
+    "t": "・HVトリップ：水槽ベトーPMT少数のみ\n・中央検出器：影響なし\n・再ランプ：完了\n・外側検出器の事象、中央は関係なし"
+   },
+   {
+    "lang": "ja",
+    "t": "通知：HVトリップは水槽外側ベトーPMTの少数に限局し、中央検出器には波及していない。当該PMTは再ランプ済み。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Buenas! Se disparó la alta tensión solo en unos pocos PMTs del veto del estanque de agua, no en el detector central, y ya los re-rampamos; ¡quedaron operativos!"
+   },
+   {
+    "lang": "es",
+    "t": "Para dejar constancia: el disparo de alta tensión ocurrió únicamente en unos pocos fotomultiplicadores del sistema de veto del tanque de agua, que pertenece al detector externo; el detector central no registró afectación alguna, y una vez revisados esos canales se procedió a completar su re-rampado."
+   },
+   {
+    "lang": "es",
+    "t": "pues saltó la HV solo en unos PMTs del veto de la piscina, no en el central, ya les di rampa otra vez y quedaron bien"
+   },
+   {
+    "lang": "es",
+    "t": "Aviso a la sala: la alta tensión se cayó nomás en unos pocos tubos del veto del tanque de agua, los de afuera; el detector central ni se enteró, y ya se les volvió a dar rampa."
+   }
+  ],
+  "flasher": [
+   {
+    "lang": "en",
+    "t": "Event displays are showing a characteristic flasher signature from a light-emitting PMT; I checked the view and the pattern is clearly localized to the tube, so please treat the run accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "Flasher on the event display again, just a glowing tube pattern, logging it and going for coffee."
+   },
+   {
+    "lang": "en",
+    "t": "Notice is hereby given that a flasher pattern originating from a light-emitting photomultiplier tube has been observed in the event displays."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, the event views lit up with a flasher pattern from a glowing PMT, this is so cool!"
+   },
+   {
+    "lang": "en",
+    "t": "In my day we'd call that a flashing tube; the event display plainly shows a flasher pattern, mark my words."
+   },
+   {
+    "lang": "en",
+    "t": "flasher pattern in event display, glowing pmt, seen on shift phone, pls note"
+   },
+   {
+    "lang": "en",
+    "t": "DQ note: the event displays contain a flasher pattern consistent with an emitting PMT, so this run is flagged for the usual treatment."
+   },
+   {
+    "lang": "en",
+    "t": "We have a flasher pattern in the event displays; it comes from a light-emitting PMT, not from physics."
+   },
+   {
+    "lang": "en",
+    "t": "A PMT flasher pattern is visible in the event displays; the tube is emitting light and the hit pattern is unmistakable."
+   },
+   {
+    "lang": "en",
+    "t": "I think I see a flasher pattern in the event display, like a glowing tube, is that what we call a flashing PMT?"
+   },
+   {
+    "lang": "en",
+    "t": "The event displays show the classic flasher footprint of a light-emitting PMT; nothing else in the event topology suggests a different source."
+   },
+   {
+    "lang": "en",
+    "t": "Flasher pattern observed in event displays, attributed to a PMT emitting light; please keep the channel updated."
+   },
+   {
+    "lang": "en",
+    "t": "Event viewer picked up a flasher pattern from a glowing PMT; looks like a light-emitting tube in the display."
+   },
+   {
+    "lang": "en",
+    "t": "An emitting PMT has produced a flasher pattern in the event displays; this is the familiar light-tube artifact."
+   },
+   {
+    "lang": "zh",
+    "t": "我看了事件显示，里面有闪光PMT的图案，它在发光。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇，事件显示里出现了闪光PMT的典型花样，这不就是 flasher 嘛！"
+   },
+   {
+    "lang": "zh",
+    "t": "• 事件显示：观察到闪光PMT图案\n• 判定：flasher\n• 后续：数据质量组复核"
+   },
+   {
+    "lang": "zh",
+    "t": "自动通知：事件显示中匹配到发光PMT特征。人工备注：就是 flasher 图案。"
+   },
+   {
+    "lang": "zh",
+    "t": "evt display 里 flasher 花样，pmt 发光。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场看事件显示，有闪光PMT图案，先报。"
+   },
+   {
+    "lang": "ja",
+    "t": "イベント画面で光っているPMTのパターンを見ました。フラッシャーです。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】PMT発光パターン検知。担当コメント：イベント表示でもフラッシャー確認。"
+   },
+   {
+    "lang": "ja",
+    "t": "・イベント表示に発光PMTのパターンあり\n・フラッシャー事象と判断\n・要注視"
+   },
+   {
+    "lang": "ja",
+    "t": "イベント表示に光ってる pmt のパターン。flasher。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Oigan! En las pantallas de eventos se ve un patrón clarísimo de un PMT que destella; es un flasher."
+   },
+   {
+    "lang": "es",
+    "t": "• Se observa un patrón de PMT destellante. • Aparece en las visualizaciones de eventos."
+   },
+   {
+    "lang": "es",
+    "t": "Yo veo en los displays de eventos un patrón de PMT que brilla. Es un flasher."
+   },
+   {
+    "lang": "es",
+    "t": "Tras revisar las visualizaciones de eventos, se aprecia un patrón característico de un tubo fotomultiplicador que emite luz de forma espuria, es decir, un flasher de PMT."
+   }
+  ],
+  "leak": [
+   {
+    "lang": "en",
+    "t": "On my pipe-gallery walkdown I found water pooling beside the water-pool pipework; I have not traced the source, so please treat it as a suspected leak and monitor the area."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO: moisture anomaly logged near water-pool piping. Human note: yes, there is water by the pool pipes - possible leak, facilities please take a look."
+   },
+   {
+    "lang": "en",
+    "t": "water by the water-pool pipes. looks like a possible leak. somebody check."
+   },
+   {
+    "lang": "en",
+    "t": "Hey, I'm down by the water-pool pipe run and there's water on the deck right next to it. Not much, but it might be a leak. Facilities should come see."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that water has been observed adjacent to the water-pool pipes. The cause is unknown and a leak cannot be excluded. Facilities response is requested."
+   },
+   {
+    "lang": "en",
+    "t": "- Water seen near water-pool piping. - Possible leak. - Facilities to inspect."
+   },
+   {
+    "lang": "en",
+    "t": "WATER BY WATER-POOL PIPE RUN. POSSIBLE LEAK. FACILITIES NOTIFIED."
+   },
+   {
+    "lang": "en",
+    "t": "Automated alert: wetness detected in the water-pool pipe area. Operator comment: water present near pool piping, possible leak - facilities notified."
+   },
+   {
+    "lang": "en",
+    "t": "Not sure if it's anything, but there's water right around the water-pool pipework. Could be a drip from somewhere. Flagging it as a possible leak."
+   },
+   {
+    "lang": "en",
+    "t": "Incident note: standing water has been reported near the water-pool piping. A leak is regarded as possible pending inspection by facilities."
+   },
+   {
+    "lang": "en",
+    "t": "While inspecting the water-pool pipe supports, I found water pooling on the floor beneath them. I cannot yet confirm the origin, so I am recording this as a potential leak near the water-pool pipes."
+   },
+   {
+    "lang": "en",
+    "t": "- Finding: water near water-pool pipes. - Risk: possible leak. - Next: facilities check."
+   },
+   {
+    "lang": "en",
+    "t": "pool pipe area by the water pool has water around it. not normal. possible leak."
+   },
+   {
+    "lang": "en",
+    "t": "there's water by the water-pool pipes lol not sure if leak but facilities should see"
+   },
+   {
+    "lang": "zh",
+    "t": "• 巡视发现：水池管路附近有明水。\n• 疑似该处渗漏，请设施排查。"
+   },
+   {
+    "lang": "zh",
+    "t": "啊啊，我在水池管道旁边看到积水了！是不是漏了？要不要叫设施来看看！"
+   },
+   {
+    "lang": "zh",
+    "t": "水池管边见水 疑似漏 设施跟进"
+   },
+   {
+    "lang": "zh",
+    "t": "刚走到水池那排管，旁边有积水，估计是漏了，先喊设施过来看"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：在水池管道周边发现积水，初步判断存在渗漏可能，请设施立即核查。"
+   },
+   {
+    "lang": "zh",
+    "t": "我检查水池管子旁边。那里有水。可能漏水。请检查。"
+   },
+   {
+    "lang": "ja",
+    "t": "・水槽配管付近に水たまり。\n・漏えいの疑い。\n・施設で確認中。"
+   },
+   {
+    "lang": "ja",
+    "t": "水槽の配管が通る床を点検中、支持金具のそばに水たまりを認めました。滴下は未確認ですが、周辺の湿り方から漏水の可能性があります。拭き取らずに写真を残し、施設へ引き継ぎます。"
+   },
+   {
+    "lang": "ja",
+    "t": "【施設連絡】水槽配管近傍にて水たまりを確認。漏えいの疑いあり。関係各所は警戒されたい。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動通知】水槽配管付近で水分を検知。担当者コメント：水たまりあり、漏水かも。要確認。"
+   },
+   {
+    "lang": "es",
+    "t": "hay agua junto a los tubos de la piscina. puede ser fuga."
+   },
+   {
+    "lang": "es",
+    "t": "Encontré agua cerca de las tuberías de la piscina. Pienso que puede ser fuga."
+   },
+   {
+    "lang": "es",
+    "t": "oye, acabo de pasar por la piscina y hay un charco junto a las tuberías. pinta a fuga, voy a revisar."
+   },
+   {
+    "lang": "es",
+    "t": "Notificación automática: presencia de agua junto a las tuberías de la piscina de agua. Comentario: posible fuga."
+   }
+  ],
+  "rumour_core": [
+   {
+    "lang": "en",
+    "t": "I hear talk that {core} maybe will stop soon. No paper from officials yet."
+   },
+   {
+    "lang": "en",
+    "t": "Unconfirmed reports circulating suggest that {core} may be taken offline in the near term; no official bulletin has been issued."
+   },
+   {
+    "lang": "en",
+    "t": "Folks are whispering that {core} is apt to be shut down before long, but I've seen no official notice."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: routine feed shows no change for {core}. Human note: rumor says it might close soon; no bulletin."
+   },
+   {
+    "lang": "en",
+    "t": "word is {core} going down soon. not official, no bulletin."
+   },
+   {
+    "lang": "en",
+    "t": "- water cooler: {core} may shut soon\n- official line: none\n- action: wait for bulletin"
+   },
+   {
+    "lang": "en",
+    "t": "Someone on shift swore they heard {core} is likely to stop operating shortly, but it's just grapevine and no formal announcement has come out."
+   },
+   {
+    "lang": "en",
+    "t": "so apparently {core} might go dark soon?? not confirmed, haven't seen any official bulletin"
+   },
+   {
+    "lang": "en",
+    "t": "If the hallway chatter is right, {core} won't be running much longer; nothing official yet."
+   },
+   {
+    "lang": "en",
+    "t": "Rumour control: {core} is rumoured to face an imminent shutdown. No official communique has been released."
+   },
+   {
+    "lang": "en",
+    "t": "Forwarded alert: status unchanged for {core}. Comment: scuttlebutt says shutdown soon; no official notice."
+   },
+   {
+    "lang": "en",
+    "t": "By all accounts from the grapevine, {core} may soon be taken out of service, though headquarters has posted no bulletin."
+   },
+   {
+    "lang": "en",
+    "t": "They say {core} will maybe shut down soon. But no official news."
+   },
+   {
+    "lang": "en",
+    "t": "{core} rumored to close soon. no official bulletin."
+   },
+   {
+    "lang": "zh",
+    "t": "• 小道消息：{core} 近期可能停堆。\n• 官方公告：暂无。"
+   },
+   {
+    "lang": "zh",
+    "t": "听现场的说 {core} 怕是要停，别问我哪来的，群里传的，正式消息还没见着"
+   },
+   {
+    "lang": "zh",
+    "t": "我听说 {core} 很快会关闭。不是正式通知，只是大家聊天。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇，有人传 {core} 可能快要停堆了！还没任何正式公告，先别往外说啊，我还在等确认。"
+   },
+   {
+    "lang": "zh",
+    "t": "值守中听闻：{core} 近期或停堆；无正式通报。困。"
+   },
+   {
+    "lang": "zh",
+    "t": "需要说明的是，这个说法只是非正式渠道提到 {core} 存在不久后停堆的可能性；官方通告和正式文件都没有，所以只能当作传言看待。"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有しますが、非公式ルートで、{core} が近いうちに停止するかもしれないという噂を耳にしました。当局からの公式発表はまだ出ていません。確認が取れるまでは通常運転前提で見ていますが、現場は少しざわついています。"
+   },
+   {
+    "lang": "ja",
+    "t": "私は聞いたです。{core} はすぐ止まるかもしれませんといううわさ。でも、公式の発表はないです。本当かどうか、まだ分かりません。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{core} が近く停止する可能性との非公式情報を検知。公式発表はまだありません。— とりあえず共有しときます。"
+   },
+   {
+    "lang": "ja",
+    "t": "{core} が近いうちに止まるかもって噂が回ってる！公式には何も出てないみたい。解析どうなるんだろ、ちょっと焦る…"
+   },
+   {
+    "lang": "es",
+    "t": "• Rumor de pasillo: {core} podría parar pronto. • Sin boletín oficial por ahora. • Lo dejo caer, no está confirmado."
+   },
+   {
+    "lang": "es",
+    "t": "Me llega por lo bajo, como quien no quiere la cosa, que quizá {core} eche el cierre en cualquier momento; de comunicado oficial, ni rastro."
+   },
+   {
+    "lang": "es",
+    "t": "oye, dicen por ahí que {core} a lo mejor cierra pronto; yo no he visto nada oficial, eh"
+   },
+   {
+    "lang": "es",
+    "t": "Escuché un rumor no oficial: el reactor {core} puede cerrar pronto. No hay boletín oficial. No sé más."
+   }
+  ],
+  "grid_normal": [
+   {
+    "lang": "en",
+    "t": "AUTO-FORWARD: Grid operator notice — demand outlook nominal; every reactor core at full output. Human add-on: nothing to worry about, no curtailment signals."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the utility is that the grid people see a normal load forecast and every core running full tilt — so no power-side weirdness expected."
+   },
+   {
+    "lang": "en",
+    "t": "grid op says load forecast normal n all reactor cores at full power. just got it in the field, fyi"
+   },
+   {
+    "lang": "en",
+    "t": "For the record: the transmission system operator has verified that the anticipated load profile is within normal limits, and each reactor core is presently operating at its maximum rated power, so any detector shifts are not from grid-side curtailment."
+   },
+   {
+    "lang": "en",
+    "t": "Grid dispatch says the load forecast is fine and all cores are at full power. Coffee status: critical. Logging it and heading back."
+   },
+   {
+    "lang": "en",
+    "t": "From power company: grid man tell me load forecast is normal. All reactor cores are in full power."
+   },
+   {
+    "lang": "en",
+    "t": "Utility bulletin: the grid operator reports a nominal load forecast, with all reactor cores operating at full power."
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：电网调度更新——用电负荷预估没异常，所有反应堆堆芯都满功率运行。值班顺手贴出来，省得挨个问。"
+   },
+   {
+    "lang": "zh",
+    "t": "调度那边发消息了，负荷预报稳稳的，堆芯全都满功率跑，太棒了！"
+   },
+   {
+    "lang": "zh",
+    "t": "接电网调度通报：需求预测结果正常，各反应堆堆芯均处于满功率运行状态。请各岗位知悉。"
+   },
+   {
+    "lang": "ja",
+    "t": "系統運用者から連絡来た！負荷予測は平常、全炉心は定格出力だって！"
+   },
+   {
+    "lang": "ja",
+    "t": "系統運用者より共有：\n・負荷予測は平常\n・全炉心は定格出力運転中"
+   },
+   {
+    "lang": "es",
+    "t": "He cotejado la nota del operador de la red con el parte de operación: la previsión de carga está dentro de lo normal, sin desviaciones que reseñar, y todos los núcleos continúan a plena potencia, sin reducciones ni limitaciones."
+   },
+   {
+    "lang": "es",
+    "t": "Comunicado del servicio de guardia: el despacho de la red confirma previsión de carga normal y la totalidad de los reactores a plena potencia."
+   }
+  ],
+  "chatter": [
+   {
+    "lang": "en",
+    "t": "I have some extra soup from home. If you want, come to the kitchen and take a bowl. Is very good, my mother recipe."
+   },
+   {
+    "lang": "en",
+    "t": "Dear friends, I shall be taking tea in the common room. It would be a pleasure to see you there, and I have brought shortbread."
+   },
+   {
+    "lang": "en",
+    "t": "i am running on fumes. someone please tell me the coffee maker is still alive. also who ate my granola bar."
+   },
+   {
+    "lang": "en",
+    "t": "lunch run. dont touch my mug."
+   },
+   {
+    "lang": "en",
+    "t": "On the train home, signal keeps dropping. If the deli is still open, grab me a sandwich. Thanks."
+   },
+   {
+    "lang": "en",
+    "t": "Automated reminder: your meeting invite was updated. honestly, i just wanted an excuse to skip it."
+   },
+   {
+    "lang": "en",
+    "t": "The printer upstairs is jammed again. I am not in the office, so this is just a heads-up for my own peace of mind."
+   },
+   {
+    "lang": "en",
+    "t": "Flight got pushed, so I will miss the potluck. Please save me a plate if there is anything left."
+   },
+   {
+    "lang": "en",
+    "t": "Why did the scarecrow win an award? Because he was outstanding in his field. Anyway, who wants coffee?"
+   },
+   {
+    "lang": "en",
+    "t": "Heading for a hike this weekend. If I do not come back, the squirrels have won."
+   },
+   {
+    "lang": "en",
+    "t": "The vending machine gave me a bonus snack. I am choosing to believe the universe is on my side."
+   },
+   {
+    "lang": "en",
+    "t": "Can we push the journal club? My brain is still booting up."
+   },
+   {
+    "lang": "en",
+    "t": "Who keeps leaving mystery yogurt in the fridge? It is becoming a detective story, and I need the next chapter."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: the staff kitchen will be cleaned. Please collect your belongings and pardon the smell."
+   },
+   {
+    "lang": "zh",
+    "t": "系统提醒：大厅饮水机已补货。顺便说下，楼下咖啡机好像又傲娇了，谁有空去瞅瞅？"
+   },
+   {
+    "lang": "zh",
+    "t": "特此通告：食堂凉拌菜供应已恢复，工会活动报名表置于前台，请有意者自行领取。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 午餐订了楼下那家面馆，口味偏辣，不吃的举手。• 会议室被借走，改成线上碰头。• 团建想去爬山，有意见提。"
+   },
+   {
+    "lang": "zh",
+    "t": "我认真核对过，茶水间的糖包和奶精是分开放置的，糖包在左边，奶精在右边；如果有人拿错，口感会有细微差异，但不影响咖啡本身的溶解过程。另外，冰箱里那盒酸奶是谁的？我贴了便签。"
+   },
+   {
+    "lang": "zh",
+    "t": "我快困死了，谁有多余的速溶咖啡分我点？有人去楼下吃豆浆油条吗？"
+   },
+   {
+    "lang": "zh",
+    "t": "刚看到群里说要去钓鱼？带上我。我手机快没电了，先不聊，回头见。"
+   },
+   {
+    "lang": "ja",
+    "t": "各位、連絡です。庁内親睦会は会議室ではなく、いつもの食堂で行います。出張中の職員も戻り次第、気軽に参加してください。件名はお茶会程度の雑談です。"
+   },
+   {
+    "lang": "ja",
+    "t": "めし かれーか そばか、しふとで もめてる。かんけいないけど。"
+   },
+   {
+    "lang": "ja",
+    "t": "・コーヒー豆の補充は総務にお願い済み。・出張精算の締めは各自で。・歓迎会の店は町の居酒屋を候補に。・以上、雑談です。"
+   },
+   {
+    "lang": "ja",
+    "t": "わたしは ミーティングに おかしを もっていきます。でんしゃが おくれて いますが、たぶん だいじょうぶ。りょこうの よていも はなしたいです。ケーキを たべましょう。"
+   },
+   {
+    "lang": "es",
+    "t": "q pasa gente, alguien se apunta a pedir comida? toy en la furgo y no me apetece cocinar, jajaja"
+   },
+   {
+    "lang": "es",
+    "t": "• Reunión informal solo para elegir sitio de comida. • Nada de temas técnicos. • Aportar ideas de menú, por favor."
+   },
+   {
+    "lang": "es",
+    "t": "No doy más, necesito café. ¿Alguien más está en modo zombi? Hablamos de la serie, ya veremos."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso: la sala de descanso queda reservada para charla informal sobre viajes. Se ruega no tratar asuntos de servicio. Habrá té para quien guste."
+   }
+  ]
+ },
+ "stats_generated_kept": {
+  "temp_minor": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  }
+ },
+ "merged_from": "nl_pool_dev.json",
+ "regenerated_kinds": [
+  "temp_minor"
+ ]
+}
