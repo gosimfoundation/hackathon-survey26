@@ -285,3 +285,26 @@ def test_executor_auth_user_path(hs, service):
         assert ex.rpc(name, args)[0] >= 400, name
     for table in ("open_submission_files", "open_run_details", "open_messages", "open_executor_users"):
         assert ex.select(table)[0] >= 400
+
+
+def test_hidden_submissions_stay_in_db_but_leave_the_board(hs, service, executor):
+    """Migration 20261013000200: organizer test entries are hidden from the public board, never deleted."""
+    drain(service, executor, "pre")
+    c, uid = user(hs, nickname="organizer-test-hidden")
+    st, sid = c.rpc("open_submit", {"p_problems": ["osc_run_v3"], "p_zip_base64": agent_zip()})
+    assert st == 200
+    drain(service, executor)
+    st, board = Client(hs.url).rpc("open_leaderboard")
+    assert any(r["player"] == "organizer-test-hidden" for r in board)
+    # participants cannot hide (or unhide) their own entries
+    st, _ = c.call("PATCH", f"/rest/v1/open_submissions?id=eq.{sid}", {"hidden": True})
+    with psycopg.connect(hs.db_uri) as conn:
+        assert conn.execute("select hidden from public.open_submissions where id = %s", (sid,)).fetchone()[0] is False
+        conn.execute("update public.open_submissions set hidden = true where id = %s", (sid,))
+        conn.commit()
+        n_runs = conn.execute("select count(*) from public.open_runs where submission_id = %s", (sid,)).fetchone()[0]
+    st, board = Client(hs.url).rpc("open_leaderboard")
+    assert st == 200 and not any(r["player"] == "organizer-test-hidden" for r in board)
+    st, mine = c.select("open_submissions", f"select=id,status&id=eq.{sid}")
+    assert mine == [{"id": sid, "status": "done"}]  # still there for its owner
+    assert n_runs == 5
