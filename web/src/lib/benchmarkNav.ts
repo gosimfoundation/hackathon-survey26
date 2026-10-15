@@ -12,7 +12,6 @@ export const benchmarkNavItems: BenchNavItem[] = [
   { en: 'Survey26 test', zh: 'Survey26 检验', to: '/benchmark/survey26', fold: 2 },
   { en: 'Open track', zh: '开放赛道', to: '/open' },
   { en: 'Human console', zh: '人类操作台', href: 'console/index.html', fold: 1 },
-  { en: 'Paper', zh: '论文', href: 'https://s26-agents-8ebd56.vercel.app/paper/', external: true, fold: 1 },
 ]
 
 export const benchmarkSubmit: BenchNavItem = { en: 'Submit', zh: '提交', to: '/benchmark/submit' }

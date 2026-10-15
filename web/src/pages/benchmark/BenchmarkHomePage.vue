@@ -6,7 +6,6 @@ import { benchTasks } from '../../lib/benchmarkTasks'
 
 const { pick } = useI18n()
 const consoleHref = `${import.meta.env.BASE_URL}console/index.html`
-const paperHref = 'https://s26-agents-8ebd56.vercel.app/paper/'
 
 const scoring = [
   { en: 'Science value of the observations', zh: '观测本身的科学收益', enD: 'each finished exposure earns points by target value, weighted by the actual sky conditions and image quality at that moment', zhD: '每次完成的曝光按目标价值得分，并按当时真实的天气、成像质量折算' },
@@ -82,7 +81,7 @@ const protocol = [
       </div>
 
       <h2 class="bench-h2">{{ pick('How to cite', '引用方式') }}</h2>
-      <p class="bench-p">{{ pick('A paper describing the benchmark is in preparation. Until it is out, please cite it as: “AOH: Agentic Observer Hackathon, a step towards a benchmark for autonomous astronomical survey operations (2026)”. The current draft is', '介绍这个基准的论文正在撰写中。论文发表前，请这样引用："AOH: Agentic Observer Hackathon, a step towards a benchmark for autonomous astronomical survey operations (2026)"。当前草稿见') }} <a :href="paperHref" target="_blank" rel="noopener">{{ pick('here', '这里') }} ↗</a>.</p>
+      <p class="bench-p">{{ pick('A paper describing the benchmark is in preparation. Until it is out, please cite it as: “AOH: Agentic Observer Hackathon, a step towards a benchmark for autonomous astronomical survey operations (2026)”.', '介绍这个基准的论文正在撰写中。论文发表前，请这样引用："AOH: Agentic Observer Hackathon, a step towards a benchmark for autonomous astronomical survey operations (2026)"。') }}</p>
     </div></section>
   </main>
 </template>
