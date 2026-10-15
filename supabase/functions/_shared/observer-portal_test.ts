@@ -331,6 +331,31 @@ Deno.test("the final version is set or cleared through the caller's team RPC", a
   }
 });
 
+Deno.test("the captain freezes the final version through the caller's team RPC", async () => {
+  const phase = "30000000-0000-4000-8000-000000000001", revision = "30000000-0000-4000-8000-000000000002";
+  const c = clients({ revision_id: revision, source: "chosen", frozen_at: "2026-10-07T13:00:00Z" });
+  assertEquals((await portal({ action: "freeze_final_version", phase_id: phase, revision_id: revision }, c) as {
+    final_version: { frozen_at: string };
+  }).final_version.frozen_at, "2026-10-07T13:00:00Z");
+  assertEquals(c.calls, [
+    { client: "user", name: "observer_freeze_final_version", args: { p_phase: phase, p_revision: revision } },
+  ]);
+  const missing = clients();
+  await assertRejects(() => portal({ action: "freeze_final_version", phase_id: phase }, missing), ProxyError);
+  assertEquals(missing.calls.length, 0);
+  for (const code of ["final_version_frozen", "final_version_not_chosen", "final_version_changed", "captain_required"]) {
+    const refused = {
+      user: { rpc: () => Promise.resolve({ data: null, error: { message: code } }) } as unknown as SupabaseClient,
+      service: clients().service,
+    };
+    const error = await assertRejects(
+      () => portal({ action: "freeze_final_version", phase_id: phase, revision_id: revision }, { ...refused, calls: [] }),
+      ProxyError,
+    );
+    assertEquals(error.code, code);
+  }
+});
+
 Deno.test("a result the participant cannot read (another team, or a sealed hidden run) is never signed", async () => {
   const run = "30000000-0000-4000-8000-000000000003";
   const signed: string[] = [];

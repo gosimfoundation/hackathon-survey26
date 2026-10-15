@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage.vue'
 import { initAuth, refreshMe, useAuth } from './stores/auth'
 import { applyDocumentMeta } from './composables/useI18n'
 import { loadCompetition } from './stores/competition'
+import { siteView, setSiteView, viewFromQuery } from './composables/useView'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,7 +19,19 @@ const router = createRouter({
     { path: '/faq', component: () => import('./pages/FaqPage.vue') , meta: { page: 'faq' }},
     { path: '/about', component: () => import('./pages/AboutPage.vue') , meta: { page: 'about' }},
     { path: '/resources', component: () => import('./pages/ResourcesPage.vue') , meta: { page: 'resources' }},
+    // Benchmark view (2026-10-12 trial, composables/useView.ts): AOH as a benchmark; the competition pages stay as they are.
+    { path: '/benchmark', component: () => import('./pages/benchmark/BenchmarkHomePage.vue') , meta: { page: 'benchmark' }},
+    { path: '/benchmark/tasks', component: () => import('./pages/benchmark/BenchmarkTasksPage.vue') , meta: { page: 'benchmark-tasks' }},
+    { path: '/benchmark/submit', component: () => import('./pages/benchmark/BenchmarkSubmitPage.vue') , meta: { page: 'benchmark-submit' }},
+    { path: '/benchmark/leaderboard', component: () => import('./pages/benchmark/BenchmarkLeaderboardPage.vue') , meta: { page: 'benchmark-leaderboard' }},
+    { path: '/benchmark/survey26', component: () => import('./pages/benchmark/BenchmarkSurvey26Page.vue') , meta: { page: 'benchmark-survey26' }},
+    // Open track for the four new tasks (2026-10-13, migration 20261013000000_open_track): individuals, any subset, one run.
+    { path: '/open', component: () => import('./pages/OpenTrackPage.vue') , meta: { page: 'open' }},
     { path: '/leaderboard/:phase?', component: () => import('./pages/LeaderboardPage.vue') , meta: { page: 'leaderboard' }},
+    // Local-only page for paper figures: the 3D replay sky alone, frozen at ?p=<loop progress>.
+    { path: '/fig/sky', component: () => import('./pages/FigSkyPage.vue') , meta: { page: 'home' }},
+    // Local style preview of the hidden-final results page (snapshot data; not linked in nav yet).
+    { path: '/final-results', component: () => import('./pages/FinalResultsPage.vue') , meta: { page: 'final-results' }},
     { path: '/announcements', component: () => import('./pages/AnnouncementsPage.vue') , meta: { page: 'announcements' }},
     { path: '/teammates', component: () => import('./pages/TeammatesPage.vue') , meta: { page: 'teammates' }},
     { path: '/register', component: () => import('./pages/RegisterPage.vue') , meta: { page: 'register' }},
@@ -61,6 +74,15 @@ const router = createRouter({
 // redirect to /rules/. Keep one canonical path for the exact-path checks across the app.
 router.beforeEach((to: RouteLocationNormalized) => {
   if (to.path.length > 1 && to.path.endsWith('/')) return { path: to.path.replace(/\/+$/, '') || '/', query: to.query, hash: to.hash, replace: true }
+  return true
+})
+
+// Site view: ?view=benchmark|competition switches and is remembered; in the benchmark view the home page is /benchmark.
+router.beforeEach((to: RouteLocationNormalized) => {
+  const asked = viewFromQuery(to.query.view)
+  if (asked && asked !== siteView.value) setSiteView(asked)
+  else if (!asked && to.path.startsWith('/benchmark') && siteView.value !== 'benchmark') setSiteView('benchmark')
+  if (siteView.value === 'benchmark' && to.path === '/') return { path: '/benchmark', query: to.query, hash: to.hash, replace: true }
   return true
 })
 

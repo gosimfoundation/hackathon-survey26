@@ -2,7 +2,7 @@
   "name": "typescript-pro-agent",
   "version": "1.0.0",
   "private": true,
-  "description": "GOSIM survey26 - strong TypeScript reference agent (port of examples/python-pro), participant-agent-protocol-v4",
+  "description": "GOSIM survey26 - readable rule-based TypeScript example agent (port of examples/python-pro), participant-agent-protocol-v4",
   "type": "commonjs",
   "engines": {
     "node": ">=22.0.0"

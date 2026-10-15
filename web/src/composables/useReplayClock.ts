@@ -1,3 +1,4 @@
+import { hasCompactReplay, loadCompactReplay } from '../lib/finalReplay'
 import { onMounted, onUnmounted, reactive, readonly } from 'vue'
 import type { OutcomeClass } from '../lib/report'
 import { prefersReducedMotion, type SkySite, type SkyTarget } from '../lib/skymap'
@@ -501,10 +502,51 @@ function release() {
 // past requestIdleCallback so it runs after the browser is done with the cold-load critical path —
 // first paint, layout, hydration — rather than racing it on every single page load.
 buildSegments()
+
+// Finalists' per-run replays live at content/final/replays/<run_id>.json. They are globbed lazily so a
+// run is only fetched when a page asks for it, and a run whose file has not been generated yet simply
+// is not in the map — the caller then shows its own "replay pending" state.
+const finalReplayLoaders = import.meta.glob('../content/final/replays/*.json')
+// 10-10 owner: every ranked team's replays, served compactly outside the bundle (lib/finalReplay.ts).
+/** run_id of the finalist replay currently loaded, or null while the demo is in force. */
+let activeRunId: string | null = null
+
+/** True when a replay file already exists for this run (same lookup loadRunReplay uses). */
+export function hasRunReplay(runId: string): boolean {
+  return `../content/final/replays/${runId}.json` in finalReplayLoaders || hasCompactReplay(runId)
+}
+
 function loadDemoReplay() {
   void import('../content/demo/replay.json').then(({ default: demoReplay }) => {
-    setReplayData(demoReplay as unknown as RawReplay, 'demo')
+    // A finalist run loaded in the meantime (e.g. the results page opened cold) must not be clobbered.
+    if (activeRunId == null) setReplayData(demoReplay as unknown as RawReplay, 'demo')
   })
+}
+
+/**
+ * Swap the shared clock to a finalist's run. Returns false — leaving whatever was loaded in place —
+ * when the replay file does not exist yet or fails to parse.
+ */
+export async function loadRunReplay(runId: string): Promise<boolean> {
+  const loader = finalReplayLoaders[`../content/final/replays/${runId}.json`]
+  try {
+    const raw = loader ? ((await loader()) as { default: RawReplay }).default : await loadCompactReplay(runId)
+    if (!raw) return false
+    activeRunId = runId
+    setReplayData(raw, 'champion', runId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Put the bundled demo replay back once a finalist replay is done with (modal closed, page left). */
+export async function resetToDemoReplay(): Promise<void> {
+  if (activeRunId == null) return
+  activeRunId = null
+  const { default: demoReplay } = await import('../content/demo/replay.json')
+  // The user may have picked another run while the demo chunk was in flight.
+  if (activeRunId == null) setReplayData(demoReplay as unknown as RawReplay, 'demo')
 }
 if (typeof window !== 'undefined') {
   const w = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }

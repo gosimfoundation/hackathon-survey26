@@ -9,27 +9,34 @@ import { inspectSourceNames, zipEntryNames, ZipWithoutCodeError } from '../../li
 import { triggerDownload } from '../../lib/storage'
 import { usePersonalModel } from '../../composables/usePersonalModel'
 import TeamEnvironment from './TeamEnvironment.vue'
+import FinalFreeze from './FinalFreeze.vue'
 import KimiPlanPanel from '../dashboard/KimiPlanPanel.vue'
 import ApiTokensPanel from '../dashboard/ApiTokensPanel.vue'
 import RunLogs from './RunLogs.vue'
+import FailureHintLine from './FailureHintLine.vue'
+import { failureHint } from '../../lib/failureHint'
 import { configuredServices } from '../../lib/modelServices'
 import { DEFAULT_MODEL_KEY_MODE, relayMissesHiddenFinal, teamModelMode, type ModelKeyMode,
   DEFAULT_MODEL_PROTOCOL, teamModelProtocol, type ModelProtocol } from '../../lib/modelKeyMode'
 import { competition, entryPhase } from '../../stores/competition'
-import { entryPhaseIds, offersExtraSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
+import { entryPhaseIds, offersExtraSwitch, offersFunSwitch, offersPracticeSwitch } from '../../lib/entryPhase'
 import { tabFromQuery } from '../../lib/deepLink'
 import { activeEvaluations, canCancel, canStop, stopConfirmKey, cancelConfirmKey, CANCEL_ERRORS, canChooseFinal, evaluateBlock, latestFailure, type EvaluateBlock, canClearFinal, canSelfCheck, canWithdraw, countedEvaluations, evaluationMetadata, evaluationZipName, finalRole, finalVersionFor, isNoModel, preparationQuota, recentDuplicate, repeatSummaries, SELF_CHECK_RUNS, visibleProjects, withdrawnCount } from '../../lib/projectEvaluation'
 import { canPrepareAgain, cardFolderName, flattenResultEntries, formatDailyReset, formatDateTime, manifestForDisplay, orderedCardFolder, revisionErrorText } from '../../lib/projectText'
 import { bytes } from '../../lib/format'
+import { EVENT_TIME_ZONE } from '../../lib/phaseSchedule'
 import { cancelEvaluation, stopEvaluation } from '../../lib/cancelEvaluation'
 import { REFRESH_TICK_MS, refreshDue } from '../../lib/dashboardRefresh'
 import { scenarioLabel, scenarioOrder } from '../../lib/scenarioLabels'
 import { elapsedText, runningMinutes, waitingForStage1, waitingHint, waitingText } from '../../lib/runProgress'
+import FinalProgress from './FinalProgress.vue'
+import { FINAL_PUBLISHED, useFinalProgress } from '../../composables/useFinalProgress'
 /** 'v2' shows the simplified layout (see below); anything else the classic one. */
 const props = defineProps<{ layout?: 'classic' | 'v2' }>()
 /** The phase evaluations here go to (null when none is open), so the page header can name it. */
 const emit = defineEmits<{ phase: [phase: { name_en: string; name_zh: string } | null] }>()
 const { pick, t, tf, locale } = useI18n()
+const { progress: finalProgress } = useFinalProgress()
 // The "keys are read from Secrets & network" note can be dismissed for good on this browser.
 const RELAY_DISMISS_KEY = 'sac.relay-banner-dismissed'
 const relayDismissed = ref((() => { try { return localStorage.getItem(RELAY_DISMISS_KEY) === '1' } catch { return false } })())
@@ -74,7 +81,7 @@ const modelForm = ref({ base_url: '', model: '', key: '' })
 const teamEgress = computed(() => data.value?.team_environment?.enabled === true)
 const relayRunning = computed(() => modelMode.value === 'relay' && (data.value?.batches ?? []).some(b => ['queued', 'running'].includes(b.status)))
 watch(modelMode, mode => { if (mode === 'stored') personal.clear() })
-const when = (value: string | null | undefined) => formatDateTime(value, locale.value)
+const when = (value: string | null | undefined, timeZone?: string) => formatDateTime(value, locale.value, timeZone)
 const sentences = (...parts: string[]) => parts.join(['zh', 'ja'].includes(locale.value) ? '' : ' ')
 let timer: ReturnType<typeof setInterval> | undefined
 // When the last portal load started (the periodic refresh waits 30 s or 60 s from it, see dashboardRefresh).
@@ -113,7 +120,7 @@ const words = computed(() => pick({
   downloadAll: 'Download all results (ZIP)', downloadAllProgress: 'Downloading {done}/{total}…',
   downloadAllDone: 'All results downloaded.', downloadAllPartial: 'Downloaded — some cards failed; see errors.txt in the ZIP.',
   downloadAllFailed: 'Could not download any card’s result. Try again, or download them individually below.',
-  api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Team keys stay on the server. Set the model parameter to the call name below; OPENAI_BASE_URL and OPENAI_API_KEY are provided for each run. Each run and provider has separate limits.', callName: 'Model call name',
+  api: 'Model APIs', apiHelp: 'The platform does not require model calls; awards require LLM-driven agent techniques in at least two stages. Save your variables (for example OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) in Keys and network; your program calls the provider directly, and the model must be a name the provider supports. OBSERVER_API_URL is the platform session interface, not a model endpoint.', callName: 'Model call name',
   shared: 'Organizer API', own: 'Team API', modelNames: 'Model names, separated by commas', endpoint: 'API endpoint', key: 'API key',
   apiName: 'API name', edit: 'Edit', limit: 'Daily token limit', saveKey: 'Save encrypted key', disable: 'Disable', enabled: 'Enabled', disabled: 'Disabled',
   evidence: 'Design award evidence', evidenceHelp: 'Describe the architecture and reproducible steps. This does not change performance scores.',
@@ -131,8 +138,10 @@ const words = computed(() => pick({
   noModelHelp: 'For comparing your agent with and without an LLM: the program gets none of the variables tagged “model” under Keys and network (API keys, base URLs, model names) and OBSERVER_MODEL_DISABLED=1. Everything else, network access included, is unchanged. Applies to the next “Evaluate” or “Evaluate 3 times and average” only; it counts as an ordinary evaluation. The hidden final always uses your normal configuration.',
   noModelOn: 'The next evaluation runs without a model.',
   stages: 'Each evaluation first runs A–D together, then A1–D1 automatically, and counts as 1 evaluation. A–D results come in about 25 minutes, all 8 cards in about 1 to 1.5 hours (depending on the queue and your program\'s run time). If your program calls a model, wait and retry on HTTP 429 (rate limit) instead of failing.',
-  finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: 'You can change the choice until',
-  finalLocked: 'The choice is locked. This version will be evaluated on the hidden cards E–H.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
+  finalDefault: 'If you do not choose, the version of your team’s best evaluation is used.', finalDeadline: ' You can change the choice until ', finalDeadlineZone: ' (UTC+8).',
+  finalLocked: 'The choice is locked. This version is being evaluated on the hidden cards E–H; results are published after verification.',
+  finalPublished: 'The choice is locked. The final results are published: see the Final tab of the leaderboard.',
+  finalReview: 'The choice is locked. The final evaluation is complete: every evaluation that had a model-call error was run again, so your team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', finalChosen: 'Chosen by your team', finalBest: 'Default: best evaluation',
   finalNone: 'No final version yet. Confirm a version and evaluate it, or choose one below.', finalSet: 'Set as final version', finalClear: 'Clear choice',
   finalClearConfirm: 'Clear your choice? The version of your best evaluation will be used instead.', finalSaved: 'Final version saved.', finalCleared: 'Choice cleared; the default applies.',
   finalBadge: 'Final version', finalScore: 'score',
@@ -180,7 +189,7 @@ const words = computed(() => pick({
   downloadAll: '下载全部结果（ZIP）', downloadAllProgress: '正在下载 {done}/{total}…',
   downloadAllDone: '全部结果已下载。', downloadAllPartial: '已下载——部分卡片失败，详见 ZIP 中的 errors.txt。',
   downloadAllFailed: '所有卡片的结果都下载失败，请重试，或在下方单独下载。',
-  api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。队伍密钥保存在服务器。model 参数使用下方调用名；每次运行会提供 OPENAI_BASE_URL 和 OPENAI_API_KEY。运行与接口均有独立额度。', callName: '模型调用名',
+  api: '模型 API', apiHelp: '平台不强制调用模型，但评奖要求至少两个环节采用大模型驱动的智能体技术。在「密钥与网络」中保存变量（例如 OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL），程序直接调用服务商，model 必须是服务商支持的模型名。OBSERVER_API_URL 是平台的会话接口，不是大模型接口。', callName: '模型调用名',
   shared: '主办方接口', own: '队伍接口', modelNames: '模型名称，用逗号分隔', endpoint: 'API 地址', key: 'API 密钥',
   apiName: '接口名称', edit: '修改', limit: '每天最多使用的 token 数', saveKey: '加密保存密钥', disable: '停用', enabled: '已启用', disabled: '已停用',
   evidence: '设计奖材料', evidenceHelp: '说明项目架构和复现步骤；这里不影响实际成绩。', codeUrl: '代码或文档链接（选填）',
@@ -197,8 +206,10 @@ const words = computed(() => pick({
   noModelHelp: '用于对比有无大模型时的表现：程序拿不到「密钥与网络」中标记为「模型相关」的变量（API 密钥、接口地址、模型名等），并会收到 OBSERVER_MODEL_DISABLED=1；其他设置（包括网络访问）不变。只对接下来的一次「评测」或「评测 3 次取平均」生效，照常占用评测次数、计入正式赛排行榜。隐藏卡决赛始终使用本队的正常配置。',
   noModelOn: '接下来的评测将不提供模型。',
   stages: '每次评测先同时运行 A–D，结束后自动运行 A1–D1，计为 1 次评测。A–D 成绩约 25 分钟出来，全部 8 张卡约 1 到 1.5 小时完成（视排队和程序运行时间而定）。调用模型的程序请在遇到 429（限流）时等待后重试，不要直接报错。',
-  finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至',
-  finalLocked: '选择已锁定，将用这个版本参加隐藏任务卡 E–H 的评测。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
+  finalDefault: '如果不选择，默认使用本队最高分那次评测的版本。', finalDeadline: '可修改至 ', finalDeadlineZone: '（UTC+8）',
+  finalLocked: '选择已锁定，这个版本正在参加隐藏任务卡 E–H 的评测，成绩经核验后公布。',
+  finalPublished: '选择已锁定。决赛成绩已公布，见排行榜「决赛」。',
+  finalReview: '选择已锁定。决赛评测已全部完成：凡是出现模型调用错误的评测都已重新运行，你们队的成绩来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。', finalChosen: '本队已选择', finalBest: '默认：最高分评测',
   finalNone: '还没有最终版本。请先确认并评测一个版本，或在下方选择。', finalSet: '设为最终版本', finalClear: '取消选择',
   finalClearConfirm: '取消选择？将改用本队最高分评测的版本。', finalSaved: '已保存最终版本。', finalCleared: '已取消选择，恢复默认。',
   finalBadge: '最终版本', finalScore: '分数',
@@ -223,7 +234,7 @@ const selectedPhase = computed(() => openPhases.value.find(p => p.phase_id === p
 // below follow it; otherwise every evaluation is listed as before. A chosen phase that has ended (online after
 // its deadline) is read-only: no phase is selected, so nothing can start, while its records, logs, downloads
 // and the locked final version stay visible.
-const phaseSwitch = computed(() => offersPracticeSwitch(competition) || offersExtraSwitch(competition))
+const phaseSwitch = computed(() => offersPracticeSwitch(competition) || offersExtraSwitch(competition) || offersFunSwitch(competition))
 function followEntry() {
   const wanted = entryPhase.value
   if (!phaseSwitch.value || !wanted) return
@@ -235,6 +246,11 @@ watch(selectedPhase, p => emit('phase', p ? { name_en: p.phases.name_en, name_zh
 const quota = computed(() => data.value?.quota?.find(q => q.phase_id === phaseId.value) ?? null)
 // Team-wide daily uploads (project preparations); the database derives the limit from the evaluation quota.
 const prep = computed(() => preparationQuota(data.value?.quota))
+// Post-deadline submission window: at most `limit` new versions per team (shown only while the window is open).
+const ext = computed(() => data.value?.extension?.active ? data.value.extension : null)
+const extNote = computed(() => ext.value ? pick(
+  `After the deadline each team may still submit up to ${ext.value.limit} new versions (${ext.value.used}/${ext.value.limit} used).`,
+  `截止后每队仍可提交最多 ${ext.value.limit} 个版本（已用 ${ext.value.used}/${ext.value.limit}）。`) : '')
 // Shown even before the quota RPC answers: the phase setting is the same number the database enforces.
 const dailyLimit = computed(() => quota.value?.daily_batches ?? selectedPhase.value?.daily_batches ?? null)
 // Up to max_active_evaluations of the team's evaluations may run at once (a self-check set counts once).
@@ -279,6 +295,7 @@ function errorMessage(e: unknown) {
     batch_already_active: pick(`Your team can run up to ${activeLimit.value} evaluations at a time.`, `本队最多可同时进行 ${activeLimit.value} 个评测。`),
     repeat_already_active: pick('An “Evaluate 3 times and average” set is already running. Start another when it finishes.', '已有一组「评测 3 次取平均」正在进行，请等它结束后再开始。'),
     preparation_limit: pick('Your team already has three projects being prepared.', '本队已有三个项目正在准备，请等待完成。'),
+    extension_version_limit: pick(`After the deadline each team may submit at most ${ext.value?.limit ?? 15} new versions (${ext.value?.used ?? 15}/${ext.value?.limit ?? 15} used). You can still evaluate and choose any confirmed version.`, `截止后每队最多再提交 ${ext.value?.limit ?? 15} 个版本（已用 ${ext.value?.used ?? 15}/${ext.value?.limit ?? 15}）。已有的已确认版本仍可评测，也可选为送测版本。`),
     preparation_daily_limit: prep.value
       ? pick(`Your team has used today’s ${prep.value.daily} project uploads. ${formatDailyReset(prep.value.resets_at, 'en')}.`, `本队今天的 ${prep.value.daily} 次上传机会已用完，${formatDailyReset(prep.value.resets_at, 'zh')}。`)
       : pick('Your team has used today’s project uploads. The count resets at 00:00 UTC (08:00 Beijing time).', '本队今天的上传机会已用完，每天北京时间 8 点（UTC 0 点）重置。'),
@@ -312,6 +329,10 @@ function errorMessage(e: unknown) {
     team_domain_not_public: t('submit.team_env.domain_not_public'),
     invalid_egress_route: pick('Choose direct, China route or overseas route.', '请选择直连、回国代理或海外代理。'),
     egress_route_unavailable: pick('Egress routes are not offered right now; evaluations connect directly.', '出网线路暂未开放，评测直接连接。'),
+    final_version_frozen: pick('Your team has frozen its final version; it can no longer be changed. Contact the organizers if this is a mistake.', '本队已选定冻结送测版本，不能再更改。如有误操作请联系主办方。'),
+    final_version_not_chosen: pick('Choose a version with “Set as final version” before freezing.', '请先「设为最终版本」明确选择一个版本，再选定冻结。'),
+    final_version_changed: pick('The final version was just changed by a teammate. Review it and try again.', '送测版本刚被队友修改，请确认后再试。'),
+    captain_required: pick('Only the team captain can freeze the final version.', '只有队长可以选定冻结送测版本。'),
     final_version_locked: pick('The online phase has ended; the final version can no longer change.', '正式赛已结束，最终版本不能再修改。'),
     revision_not_approved: pick('Only a confirmed version can be chosen.', '只能选择已确认的版本。'),
     upload_limit: pick('Too many uploads are still pending for your team. Wait a few minutes for them to clear, then try again.', '本队有太多上传正在等待处理，请等几分钟后再试一次。'),
@@ -491,11 +512,32 @@ function setFinal(revision_id: string | null) {
   void action(async () => { await portal('set_final_version', { phase_id: final.phase_id, revision_id }) },
     revision_id ? words.value.finalSaved : words.value.finalCleared, 'final:' + (revision_id ?? 'clear'))
 }
+// 选定冻结: the chosen version's creation time and best formal score shown in the confirmation dialog.
+const freezeInfo = computed(() => {
+  const id = finalVersion.value?.chosen_revision_id
+  const rev = id ? (data.value?.projects ?? []).flatMap(p => p.observer_revisions).find(r => r.id === id) : null
+  const scores = (data.value?.batches ?? []).filter(b => b.revision_id === id && b.phase_id === finalVersion.value?.phase_id
+    && b.status === 'scored' && b.score != null).map(b => b.score as number)
+  return { label: id ? `${titles.value.get(id) ?? ''} · ${id.slice(0, 8)}` : '', createdAt: rev?.created_at ?? null,
+    bestScore: scores.length ? Math.max(...scores) : (finalVersion.value?.best_revision_id === id ? finalVersion.value?.best_score ?? null : null) }
+})
+function freezeFinal(revision_id: string) {
+  const final = finalVersion.value
+  if (!final) return
+  void action(async () => { await portal('freeze_final_version', { phase_id: final.phase_id, revision_id }) },
+    pick('Final version frozen.', '送测版本已冻结。'), 'freeze:' + revision_id)
+}
 function withdraw(revision_id: string) {
   if (!window.confirm(words.value.withdrawConfirm)) return
   void action(async () => { await portal('withdraw', { revision_id }); if (review.value?.id === revision_id) review.value = null },
     words.value.withdrawn, 'withdraw:' + revision_id)
 }
+// Failed versions get a friendly next step under their error; withdrawn ones need none.
+function revisionHint(r: { status: string; error?: string | null; archived_at?: string | null }) {
+  return r.status === 'failed' && r.error && !r.archived_at && !/^Withdrawn/.test(r.error) ? failureHint({ texts: [r.error] }) : null
+}
+const runFailed = (run: { status: string; score_summary?: { termination_reason?: string } | null }) =>
+  run.status === 'failed' || run.score_summary?.termination_reason === 'agent_error'
 function toggleLogs(key: string) { openLogs.value = openLogs.value === key ? '' : key }
 function chooseMode() {
   const mode = modeChoice.value, hadKey = !!savedModel.value
@@ -831,8 +873,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             </p>
             <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
             <p class="help mb-4">{{ words.privacy }}</p>
-            <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+            <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0) || (ext != null && ext.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
             <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
+            <p v-if="ext" class="help mt-2" data-testid="extension-versions">{{ extNote }}</p>
           </form>
           <p v-if="!projectsOpen" class="help mt-3">{{ words.closed }}</p>
 
@@ -874,7 +917,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 </span>
               </div>
               <p v-if="v.r.error && !v.r.archived_at" class="errors cw-sub" role="status" data-testid="revision-error">{{ revisionErrorText(v.r.error, locale) }}<template v-if="v.r.status === 'failed' && v.r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></p>
-              <div v-if="openLogs === 'rev:'+v.r.id" class="cw-sub"><RunLogs :target="{ revision_id: v.r.id, test_run_id: v.r.public_test?.run_id }" :label="v.title + ' · ' + when(v.r.created_at)" :file-stem="'public-test-' + v.title" :statuses="statuses" @close="openLogs = ''" /></div>
+              <FailureHintLine v-if="revisionHint(v.r)" :hint="revisionHint(v.r)!" class="cw-sub" />
+              <div v-if="openLogs === 'rev:'+v.r.id" class="cw-sub"><RunLogs :target="{ revision_id: v.r.id, test_run_id: v.r.public_test?.run_id }" :failed="v.r.status === 'failed'" :reason="v.r.error" :label="v.title + ' · ' + when(v.r.created_at)" :file-stem="'public-test-' + v.title" :statuses="statuses" @close="openLogs = ''" /></div>
               <section v-if="review?.id === v.r.id" tabindex="-1" class="cw-sub cw-review" data-testid="project-review" aria-live="polite">
                 <div class="cw-row-head"><h3>{{ words.review }}</h3><p v-if="review.public_test.passed" class="pill ok">{{ words.testPassed }}</p>
                   <button type="button" class="cw-link cw-grow-left" @click="review = null">{{ words.close }}</button></div>
@@ -925,7 +969,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 </div>
               </div>
               <template v-for="run in b.observer_runs" :key="'log'+run.id">
-                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
               </template>
             </article>
           </template>
@@ -975,7 +1019,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
                 <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
                 <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
                 <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
-                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+                <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
               </div>
             </div>
           </article>
@@ -994,8 +1038,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <section v-if="finalVersion" class="panel mt-4" data-testid="final-version">
           <h2 id="final">{{ words.final }}</h2>
           <p class="help">{{ words.finalIntro }}</p>
-          <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
-          <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+          <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
+          <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ FINAL_PUBLISHED ? words.finalPublished : finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
+          <FinalProgress v-if="finalVersion.locked" mine />
           <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
           <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
             <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
@@ -1004,6 +1049,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
             <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
           </p>
+          <FinalFreeze :final="finalVersion" :label="freezeInfo.label" :created-at="freezeInfo.createdAt" :best-score="freezeInfo.bestScore" :busy="busy" @freeze="freezeFinal" />
           <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
             <span>{{ v.title }}</span>
             <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
@@ -1126,8 +1172,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </p>
         <p v-if="retryStatus" class="help mt-2" role="status" data-testid="project-retry-status">{{ retryStatus }}</p>
         <p class="help mb-4">{{ words.privacy }}</p>
-        <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
+        <button class="btn primary" :disabled="busy || locked.has('submit') || (prep != null && prep.remaining <= 0) || (ext != null && ext.remaining <= 0)" data-testid="project-submit">{{ busy ? words.working : words.submit }}</button>
         <p v-if="prep != null && prep.remaining <= 0" class="help mt-2" data-testid="project-submit-blocked">{{ words.submitBlocked }}</p>
+        <p v-if="ext" class="help mt-2" data-testid="extension-versions">{{ extNote }}</p>
       </form>
       <section class="panel mb-6" data-testid="project-versions">
         <h2 id="review">{{ words.step2 }}</h2><p class="help">{{ words.step2Note }}</p>
@@ -1140,11 +1187,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span class="meta">{{ when(r.created_at) }}</span>
             <span v-if="r.source_ref || r.source_subdir" class="meta break-all" data-testid="revision-source">{{ [r.source_ref, r.source_subdir].filter(Boolean).join(' · ') }}</span>
             <span v-if="r.error && !r.archived_at" class="errors" role="status" data-testid="revision-error">{{ revisionErrorText(r.error, locale) }}<template v-if="r.status === 'failed' && r.source_kind === 'zip'"> {{ words.reuploadZip }}</template></span>
+            <FailureHintLine v-if="revisionHint(r)" :hint="revisionHint(r)!" />
             <button v-if="canPrepareAgain(r) && projectsOpen" type="button" class="btn sm" :disabled="busy || locked.has('again:'+r.id)" data-testid="project-prepare-again" @click="prepareAgain(p.title, r)">{{ words.prepareAgain }}</button>
             <button v-if="!r.archived_at && (['reviewable','approved'].includes(r.status) || (r.status === 'failed' && r.manifest))" type="button" class="btn sm" :class="{ primary: r.status === 'reviewable' }" @click="openReview(r)">{{ words.review }}</button>
             <button v-if="canWithdraw(r, data?.batches) && !(data?.final_versions ?? []).some(f => f.chosen_revision_id === r.id)" type="button" class="btn sm" :disabled="busy || locked.has('withdraw:'+r.id)" data-testid="project-withdraw" :aria-busy="pending === 'withdraw:'+r.id" @click="withdraw(r.id)">{{ pending === 'withdraw:'+r.id ? words.working : words.withdraw }}</button>
             <button type="button" class="btn sm" :aria-expanded="openLogs === 'rev:'+r.id" data-testid="revision-logs" @click="toggleLogs('rev:'+r.id)">{{ words.logs }}</button>
-            <RunLogs v-if="openLogs === 'rev:'+r.id" :target="{ revision_id: r.id, test_run_id: r.public_test?.run_id }" :label="p.title + ' · ' + when(r.created_at)" :file-stem="'public-test-' + p.title" :statuses="statuses" @close="openLogs = ''" />
+            <RunLogs v-if="openLogs === 'rev:'+r.id" :target="{ revision_id: r.id, test_run_id: r.public_test?.run_id }" :failed="r.status === 'failed'" :reason="r.error" :label="p.title + ' · ' + when(r.created_at)" :file-stem="'public-test-' + p.title" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         <button v-if="hiddenCount" type="button" class="log-link mt-4" @click="showWithdrawn = !showWithdrawn">{{ showWithdrawn ? words.hideWithdrawn : words.showWithdrawn + ' (' + hiddenCount + ')' }}</button>
@@ -1204,9 +1252,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <section v-if="finalVersion" class="panel mb-6" data-testid="final-version">
         <h2 id="final">{{ words.final }}</h2>
         <p class="help">{{ words.finalIntro }}</p>
-        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked"> {{ words.finalDeadline }} {{ when(finalVersion.deadline) }}.</template></p>
+        <p class="help">{{ words.finalDefault }}<template v-if="finalVersion.deadline && !finalVersion.locked">{{ words.finalDeadline }}{{ when(finalVersion.deadline, EVENT_TIME_ZONE) }}{{ words.finalDeadlineZone }}</template></p>
         <p v-if="relayFinalRisk" class="errors mt-3" role="note" data-testid="final-version-relay-warning">{{ words.finalRelay }} <a href="#model-api">{{ t('submit.model_api.title') }}</a></p>
-        <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ words.finalLocked }}</p>
+        <p v-if="finalVersion.locked" class="mt-3" role="status" data-testid="final-version-locked">{{ FINAL_PUBLISHED ? words.finalPublished : finalProgress?.stage === 'review' ? words.finalReview : words.finalLocked }}</p>
+        <FinalProgress v-if="finalVersion.locked" mine />
         <p v-if="!finalVersion.revision_id" class="text3 mt-3">{{ words.finalNone }}</p>
         <p v-else class="mt-3 flex flex-wrap items-center gap-3" data-testid="final-version-current">
           <strong>{{ titles.get(finalVersion.revision_id) ?? finalVersion.revision_id }}</strong>
@@ -1215,6 +1264,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <span v-else-if="finalVersion.best_score != null" class="meta">{{ words.finalScore }} {{ finalVersion.best_score.toFixed(2) }}</span>
           <button v-if="canClearFinal(finalVersion)" type="button" class="btn sm" :disabled="busy || locked.has('final:clear')" data-testid="final-version-clear" @click="setFinal(null)">{{ words.finalClear }}</button>
         </p>
+        <FinalFreeze :final="finalVersion" :label="freezeInfo.label" :created-at="freezeInfo.createdAt" :best-score="freezeInfo.bestScore" :busy="busy" @freeze="freezeFinal" />
         <div v-for="v in finalCandidates" :key="v.revision.id" class="flex flex-wrap items-center gap-3 mt-3" :data-final-revision-id="v.revision.id">
           <span>{{ v.title }}</span>
           <span v-if="v.revision.approved_at" class="meta">{{ words.confirmedAt }} {{ when(v.revision.approved_at) }}</span>
@@ -1257,7 +1307,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <span v-if="run.score_summary?.raw_score" class="meta">{{ t('leaderboard.raw_score') }}: {{ run.score_summary.raw_score.total.toFixed(2) }}</span>
             <button v-if="run.result_path" class="btn sm" :disabled="busy" @click="download(run.id)">{{ words.download }}</button>
             <button type="button" class="btn sm" :aria-expanded="openLogs === 'run:'+run.id" data-testid="run-logs-button" @click="toggleLogs('run:'+run.id)">{{ words.logs }}</button>
-            <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
+            <RunLogs v-if="openLogs === 'run:'+run.id" :target="{ run_id: run.id }" :failed="runFailed(run)" :label="scenarioNames[run.scenario_id] ? scenarioLabel(scenarioNames[run.scenario_id]!.slug, scenarioNames[run.scenario_id]!.name, locale) : when(b.created_at)" :file-stem="cardFolder(run)" :statuses="statuses" @close="openLogs = ''" />
           </div>
         </article>
         </template>

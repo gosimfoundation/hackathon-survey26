@@ -52,11 +52,13 @@ export type PortalData = {
     staged?: boolean
     observer_runs: { id: string; scenario_id: string; status: string; score: number | null; result_path: string | null
       started_at?: string | null
-      score_summary?: { raw_score?: { total: number }; calibration?: { version: string } } | null }[] }[]
+      score_summary?: { raw_score?: { total: number }; calibration?: { version: string }; termination_reason?: string } | null }[] }[]
   providers: { id: string; name: string; base_url: string; models: string[]; shared: boolean; enabled: boolean; daily_token_limit: number }[]
   team_model: TeamModel | null
   model_bases: string[]
   team_environment?: TeamEnvironment | null
+  /** New versions left in the post-deadline submission window; null outside it. The database enforces the limit. */
+  extension?: { active: boolean; opens_at: string; closes_at: string; limit: number; used: number; remaining: number } | null
   /** Missing until the database provides it; the database enforces the limit either way. */
   quota?: EvaluationQuota[] | null
   /** The team's final version per open formal phase; missing until the database provides it. */

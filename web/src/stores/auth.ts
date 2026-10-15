@@ -5,7 +5,7 @@ import { loadCompetition } from './competition'
 
 export interface MeTeam {
   id: string; name: string; slug: string; leader_id: string; invite_code: string
-  project_idea: string | null; github_repo: string | null; max_size: number; is_locked: boolean; member_count: number
+  project_idea: string | null; github_repo: string | null; opensource_repo: string | null; max_size: number; is_locked: boolean; member_count: number
 }
 export interface Me {
   id: string; email: string; name: string; nickname: string; github: string | null; affiliation: string | null; role: string | null

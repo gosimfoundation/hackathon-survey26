@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '../../composables/useI18n'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { boardScenarios, isProjectBoard, isSuperTab, loadCardBoard, loadSuperBaselineRows, loadLeaderboard, loadParticipantsStats, loadPhases, homeBoardPhase, superCards, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../../lib/data'
-import { LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
+import { FUN_SLUG, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../../lib/leaderboardBoards'
 import { scenarioLabel } from '../../lib/scenarioLabels'
 import { useAuth } from '../../stores/auth'
 import { fmtUtc, num } from '../../lib/format'
@@ -33,12 +33,20 @@ const scenarioTabs = computed(() => boardScenarios(phase.value))
 // Card boards (complete-project phases with board_layout 'cards' / 'cards_overall'): null is the overall tab.
 const cardBoard = ref<CardBoard | null>(null)
 const baselines = ref<BaselineRow[]>([])
-// Like the full board: the super board opens by default where the phase has one; null (总榜) once picked.
-const cardWanted = ref<string | null>(SUPER_TAB)
+// 10-10 owner: the home board gains a 日常赛 (Open Play) tab, shown by default; the competition board keeps all its
+// tabs, the super board included, and (like the full board) opens on the super board where the phase has one.
+const boardSlug = ref<string>(FUN_SLUG)
+const boardPhases = ref<Phase[]>([])
+const cardWanted = ref<string | null>(null)
 const cardMode = computed(() => !!cardBoard.value && cardBoard.value.layout !== 'overall' && cardBoard.value.cards.length > 0)
 const cardTab = computed(() => cardBoard.value?.scenario ?? null)
 const superMode = computed(() => isSuperTab(cardBoard.value, cardTab.value))
 const tableCards = computed(() => cardBoard.value ? (superMode.value ? superCards(cardBoard.value) : cardBoard.value.cards) : [])
+// 10-11: visitors found the many boards confusing; the home section explains each board in one line and lights up
+// the one on screen. Only the final results decide the ranking.
+const GUIDE = ['final', 'fun', 'competition', 'super', 'cards'] as const
+const currentGuide = computed(() => boardSlug.value === FUN_SLUG ? 'fun' : superMode.value ? 'super'
+  : cardMode.value && cardTab.value !== null ? 'cards' : 'competition')
 const cardLabel = computed(() => cardTab.value === null ? t('leaderboard.detail.board_overall')
   : cardTab.value === SUPER_TAB ? tf('leaderboard.detail.board_card', { card: t('leaderboard.super_board') })
   : tf('leaderboard.detail.board_card', { card: scenarioLabel(cardTab.value, (cardBoard.value ? superCards(cardBoard.value) : []).find(c => c.slug === cardTab.value)?.name ?? cardTab.value, locale.value) }))
@@ -59,7 +67,10 @@ async function load() {
     // whichever one teams currently submit to (see usePhases.ts for the same fix on the full page).
     const phases = await loadPhases(true)
     const allowedPhases = phases.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug))
-    phase.value = homeBoardPhase(allowedPhases)
+    const main = homeBoardPhase(allowedPhases)
+    const fun = phases.find(p => p.slug === FUN_SLUG && p.status !== 'upcoming') ?? null
+    boardPhases.value = [fun, main].filter((p): p is Phase => !!p)
+    phase.value = boardSlug.value === FUN_SLUG && fun ? fun : main
     hidden.value = phase.value?.leaderboard_mode === 'hidden'
     if (!scenarioTabs.value.some(s => s.slug === scenarioSlug.value)) scenarioSlug.value = scenarioTabs.value[0]?.slug ?? null
     if (phase.value && !hidden.value && isProjectBoard(phase.value)) {
@@ -84,6 +95,10 @@ async function load() {
 
 function pickScenario(slug: string) { scenarioSlug.value = slug; void load() }
 function pickCard(slug: string | null) { cardWanted.value = slug; void load() }
+function pickBoard(slug: string) {
+  if (slug === boardSlug.value) return
+  boardSlug.value = slug; cardWanted.value = slug === FUN_SLUG ? null : SUPER_TAB; scenarioSlug.value = null; void load()
+}
 
 function pollLoad() { if (document.visibilityState === 'visible') void load() }
 onMounted(() => { load(); timer = window.setInterval(pollLoad, 60_000); document.addEventListener('visibilitychange', pollLoad) })
@@ -98,6 +113,13 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <span class="poster-kicker mt-14">{{ t('home.leaderboard.kicker') }}</span>
           <h2 class="section-title distressed-type mt-9">{{ t('home.leaderboard.title') }}</h2>
           <p class="mt-8 max-w-lg text-base leading-relaxed text-text-secondary md:text-lg">{{ t('home.leaderboard.lede') }}</p>
+          <router-link to="/final-results" class="final-cta mt-6" data-testid="home-final-cta">{{ t('home.leaderboard.final_cta') }} →</router-link>
+          <div class="board-guide mt-8 max-w-lg" data-testid="home-board-guide">
+            <p class="board-guide-title">{{ t('home.leaderboard.guide_title') }}</p>
+            <ul>
+              <li v-for="g in GUIDE" :key="g" :class="{ current: g === currentGuide, final: g === 'final' }">{{ t(`home.leaderboard.guide_${g}`) }}</li>
+            </ul>
+          </div>
 
           <div class="live-strip mt-12" :class="{ 'is-live': entries.length && !error }">
             <span class="live-strip-dot" aria-hidden="true"></span>
@@ -123,7 +145,13 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             </div>
           </div>
 
-          <BoardCardTabs v-if="!hidden && cardMode" class="pt-5" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" hide-old @update:model-value="pickCard" />
+          <div v-if="boardPhases.length > 1" class="board-switch pt-5" role="group" :aria-label="t('home.leaderboard.title')">
+            <button
+              v-for="p in boardPhases" :key="p.slug" type="button" :class="{ active: p.slug === phase?.slug }"
+              :aria-pressed="p.slug === phase?.slug" :data-testid="`home-board-${p.slug}`" @click="pickBoard(p.slug)"
+            >{{ t(LEADERBOARD_TAB_LABEL_KEYS[p.slug] ?? p.slug) }}</button>
+          </div>
+          <BoardCardTabs v-if="!hidden && cardMode" class="pt-3" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" hide-old @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="!hidden && !cardMode" class="pt-5" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <div v-if="loading" class="py-6"><SkeletonRows :rows="6" :cols="5" :label="t('leaderboard.loading')" /></div>
           <div v-else-if="!entries.length" class="grid min-h-80 place-items-center py-16 text-center">
@@ -166,6 +194,33 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
 </template>
 
 <style scoped>
+.final-cta {
+  display: inline-block; border: 1px solid #315efb; background: rgba(49,94,251,.16); color: #fff; padding: .6rem 1rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .8rem; letter-spacing: .06em;
+  transition: background-color .2s ease;
+}
+.final-cta:hover { background: rgba(49,94,251,.3); }
+.final-cta:focus-visible { outline: 2px solid #78a6ff; outline-offset: 2px; }
+.board-guide-title {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .72rem; text-transform: uppercase; letter-spacing: .12em;
+  color: rgba(255,255,255,.55);
+}
+.board-guide ul { margin-top: .75rem; display: grid; gap: .5rem; }
+.board-guide li {
+  border-left: 2px solid rgba(255,255,255,.14); padding: .15rem 0 .15rem .75rem;
+  font-size: .9rem; line-height: 1.55; color: rgba(255,255,255,.6); transition: border-color .2s ease, color .2s ease;
+}
+.board-guide li.final { color: rgba(255,255,255,.85); }
+.board-guide li.current { border-left-color: #315efb; color: #fff; }
+.board-switch { display: flex; flex-wrap: wrap; gap: .5rem; }
+.board-switch button {
+  border: 1px solid rgba(255,255,255,.2); background: rgba(6,6,7,.6); color: #b5b5b5; padding: .45rem .9rem; cursor: pointer;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .78rem; letter-spacing: .06em;
+  transition: border-color .2s ease, color .2s ease, background-color .2s ease;
+}
+.board-switch button:hover { border-color: #78a6ff; color: #fff; }
+.board-switch button.active { border-color: #315efb; background: rgba(49,94,251,.16); color: #fff; }
+.board-switch button:focus-visible { outline: 2px solid #78a6ff; outline-offset: 2px; }
 /* rows brighten and shift a hair under the pointer, so scanning a long board stays anchored */
 .lb-row { cursor: pointer; transition: background-color .2s ease, transform .2s ease; }
 .lb-row:focus-visible { outline: 2px solid #78a6ff; outline-offset: -2px; }

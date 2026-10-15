@@ -10,6 +10,9 @@ import { fmtUtc, num } from '../../lib/format'
 import ReplaySky3D from './ReplaySky3D.vue'
 
 const { t, tf } = useI18n()
+/** Optional header title; the homepage leaves it unset and keeps the i18n default. */
+/** card: the held-out card a finalist replay shows (results page); unset = the homepage's practice-card note. */
+defineProps<{ title?: string; card?: string }>()
 const clock = useReplayClock()
 const root = ref<HTMLDivElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -273,8 +276,8 @@ onUnmounted(() => {
 <template>
   <div ref="root" class="sky-console" :class="{ 'is-3d': use3D }" data-testid="sky-console" :data-replay-source="replayMeta.source">
     <div class="sky-console-head">
-      <span class="sky-live-title flex items-center gap-3"><span class="live-dot" :class="{ 'is-paused': paused || reduced }"></span><span>{{ t('hero.console.title') }}</span></span>
-      <span class="text-white/60">{{ paused ? t('hero.console.paused') : tf('hero.console.replay_note', { nights: replayTotals.nights, actions: replayActions.length }) }}</span>
+      <span class="sky-live-title flex items-center gap-3"><span class="live-dot" :class="{ 'is-paused': paused || reduced }"></span><span>{{ title ?? t('hero.console.title') }}</span></span>
+      <span class="text-white/60">{{ paused ? t('hero.console.paused') : card ? tf('hero.console.replay_note_card', { card, nights: replayTotals.nights, actions: replayActions.length }) : tf('hero.console.replay_note', { nights: replayTotals.nights, actions: replayActions.length }) }}</span>
     </div>
     <p class="sky-explainer">
       {{ t(use3D ? 'hero.console.explainer_3d' : 'hero.console.explainer') }}

@@ -54,6 +54,18 @@ async function submit() {
     if (body?.solved) { flag.value = ''; await load() }
   } finally { busy.value = false }
 }
+type Hint = { no: number; name: string; hints: string[] }
+const hintList = ref<Hint[] | null>(null)
+const hintNote = ref('')
+async function askHint() {
+  busy.value = true
+  try {
+    const { data, error } = await supabase.functions.invoke('sophon/desk/hint', { method: 'GET', headers: { 'x-sophon-site': '1' } })
+    const body = data ?? (error && 'context' in error ? await (error as { context: Response }).context.json().catch(() => null) : null)
+    hintList.value = Array.isArray(body?.hints) ? body.hints : []
+    hintNote.value = body?.message ?? pick('No answer.', '没有回应。')
+  } finally { busy.value = false }
+}
 async function download(name: string) {
   const { data } = await supabase.functions.invoke('sophon/desk/files/' + name, { method: 'GET', headers: { 'x-sophon-site': '1' } })
   if (data?.url) window.location.href = data.url
@@ -62,6 +74,15 @@ async function download(name: string) {
 
 <template>
   <div data-testid="sophon-boards">
+    <section class="card mb-8 p-4" data-testid="sophon-how-to-start">
+      <p class="label mb-2">{{ pick('How to start', '怎么开始玩') }}</p>
+      <ol class="list-decimal space-y-1 pl-5 text-sm">
+        <li>{{ pick('Sophon is a puzzle hidden in a special task card; it does not count toward any ranking. Flags look like SOPHON{...} and are handed in in the box below.', 'Sophon 是藏在一张特别任务卡里的解谜彩蛋，不计入任何排名。flag 长这样：SOPHON{...}，在下面的框里提交。') }}</li>
+        <li>{{ pick('First, look at the sky: on the Competition page switch to "Sophon" and run your agent on the Sophon card (you can practise first with the "Local card" below). Something is written in that sky; after the run the ground station checks it and leaves you a receipt, and the receipt holds a flag.', '第一步，先看天：在「参赛」页切到「Sophon」，用你的智能体跑一次 Sophon 任务卡（也可以先下载下面的「本地卡」在自己电脑上练）。这片天空里写着东西，跑完后地面站会检查你的评测并给你留一张回执，回执里就有 flag。') }}</li>
+        <li>{{ pick('Then go to the front desk: create a personal API token in the Dashboard and call GET https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/desk with the header Authorization: Bearer YOUR_TOKEN. The desk tells you which door is next, where to hand flags in and where your receipts are. Tell Johnny what the sky said and the first door opens.', '然后去前台：在「控制台」创建一个个人 API 令牌，用它访问 GET https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/sophon/desk（请求头 Authorization: Bearer 你的令牌）。前台会告诉你下一扇门在哪、flag 交到哪、回执在哪。把天空写的话告诉 Johnny，第一扇门就开了。') }}</li>
+        <li>{{ pick('From there, go door by door: each one you get through gives a flag. Stuck? Press "Ask Johnny for a hint".', '之后一扇门一扇门往里走，每过一扇门拿一个 flag。卡住了就点「向 Johnny 要提示」。') }}</li>
+      </ol>
+    </section>
     <section v-if="finishers.length" class="mb-8" data-testid="sophon-finishers">
       <p class="label mb-3">{{ pick('Mission log', '通关记录') }}</p>
       <article v-for="f in finishers" :key="f.board + f.team_name" class="card mb-3 p-4" data-testid="sophon-finisher">
@@ -78,7 +99,15 @@ async function download(name: string) {
       <p class="mt-3 flex flex-wrap gap-3 text-sm">
         <button type="button" class="btn sm" @click="download('sophon-card-public.zip')">{{ pick('Card files', '卡片公开文件') }}</button>
         <button type="button" class="btn sm" @click="download('sophon-local.zip')">{{ pick('Local card', '本地卡') }}</button>
+        <button type="button" class="btn sm" :disabled="busy" data-testid="sophon-hint-button" @click="askHint">{{ pick('Ask Johnny for a hint', '向 Johnny 要提示') }}</button>
       </p>
+      <div v-if="hintList" class="card mt-3 p-4" data-testid="sophon-hints">
+        <p class="text2 text-sm">{{ hintNote }}</p>
+        <div v-for="h in hintList" :key="h.no" class="mt-3">
+          <p class="label">#{{ h.no }} {{ h.name }}</p>
+          <ol class="mt-1 list-decimal pl-5 text-sm"><li v-for="(x, i) in h.hints" :key="i">{{ x }}</li></ol>
+        </div>
+      </div>
     </section>
     <div class="mb-4 flex gap-2">
       <button v-for="b in (['total', 'debug', 'auto'] as const)" :key="b" type="button" class="btn sm" :class="{ primary: tab === b }" @click="tab = b">{{ boardLabel(b) }}</button>

@@ -53,7 +53,9 @@ export const BODY_LIMIT = 4 * 1024 * 1024;
 /** The request forwarded upstream: fixed model, clamped output length, usage reported when streaming. */
 export function prepareBody(body: Record<string, unknown>, model: string, maxTokens: number): Record<string, unknown> {
   if (!Array.isArray(body.messages) || !body.messages.length) throw new RelayError("invalid_request");
-  const out: Record<string, unknown> = { ...body, model };
+  // The caller's model is passed through (any model the provider offers); the default only fills a missing one.
+  if (body.model !== undefined && (typeof body.model !== "string" || !body.model.trim())) throw new RelayError("invalid_request");
+  const out: Record<string, unknown> = { ...body, model: typeof body.model === "string" ? body.model.trim() : model };
   for (const key of ["max_tokens", "max_completion_tokens"]) {
     const v = out[key];
     if (v !== undefined && v !== null) {

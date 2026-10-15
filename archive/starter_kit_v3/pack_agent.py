@@ -16,8 +16,8 @@ Package rules (mirroring the platform's project checks):
     agent needs packages (README.md, "Upload a complete project"). It may only list installable
     distribution names with optional version specifiers (no local paths, URLs, -e, or pip options);
   * .env is left out: the platform rejects ZIPs that contain .env files, and permanent keys never belong in
-    a ZIP. On the platform your agent gets OPENAI_BASE_URL / OPENAI_API_KEY (the platform's model proxy and a
-    temporary run credential); set your own model key on the Participate page. --include-env packs .env for
+    a ZIP. On the platform your agent gets the variables your team saved in Participate -> Keys and
+    network (e.g. OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL). --include-env packs .env for
     a local-only copy and prints a warning;
   * __pycache__, .venv, .deps, *.pyc, scratch/, run_output/ and editor/OS clutter are never packaged.
 

@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { displayEndsAt } from '../lib/officialDeadline'
 import UserAvatar from '../components/UserAvatar.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
 import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadSuperBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_OLD_TAB, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
-import { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
+import { FUN_SLUG, LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
 import { competition, loadCompetition } from '../stores/competition'
@@ -18,6 +19,10 @@ import TeamDetailDialog from '../components/leaderboard/TeamDetailDialog.vue'
 import BoardCardTabs from '../components/leaderboard/BoardCardTabs.vue'
 import CardBoardTable from '../components/leaderboard/CardBoardTable.vue'
 import SophonBoards from '../components/leaderboard/SophonBoards.vue'
+import FinalProgress from '../components/competition/FinalProgress.vue'
+import FinalResultsPage from './FinalResultsPage.vue'
+import { isSupabaseConfigured } from '../lib/supabase'
+import { FINAL_PUBLISHED, useFinalProgress } from '../composables/useFinalProgress'
 
 const { t, tf, locale, pick } = useI18n()
 const route = useRoute()
@@ -36,7 +41,9 @@ const visiblePhases = computed(() => {
   // Main boards first (正式赛, 练习赛, the final); the debug board (slug 'practice') goes last, set apart.
   const main = LEADERBOARD_PAGE_SLUGS.filter(slug => slug !== 'practice')
   const order = ['online', ...main.filter(slug => slug !== 'online')]
-  const listed = order.map(slug => phases.value.find(p => p.slug === slug)).filter((p): p is Phase => !!p)
+  // Open Play gets its tab once it has started (organizers see it earlier, as a preview).
+  const listed = order.map(slug => phases.value.find(p => p.slug === slug))
+    .filter((p): p is Phase => !!p && (p.slug !== FUN_SLUG || p.status !== 'upcoming' || !!isAdmin.value))
   const debug = phases.value.find(p => p.slug === 'practice')
   const slug = route.params.phase as string | undefined
   const extra = isAdmin.value && slug && !listed.some(p => p.slug === slug) ? phases.value.find(p => p.slug === slug) : undefined
@@ -46,6 +53,16 @@ const visiblePhases = computed(() => {
   const withExtra = extra && extra.id !== offered?.id && extra.id !== debug?.id ? [...all, extra] : all
   return debug ? [...withExtra, debug] : withExtra
 })
+// Until the database returns the hidden final, its tab is a placeholder (E–H columns, no scores yet).
+const { progress: finalProgress } = useFinalProgress()
+const finalPlaceholderTab = computed(() => !phasesLoading.value && !visiblePhases.value.some(p => p.slug === 'final-hidden'))
+const finalPlaceholder = computed(() => finalPlaceholderTab.value && route.params.phase === 'final-hidden')
+// Local preview without a database: /leaderboard/final-hidden renders the bundled final-results
+// snapshot page directly (the data lives in content/final/results.json). Production — where
+// Supabase is configured — keeps its placeholder/published-board behavior untouched.
+// 10-10 (owner: publish): the hidden-final tab always renders the curated results snapshot (organizer team
+// excluded, best-of closeout for the two unfinished teams) — the database board's own aggregation would differ.
+const localFinalBoard = computed(() => route.params.phase === 'final-hidden')
 // Without a slug the default stays among the original three boards, so the final never displaces them.
 const defaultPhases = computed(() => visiblePhases.value.filter(p => (LEADERBOARD_SLUGS as readonly string[]).includes(p.slug)))
 const phase = computed<Phase | null>(() => {
@@ -56,6 +73,7 @@ const phase = computed<Phase | null>(() => {
 const tabLabel = (p: Phase) => LEADERBOARD_TAB_LABEL_KEYS[p.slug] ? t(LEADERBOARD_TAB_LABEL_KEYS[p.slug]!) : (locale.value === 'zh' ? p.name_zh : p.name_en) || p.slug
 // Extra phase board: scores don't matter; the Sophon boards sit above the rows.
 const isExtra = computed(() => !!phase.value && phase.value.id === competition.extraPhaseId)
+const isFun = computed(() => phase.value?.slug === FUN_SLUG)
 
 // One short plain line replaces all status badges: no extra wording beyond these two cases.
 const statusLine = computed(() => {
@@ -141,23 +159,40 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
 <template>
   <main class="poster-canvas">
     <PageHead :kicker="t('leaderboard.kicker')" :title="t('leaderboard.title')" :lede="t('leaderboard.intro')" />
-    <section class="section tight"><div class="wrap">
+    <section class="section tight no-rule"><div class="wrap">
       <div v-if="visiblePhases.length" class="tabs">
         <template v-for="p in visiblePhases" :key="p.id">
+          <router-link v-if="p.slug === 'practice' && finalPlaceholderTab" to="/leaderboard/final-hidden" :class="{ active: finalPlaceholder }" data-testid="board-tab-final-hidden">{{ t('leaderboard.tabs.final') }}</router-link>
           <router-link :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
         </template>
+        <router-link v-if="finalPlaceholderTab && !visiblePhases.some(p => p.slug === 'practice')" to="/leaderboard/final-hidden" :class="{ active: finalPlaceholder }" data-testid="board-tab-final-hidden">{{ t('leaderboard.tabs.final') }}</router-link>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
 
-      <p v-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
-      <p v-else-if="!phase" class="text2 mt-8">{{ t('leaderboard.no_phases') }}</p>
+      <FinalResultsPage v-if="localFinalBoard" :embedded="true" />
+      <p v-else-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
+      <div v-else-if="finalPlaceholder" class="mt-12" data-testid="board-final-placeholder">
+        <p class="text2">{{ pick('Final ranking: each team\'s final version is evaluated 3 times on each of the hidden cards E, F, G and H; each card shows the mean of its 3 evaluations, and the final score is the mean over E–H.', '最终排名：每队的送测版本在隐藏任务卡 E、F、G、H 上各评测 3 次，每张卡取 3 次的平均分，最终成绩为 E–H 四张卡的平均分。') }}</p>
+        <p class="notice mt-6">{{ FINAL_PUBLISHED ? pick('The final evaluation is complete and the results are published.', '决赛评测已全部完成，成绩已公布。') : finalProgress?.stage === 'review' ? pick('The final evaluation is complete. To keep it fair, every evaluation that had a model-call error was run again, so every team\'s result comes from complete, error-free evaluations. It is now under manual review; results are published once the review is done.', '决赛评测已全部完成。为保证公平，凡是出现模型调用错误的评测都已重新运行，每支队伍的成绩都来自完整、无报错的评测。目前正在人工审核，审核通过后公布成绩。') : pick('The hidden-card evaluation is under way. Results are published after verification.', '隐藏卡评测进行中，成绩经核验后公布。') }}</p>
+        <FinalProgress class="mt-3" />
+        <div class="table-wrap mt-6"><table class="data-table">
+          <thead><tr><th>{{ t('leaderboard.rank') }}</th><th>{{ t('leaderboard.team') }}</th><th class="r">E</th><th class="r">F</th><th class="r">G</th><th class="r">H</th><th class="r">{{ pick('Mean', '平均') }}</th></tr></thead>
+          <tbody><tr><td class="m">—</td><td class="text3">{{ pick('Not yet published', '尚未公布') }}</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td><td class="r m">—</td></tr></tbody>
+        </table></div>
+      </div>
+      <div v-else-if="!phase" class="mt-8">
+        <p class="text2">{{ t('leaderboard.no_phases') }}</p>
+        <p v-if="!isSupabaseConfigured" class="mt-4">
+          <router-link to="/leaderboard/final-hidden" class="text-[#78a6ff] underline" data-testid="link-final-results">查看决赛成绩</router-link>
+        </p>
+      </div>
 
       <div v-else class="mt-12 grid gap-12 lg:grid-cols-[.52fr_1.48fr] lg:gap-14">
         <div class="lg:sticky lg:top-28 lg:self-start">
           <p class="text2">{{ phaseCopy(phase, locale).description }}</p>
           <p class="text3 mt-3 text-sm">{{ phaseCopy(phase, locale).facts.join(' · ') }}</p>
           <dl class="kv mt-8">
-            <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(phase.ends_at) }}</dd></template>
+            <template v-if="phase.starts_at || phase.ends_at"><dt>{{ t('common.utc') }}</dt><dd class="m text-sm">{{ fmtUtc(phase.starts_at) }} → {{ fmtUtc(displayEndsAt(phase)) }}</dd></template>
             <dt>{{ t('leaderboard.scenarios') }}</dt>
             <dd v-if="cardMode" class="flex flex-wrap gap-2"><span v-for="c in allCards" :key="c.slug" class="pill">{{ scenarioLabel(c.slug, c.name, locale) }}</span></dd>
             <dd v-else class="flex flex-wrap gap-2"><span v-for="s in sortedScenarios" :key="s.id" class="pill" :title="s.slug">{{ scenarioLabel(s.slug, s.name, locale) }} · {{ s.n_nights ?? '?' }}n · {{ s.global_wallclock_seconds ?? '?' }}s<template v-if="!s.weather_public"> · {{ t('common.hidden') }}</template></span><span v-if="!phase.scenarios.length" class="text3">—</span></dd>
@@ -174,7 +209,8 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
           <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
-          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :model-value="cardTab" @update:model-value="pickCard" />
+          <p v-else-if="isFun" class="notice mb-6" data-testid="board-fun-note">{{ t('leaderboard.fun_board') }}</p>
+          <BoardCardTabs v-if="visible && cardMode" class="mb-6" :layout="cardBoard!.layout" :cards="cardBoard!.cards" :extra-cards="cardBoard!.extraCards" :hide-old="isFun" :model-value="cardTab" @update:model-value="pickCard" />
           <BoardScenarioTabs v-if="visible && !cardMode" class="mb-6" :scenarios="scenarioTabs" :model-value="scenarioSlug" @update:model-value="pickScenario" />
           <p v-if="!visible" class="text2 py-12">{{ t('leaderboard.hidden') }}</p>
           <SkeletonRows v-else-if="boardLoading && !entries.length" :rows="8" :cols="6" :label="t('common.loading')" />

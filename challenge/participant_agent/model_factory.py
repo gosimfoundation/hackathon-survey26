@@ -1,10 +1,9 @@
 """Environment-driven LangChain model construction for the minimal agent.
 
-On the platform (cloud runs and the official local project runner) every run gets
-OPENAI_BASE_URL and OPENAI_API_KEY: an OpenAI-compatible chat-completions proxy and a
-temporary run credential. The proxy calls your team's provider from the Participate page
-with the model name sent from here; "team-model" (or no model) means the team's default
-model set on that page. These two variables therefore take
+On the platform (cloud runs and the official local project runner) OPENAI_BASE_URL,
+OPENAI_API_KEY and OPENAI_MODEL are the variables your team saved in Participate -> Keys
+and network; the program calls that provider directly, so the model must be a name it
+supports. These two variables therefore take
 precedence for every OpenAI-compatible provider; the provider-specific variables
 (MODEL_BASE_URL, ZAI_API_KEY, ...) remain the fallback for your own local runs.
 """

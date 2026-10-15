@@ -32,7 +32,7 @@ test('during practice the final-version step explains it comes with the online p
   const final = step('final')
   const present = resolveStep(final, () => true)!
   const practice = resolveStep(final, s => s.includes('compete-tab-settings'))!
-  assert.match(stepCopy(present, 'zh').body, /截止前/)
+  assert.match(stepCopy(present, 'zh').body, /10 月 8 日 09:00（UTC\+8）/)
   assert.match(stepCopy(practice, 'zh').body, /正式赛开始后/)
   assert.match(stepCopy(practice, 'en').body, /online phase starts/)
   // A step without fallback copy keeps its own text on a fallback target.

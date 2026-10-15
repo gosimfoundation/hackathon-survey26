@@ -129,6 +129,7 @@ const known = new Set([
   "invalid_upload_path",
   "preparation_limit",
   "preparation_daily_limit",
+  "extension_version_limit",
   "revision_not_found",
   "revision_not_ready",
   "stale_approval",
@@ -152,6 +153,10 @@ const known = new Set([
   "diagnostics_not_found",
   "final_phase_invalid",
   "final_version_locked",
+  "final_version_frozen",
+  "final_version_not_chosen",
+  "final_version_changed",
+  "captain_required",
   "invalid_team_variable",
   "team_variable_limit",
   "invalid_team_domains",
@@ -316,6 +321,8 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         model_bases: d.modelBases.filter((base) => base.startsWith("https://")),
         // Informational like the quota; an older database without the RPC shows no choice.
         final_versions: finals.error ? null : finals.data,
+        // New versions left in the deadline extension window (null outside it or on an older database).
+        extension: await optionalUserRpc("observer_extension_versions"),
       };
     }
     case "upload": {
@@ -480,6 +487,15 @@ export async function portalRequest(request: Request, d: Dependencies): Promise<
         final_version: await userRpc("observer_set_final_version", {
           p_phase: uuid(body.phase_id),
           p_revision: body.revision_id == null ? null : uuid(body.revision_id),
+        }),
+      };
+    // 选定冻结: the captain locks the team's explicitly chosen final version early (irreversible
+    // for the team). The database checks the captain, the phase, the choice and revision_id.
+    case "freeze_final_version":
+      return {
+        final_version: await userRpc("observer_freeze_final_version", {
+          p_phase: uuid(body.phase_id),
+          p_revision: uuid(body.revision_id),
         }),
       };
     case "withdraw":

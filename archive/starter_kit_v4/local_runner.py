@@ -12,7 +12,7 @@ What happens (same as on the platform):
 
 Environment: the agent gets a clean environment (PATH, HOME/TMPDIR in <out>/scratch), the `environment`
 block of <agent>/observer.project.json, then KEY=VALUE lines from <agent>/.env. On the platform
-OPENAI_BASE_URL / OPENAI_API_KEY are injected; put them in <agent>/.env to try the LLM hook locally.
+OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL come from your team's Keys and network variables; put them in <agent>/.env to try the LLM hook locally.
 
 The engine is the platform's own adapter (challenge/v4_workflow.py, vendored unchanged).
 

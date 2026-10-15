@@ -1,0 +1,3 @@
+night_id,night_date,solar_dusk_utc,solar_dawn_utc,observing_start_utc,observing_end_utc,night_seconds,slot_count
+N20261012,2026-10-12,2026-10-13T00:03:28Z,2026-10-13T08:52:00Z,2026-10-13T00:15:00Z,2026-10-13T08:45:00Z,30600,34
+N20261013,2026-10-13,2026-10-14T00:04:04Z,2026-10-14T08:50:55Z,2026-10-14T00:15:00Z,2026-10-14T08:45:00Z,30600,34

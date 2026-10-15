@@ -1,9 +1,10 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { keyCooldownSeconds, prepareBody, readUsage, RelayError, SseUsage } from "./kimi-relay.ts";
 
-Deno.test("prepareBody fixes the model, clamps max_tokens and asks for streamed usage", () => {
-  const out = prepareBody({ model: "x", messages: [{ role: "user", content: "hi" }], max_tokens: 99999, stream: true }, "kimi-for-coding", 8192);
-  assertEquals(out.model, "kimi-for-coding");
+Deno.test("prepareBody keeps the caller's model, clamps max_tokens and asks for streamed usage", () => {
+  const out = prepareBody({ model: "k3", messages: [{ role: "user", content: "hi" }], max_tokens: 99999, stream: true }, "kimi-for-coding", 8192);
+  assertEquals(out.model, "k3");
+  assertEquals(prepareBody({ messages: [{ role: "user", content: "hi" }] }, "kimi-for-coding", 8192).model, "kimi-for-coding");
   assertEquals(out.max_tokens, 8192);
   assertEquals(out.stream_options, { include_usage: true });
   assertEquals(prepareBody({ messages: [{ role: "user", content: "hi" }] }, "m", 8192).max_tokens, 8192);

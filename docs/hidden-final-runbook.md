@@ -19,16 +19,39 @@
 
 v4 卡（含观测请求）只能在 colocated 模式下运行：`final-hidden` 已设 `colocated=true`、`runtime_seconds=900`、`board_layout=cards_overall`，4 张卡都有评测包（与 A–D 同一批构建，含观测请求文件）。预览输出里的 `target phase:` 一行会再核对一次。
 
-## 2 · 赛前检查（10-07 白天完成）
+## 2 · 赛前检查（10-07 送测窗口结束前完成）
 
 1. 迁移已部署：`python3 scripts/deploy-observer-backend.py` 输出的 `pending` 为空。
 2. 阶段配置：`python3 scripts/configure-v4-phases.py --status`，确认 `final-hidden` 为 sealed、colocated、900 s、4 张隐藏卡、`leaderboard_mode=hidden`。
 3. 单队演练（可在比赛截止前做，用隐藏测试队）：
    `python3 scripts/run-hidden-final.py --team <测试队 slug> --before-freeze`（预览）→ 加 `--apply` 实跑 → `--status` 看进度 → `--results` 看结果。测试队是隐藏队伍，不参与排名，公布后普通选手在榜上也看不到它。
 4. 模型密钥：预览输出会标出仍为「不保存（relay）」或「加密保存但没有密钥」的队伍。规则要求调用模型的队伍在截止前改为加密保存；截止前可再发一次提醒。
+
+> **2026-10-07 截止后送测窗口**：对外截止时间仍是 10-07 15:59:59 UTC（北京时间 23:59:59）。`online.ends_at` 设为 **10-08 01:00:00 UTC**（北京时间 10-08 09:00），即送测窗口结束：此前每队截止后最多再提交 15 个版本（数据库触发器 `observer_revision_extension_cap`），可评测并从任意已确认版本中选定最终版本；之后最终版本锁定、正式赛关闭。01:00 UTC 时只发生冻结、最终版本锁定、正式赛关闭，**不会自动启动 E–H**。
 5. runner 分钟：预览输出的 `runner capacity:` 一行显示本月所有启用 runner 组织剩余分钟总数，下面逐个列出每个组织的剩余分钟（已用/上限）和其已分配队伍最多需要的分钟；`! AGENTIC-OBSERVER26-runner-N: needs …` 列出分钟不够的组织。`public pool:` 一行说明公开仓库 runner 池是否承接本阶段的 run（不耗分钟）以及大约能承接多少分钟。处理方法见第 4 节。
 
-## 3 · 截止后执行（10-07 15:59 UTC 之后）
+## 3 · 截止后执行（10-08 01:00 UTC 之后，且只在主办方明确指示后手动执行）
+
+先确认 10-08 01:00 UTC 时仍在进行的正式赛评测都已结束（它们照常完成并计分，可能改变未选最终版本队伍的默认「最高分评测」版本）：
+
+```sql
+select count(*) from observer_batches where phase_id='049d6029-343d-4d16-80d5-94b56b350301' and status in ('queued','running');
+```
+
+为 0 后再开始。
+
+**日常赛（`after-party`）**：10-08 01:00:00 UTC（正式赛锁定时）起开放、无结束时间，任务卡同正式赛（A–D、A1–D1），不计分、不进决赛，也不改变正式赛的最终版本和榜单（`counts_for_final=false`，最终版本和决赛只看 `online`）。它的评测与决赛共用 runner（各组织分钟数、公开池），决赛 `--apply` 前先暂停，结果公布后再恢复：
+
+```sql
+-- 暂停：不能再发起日常赛评测；排队中的日常赛 run 不再派发（保持排队），正在运行的照常跑完；榜单和记录照常可看
+update observer_phase_settings set projects_enabled=false where phase_id=(select id from phases where slug='after-party');
+-- 恢复
+update observer_phase_settings set projects_enabled=true where phase_id=(select id from phases where slug='after-party');
+-- 还在跑的日常赛评测
+select count(*) from observer_batches where phase_id=(select id from phases where slug='after-party') and status in ('queued','running');
+```
+
+公开池单独开关：`select public.observer_set_public_pool_phase('after-party', false);`（恢复传 `true`）。
 
 ```bash
 # 1. 预览：每队的最终版本、来源（chosen/best）、模型方式、估算

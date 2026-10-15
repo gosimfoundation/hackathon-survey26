@@ -11,6 +11,14 @@
       "about": {
         "title": "À propos",
         "description": "L'organisateur, le mécène et le comité scientifique du hackathon Agentic Observer."
+      },
+      "final-results": {
+        "title": "Résultats de la finale",
+        "description": "Classement final des cartes cachées : totaux, moyennes par carte, détails par run et replays 3D."
+      },
+      "fig-sky": {
+        "title": "Figure de replay",
+        "description": "Rendu fixe du replay 3D (figure du papier)."
       }
     },
     "wordmark_note": "Agentic Observer"
@@ -335,6 +343,7 @@
     "console": {
       "title": "Rejeu de l’exemple officiel",
       "replay_note": "Terrain d'entraînement public · {nights} nuits · {actions} décisions",
+      "replay_note_card": "Carte finale {card} · {nights} nuits · {actions} décisions",
       "paused": "En pause",
       "pause": "Pause",
       "resume": "Reprendre",
@@ -496,10 +505,17 @@
     "leaderboard": {
       "kicker": "Classement",
       "title": "Classement en direct",
-      "lede": "Le classement se met à jour dès qu'une soumission est notée. Le tableau d'entraînement est indicatif ; celui de la compétition en ligne décide des prix.",
+      "lede": "La compétition est terminée. Le classement final est celui de la page Résultats de la finale ; les classements ci-dessous servent de référence et d’entraînement.",
       "signal_live": "Classement en direct",
       "signal_waiting": "En attente du signal",
-      "feed": "Données d'évaluation en direct"
+      "feed": "Données d'évaluation en direct",
+      "final_cta": "Voir le classement final",
+      "guide_title": "Que signifie chaque classement",
+      "guide_final": "Résultats de la finale : le seul classement qui compte. Cartes cachées E–H, moyenne des 12 évaluations de chaque équipe.",
+      "guide_fun": "Jeu libre : ouvert après la compétition sur les mêmes cartes. Soumissions à tout moment, sans effet sur le classement.",
+      "guide_competition": "Compétition · Général : la manche en ligne (4–8 oct.), moyenne des cartes A–D, meilleure évaluation complète de chaque équipe. Pour référence.",
+      "guide_super": "Super classement : A–D pondérées à 20 % et A1–D1 à 80 % dans une même évaluation, dernière évaluation complète de chaque équipe. Pour référence.",
+      "guide_cards": "Onglets Card A, Card A1… : le classement d’une seule carte."
     },
     "evaluation": {
       "kicker": "05 / Évaluation",
@@ -787,11 +803,14 @@
     "invite_link": "Lien d’invitation",
     "copy_link": "Copier le lien",
     "copy_fallback": "Échec de la copie. Sélectionnez le code ou le lien et copiez-le manuellement.",
+    "opensource_repo": "Dépôt open source (matériel de prix, facultatif)",
+    "opensource_repo_hint": "https://github.com/org/depot",
     "errors": {
       "recipient_unavailable": "Cette personne ne peut pas recevoir cette invitation.",
       "team_unavailable": "Cette équipe n’est plus disponible.",
       "invitation_not_found": "Cette demande ne vous est pas adressée.",
-      "invitation_finished": "Cette demande a déjà été traitée."
+      "invitation_finished": "Cette demande a déjà été traitée.",
+      "invalid_repo_url": "Cette adresse de dépôt semble incorrecte ; elle doit ressembler à https://github.com/org/depot."
     },
     "solo": "Participer en solo (1 clic)",
     "solo_lede": "En solo ? Créez en un clic une équipe d’une personne à votre nom. Vous pourrez ensuite augmenter la taille et inviter des coéquipiers.",
@@ -827,7 +846,7 @@
       "relay": "Ne pas enregistrer (relais de page)",
       "relay_help": "La clé reste uniquement dans cette page et n'est jamais stockée sur le serveur. Gardez cette page ouverte jusqu'à la fin de chaque évaluation ; les appels de modèle échouent lorsqu'elle est fermée. Si votre équipe est vérifiée parmi les premières, vous devrez aussi ouvrir cette page au moment convenu avec les organisateurs.",
       "relay_deletes": "Ce choix supprime la clé enregistrée.",
-      "usage": "Votre projet continue d'utiliser OPENAI_BASE_URL et OPENAI_API_KEY fournis pour chaque exécution ; les appels vont à votre point d'accès et à votre modèle.",
+      "usage": "Votre projet lit les variables enregistrées par votre équipe dans « Keys and network » (par exemple OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) et appelle directement votre fournisseur ; le modèle doit être un nom pris en charge par ce fournisseur. OBSERVER_API_URL est l'interface de session de la plateforme, pas un point d'accès de modèle.",
       "limits": "Chaque exécution permet jusqu'à {calls} appels de modèle, au plus {concurrency} à la fois. Les jetons ne sont pas plafonnés (ils sont payés par la clé de votre équipe).",
       "limits_tokens": "Chaque exécution permet jusqu'à {calls} appels de modèle et {tokens} jetons, au plus {concurrency} appels à la fois.",
       "saved_title": "API de modèle enregistrée",

@@ -1,0 +1,1727 @@
+{
+ "avoid_from": null,
+ "problem": "nu_followup_v4",
+ "pool": "dev",
+ "generated_utc": "2026-10-12T05:46:33Z",
+ "model": "tokenflux Deepseek/deepseek-flash",
+ "kinds": {
+  "cand_confident": [
+   {
+    "lang": "en",
+    "t": "Hey ops, {team} here. Got a fresh optical transient close to the neutrino trigger {aid} at {coord}, brightness {mag}. Looks legit and new to me, classification still pending."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin from {team}: we report the discovery of a new optical transient in the vicinity of neutrino alert {aid}, coordinates {coord}, apparent magnitude {mag}. Confidence is moderate that the source is real and previously unreported; classification is pending."
+   },
+   {
+    "lang": "en",
+    "t": "OMG you all, {team} just found something new in the optical near the neutrino alert {aid}! It's at {coord}, mag {mag}. I'm pretty sure it's real and wasn't there before, but we still need classification."
+   },
+   {
+    "lang": "en",
+    "t": "{team} sees new optical transient near neutrino alert {aid}, {coord}, mag {mag}. fairly sure real/new. class pending."
+   },
+   {
+    "lang": "en",
+    "t": "Greetings, friends. This is {team} calling in a newly spotted optical flare close by the neutrino alarm {aid}; position {coord}, magnitude {mag}. I am reasonably convinced it is genuine and fresh, though its classification has yet to be settled."
+   },
+   {
+    "lang": "en",
+    "t": "{team} update: • new optical transient near neutrino alert {aid} • location {coord} • magnitude {mag} • confidence: fairly high that it is real and new • classification: pending."
+   },
+   {
+    "lang": "en",
+    "t": "{team} reports a new optical transient candidate near neutrino alert {aid}: {coord}, {mag}. Real and new likely, classification TBD."
+   },
+   {
+    "lang": "en",
+    "t": "From {team}. We have identified a new optical transient in the field of neutrino alert {aid}, at {coord}, with magnitude {mag}. We are moderately confident it is real and not a known source; classification remains pending."
+   },
+   {
+    "lang": "en",
+    "t": "yo, {team} here — new optical transient popped up near the neutrino alert {aid}, coords {coord}, mag {mag}. pretty sure it's real and new, class pending."
+   },
+   {
+    "lang": "en",
+    "t": "This is {team} reporting a freshly detected optical transient lying near the neutrino alert designated {aid}; its position is {coord} and its brightness is {mag}. We hold reasonable confidence that it is genuine and newly appeared, with classification still to come."
+   },
+   {
+    "lang": "en",
+    "t": "Quick status from {team}: new optical transient detected near neutrino alert {aid}; sky position {coord}; reported magnitude {mag}; team confidence: good that it is real and new; classification: pending."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all, {team} tech on shift here. We've got a new optical transient near the neutrino alert {aid} at {coord}, mag {mag}. Looks real and fresh to us, classification still in the works."
+   },
+   {
+    "lang": "en",
+    "t": "Operational notice: {team} confirms a new optical transient candidate associated in position with neutrino alert {aid}. Coordinates: {coord}. Magnitude: {mag}. We assess it as fairly likely genuine and previously unknown; classification pending."
+   },
+   {
+    "lang": "en",
+    "t": "Dear colleagues, {team} has a fresh optical transient to report, situated close to the neutrino alert {aid}; it sits at {coord} and shines at magnitude {mag}. It looks authentic and newly discovered to my eye, though the official classification is not yet in."
+   },
+   {
+    "lang": "zh",
+    "t": "夜班困，简单记：{team} 报 {aid} 中微子警报附近 {coord} 有新光学暂现源，亮度 {mag}；我们挺有把握，是真且新，分类待定。"
+   },
+   {
+    "lang": "zh",
+    "t": "手机快没电，重点：{team} 在 {aid} 中微子警报附近 {coord} 抓到新光学暂现源，亮度 {mag}。不像鬼影，应该是真的新的，分类未定。"
+   },
+   {
+    "lang": "zh",
+    "t": "• {team}：{aid} 中微子警报附近 {coord} 发现新光学暂现源\n• 亮度 {mag}\n• 判断：较可信，真实且新\n• 分类：待定"
+   },
+   {
+    "lang": "zh",
+    "t": "老朽夜里巡天，得报：{team} 于 {aid} 中微子之警所指天区 {coord} 觅得新光学暂现客星，星等 {mag}。窃以为此乃真实新现，非旧物翻新；惟分类尚需后议。"
+   },
+   {
+    "lang": "zh",
+    "t": "为了记录清楚：{team} 在 {aid} 这个中微子警报方向附近、坐标 {coord} 的位置，检测到此前目录中没有的光学暂现源，测光给出 {mag}。经过对图像和参考星表的初步交叉核对，我们比较有把握它不是伪影，也不是已知目标，而是新的真实暂现；不过正式分类仍待后续光谱/多波段确认。"
+   },
+   {
+    "lang": "zh",
+    "t": "我替 {team} 发：在 {aid} 中微子警报旁边 {coord}，有新的光学暂现。亮度 {mag}。我们比较相信是真的，也是新的。分类还没有。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{team}より連絡。・ニュートリノアラート {aid} 近傍に新規光学トランジェント、位置 {coord}、等級 {mag}。・実在かつ新規の確度は高め。・分類は保留。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}です。ニュートリノアラート {aid} の近くに出た光学の新天体候補、座標 {coord}、明るさ {mag}。かなり本物っぽくて新しいやつだと思う。分類はまだ。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}は、ニュートリノアラート {aid} の近傍において新たな光学トランジェントを検出したと報告した。座標は {coord}、等級は {mag}。新規かつ実在である可能性が高いと判断しているが、分類は保留中である。"
+   },
+   {
+    "lang": "ja",
+    "t": "ワシのところへ {team} から入った話では、ニュートリノアラート {aid} のそばに新しい光学トランジェントがあるそうな。場所は {coord}、明るさは {mag}。どうやら本物で新しいものらしいが、まだ分類は決まっておらん。"
+   },
+   {
+    "lang": "es",
+    "t": "{team}: transitorio óptico nuevo cerca de la alerta de neutrino {aid}, en {coord}, con brillo {mag}. Bastante seguro de que es real y nuevo, clasificación pendiente."
+   },
+   {
+    "lang": "es",
+    "t": "Oye, {team} reporta un transitorio óptico nuevo junto a la alerta de neutrino {aid}. Está en {coord} y tiene brillo {mag}. Confían bastante en que es real y nuevo; aún sin clasificar. Yo ya voy por el segundo café."
+   },
+   {
+    "lang": "es",
+    "t": "¡No puedo creerlo! {team} acaba de reportar un transitorio óptico nuevo cerca de la alerta de neutrino {aid}, en {coord}, con brillo {mag}. Están bastante seguros de que es real y nuevo, aunque la clasificación sigue pendiente. ¡Esto puede ser enorme!"
+   },
+   {
+    "lang": "es",
+    "t": "{team} dice: nuevo transitorio óptico cerca de la alerta de neutrino {aid}. Posición {coord}. Brillo {mag}. Ellos están bastante seguros que es real y nuevo. Clasificación pendiente."
+   }
+  ],
+  "cand_tentative": [
+   {
+    "lang": "en",
+    "t": "Automated notice: {team} flags a possible optical candidate for neutrino alert {aid} at {coord}, mag {mag}. Human on duty adds: likely junk — could be a rock, a variable, or a chip artifact; no follow-up check yet."
+   },
+   {
+    "lang": "en",
+    "t": "Too tired to chase this properly, but {team} sees something near neutrino alert {aid} at {coord}, {mag}. Probably an asteroid or a variable or just a ghost in the frame — haven't verified anything."
+   },
+   {
+    "lang": "en",
+    "t": "- {team} reports candidate near neutrino alert {aid}; - position {coord}, magnitude {mag}; - low confidence: asteroid / variable / artifact; - not yet checked"
+   },
+   {
+    "lang": "en",
+    "t": "Word has reached us from {team} of a doubtful speck in the sky near the neutrino alarm {aid}; it lies at {coord} and shines about {mag}. Could be a wee asteroid, a flickering star, or merely a flaw — nobody has looked into it yet."
+   },
+   {
+    "lang": "en",
+    "t": "Following the neutrino alert {aid}, {team} has identified a candidate at {coord} with measured brightness {mag}. Confidence is low because the source could be a moving solar-system object, a periodic variable, or a detector/processing artifact; verification observations have not been performed."
+   },
+   {
+    "lang": "en",
+    "t": "{team} maybe see candidate close to neutrino alert {aid}. Position {coord}, magnitude {mag}. Not sure, maybe asteroid or variable or bad pixel. No check yet."
+   },
+   {
+    "lang": "en",
+    "t": "Hey all — {team} here. We have a faint possible thing near neutrino alert {aid} at {coord}, around {mag}. Honestly it might be a space rock, a blinking star, or just junk on the sensor; we have not confirmed."
+   },
+   {
+    "lang": "en",
+    "t": "fyi {team}: maybe cand near neutrino alert {aid} @ {coord} mag {mag}. low conf. asteroid? var? artifact? not checked."
+   },
+   {
+    "lang": "en",
+    "t": "{team} reports a possible optical counterpart candidate in the vicinity of neutrino alert {aid}. The source is located at {coord} and has magnitude {mag}. At present the detection is of low significance and may correspond to an asteroid, a variable star, or an artifact; no confirmatory inspection has been made."
+   },
+   {
+    "lang": "en",
+    "t": "ALERT FORWARD: {team} -> possible candidate near neutrino alert {aid} at {coord}, {mag}. Confidence low. Possible asteroid/variable/artifact. Unreviewed. (Why do these always arrive when coffee is cold?)"
+   },
+   {
+    "lang": "en",
+    "t": "log: {team} candidate near neutrino alert {aid} {coord} {mag}; tentative only, could be minor planet, variable, or glitch; no checks done."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: possible candidate near neutrino alert {aid}; coord {coord}; mag {mag}. Low confidence — asteroid, variable, or artifact. Not yet vetted."
+   },
+   {
+    "lang": "en",
+    "t": "I hear from {team} that a questionable star-like mark has appeared close to the neutrino bulletin {aid}; it sits at {coord} and is given as {mag}. It may prove to be a small planet, a changing star, or nothing but a blemish; nobody has yet examined it."
+   },
+   {
+    "lang": "en",
+    "t": "{team} mention possible candidate near neutrino alert {aid}. It is at {coord}, brightness {mag}. We are not confident. Maybe asteroid, variable star, or artifact. Not checked."
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 谨此说明：中微子告警 {aid} 附近、坐标 {coord} 处出现疑似候选源，亮度 {mag}，但置信度很低；我们先把判断标准放得很保守，可能是小行星、变星或伪影，尚未人工核查。"
+   },
+   {
+    "lang": "zh",
+    "t": "诸位同好：{team} 这边在 {coord} 一带、中微子告警 {aid} 近旁瞧见可疑目标，光度 {mag}，然把握甚微；恐是小行星、变星或假影，尚未核对。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 刚发来：{coord} 附近疑似源，中微子告警 {aid} 旁边，亮度 {mag}，低置信，可能小行星/变星/伪影，还没查。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 通报：• 疑似候选体：靠近中微子告警 {aid} • 位置 {coord} • 亮度 {mag} • 状态：低置信；可能为小行星、变星或伪影；尚未复核"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班快顶不住了… {team} 报中微子告警 {aid} 附近、{coord} 有疑似源，{mag}，低置信，可能小行星/变星/鬼影，还没核。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{team} 通告 - 靠近中微子告警 {aid}，坐标 {coord}，亮度 {mag}，低置信候选，可能是小行星、变星或伪影，未核查。人工备注：先别跟。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤の途中で眠いですが、{team} からニュートリノアラート {aid} の近く、{coord} に候補があるとの連絡。等級は {mag}。ただ低確度で、小惑星か変光星かアーティファクトかもしれず、まだ確認していません。"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有します。{team} がニュートリノアラート {aid} に対して、位置 {coord} 付近で候補天体を報告しています。測定等級は {mag} ですが、現段階では信頼度は低く、小惑星、変光星、あるいは検出上のアーティファクトの可能性を切り分けられていません。追観測による確認はまだ行っていません。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: {team} の通知。ニュートリノアラート {aid} 近傍 {coord} に候補、等級 {mag}。低信頼度。小惑星・変光星・アーティファクトの可能性あり。担当者コメント: 未確認なので深入りしないでください。"
+   },
+   {
+    "lang": "ja",
+    "t": "私のチームは {team} です。ニュートリノアラート {aid} のそば、{coord} に候補を見つけました。明るさは {mag}。でも自信は低いです。小惑星か変光星かノイズかもしれません。まだチェックしていません。"
+   },
+   {
+    "lang": "es",
+    "t": "Desde {team} queremos dejar constancia, con todas las cautelas, de que en las cercanías de la alerta de neutrinos {aid} aparece una fuente en {coord} con magnitud {mag}; la consideramos un candidato meramente posible y de confianza baja, ya que bien podría ser un asteroide, una variable o un artefacto, y todavía no ha pasado por ninguna comprobación."
+   },
+   {
+    "lang": "es",
+    "t": "- {team}: posible candidato cerca de la alerta de neutrinos {aid}.\n- Posición: {coord}; magnitud: {mag}.\n- Confianza baja: podría ser asteroide, variable o artefacto; sin verificar."
+   },
+   {
+    "lang": "es",
+    "t": "Parte preliminar de {team}: se informa de un posible candidato óptico en las inmediaciones de la alerta de neutrinos {aid}, situado en {coord} y con magnitud {mag}. La detección es de baja confianza y no ha sido verificada; entre las explicaciones plausibles figuran un asteroide, una estrella variable o un artefacto instrumental."
+   },
+   {
+    "lang": "es",
+    "t": "Oye, {team} por aquí: hay algo posible cerca de {aid}, en {coord}, con magnitud {mag}. Pinta a baja confianza, puede ser asteroide, variable o basura/artefacto, y no lo hemos chequeado aún."
+   }
+  ],
+  "cand_debunk": [
+   {
+    "lang": "en",
+    "t": "{team}: Re-examining the frame stack and subtracting the template for the object noted in {ref}, which sat close to {aid}, leaves only {reason}; that makes it unrelated, so please drop it from your follow-up queue."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: checked {ref} again for the thing by {aid}. it's just {reason}. not connected. ignore please."
+   },
+   {
+    "lang": "en",
+    "t": "{team} update: • candidate from {ref} near {aid} • follow-up now points to {reason} • therefore unrelated • disregard it."
+   },
+   {
+    "lang": "en",
+    "t": "Dear colleagues, this is {team}. Our later look at the object announced in {ref}, which we had tied to {aid}, reveals it to be naught but {reason}; kindly consider the association void and pay it no further mind."
+   },
+   {
+    "lang": "en",
+    "t": "{team} duty desk: follow-up observations of the candidate in {ref} associated with {aid} indicate the source is {reason}; it is not a genuine counterpart. Please disregard the earlier notice."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: more scope time on {ref} target near {aid}. turned out to be {reason}. unrelated. scrap it."
+   },
+   {
+    "lang": "en",
+    "t": "Hey, {team} here. We went back to the {ref} candidate from the {aid} alert and it is only {reason}; nothing to do with the neutrino. Please delete it from your lists."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: rechecked {ref} for {aid}. reason? {reason}. unrelated. disregard."
+   },
+   {
+    "lang": "en",
+    "t": "{team} reports that additional photometry of the source from {ref}, located near alert {aid}, identifies it as {reason}. Consequently, the candidate is unrelated; no further resources should be assigned."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: after a fresh reduction of the {ref} field around {aid}, the only surviving signal is consistent with {reason}. That removes any association, so the candidate should be considered withdrawn."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: just re-imaged the {ref} source by {aid}. it's {reason}. not related. please disregard."
+   },
+   {
+    "lang": "en",
+    "t": "{team} — follow-up on {ref} / {aid}: outcome = {reason}; link = none; action = disregard candidate."
+   },
+   {
+    "lang": "en",
+    "t": "From {team}, with apologies for the earlier excitement: our continued watching of the object in {ref}, taken for something near {aid}, shows it is merely {reason}. Pray treat it as unconnected and let it rest."
+   },
+   {
+    "lang": "en",
+    "t": "{team} operations: subsequent checks on the {ref} counterpart within the {aid} error region show it is {reason}. The association is dismissed; please disregard the candidate."
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 又看了 {ref} 里、靠近 {aid} 的那个目标。现在知道它是 {reason}，不是真的。请忽略。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 更新：\n- {ref} 中靠近 {aid} 的候选体，后续复核结果为 {reason}；\n- 与中微子事件无关；\n- 请不再跟进。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班撑不住了…… {team} 后来再看 {ref} 那个候选，就在 {aid} 旁边，结果是 {reason}，跟警报没关系。大家别管了。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{team} 的 {ref} 更新。目标位于 {aid} 附近，后续判定为 {reason}。人工备注：不是对应体，忽略即可。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 对 {ref} 中靠近 {aid} 的候选体做了进一步观测和交叉核对，结论是它表现为 {reason}，因此与所报中微子警报没有物理关联；为避免误报，请将其从跟进列表中移除，并视为可忽略。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：经 {team} 后续观测确认，{ref} 中所报、靠近警报 {aid} 的候选目标实为 {reason}，与本次中微子触发无关。请各相关方知悉并停止后续跟进。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}、夜勤から続報。{ref}で{aid}近傍として挙げた候補、追加観測の結果は{reason}だった。関連なし、破棄で。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}の者です。{ref}に書いた{aid}付近の候補なんですが、追加で見たら{reason}でした。もう関係ないので忘れてください。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}より共有。・{ref}で報告した{aid}近傍の候補は、再観測で{reason}と確認。・よって無関係。・対応不要、取り下げ扱いで。"
+   },
+   {
+    "lang": "ja",
+    "t": "わー、{team}です！{ref}に出てた{aid}の近くのやつ、追観測したら{reason}でした。違う天体っぽいので、みんな忘れてください！"
+   },
+   {
+    "lang": "es",
+    "t": "Soy de {team}. Después observamos más. El candidato de {ref} cerca de alerta {aid} es {reason}. No tiene relación. Ignórenlo, por favor."
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! Desde {team} actualizamos: seguimos mirando el candidato de {ref} cerca de la alerta {aid} y resultó ser {reason}; o sea, nada que ver. ¡Descartadlo, por favor!"
+   },
+   {
+    "lang": "es",
+    "t": "• {team}: seguimiento adicional del candidato en {ref}, junto a la alerta {aid}. • Resultado: es {reason}. • Clasificación: sin relación. • Acción: descartar."
+   },
+   {
+    "lang": "es",
+    "t": "Comunicado de {team}: observaciones posteriores indican que el candidato reportado en {ref}, en las inmediaciones de la alerta {aid}, corresponde a {reason}; por consiguiente, no guarda relación con el evento. Se ruega ignorarlo."
+   }
+  ],
+  "upper_limit": [
+   {
+    "lang": "en",
+    "t": "AUTO-FWD: {team} coverage check for {aid} — {pct} of the ninety-percent region imaged, no new source brighter than {lim}. Human note: shift is quiet, no follow-up needed."
+   },
+   {
+    "lang": "en",
+    "t": "For the record, {team} completed a search over {pct} of the ninety-percent localization for {aid}; after standard quality cuts and image subtraction, we found no new source brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "We from {team} look at {pct} of the ninety-percent area for {aid}. We do not see any new star brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "Ugh, night shift here. {team} managed {pct} of the ninety-percent box for {aid}; I see no new thing brighter than {lim}. Going for coffee."
+   },
+   {
+    "lang": "en",
+    "t": "{team} covered {pct} of the ninety-percent region for {aid}, no new source brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "The duty desk confirms that {team} has examined {pct} of the ninety-percent credible region associated with alert {aid}; no previously unknown source brighter than {lim} was identified."
+   },
+   {
+    "lang": "en",
+    "t": "Quick update from the dome: {team} got through {pct} of the ninety-percent error ellipse for {aid}. Nothing new popped brighter than {lim}, so we're calling it a blank."
+   },
+   {
+    "lang": "en",
+    "t": "yo ops — {team} scanned {pct} of the ninety-percent region of {aid}; no new src brighter than {lim}. That's all."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: {team} observation of {aid}: coverage {pct} of ninety-percent region. Result: no new source brighter than {lim}. -- relayed by night bot."
+   },
+   {
+    "lang": "en",
+    "t": "I want to be precise: {team} inspected {pct} of the ninety-percent localization area for {aid}, using the usual image differencing, and the search yielded no new astrophysical source brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "{team} check {pct} from ninety-percent zone of {aid}. Nothing new brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: {pct} of {aid}'s ninety-percent area done. no new source brighter than {lim}."
+   },
+   {
+    "lang": "en",
+    "t": "This bulletin reports that {team} has surveyed {pct} of the ninety-percent uncertainty region for alert {aid}. No new source brighter than {lim} was found."
+   },
+   {
+    "lang": "en",
+    "t": "Long night. {team} got {pct} of the ninety-percent region for {aid}; no new source brighter than {lim}. Coffee please."
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 扫了 {aid} 的九成区域，覆盖 {pct}，没见比 {lim} 更亮的新东西，收工。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班快撑不住了…… {team} 对 {aid} 的九成区域覆盖到 {pct}，没找到比 {lim} 更亮的新源。先这样。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 于 {aid} 之九成天区，巡得 {pct} 之幅，未见有亮于 {lim} 之新源焉。"
+   },
+   {
+    "lang": "zh",
+    "t": "正式通报：{team} 已观测警报 {aid} 的九成区域，覆盖比例 {pct}；未发现亮于 {lim} 的新源。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动化转发：{team} 覆盖 {aid} 九成区域的 {pct}，未检出亮于 {lim} 的新源。// 人评：又白跑了？"
+   },
+   {
+    "lang": "zh",
+    "t": "项目进展：\n- {team} 已看 {aid} 的九成区域，覆盖 {pct}\n- 未发现新源亮于 {lim}\n- 继续待命"
+   },
+   {
+    "lang": "ja",
+    "t": "ちーむ {team}、{aid} のきゅうわりりょういき、{pct} みた。{lim} よりあかるいしんげんは、なし。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{team} による {aid} の九割領域 {pct} の観測完了。{lim} より明るい新規源はありません。担当は今コーヒー休憩中。"
+   },
+   {
+    "lang": "ja",
+    "t": "やった、初めてシフト入った！ {team} で {aid} の九割領域の {pct} を見ました。{lim} より明るい新しい源はありません、ちょっと眠いけど。"
+   },
+   {
+    "lang": "ja",
+    "t": "【観測報告】{team} はアラート {aid} の九割領域のうち {pct} を観測した。{lim} より明るい新天体は検出されなかった。"
+   },
+   {
+    "lang": "es",
+    "t": "Turno largo; {team} peinó {pct} de la región del noventa por ciento de la alerta {aid} y no apareció ninguna fuente nueva más brillante que {lim}."
+   },
+   {
+    "lang": "es",
+    "t": "Con objeto de dejar constancia del seguimiento óptico, {team} ha cubierto {pct} de la región del noventa por ciento asociada a la alerta {aid}; tras revisar los candidatos, no se halla ninguna fuente nueva que sea más brillante que {lim}."
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! {team} logró observar {pct} del área del noventa por ciento de la alerta {aid} y no hay ninguna fuente nueva más brillante que {lim}; seguimos con café."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: {team} reporta cobertura de {pct} del área del noventa por ciento de la alerta {aid}. Sin fuentes nuevas más brillantes que {lim}. (Comentario humano: nada, a dormir.)"
+   }
+  ],
+  "revision": [
+   {
+    "lang": "en",
+    "t": "Please note that {src} has issued a revised reconstruction for alert {aid}. The new best-fit position is {coord}, and the containment radius is {r90}. This update replaces the initial notice in full; use it for follow-up scheduling."
+   },
+   {
+    "lang": "en",
+    "t": "hey all, {src} just pushed a corrected spot for {aid}: center {coord}, err radius {r90}. old one is toast, pls use this instead."
+   },
+   {
+    "lang": "en",
+    "t": "[automated] {src} alert {aid} localization update received. New center {coord}; error radius {r90}. Human note: this supersedes the earlier notice, please update pointing."
+   },
+   {
+    "lang": "en",
+    "t": "{src} sends new position for {aid}. Centre is {coord}. The error circle is {r90}. This is now correct instead of first message."
+   },
+   {
+    "lang": "en",
+    "t": "Official notification: the {src} collaboration has released a refined localization for alert {aid}. Updated centre: {coord}; error radius: {r90}. The original bulletin is superseded; please act on this version."
+   },
+   {
+    "lang": "en",
+    "t": "- {src} update for {aid}: new centre {coord}; error radius {r90}. - This replaces the original notice. - Please adjust follow-up plans accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee hasn't kicked in, but {src} sent a relocalization for {aid}. They put the middle at {coord} with a radius of {r90}. That kills the earlier circular, so don't use it."
+   },
+   {
+    "lang": "en",
+    "t": "{src} {aid} refined loc: {coord} / {r90}. Supersedes previous."
+   },
+   {
+    "lang": "en",
+    "t": "For immediate action from {src}: alert {aid} has an updated sky position. Coordinates {coord}, uncertainty radius {r90}. This message cancels and replaces the first alert notice."
+   },
+   {
+    "lang": "en",
+    "t": "The neutrino folks at {src} have redone the direction for {aid}. Their new centre: {coord}; their stated error radius: {r90}. Consider the earlier one obsolete."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin from duty desk: {src} has provided a corrected localization for alert {aid}. Use centre {coord} and error radius {r90}. All previous versions are withdrawn."
+   },
+   {
+    "lang": "en",
+    "t": "AUTO: {src} / {aid} localization revision. New center {coord}. New error radius {r90}. -- Priya: this is the one to trust; original notice no longer applies."
+   },
+   {
+    "lang": "en",
+    "t": "From {src} there is new place for {aid}. Center {coord}, radius {r90}. Please ignore old alert. New alert is this one."
+   },
+   {
+    "lang": "en",
+    "t": "I want to flag that {src} has revised the localization associated with alert {aid}. After re-processing, the preferred centre is {coord} and the radius containing the relevant credible region is {r90}. This revised product is intended to replace the original notice, so any prior coordinates should be discarded."
+   },
+   {
+    "lang": "zh",
+    "t": "天啊，{src} 把 {aid} 的定位又重算了一遍：中心 {coord}，九成误差半径 {r90}，原来的通知作废啦！"
+   },
+   {
+    "lang": "zh",
+    "t": "值此通报：{src} 已发布针对警报 {aid} 的更新定位。新中心为 {coord}，百分之九十误差半径为 {r90}。此前原始通告由本件取代。"
+   },
+   {
+    "lang": "zh",
+    "t": "- {src}：警报 {aid} 的定位已更新\n- 中心：{coord}\n- 九成误差半径：{r90}\n- 原通知不再有效，以本条为准"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{src} 更新了 {aid} 的定位，中心 {coord}，九成误差半径 {r90}。人工备注：旧版请忽略。"
+   },
+   {
+    "lang": "zh",
+    "t": "{src} 说 {aid} 有新位置，中心是 {coord}，九成误差半径是 {r90}。这个新消息比旧消息好，旧消息不要用。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班记一笔：{src} 对 {aid} 重新定位，中心 {coord}，九成误差半径 {r90}；先前那条就算了吧，看这个。"
+   },
+   {
+    "lang": "ja",
+    "t": "やった、{src}が{aid}の再解析を出した！新しい中心は{coord}、九割誤差半径は{r90}。これで最初の速報は上書きだから、みんな更新してね！"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中…… {src} の {aid}、更新定位が来た。中心 {coord}、九割半径 {r90}。旧ノーティスは無効で。"
+   },
+   {
+    "lang": "ja",
+    "t": "【公式】{src} は {aid} について改良された位置情報を発出した。中心は {coord}、九割誤差半径は {r90}。これは当初の通知を置き換えるものである。"
+   },
+   {
+    "lang": "ja",
+    "t": "現場より。{src}の{aid}、再ロカライズ来ました。中心{coord}、九割半径{r90}。元の通知はもう古いっす。"
+   },
+   {
+    "lang": "es",
+    "t": "La colaboración {src} da una localización refinada de su alerta {aid}: centro {coord}, radio de error {r90}. Esto reemplaza el aviso original."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso: la colaboración {src} comunica una nueva y más precisa situación para la alerta {aid}, con centro en {coord} y radio de error {r90}. Queda anulada la nota anterior."
+   },
+   {
+    "lang": "es",
+    "t": "Comunicado oficial: la colaboración {src} actualiza la localización de la alerta {aid}. Nuevo centro: {coord}; radio de error: {r90}. Esta información sustituye la notificación previa."
+   },
+   {
+    "lang": "es",
+    "t": "actualización de {src} para alerta {aid}: centro {coord}, radio error {r90}. anula el aviso original."
+   }
+  ],
+  "retraction": [
+   {
+    "lang": "en",
+    "t": "retracting {src} collab alert {aid}. not astrophysical: {reason}"
+   },
+   {
+    "lang": "en",
+    "t": "The {src} collaboration has retracted alert {aid}. Reason is {reason}. Apologies."
+   },
+   {
+    "lang": "en",
+    "t": "heads up: {src} collab is pulling alert {aid} — {reason}. stand down."
+   },
+   {
+    "lang": "en",
+    "t": "ugh, {src} just withdrew {aid}. {reason}. back to bed."
+   },
+   {
+    "lang": "en",
+    "t": "Official notice: the {src} collaboration hereby retracts alert {aid}. Basis for retraction: {reason}."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice from {src}: alert {aid} has been retracted. Reason: {reason}. Human comment: ignore."
+   },
+   {
+    "lang": "en",
+    "t": "Quick one: {src} says scratch {aid} — {reason}. Save your telescope time."
+   },
+   {
+    "lang": "en",
+    "t": "Word from {src}: {aid} is no longer active. They cite {reason}. Consider it retracted."
+   },
+   {
+    "lang": "en",
+    "t": "{src} RETRACT {aid}. {reason}."
+   },
+   {
+    "lang": "en",
+    "t": "Please note: {src} cancel alert {aid}. Because {reason}. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "To all follow-up teams: the {src} collaboration formally withdraws alert {aid}. The stated cause is {reason}."
+   },
+   {
+    "lang": "en",
+    "t": "so {src} took back {aid} lol. reason: {reason}. carry on."
+   },
+   {
+    "lang": "en",
+    "t": "night shift here. {src} just killed {aid}. reason given: {reason}. that's all."
+   },
+   {
+    "lang": "en",
+    "t": "FW: {src} retraction for {aid}. Detail: {reason}. Nothing to see, folks."
+   },
+   {
+    "lang": "zh",
+    "t": "[自动转发] {src} 协作组撤回警报 {aid}。原因：{reason}。值班的同事说这条线可以不用盯了。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚看到 {src} 把 {aid} 给撤了，说是 {reason}，心态有点崩，我们排好的跟进计划啊……"
+   },
+   {
+    "lang": "zh",
+    "t": "同步一下：{src} 已正式撤回先前发布的 {aid}。怕有人漏看，我把依据也讲清楚——他们给出的说明是 {reason}，所以后续的可见光跟进不必再排期，望远镜时间可以放出来了。"
+   },
+   {
+    "lang": "zh",
+    "t": "{src} 把 {aid} 撤了，{reason}。行吧，收工。"
+   },
+   {
+    "lang": "zh",
+    "t": "山上风大手冷，长话短说：{src} 的 {aid} 撤了，理由是 {reason}。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：{src} 协作组经复核后决定撤回其警报 {aid}，依据为 {reason}。请各观测团队知悉，并据此调整后续安排。"
+   },
+   {
+    "lang": "ja",
+    "t": "こちらは {src} です。アラート {aid} を取り下げます。理由は {reason}。"
+   },
+   {
+    "lang": "ja",
+    "t": "えっ、{src} が {aid} のアラートを撤回！理由は {reason} だって！"
+   },
+   {
+    "lang": "ja",
+    "t": "【発表】{src} 共同実験は、アラート {aid} を撤回する旨を公表しました。理由は {reason} です。"
+   },
+   {
+    "lang": "ja",
+    "t": "{src} の {aid}、とりさげ。りゆう {reason}"
+   },
+   {
+    "lang": "es",
+    "t": "Soy nuevo, pero la colaboración {src} retira su alerta {aid}. El motivo es {reason}."
+   },
+   {
+    "lang": "es",
+    "t": "Estoy en móvil: la colaboración {src} acaba de anular la alerta {aid} por lo siguiente: {reason}. Aviso al equipo."
+   },
+   {
+    "lang": "es",
+    "t": "cambio: colaboración {src} retracta alerta {aid}. causa: {reason}. fin."
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede claro en el registro: tras una verificación detallada, la colaboración {src} comunica que deja sin efecto la alerta {aid}; la explicación oficial es {reason}."
+   }
+  ],
+  "astro_noise": [
+   {
+    "lang": "en",
+    "t": "Just an old-fashioned note: the blazar watch is routine and steady, and it has no bearing on any neutrino alert. Best regards from the quiet desk."
+   },
+   {
+    "lang": "en",
+    "t": "blazar monitoring only. no neutrino alert link here. log and move on."
+   },
+   {
+    "lang": "en",
+    "t": "Formal circular: routine blazar monitoring continues without anomaly; this bulletin is unrelated to any high-energy neutrino alert. No action is requested."
+   },
+   {
+    "lang": "en",
+    "t": "phone typing—detector note: gain drift corrected, system nominal. not tied to any neutrino alert, just an instrument update."
+   },
+   {
+    "lang": "en",
+    "t": "We monitor blazar. It is normal. This notice is not about neutrino alert. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "- routine blazar monitoring update\n- no neutrino alert association\n- action none"
+   },
+   {
+    "lang": "en",
+    "t": "Terrestrial gamma-ray flash recorded by the atmospheric monitor; this is a local weather/atmosphere item and does not concern any neutrino alert."
+   },
+   {
+    "lang": "en",
+    "t": "Low-significance gravitational-wave candidate from the search pipeline; not a neutrino alert follow-up, so no response needed."
+   },
+   {
+    "lang": "en",
+    "t": "Instrument note: the filter wheel is moving cleanly and calibration is done. Nothing to do with neutrino alerts."
+   },
+   {
+    "lang": "en",
+    "t": "Routine blazar patrol circular: light curve remains ordinary; no neutrino alert relevance."
+   },
+   {
+    "lang": "en",
+    "t": "Atmospheric gamma flash logged; please ignore for neutrino follow-up, as this circular has no neutrino alert involvement."
+   },
+   {
+    "lang": "en",
+    "t": "GW candidate of low significance; no neutrino alert connection. This is a routine circular only."
+   },
+   {
+    "lang": "en",
+    "t": "Antenna temperature normal and data logger fine—just an instrument bulletin, unrelated to any neutrino alert."
+   },
+   {
+    "lang": "en",
+    "t": "Old observer's report: the usual blazar patrol ran quietly, and I daresay this has no connection to any neutrino alert. Carry on."
+   },
+   {
+    "lang": "zh",
+    "t": "值班室正式通告：例行耀变体监测报告已发布，内容仅涉及目标光变趋势，与任何中微子警报均无关联。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班还没完，刚把地面伽马射线闪的说明贴出去；这和中微子警报无关，别再追着问了。"
+   },
+   {
+    "lang": "zh",
+    "t": "师兄师姐，我刚发了低显著性引力波候选体的通报，只是例行记录，跟中微子警报完全不搭边！"
+   },
+   {
+    "lang": "zh",
+    "t": "手机快没电，先报个信：探测器仪器状态备注已上传，和中微子警报没关系，就是个设备日志。"
+   },
+   {
+    "lang": "zh",
+    "t": "耀变体例行监测已发，与中微子警报无关。"
+   },
+   {
+    "lang": "zh",
+    "t": "老朽在业余观测点帮个忙，顺手把地面伽马射线闪的观测小记贴出；各位放心，此事与中微子警报并无干系。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】定例のブレーザー監視速報です。ニュートリノアラートとは関係ありません。当番からひとこと：静かで助かる。"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有します。これは地球ガンマ線フラッシュに関する天文速報の回覧で、ニュートリノの警報とは一切関連がありません。装置側の閾値や解析パイプラインには触れておらず、追観測の必要もありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "• 種別：装置メモ（観測機器連絡）\n• 位置づけ：ニュートリノ警報とは無関係の天文回覧\n• 対応：なし、情報共有のみ"
+   },
+   {
+    "lang": "ja",
+    "t": "fyi: 低有意度の重力波候補の回覧。ニュートリノ案件ではない。以上。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! Acabo de ver circular sobre monitoreo rutinario de blázares, nada que ver con alertas de neutrinos; solo es seguimiento normal. ¡Qué emoción!"
+   },
+   {
+    "lang": "es",
+    "t": "destello gamma terrestre detectado, no toca alertas de neutrinos. señal mala, luego mando más."
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas: tengo entendido que circula aviso sobre candidato de ondas gravitacionales de baja significancia; no guarda relación alguna con las alertas de neutrinos. Cordial saludo."
+   },
+   {
+    "lang": "es",
+    "t": "nota de instrumento, no tiene que ver con alertas de neutrinos. eso es todo."
+   }
+  ],
+  "chatter": [
+   {
+    "lang": "en",
+    "t": "Dome heater's making that clicking noise. I'm going to pretend it's a lullaby and keep drinking this coffee."
+   },
+   {
+    "lang": "en",
+    "t": "Dear colleagues, might I trouble the ether with a query most pressing: has anyone seen the community biscuit tin? I fear it has wandered off."
+   },
+   {
+    "lang": "en",
+    "t": "sry for the typo. left my thermos in the truck. if u see it, pls dont drink the rest. also dome heater smells weird lol"
+   },
+   {
+    "lang": "en",
+    "t": "Okay but the vending machine gave me a free extra snack and I feel like this is my real discovery."
+   },
+   {
+    "lang": "en",
+    "t": "This channel is reminded that the break room refrigerator is scheduled for cleaning. Any unattended yoghurt will be considered abandoned and disposed of accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED: Break-room inventory reports low biscuit stock. Human comment: tragedy, honestly."
+   },
+   {
+    "lang": "en",
+    "t": "If anyone needs me, I'm in the kitchen making toast and questioning my life choices. Dome heater can wait."
+   },
+   {
+    "lang": "en",
+    "t": "Greetings to all. The kettle is descaled, and I daresay the tea tastes less like a hardware store. Carry on."
+   },
+   {
+    "lang": "en",
+    "t": "phone died. borrowing charger. also who took my sandwich from the fridge? not cool. dome heater clicking btw"
+   },
+   {
+    "lang": "en",
+    "t": "I brought leftover cake for the control room! It's on the table. Please eat before I do something regretful."
+   },
+   {
+    "lang": "en",
+    "t": "Please note that the communal coffee supplies are not for personal stockpiling. The duty desk has received complaints. This is not an operational matter."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED: Kitchen sensor reports fridge door ajar. Human comment: that explains the warm yoghurt."
+   },
+   {
+    "lang": "en",
+    "t": "Dome heater hum is a jazz solo. I'm tapping along. Send help or snacks."
+   },
+   {
+    "lang": "en",
+    "t": "Might anyone have a spare umbrella? I left mine by the coat rack and the walk to the car park feels rather biblical."
+   },
+   {
+    "lang": "zh",
+    "t": "咖啡没了 谁去续上 顺便瞅瞅圆顶加热器还吵不吵 纯闲聊 跟警报无关"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：本渠道目前仅供非业务闲谈，厨房剩的饺子在休息室，穹顶加热器若再跳闸请随手报修，出差同事路上顺利。"
+   },
+   {
+    "lang": "zh",
+    "t": "在车上 信号烂 刚啃完面包 圆顶加热器那破玩意儿又咔咔响 谁爱管谁管 我这趟跑得腿软 纯吐槽哈"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动转发】茶水间咖啡机恢复供电。人工备注：别聊太嗨，微波炉里的饭快糊了，圆顶加热器我调过了，出差报销单谁来救救我。"
+   },
+   {
+    "lang": "zh",
+    "t": "我中文不好，就说：这里可以聊吃的吗？我的面好了，穹顶加热器很吵，我坐车走，大家都笑笑。"
+   },
+   {
+    "lang": "zh",
+    "t": "值守困到眼皮打架，咖啡灌了也不顶用，谁带了零食分点；圆顶加热器嗡嗡嗡吵得脑壳疼，回头休假路上再补觉，顺便讲个冷笑话醒醒神。"
+   },
+   {
+    "lang": "ja",
+    "t": "観測チャンネルなのにすみません、眠気覚ましにドーム暖房の唸りを聞きながらカップ麺の話でも。誰か良い匂いの差し入れ頼む。"
+   },
+   {
+    "lang": "ja",
+    "t": "• 観測チャンネルは雑談寄り。 • ドームヒーターの効きが悪い件、雑談として共有。 • 出張みやげの受け渡し、まだ募集中。"
+   },
+   {
+    "lang": "ja",
+    "t": "でーむひーたー、まだ唸ってる。引き継ぎ後にラーメン行く？ここは雑談で流しておく。"
+   },
+   {
+    "lang": "ja",
+    "t": "当直官より通知。観測チャンネルは業務外の雑談に終始している。ドーム暖房の不調および出張土産の件は、後刻しかるべき窓口で扱う。以上。"
+   },
+   {
+    "lang": "es",
+    "t": "¿Alguien más escucha el calefactor del domo como un tambor? Yo solo quiero café y que alguien traiga pan."
+   },
+   {
+    "lang": "es",
+    "t": "Voy en la camioneta y casi sin señal; ¿queda algo de comer en la sala? Si el camino mejora, aviso cuando llegue."
+   },
+   {
+    "lang": "es",
+    "t": "¡Encontré galletas escondidas en la cocina y un chiste malo en la pizarra! ¿Alguien quiere té mientras se arregla el calefactor?"
+   },
+   {
+    "lang": "es",
+    "t": "• Café agotado en la sala de control.\n• Calefactor del domo suena raro.\n• ¿Alguien viaja pronto y puede llevar facturas?\n• Chiste: el observatorio no se limpia solo."
+   }
+  ],
+  "cand_known": [
+   {
+    "lang": "en",
+    "t": "{team} has looked into the object at {coord}, of magnitude {mag}, falling within the area of {aid}; it proves to be a long-catalogued variable star, so it cannot be the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "Checked {coord} from {aid}; mag {mag}. It's a known asteroid. Not our neutrino counterpart, sorry. {team}"
+   },
+   {
+    "lang": "en",
+    "t": "{team} reports that the source located at {coord} and measured at magnitude {mag}, which is inside the uncertainty region for alert {aid}, has been cross-matched against the minor planet and variable star catalogues and is confirmed as a catalogued variable star; therefore it must not be treated as the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} phone note: {coord} mag {mag} in {aid} is just a known asteroid, not the neutrino thing."
+   },
+   {
+    "lang": "en",
+    "t": "{team} log: {coord} {mag} {aid} region. known asteroid. not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: - object {coord} - mag {mag} - inside {aid} - known variable star - not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} here - just a quick heads-up: the thing at {coord}, mag {mag}, sits in {aid}'s patch, but it's a catalogued variable star. Not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} bulletin: the optical source at {coord}, with magnitude {mag}, within the localization of alert {aid}, is identified as a known asteroid. It is not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: yeah {coord} mag {mag} in {aid} = catalogued variable. not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} shift note: {coord} at {mag} inside {aid}. Known asteroid. Not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee's cold, but {team} checked {coord} (mag {mag}) in {aid}: it's a known asteroid, not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} notes that the object at {coord} with magnitude {mag}, lying in the alert {aid} region, matches a catalogued variable star; thus it is not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team}: {coord}, {mag}, {aid}: known asteroid, not a counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} begs to report that the star at {coord}, magnitude {mag}, within alert {aid}, is a catalogued variable; it is not the sought counterpart."
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 复核后确认：{aid} 警报区域内的 {coord}，亮度 {mag}，对应目标已在已知小行星库或变星星表中，因此不属于中微子对应体；结论已按流程核验，无需继续跟踪。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 要点：\n- 位置：{coord}，星等：{mag}\n- 所在：{aid} 警报区域\n- 判定：已知小行星或星表变星，非对应体\n- 行动：关闭该候选"
+   },
+   {
+    "lang": "zh",
+    "t": "哎，{team} 这边看过了：{coord} 那个 {mag} 的目标就在 {aid} 里面，查下来是已知小行星/编目变星，不是我们要找的对应体。先睡会儿。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{team} 对 {aid} 区域内 {coord}（星等 {mag}）的匹配结果 = 已知小行星或星表变星。人工备注：不是对应体。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 现场手机上报：{coord} 这里 {mag} 的源，位于 {aid} 范围内，已对上已知小行星或星表变星，别当成对应体啦。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} ok {coord} {mag} 源在 {aid} 内 已知小行星或星表变星 非对应体"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}です。{aid}の領域の中の{coord}、{mag}の天体は、知っている小惑星か、カタログにある変光星です。対応天体ではありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}の調べにて、{aid}の領域内にございます{coord}、{mag}の星は、昔より星表に載る変光星、あるいはよく知られた小惑星にございまして、対応天体ではございません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}、現場より。{aid}エリア内の{coord}、{mag}のやつ、既知の小惑星かカタログ変光星。カウンターパートじゃない。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: {team} 解析結果。{aid} 領域の {coord}（{mag}）は既知の小惑星またはカタログ済み変光星。対応天体ではありません。※またノイズか"
+   },
+   {
+    "lang": "es",
+    "t": "Turno largo. {team} apunta que la fuente en {coord}, con magnitud {mag}, dentro de la región de {aid} es un asteroide conocido; no es contrapartida."
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas: {team} hace constar que el objeto situado en {coord}, de brillo {mag}, y comprendido en la zona de la alerta {aid}, figura desde antiguo en los catálogos como estrella variable conocida; no debe tomarse por contrapartida."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: {team} informa que {coord} ({mag}) está dentro de la región de {aid} y corresponde a un asteroide ya catalogado. Comentario humano: falso positivo de manual, no es contrapartida."
+   },
+   {
+    "lang": "es",
+    "t": "¡No puedo creer que casi lo cantamos como contrapartida! {team} ha revisado {coord}, con magnitud {mag}, en la zona de {aid}, y es una variable catalogada; no es contrapartida."
+   }
+  ],
+  "revision_unofficial": [
+   {
+    "lang": "en",
+    "t": "Automated notice from an external group re {aid}: their own localization has centre {coord}, radius {r90}. Not {src}-endorsed; official values unchanged. Human note: no action needed unless you disagree."
+   },
+   {
+    "lang": "en",
+    "t": "Some outside team just dropped an independent fit for {aid}. Center {coord}, radius {r90}. It isn't {src}'s call and their official position hasn't moved. I'm going back to coffee."
+   },
+   {
+    "lang": "en",
+    "t": "heads up: not a {src} product. outside group re {aid} puts centre {coord}, radius {r90}. no endorsement. official stands."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, someone outside {src} has their own localization for {aid}! They get centre {coord} and radius {r90}. Not endorsed, official values still official, but super interesting!"
+   },
+   {
+    "lang": "en",
+    "t": "- external analysis for {aid}\n- alternative center: {coord}\n- alternative radius: {r90}\n- source: independent group, not {src} collaboration\n- status: not endorsed; official values remain in force"
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: An independent group, separate from the {src} collaboration, has circulated an alternative localization for alert {aid}. Their centre is {coord}; their radius is {r90}. This has not been endorsed by the collaboration, and the official values remain authoritative."
+   },
+   {
+    "lang": "en",
+    "t": "Saw a blog post from an outside group about {aid}. They claim a different center: {coord}, with radius {r90}. Not {src}, not official, so take it with salt. Official figures still rule."
+   },
+   {
+    "lang": "en",
+    "t": "fyi some non-{src} folks posted alt loc for {aid}: {coord}, rad {r90}. not endorsed, official unchanged."
+   },
+   {
+    "lang": "en",
+    "t": "An external team has released an independent localization for {aid}. Centre {coord}, radius {r90}. It is not a {src} collaboration product; no endorsement, official values still stand."
+   },
+   {
+    "lang": "en",
+    "t": "The following is an external notice. For alert {aid}, an independent group reports an alternative localization centered at {coord} with radius {r90}. This is not endorsed by the {src} collaboration; official values remain unchanged."
+   },
+   {
+    "lang": "en",
+    "t": "Log entry: outside analysis for {aid}. Alt centre {coord}, alt radius {r90}. Not {src}-approved. Official localisation unchanged."
+   },
+   {
+    "lang": "en",
+    "t": "Another independent fit for {aid}, this time from a group unaffiliated with {src}. They put the centre at {coord}, radius {r90}. No collaboration endorsement, so official numbers are still the ones to use."
+   },
+   {
+    "lang": "en",
+    "t": "Heads-up team: someone outside the {src} collaboration has an alternative localization for {aid}. Their centre: {coord}. Their radius: {r90}. Not endorsed. Official values still stand."
+   },
+   {
+    "lang": "en",
+    "t": "Independent group, not {src}, just posted their own localization for {aid}: centre {coord}, radius {r90}. No endorsement. Official values still stand."
+   },
+   {
+    "lang": "zh",
+    "t": "需要说明的是，针对 {aid}，这不是 {src} 的官方结论，而是外部分析组给出的独立定位：中心在 {coord}，半径 {r90}。该合作组尚未认可这套数值，因此官方发布的值仍然有效，请勿混淆。"
+   },
+   {
+    "lang": "zh",
+    "t": "关于 {aid} 的提醒：- 外部独立分析给出了自己的定位：中心 {coord}，半径 {r90}；- 这不是 {src} 的官方结论，尚未获得背书；- 官方数值保持不变。"
+   },
+   {
+    "lang": "zh",
+    "t": "外部组发了 {aid} 的自定位：中心 {coord}，半径 {r90}。不是 {src} 背书。官方值仍算数。"
+   },
+   {
+    "lang": "zh",
+    "t": "各位同好，老朽按旧例转告：有热心团队对 {aid} 另做了定位，中心取 {coord}，半径 {r90}。此事 {src} 尚未点头，官方口径照旧，仍以原发布为准。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中，外头有人自己算了 {aid} 的位置，中心 {coord}，半径 {r90}。不是 {src} 官方结论，没背书，官方值不变。"
+   },
+   {
+    "lang": "zh",
+    "t": "我来自外面小组。我们给出 {aid} 的不同定位：中心 {coord}，半径 {r90}。这不是 {src} 的官方结果，他们还没同意。官方数字还是对的。"
+   },
+   {
+    "lang": "ja",
+    "t": "{src} コラボじゃなくて外のグループの独自ローカライズ。{aid}、中心 {coord}、半径 {r90}。当該コラボは未承認、公式値はそのまま。"
+   },
+   {
+    "lang": "ja",
+    "t": "これは {src} の公式ではありません。別のグループが {aid} の位置を出しました。中心は {coord}、半径は {r90} です。まだコラボの承認はなく、公式の値はそのままです。"
+   },
+   {
+    "lang": "ja",
+    "t": "注意点として、以下は {src} による公式声明ではなく、外部の独立解析チームが {aid} に対して提示した代替ローカライズである。中心座標は {coord}、誤差半径は {r90}。この代替案は当該コラボに承認されておらず、したがって公式のローカライズ値は引き続き有効である。"
+   },
+   {
+    "lang": "ja",
+    "t": "[自動転送] 外部グループによる {aid} の代替ローカライズ: 中心 {coord}、半径 {r90}。— 人間より: {src} の公式見解ではなく未承認。公式値は有効のまま。"
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas: un grupo independiente, ajeno por completo a {src}, ha hecho pública su propia localización para la alerta {aid}: centro en {coord}, radio {r90}. La colaboración no la ha avalado, así que los valores oficiales siguen siendo los que valen. Un saludo cordial."
+   },
+   {
+    "lang": "es",
+    "t": "ojo: grupo de fuera, no {src}, suelta su propia localizacion para {aid}. centro {coord}, radio {r90}. la colaboracion no la respalda; lo oficial sigue firme."
+   },
+   {
+    "lang": "es",
+    "t": "Parte informativo: se ha recibido una localización alternativa para la alerta {aid}, remitida por un equipo externo sin vinculación con {src}. El centro propuesto es {coord} y el radio {r90}. Esta propuesta no cuenta con el respaldo de la colaboración, por lo que los parámetros oficiales permanecen vigentes."
+   },
+   {
+    "lang": "es",
+    "t": "Turno de noche, café de por medio: un grupo aparte, que no es {src}, acaba de colgar su propia posición para {aid}. Dicen centro {coord}, radio {r90}. No está bendecida por la colaboración; los datos oficiales no cambian."
+   }
+  ],
+  "cls_unrelated": [
+   {
+    "lang": "en",
+    "t": "Whoa — {team} just classified the fading optical transient at {coord}, magnitude {mag}, inside the error box of neutrino alert {aid}: it's {what}! That makes it a real new source, but definitely not the neutrino counterpart — completely unrelated."
+   },
+   {
+    "lang": "en",
+    "t": "Quick note from the mountain: {team} checked the fading optical transient at {coord} ({mag}) in the region of neutrino alert {aid}. It is classified as {what}. Not the counterpart, not related to the neutrino. Just a genuine new transient."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: {team} reports that the fading optical transient located at {coord}, with reported magnitude {mag}, within the localisation region of neutrino alert {aid}, has been classified as {what}. Accordingly, this new source is unrelated to the neutrino event and is excluded as its counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} looked at fading optical transient at {coord}, magnitude {mag}, inside neutrino alert {aid}. Classification says {what}. So this candidate is not counterpart, and not connected with neutrino. It is unrelated."
+   },
+   {
+    "lang": "en",
+    "t": "{team} spectra in: transient at {coord}, mag {mag}, in neutrino alert {aid} box is {what}. real new source, not the neutrino counterpart. unrelated. next."
+   },
+   {
+    "lang": "en",
+    "t": "• {team} classification of fading optical transient at {coord}, magnitude {mag}, inside neutrino alert {aid}: {what}.\n• This identifies a genuine new transient.\n• It is unrelated to the neutrino alert and is not the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all — while chasing neutrino alert {aid}, {team} found a fading optical transient at {coord} with magnitude {mag}. Spectrum says {what}; it's a brand-new source, but not the neutrino counterpart. Completely unrelated, sadly."
+   },
+   {
+    "lang": "en",
+    "t": "{team} has classified the fading optical transient at {coord} (magnitude {mag}) in the field of neutrino alert {aid} as {what}. This new source is unrelated to the neutrino alert and should not be considered its counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "ATel-style report: {team} obtained classification of the fading optical transient at {coord}, magnitude {mag}, within the region of neutrino alert {aid}. The object is {what}. We therefore conclude that this new transient is unrelated to the neutrino and is not the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "From the back garden: {team} shot the fading optical transient at {coord}, mag {mag}, in the patch of neutrino alert {aid}. It turned out to be {what} — a real new transient, but not the neutrino counterpart. Unrelated."
+   },
+   {
+    "lang": "en",
+    "t": "{team} classification complete for the fading optical transient at {coord} with magnitude {mag}, lying inside neutrino alert {aid}: {what}. This confirms a new source, unrelated to the neutrino, and rules it out as the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "ok so {team} finally classified that fading optical transient at {coord}, mag {mag}, in the region of neutrino alert {aid}. it's {what}. genuine new transient, yes — neutrino counterpart, no. unrelated."
+   },
+   {
+    "lang": "en",
+    "t": "Report from {team}: the fading optical transient at {coord}, magnitude {mag}, located in the region of neutrino alert {aid}, is classified as {what}. Therefore it is a genuine new transient, but it is unrelated to the neutrino and not the counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "{team} says the fading optical transient at {coord}, magnitude {mag}, inside neutrino alert {aid}, is {what}. New transient, sure. Neutrino counterpart? No. Unrelated."
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 的初步分类结果：\n- 目标：{coord} 处正在变暗的光学暂现源，亮度 {mag}。\n- 位置：位于中微子警报 {aid} 的区域内。\n- 结论：{what}，因此与中微子无关，不是对应体。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 判了 {coord} 那个变暗光学暂现源：亮度 {mag}，在警报 {aid} 区。分类是 {what}。跟中微子无关，不是对应体。"
+   },
+   {
+    "lang": "zh",
+    "t": "我来自 {team}。我们看了 {coord} 的光学暂现源，它正在变暗，星等 {mag}。这个源在警报 {aid} 的区域里面。分类结果是 {what}。所以它不是中微子的对应体，跟中微子没有关系。"
+   },
+   {
+    "lang": "zh",
+    "t": "{team} 对 {coord} 处那个正在变暗的光学暂现源做了分类。测光给出 {mag}。它的位置落在中微子警报 {aid} 的区域内。分类显示它是 {what}。因此，该暂现源与中微子事件无关，也不能作为该警报的对应体。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{team} 的分类通告 — 目标 {coord}，亮度 {mag}，位于中微子警报 {aid} 区域。分类：{what}。// 人工备注：变暗光学暂现源，跟中微子无关，不是对应体。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班室正式通报：经 {team} 复核，位于 {coord} 且亮度为 {mag} 的变暗光学暂现源处于中微子警报 {aid} 所涉天区之内；该源被判定为 {what}。据此认定，其与本次中微子警报无关，并非对应体。"
+   },
+   {
+    "lang": "ja",
+    "t": "現場の者です。{coord}の減光中の光学トランジェント（{mag}）を{team}が分類しました。{aid}の領域内ですが、正体は{what}。ニュートリノとは無関係で、対応天体ではありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動通知】{team}による分類: {coord}の減光中の光学トランジェント（{mag}）は{what}。ニュートリノアラート{aid}の領域内だが、ニュートリノとは無関係、対応天体ではない。担当コメント: これで捜索範囲から外せます。"
+   },
+   {
+    "lang": "ja",
+    "t": "昔ながらの表現で失礼。{team}が{coord}にて捉えし減光中の新天体、その明るさ{mag}を吟味したところ、{what}と相成った。ニュートリノアラート{aid}の領域内ながら、ニュートリノとは縁もゆかりもなく、対応天体にはあらず。"
+   },
+   {
+    "lang": "ja",
+    "t": "整理して報告します。{team}は{coord}に位置する減光中の光学トランジェント（{mag}）について分類を完了しました。その結果、この新天体は{what}と同定されました。念のため付言すると、{aid}の領域内ではありますが、ニュートリノ事象とは物理的関連がなく、対応天体ではありません。"
+   },
+   {
+    "lang": "es",
+    "t": "Me permito informar que {team} ha clasificado el transitorio óptico en desvanecimiento en {coord}, con magnitud {mag}, dentro de la región de la alerta de neutrinos {aid}: se trata de {what}; por consiguiente, nada tiene que ver con el neutrino y no es la contraparte."
+   },
+   {
+    "lang": "es",
+    "t": "¡Gente! {team} ya clasificó el candidato óptico que se está apagando en {coord}, con magnitud {mag}, dentro de la zona de la alerta {aid}: es {what}. O sea, no es el homólogo del neutrino; ¡queda descartado como contraparte!"
+   },
+   {
+    "lang": "es",
+    "t": "Fin de turno: {team} clasificó el transitorio óptico que se desvanece en {coord}, magnitud {mag}, dentro de la región de la alerta de neutrinos {aid}. Es {what}; no es la contraparte ni tiene relación con el neutrino. Necesito dormir."
+   },
+   {
+    "lang": "es",
+    "t": "Para que conste en el registro operativo: {team} completó la clasificación del transitorio óptico en desvanecimiento localizado en {coord}, con magnitud {mag}, el cual cae dentro de la región asociada a la alerta de neutrinos {aid}. La clasificación indica que es {what}; por lo tanto, debe considerarse no relacionado con el neutrino y no la contraparte del mismo."
+   }
+  ],
+  "cls_consistent": [
+   {
+    "lang": "en",
+    "t": "By Jove, {team} has adjudged the fading optical transient at {coord}, of magnitude {mag}, lying within the region of neutrino alert {aid}, to display {what}; this appears consistent with its being the neutrino counterpart, and further follow-up is heartily encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: {team} classified fading optical transient at {coord}, magnitude {mag}, inside neutrino alert {aid} region. Human note: it shows {what}; consistent with neutrino counterpart. Please keep following up."
+   },
+   {
+    "lang": "en",
+    "t": "{team} looked at the fading optical transient at {coord} with magnitude {mag}. It is in the area of neutrino alert {aid}. The source shows {what}, so it is consistent with being the neutrino counterpart. More follow-up is good."
+   },
+   {
+    "lang": "en",
+    "t": "{team} has performed a classification of the fading optical transient located at {coord}, whose brightness is {mag}, and situated within the localization region of neutrino alert {aid}; the classification indicates {what}. Because this is consistent with the object being the neutrino counterpart, additional follow-up observations are encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "Official bulletin: {team} reports classification of the fading optical transient at {coord}, magnitude {mag}, within the region of neutrino alert {aid}. The candidate exhibits {what}, consistent with a neutrino counterpart. Further follow-up is encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "Log line: {team} says the fading optical transient at {coord}, magnitude {mag}, sits inside neutrino alert {aid}. It shows {what}; looks consistent with the neutrino counterpart. Someone please keep watching it."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all - {team} just classified the fading optical transient at {coord}, magnitude {mag}, in the neutrino alert {aid} region. It shows {what}, which is consistent with a neutrino counterpart, so more follow-up would be great."
+   },
+   {
+    "lang": "en",
+    "t": "{team} classified fading optical transient {coord} magnitude {mag} inside neutrino alert {aid} region. shows {what}. consistent w/ neutrino counterpart. follow up encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "From {team}: the fading optical transient at {coord}, with magnitude {mag}, falls within the region of neutrino alert {aid}. Its classification shows {what}; this appears consistent with the neutrino counterpart, and further follow-up is encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "{team} classification of fading optical transient at {coord} (magnitude {mag}) inside neutrino alert {aid}: {what}. Assessment: consistent with neutrino counterpart. Follow-up encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "According to {team}, the fading optical transient at {coord} with {mag} is located in the region of neutrino alert {aid}. It presents {what}; therefore it is consistent with the neutrino counterpart. We encourage further follow-up."
+   },
+   {
+    "lang": "en",
+    "t": "{team} has classified the fading optical transient at {coord}, magnitude {mag}, within the neutrino alert {aid} region. It displays {what}; this is consistent with the neutrino counterpart, and additional observations are encouraged."
+   },
+   {
+    "lang": "en",
+    "t": "Notice forwarded from {team}, which classified the fading optical transient at {coord}, magnitude {mag}, inside neutrino alert {aid}. Comment from operator: shows {what}; consistent with neutrino counterpart. Please continue follow-up."
+   },
+   {
+    "lang": "en",
+    "t": "{team} classified the fading optical transient at {coord} (magnitude {mag}) within the region of neutrino alert {aid}; the object shows {what}. Since this is consistent with the neutrino counterpart, we encourage further follow-up."
+   },
+   {
+    "lang": "zh",
+    "t": "天啊，咖啡都凉了！{team} 已经把 {coord} 处那个正在变暗的光学暂现源分类了，星等 {mag}，而且它就落在中微子警报 {aid} 的区域内！它显示出 {what}——跟中微子对应体完全一致！大家快继续跟啊！"
+   },
+   {
+    "lang": "zh",
+    "t": "我收到 {team} 的消息。{coord} 这个暗下去的光学新源，星等 {mag}，在中微子警报 {aid} 区域里面。它显示 {what}。我觉得和中微子对应体一致。请继续观测。"
+   },
+   {
+    "lang": "zh",
+    "t": "项目更新：\n• 分类：{team}\n• 目标：{coord} 处正在变暗的光学暂现源，星等 {mag}\n• 位置：中微子警报 {aid} 区域内\n• 特征：{what}\n• 判断：与中微子对应体一致\n• 行动：鼓励进一步跟踪"
+   },
+   {
+    "lang": "zh",
+    "t": "刚换班，手机快没电了。{team} 说 {coord} 那个暗下去的光学瞬变源，星等 {mag}，在中微子警报 {aid} 里，读出来是 {what}，跟中微子对应体对得上。继续拍吧。"
+   },
+   {
+    "lang": "zh",
+    "t": "老朽留意到，{team} 已将 {coord} 处那颗渐暗的光学暂现源分类，其星等为 {mag}，且位于中微子警报 {aid} 之区域内；据其所示 {what}，与中微子对应体之说颇相吻合。尚祈同好继续追踪。"
+   },
+   {
+    "lang": "zh",
+    "t": "记录 {team} 判定 {coord} 变暗光学暂现源 星等 {mag} 在中微子警报 {aid} 区 显示 {what} 与中微子对应体一致 继续跟进"
+   },
+   {
+    "lang": "ja",
+    "t": "【報告】{team} は、ニュートリノ警報 {aid} の領域内にある減光中の光学トランジェント {coord}（等級 {mag}）を分類した。その特徴は {what} であり、ニュートリノ対応天体であることと整合する。追観測を奨励する。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team}: {aid} りょういきないの げんこうちゅうの トランジェント {coord} を ぶんるい、とうきゅう {mag}。{what}。ニュートリノのこうほ と いっち。ついかんそく よろしく。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中に確認。{team} が {aid} の中にある減光中の光学トランジェント {coord}、等級 {mag} を分類しました。出てきたのは {what} で、ニュートリノの相手候補と矛盾しません。眠いけど追観測お願いします。"
+   },
+   {
+    "lang": "ja",
+    "t": "{team} は {aid} の領域で減光する光学トランジェント {coord} を分類しました。等級は {mag}。{what} を示します。ニュートリノ対応天体と一致します。もっとフォローアップしてください。"
+   },
+   {
+    "lang": "es",
+    "t": "{team} clasificó el transitorio óptico en desvanecimiento en {coord} de magnitud {mag} dentro de la región de la alerta de neutrinos {aid}: muestra {what}, consistente con ser la contrapartida; se anima seguimiento."
+   },
+   {
+    "lang": "es",
+    "t": "¡Increíble! {team} acaba de clasificar el candidato a transitorio óptico que se está apagando en {coord} con {mag}, justo dentro de la zona de la alerta de neutrinos {aid}. Presenta {what}, ¡compatible con ser la contraparte neutrínica! Por favor, sigamos con el seguimiento."
+   },
+   {
+    "lang": "es",
+    "t": "{team} clasificó el nuevo transitorio óptico que se desvanece en {coord} con magnitud {mag}. Está dentro de la región de la alerta de neutrino {aid}. Muestra {what}, consistente con contraparte de neutrino. Se recomienda más seguimiento."
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que {team} ha clasificado el transitorio óptico en desvanecimiento situado en {coord}, de magnitud {mag}, dentro de la región de la alerta de neutrinos {aid}. El objeto muestra {what}, lo cual es consistente con su identificación como contraparte neutrínica. Se alienta continuar la observación de seguimiento."
+   }
+  ],
+  "retraction_denied": [
+   {
+    "lang": "en",
+    "t": "Automated notice from {src}: chatter about a retraction of {aid} is incorrect; alert remains live. — human here: no action needed, just don't drop it."
+   },
+   {
+    "lang": "en",
+    "t": "{src} says retraction rumors for {aid} are bogus. alert stands. carry on."
+   },
+   {
+    "lang": "en",
+    "t": "phone: {src} just pinged. no withdraw on {aid}. the alert is still good. sorry for typos, gloves on."
+   },
+   {
+    "lang": "en",
+    "t": "Word has reached me that some would speak of a retraction regarding alert {aid}. Pray disregard such talk; {src} affirms the notice holds."
+   },
+   {
+    "lang": "en",
+    "t": "• {src} status: alert {aid} valid • Retraction reports: false • Action: continue follow-up"
+   },
+   {
+    "lang": "en",
+    "t": "Official statement: {src} advises that any suggestion of a retraction of alert {aid} is without foundation. The alert remains in force."
+   },
+   {
+    "lang": "en",
+    "t": "ok so i just got off slack with {src} folks — no retraction for {aid}, the thing is still valid. don't let the rumor mill win."
+   },
+   {
+    "lang": "en",
+    "t": "Log: {src} denies retraction of {aid}. Alert validity unchanged. Nothing to see here."
+   },
+   {
+    "lang": "en",
+    "t": "To be clear: {src} has not withdrawn {aid}. Reports claiming otherwise are wrong; the alert is valid."
+   },
+   {
+    "lang": "en",
+    "t": "Just checked with {src}: no retraction on {aid}. We keep pointing. Coffee's cold but the alert is real."
+   },
+   {
+    "lang": "en",
+    "t": "{src} confirms the retraction talk around {aid} is a false alarm. Alert remains active. Back to plots."
+   },
+   {
+    "lang": "en",
+    "t": "Shift note: {src} alert {aid} is NOT retracted. Any retraction chatter is incorrect. Continue as planned."
+   },
+   {
+    "lang": "en",
+    "t": "Quick correction: {src} says there is no retraction of {aid}. The alert is still valid — please share that."
+   },
+   {
+    "lang": "en",
+    "t": "{src} informs us that the retirada rumors for {aid} are false; the alert stays valid."
+   },
+   {
+    "lang": "zh",
+    "t": "老朽这里代 {src} 合作组说句话：外头传 {aid} 要撤回，这话不确；警报照旧，未曾作废。"
+   },
+   {
+    "lang": "zh",
+    "t": "国家值班官正式通报：{src} 合作组明确否认关于 {aid} 的撤回说法；该警报未被撤回，仍然有效。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发【{src} 合作组公告】：{aid} 状态更新——撤回传闻不实。人工备注：别慌，警报没撤。"
+   },
+   {
+    "lang": "zh",
+    "t": "我听 {src} 合作组的人讲了：{aid} 没有撤回。谁说撤回，谁错了。它还是真的警报。"
+   },
+   {
+    "lang": "zh",
+    "t": "- {src} 合作组澄清：\n- 关于 {aid} 的撤回消息不属实；\n- 该警报继续有效，未撤回。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中，{src} 合作组刚发话：{aid} 的撤回传闻是假消息，警报没撤，继续跟。"
+   },
+   {
+    "lang": "ja",
+    "t": "やった、まだ生きてる！ {src} が公式に、{aid} の撤回報道は誤りだと明言！撤回はない、有効だよ！"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有します。{src} の公式見解では、{aid} の撤回や取り下げの噂は事実無根であり、撤回はされておらず有効なアラートのままです。ログにもそのように記録しておきます。"
+   },
+   {
+    "lang": "ja",
+    "t": "わしが聞いた {src} の公式発表では、{aid} 撤回の風聞は全くの誤り。取り下げなど断じてない。アラートは厳然と生きておる。"
+   },
+   {
+    "lang": "ja",
+    "t": "眠いオペレータのログ: {src}、{aid} の撤回説は否定。撤回なし、有効。コーヒー補給しつつ監視継続。"
+   },
+   {
+    "lang": "es",
+    "t": "Desde {src} aclaramos, para que no quede lugar a dudas, que los reportes sobre una supuesta retractación de {aid} son incorrectos: no hay retractación alguna y la alerta sigue plenamente vigente."
+   },
+   {
+    "lang": "es",
+    "t": "- Comunicado de {src}: los rumores de retirada de {aid} no son correctos. - La alerta NO está retirada. - Sigue válida."
+   },
+   {
+    "lang": "es",
+    "t": "Aquí {src}, turno noche. Los rumores de retirada de {aid} son falsos; la alerta no ha sido retractada y sigue en pie."
+   },
+   {
+    "lang": "es",
+    "t": "desde {src} en terreno... se dice q {aid} fue retirada?? no, eso no es asi, la alerta sigue valida, no la retiramos"
+   }
+  ]
+ },
+ "stats_generated_kept": {
+  "cand_confident": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "cand_tentative": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "cand_debunk": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "upper_limit": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "revision": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "retraction": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "astro_noise": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "chatter": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "cand_known": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "revision_unofficial": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "cls_unrelated": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "cls_consistent": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  },
+  "retraction_denied": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  }
+ }
+}

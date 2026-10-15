@@ -11,6 +11,14 @@
       "about": {
         "title": "運営",
         "description": "Agentic Observer ハッカソンの主催者、スポンサー、科学委員会。"
+      },
+      "final-results": {
+        "title": "決勝結果",
+        "description": "隠しカード決勝の最終順位：総合点・カード別平均・各評価の明細と3D観測リプレイ。"
+      },
+      "fig-sky": {
+        "title": "観測リプレイ図",
+        "description": "3D観測リプレイの静止レンダリング（論文用）"
       }
     },
     "wordmark_note": "Agentic Observer"
@@ -335,6 +343,7 @@
     "console": {
       "title": "公式サンプルのリプレイ",
       "replay_note": "公開練習場 {nights} 夜 · {actions} 回の判断",
+      "replay_note_card": "決勝カード {card} · {nights} 夜 · {actions} 回の判断",
       "paused": "一時停止中",
       "pause": "一時停止",
       "resume": "再開",
@@ -496,10 +505,17 @@
     "leaderboard": {
       "kicker": "ランキング",
       "title": "リアルタイム順位",
-      "lede": "採点が終わり次第、ランキングは即時更新されます。練習の順位は参考値、オンライン大会の順位が賞を決めます。",
+      "lede": "大会は終了しました。最終順位は「決勝結果」で決まります。ここのランキングは参考・練習用です。",
       "signal_live": "ランキング稼働中",
       "signal_waiting": "ベンチマーク信号を待機中",
-      "feed": "リアルタイム評価データ"
+      "feed": "リアルタイム評価データ",
+      "final_cta": "決勝の最終順位を見る",
+      "guide_title": "各ランキングの意味",
+      "guide_final": "決勝結果：順位を決める唯一のランキング。非公開タスクカード E–H、各チーム 12 回の評価の平均。",
+      "guide_fun": "オープンプレイ：大会後に同じカードで公開。いつでも提出でき、順位には影響しません。",
+      "guide_competition": "本戦・総合：10 月 4–8 日のオンライン本戦。カード A–D の平均、各チームの最高の完全評価。参考用。",
+      "guide_super": "スーパーボード：同じ評価内で A–D を 20%、A1–D1 を 80% で重み付けした合計。各チームの最新の完全評価。参考用。",
+      "guide_cards": "Card A・Card A1 などのタブ：カード 1 枚ごとの順位。"
     },
     "evaluation": {
       "kicker": "05 / 評価",
@@ -787,11 +803,14 @@
     "invite_link": "招待リンク",
     "copy_link": "招待リンクをコピー",
     "copy_fallback": "コピーできませんでした。招待コードまたはリンクを選択して手動でコピーしてください。",
+    "opensource_repo": "オープンソースリポジトリ（受賞資料・任意）",
+    "opensource_repo_hint": "https://github.com/組織/リポジトリ",
     "errors": {
       "recipient_unavailable": "現在、この参加者に招待を送れません。",
       "team_unavailable": "このチームには現在参加できません。",
       "invitation_not_found": "このリクエストの受信者ではありません。",
-      "invitation_finished": "このリクエストは処理済みです。"
+      "invitation_finished": "このリクエストは処理済みです。",
+      "invalid_repo_url": "リポジトリのURL形式が正しくありません。https://github.com/組織/リポジトリ の形で入力してください。"
     },
     "solo": "ワンクリックで個人参加",
     "solo_lede": "一人でも参加できます。ワンクリックで自分の名前の 1 人チームを作成でき、あとから人数上限を上げて仲間を招待することもできます。",
@@ -827,7 +846,7 @@
       "relay": "保存しない（ページ中継）",
       "relay_help": "キーはこのページにのみ保持され、サーバーには保存されません。各評価が終わるまでこのページを開いたままにしてください。閉じている間はモデル呼び出しが失敗します。上位チームとして検証を受ける場合は、主催者と合意した時刻にもこのページを開く必要があります。",
       "relay_deletes": "これを選ぶと保存済みのキーは削除されます。",
-      "usage": "プロジェクトは実行ごとに提供される OPENAI_BASE_URL と OPENAI_API_KEY をそのまま使用します。モデル呼び出しはあなたのエンドポイントとモデルに送られます。",
+      "usage": "プロジェクトはチームが「Keys and network」に保存した変数（例: OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL）を読み取り、プロバイダーを直接呼び出します。model はプロバイダーが対応するモデル名である必要があります。OBSERVER_API_URL はプラットフォームのセッション用インターフェースで、モデルのエンドポイントではありません。",
       "limits": "1 回の実行につき、モデル呼び出しは最大 {calls} 回、同時に最大 {concurrency} 件までです。トークン数に上限はありません（費用はチームのキーで負担します）。",
       "limits_tokens": "1 回の実行につき、モデル呼び出しは最大 {calls} 回、トークンは最大 {tokens} 個、同時に最大 {concurrency} 件までです。",
       "saved_title": "保存済みのモデル API",

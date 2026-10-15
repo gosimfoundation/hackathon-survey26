@@ -50,7 +50,7 @@ EXIT_RATE, EXIT_UNAVAILABLE, EXIT_TIMEOUT, EXIT_LIMIT, EXIT_FAILED = 5, 6, 7, 8,
 
 AUTH_CODES = {"invalid_token", "cli_tokens_disabled", "account_banned", "account_unavailable", "login_required",
               "no_token", "banned", "not_authenticated"}
-LIMIT_CODES = {"daily_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
+LIMIT_CODES = {"daily_limit", "extension_version_limit", "repeat_daily_limit", "preparation_limit", "preparation_daily_limit", "upload_limit",
                "batch_already_active", "team_variable_limit", "full", "team_limit_reached", "no_codes_left", "uid_daily_limit"}
 NOT_FOUND_CODES = {"revision_not_found", "run_not_found", "result_not_ready", "project_not_ready", "upload_not_found",
                    "not_found", "token_not_found", "diagnostics_not_found", "invitation_not_found", "uid_not_found",
@@ -94,6 +94,8 @@ MESSAGES = {
     "preparation_limit": ("Your team already has three projects being prepared.", "本队已有三个项目正在准备，请等待完成。"),
     "preparation_daily_limit": ("Your team has used today’s project preparations (the daily number follows the evaluation quota; see survey26 quota). The count resets at 00:00 UTC (08:00 Beijing time).",
                                 "本队今天的项目准备次数已用完（每天的次数与评测次数相同，可用 survey26 quota 查看），每天北京时间 8 点（UTC 0 点）重置。"),
+    "extension_version_limit": ("After the deadline each team may submit at most 15 new versions; your team has used all 15. You can still evaluate and choose any confirmed version.",
+                                "截止后每队最多再提交 15 个版本（已用 15/15）。已有的已确认版本仍可评测，也可选为送测版本。"),
     "daily_limit": ("The daily evaluation limit has been reached.", "今天的评测次数已用完。"),
     "repeat_daily_limit": ("Evaluate 3 times and average needs 3 of today’s evaluations.", "「评测 3 次取平均」需要今天剩余至少 3 次评测。"),
     "revision_already_evaluated": ("This version has already been evaluated. Pass --yes to evaluate it again (uses one more of today’s evaluations).",
@@ -2110,7 +2112,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Official command-line tool of the GOSIM 2026 Agentic Observer Hackathon: everything the website "
                     "(https://create.gosim.org/survey26/) lets a contestant do. Create a personal API token on your profile page first.",
         epilog="Exit codes: 0 ok, 1 refused, 2 usage/needs --yes, 3 auth, 4 not found, 5 rate limited, 6 unavailable, "
-               "7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. Guide: " + SITE + "/cli")
+               "7 wait timeout, 8 limit reached, 9 preparation/evaluation failed. "
+               "Sophon: an unscored easter-egg problem beyond the main track (see the guide's Sophon section). Guide: " + SITE + "/cli")
     p.add_argument("--version", action="version", version="survey26 " + __version__)
     sub = p.add_subparsers(dest="group", metavar="COMMAND")
 

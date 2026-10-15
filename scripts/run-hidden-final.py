@@ -8,7 +8,7 @@ it in the sealed hidden phase ('final-hidden'), outside the daily limit: each wi
 one run per card linked to that phase (the v4 cards E-H). The normal dispatcher
 starts a team's repeats of each card together (migration 20261004120000): repeats
 run one after another could carry what a program saw of a hidden card into the
-next repeat. Any rerun (--retry-failed) replaces the team's whole set, so a card's
+next repeat. A team runs one card at a time, teams side by side (20261008060000). Any rerun (--retry-failed) replaces the team's whole set, so a card's
 repeats always overlap in time; --results checks it and never ranks a set whose
 repeats did not overlap (status not_concurrent).
 Results stay invisible to participants until the hidden phase's

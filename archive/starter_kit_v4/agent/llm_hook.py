@@ -1,10 +1,10 @@
 """Optional LLM advice for the baseline agent (an example of where a model can help).
 
-The platform gives every run two environment variables:
-  OPENAI_BASE_URL   an OpenAI-compatible endpoint (the platform's model proxy)
-  OPENAI_API_KEY    a temporary credential for this run
-OPENAI_MODEL (or MODEL_NAME) picks the model; without it the platform placeholder "team-model" is used,
-which the proxy maps to your team's configured model.
+On the platform these come from the variables your team saved in Participate -> Keys and network:
+  OPENAI_BASE_URL   your provider's OpenAI-compatible endpoint
+  OPENAI_API_KEY    your provider key
+OPENAI_MODEL (or MODEL_NAME) picks the model and must be a name your provider supports.
+OBSERVER_API_URL is the platform's session interface, not a model endpoint.
 
 The hook is used only when USE_LLM=1 and both variables are present. Every call has a short timeout and
 the whole run has a small total budget. When anything fails, the agent falls back to its own rules, so a

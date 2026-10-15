@@ -95,7 +95,7 @@ live run reports `survey_complete`, `global_wallclock_expired`, `agent_error` or
 
 1. The platform starts your program once with the `run` command of `observer.project.json`
    (`python3 -u minimal_agent.py` for the kit; cwd = your project folder, a scrubbed environment plus the
-   manifest's `environment` and the model-proxy variables `OPENAI_BASE_URL` / `OPENAI_API_KEY`; stderr is
+   manifest's `environment` and the variables your team saved in Participate → Keys and network (e.g. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`); stderr is
    captured to the run log). `local_runner.py` mirrors this and also loads your local `agent/.env`.
 2. It writes one `initialize` line: the immutable catalogs (tiles with `tile_science_value`, targets, calendar,
    site) and the exact `scoring_contract` (`challenge-score-v3` config, weather score interface, lunar model).
@@ -230,12 +230,12 @@ policy scores far lower, mostly through missed REQUIRED tiles and invalid action
 * `agent/model_factory.py` and `agent/.env` — optional LLM. Locally: copy `.env.example` to `.env`, set
   `MODEL_PROVIDER`, `MODEL_NAME` and the provider key, and install `agent/requirements.txt`
   (`python3 -m pip install -r agent/requirements.txt`). On the platform `.env` is never uploaded: every run gets
-  `OPENAI_BASE_URL` (the platform's OpenAI-compatible model proxy) and `OPENAI_API_KEY` (a temporary run
-  credential, not your key). `model_factory.py` reads these two first and falls back to `MODEL_BASE_URL` and the
+  the variables your team saved in Participate → Keys and network (or with `survey26 env model --provider …
+  --key - --model …`), such as `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `OPENAI_MODEL`, as environment
+  variables. `model_factory.py` reads `OPENAI_BASE_URL` / `OPENAI_API_KEY` first and falls back to `MODEL_BASE_URL` and the
   provider keys (`ZAI_API_KEY`, `DEEPSEEK_API_KEY`, ...) for local runs. The model name comes from `OPENAI_MODEL`
-  or `MODEL_NAME`; on the platform it may be left empty, because the proxy uses the endpoint, model and key your
-  team set on the Participate page. The proxy speaks chat completions, so OpenAI-compatible profiles use the chat
-  API there.
+  or `MODEL_NAME` and must be a name your provider supports. The program calls your provider directly (the
+  platform sets `HTTPS_PROXY`). `OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` are the platform's session interface, not a model endpoint; do not send model requests to them.
 * Keep `minimal_agent.py` / `protocol.py` compatible with the envelopes above; the platform validates every
   response.
 * Anything your agent imports must live inside `agent/`. The kit's `challenge/` package is not available on
@@ -309,5 +309,5 @@ The URL and anon key are on the platform's Resources page.
 参赛 Agent 的中文说明（责任边界、启用各家 LLM 的 `.env` 配置、JSON-Lines 协议、评分参数与回退保障）见
 [`agent/README_ZH.md`](agent/README_ZH.md)。本地流程：`local_runner.py` 跑基线 → `make_scenario.py` 生成更多场景 →
 修改 `agent/decision_graph.py` → `pack_agent.py` 打包成完整项目 ZIP（根目录含 `observer.project.json`，不含 `.env`），在「参赛」页上传；
-默认的确定性智能体不需要任何模型密钥，可用来跑通流程，但评奖要求至少两个环节采用智能体（大模型驱动）技术。平台运行时注入 `OPENAI_BASE_URL` / `OPENAI_API_KEY`（平台模型代理和临时凭证），
-`model_factory.py` 优先读取它们，本地运行时再回退到 `MODEL_BASE_URL` 与各服务商密钥。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件、天气、预报和事件不公开）上逐步评测，每队每天 10 批，每个场景 3600 秒，本队评测的结果 ZIP（含 `agent.log`）可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用线上最高分批次的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。
+默认的确定性智能体不需要任何模型密钥，可用来跑通流程，但评奖要求至少两个环节采用智能体（大模型驱动）技术。平台运行时，本队在「参赛 → 密钥与网络」中保存的变量（如 `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`）作为环境变量提供给程序，程序直接调用本队服务商，模型名须为服务商支持的名称；`OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` 是平台会话接口，不是大模型接口。
+`model_factory.py` 优先读取 `OPENAI_BASE_URL` / `OPENAI_API_KEY`，本地运行时再回退到 `MODEL_BASE_URL` 与各服务商密钥。练习阶段可用 `sac_submit.py` 提交 `decisions.csv`。正式比赛（`online`，10 月 5–7 日）只评测完整项目：在网站上传项目，平台在三个固定的正式场景（A、B、C，所有队伍相同；场景文件、天气、预报和事件不公开）上逐步评测，每队每天 10 批，每个场景 3600 秒，本队评测的结果 ZIP（含 `agent.log`）可下载，不接受 CSV。每日次数内可自由评测，并选定一个已确认版本作为本队**最终版本**（比赛结束前可更改；未选择时默认用线上最高分批次的版本）。比赛结束后，主办方在一个隐藏场景上对每队最终版本评测一次，最终排名只看这个成绩。程序会调用大模型的队伍，须在比赛结束前把模型 API 改为「加密保存」，否则隐藏评测时模型调用会失败。

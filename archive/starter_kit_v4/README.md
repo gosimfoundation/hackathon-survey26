@@ -279,8 +279,9 @@ better, and use a model for the few decisions where judgement matters.
 
 ## Optional LLM hook
 
-`agent/llm_hook.py` shows how to call a model through the platform's proxy. On the platform your agent
-gets `OPENAI_BASE_URL` and `OPENAI_API_KEY`. The hook is off by default (`"USE_LLM": "0"` in
+`agent/llm_hook.py` shows how to call a model. On the platform your agent gets the variables your team
+saved in Participate → Keys and network (for example `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`)
+and calls your provider directly; the model must be a name that provider supports. `OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` are the platform's session interface, not a model endpoint; do not send model requests to them. The hook is off by default (`"USE_LLM": "0"` in
 `observer.project.json`). Set it to `"1"` to turn it on. It makes one short call per night and one before
 a report, with a 12 s timeout and a 90 s total budget. If the model is missing or slow, the agent keeps
 its own rules.

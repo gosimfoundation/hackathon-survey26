@@ -60,8 +60,8 @@ export const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: 'final', tab: 'settings', targets: [tid('final-version'), tid('compete-tab-settings')],
-    zh: { title: '⑥ 最终版本', body: '正式赛截止前选好最终版本。不选的话，默认用本队最高分的版本。' },
-    en: { title: '⑥ Final version', body: 'Choose your final version before the online deadline. If you don’t, your best-scoring version is used.' },
+    zh: { title: '⑥ 最终版本', body: '送测版本（最终版本）可修改到 10 月 8 日 09:00（UTC+8），之后不可再更改。不选的话，默认用本队最高分的版本。' },
+    en: { title: '⑥ Final version', body: 'The final version can be changed until Oct 8 09:00 UTC+8; it cannot change after that. If you don’t choose one, your best-scoring version is used.' },
     fallback: {
       zh: { title: '⑥ 最终版本', body: '练习期间还没有这一项。正式赛开始后，它会出现在「设置」里，记得在截止前选好。' },
       en: { title: '⑥ Final version', body: 'Not shown during practice. Once the online phase starts it appears under Settings; choose it before the deadline.' },

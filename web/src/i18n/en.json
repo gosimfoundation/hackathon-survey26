@@ -97,6 +97,38 @@
       "about": {
         "title": "About",
         "description": "The organizer, sponsor and scientific committee of the Agentic Observer Hackathon."
+      },
+      "final-results": {
+        "title": "Final results",
+        "description": "Final hidden-card standings: totals, per-card means, per-run details and 3D observation replays."
+      },
+      "fig-sky": {
+        "title": "Observation replay figure",
+        "description": "Still render of the 3D observation replay (paper figure)."
+      },
+      "benchmark": {
+        "title": "AOH benchmark",
+        "description": "AOH: an open benchmark for autonomous survey operations: what it measures, how, and how to take part."
+      },
+      "benchmark-tasks": {
+        "title": "Benchmark tasks",
+        "description": "The AOH task sets: the Survey26 v1 set and four new tasks, with versions."
+      },
+      "benchmark-submit": {
+        "title": "Submit any time",
+        "description": "Submit to the AOH benchmark any time: no season, individuals welcome, one run is enough."
+      },
+      "benchmark-leaderboard": {
+        "title": "Benchmark leaderboards",
+        "description": "AOH scores by task and version, with official and human baselines."
+      },
+      "benchmark-survey26": {
+        "title": "Survey26 stress test",
+        "description": "The Survey26 competition: the first large stress test of the AOH benchmark."
+      },
+      "open": {
+        "title": "Open track: four new tasks",
+        "description": "Submit to the four new AOH tasks: individuals welcome, any subset of tasks, one run per submission."
       }
     }
   },
@@ -210,6 +242,7 @@
     "console": {
       "title": "Official example replay",
       "replay_note": "Local practice card L1 · {nights} nights · {actions} decisions",
+      "replay_note_card": "Held-out card {card} · {nights} nights · {actions} decisions",
       "paused": "Paused",
       "pause": "Pause",
       "resume": "Resume",
@@ -422,10 +455,17 @@
     "leaderboard": {
       "kicker": "Leaderboard",
       "title": "Live standings",
-      "lede": "Boards update as soon as scoring finishes: practice boards keep each team's best score per card, and the competition board keeps each team's best complete evaluation (the mean over cards A–D), and the super board the total over all 8 cards (A–D and A1–D1). All are feedback only; the final ranking uses only the hidden cards E–H.",
+      "lede": "The competition is over. The final ranking is on the Final results page; the boards here are for reference and practice only.",
       "signal_live": "Board live",
       "signal_waiting": "Awaiting benchmark signal",
-      "feed": "Live evaluation feed"
+      "feed": "Live evaluation feed",
+      "final_cta": "See the final ranking",
+      "guide_title": "What each board means",
+      "guide_final": "Final results: the only board that decides the ranking. Hidden cards E–H, the mean of each team's 12 evaluations.",
+      "guide_fun": "Open Play: opened after the competition on the same cards. Submit any time; it does not affect the ranking.",
+      "guide_competition": "Competition · Overall: the online round (Oct 4–8), the mean over cards A–D, each team's best complete evaluation. Reference only.",
+      "guide_super": "Super board: A–D weighted 20% and A1–D1 80% within one evaluation, each team's latest complete evaluation. Reference only.",
+      "guide_cards": "Card tabs (Card A, Card A1 …): one card ranked on its own."
     },
     "evaluation": {
       "kicker": "05 / Evaluation",
@@ -1271,7 +1311,8 @@
       "practice": "Practice",
       "debug": "Debug board",
       "competition": "Competition",
-      "final": "Final"
+      "final": "Final",
+      "fun": "Open Play"
     },
     "debug_submissions_closed": "Submissions closed",
     "competition_starts": "Starts Oct 5, 00:00 Beijing time",
@@ -1315,6 +1356,7 @@
     "raw_score": "Raw score",
     "calibration_note": "Rankings use difficulty-calibrated scores. Component scores are shown before calibration.",
     "public_board": "Online board: each team’s best complete evaluation on the task cards A–D (900 s per card); the Overall tab is the mean over A–D and each card has its own tab. The Super board = 20% × the A–D card sum + 80% × the A1–D1 card sum of one evaluation (each evaluation runs A–D first, then automatically A1–D1), counting only evaluations where all 8 cards completed. Boards are live, but they do not decide the final ranking or any award — after the online phase ends, each team’s final version is evaluated 3 times on each of the hidden cards E–H, each card is the mean of its 3 evaluations, and only the mean over E–H ranks. Scores on A1–D1 and the Super board do not affect the ranking on the hidden cards either.",
+    "fun_board": "Open Play: the same cards as the online competition (A–D and A1–D1), open after it closed. Just for fun: no prizes, no part in the final, and it never changes your online final version or the online board.",
     "final_board": "Final ranking: each team’s final version evaluated 3 times on each of the hidden cards E–H after the online phase ended; each card shows the mean of its 3 evaluations and the Overall tab is the mean over E–H. A card not completed in an evaluation because of the team itself scores 0 there and still counts in the mean.",
     "overall": "Overall",
     "unfinished": "Unfinished",
@@ -1742,6 +1784,8 @@
     "max_size": "Max size (1–3)",
     "project_idea": "Approach (optional)",
     "github_repo": "Repository (optional)",
+    "opensource_repo": "Open-source repository (award material, optional)",
+    "opensource_repo_hint": "https://github.com/org/repo",
     "invite_code": "Invite code",
     "create": "Create team",
     "join": "Join team",
@@ -1770,7 +1814,8 @@
       "recipient_unavailable": "This person cannot currently receive a team invitation.",
       "team_unavailable": "This team is no longer available.",
       "invitation_not_found": "This request is not addressed to you.",
-      "invitation_finished": "This request has already been handled."
+      "invitation_finished": "This request has already been handled.",
+      "invalid_repo_url": "That repository URL looks wrong; it should look like https://github.com/org/repo."
     },
     "members": "Members",
     "copy_code": "Copy code",
@@ -1922,7 +1967,7 @@
         "key_keep": "Leave empty to keep the saved key",
         "base_url": "Base URL",
         "model": "Model",
-        "model_empty": "With no model, no _MODEL variable is saved and your program decides; see the provider's docs for model names.",
+        "model_empty": "With no model, no _MODEL variable is saved, and your program must send a model name the provider supports; see the provider's docs for model names.",
         "prefix": "Name prefix (optional)",
         "prefix_help": "Use it to set up several providers at once, e.g. KIMI saves KIMI_API_KEY, KIMI_BASE_URL and KIMI_MODEL without touching OPENAI_*. Your program has to read prefixed variables itself.",
         "saves_as": "Saved as:",
@@ -1969,7 +2014,7 @@
       "relay": "Do not save (page relay)",
       "relay_help": "The key stays only in this page and is never stored on the server. Keep this page open until each evaluation finishes; model calls fail while it is closed. If your team is verified as a top team, you must also open this page at the time agreed with the organizers.",
       "relay_deletes": "Choosing this deletes the saved key.",
-      "usage": "Your project keeps using the OPENAI_BASE_URL and OPENAI_API_KEY provided for each run; model calls go to your endpoint. The model named in each request is forwarded unchanged; the default model is used when none is given.",
+      "usage": "Your project reads the variables your team saved in Keys and network (for example OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) and calls your provider directly; the model must be a name your provider supports. OBSERVER_API_URL is the platform's session interface, not a model endpoint.",
       "limits": "Each run allows up to {calls} model calls, at most {concurrency} at a time. Tokens are not capped (your team's key pays for them).",
       "limits_tokens": "Each run allows up to {calls} model calls and {tokens} tokens, at most {concurrency} calls at a time.",
       "saved_title": "Saved model API",
@@ -2193,12 +2238,12 @@
     "examples_bundle_download": "Download all examples (incl. local practice cards)",
     "example_github": "View on GitHub",
     "example_zip": "Download ZIP",
-    "example_python_pro_desc": "A strong reference agent (Python standard library only): a carefully built observation planner plus a few LLM calls at key points.",
+    "example_python_pro_desc": "A readable rule-based example (Python standard library only): greedy required-first scheduling, a conservative instrument-fault rule and an optional LLM reader for staff notes.",
     "example_python_desc": "A complete agent project: planning, memory, two LLM-driven stages, protocol and action validation.",
     "example_typescript_desc": "The same strategy in TypeScript (Node.js): planning, memory, two LLM-driven stages, protocol and action validation.",
-    "example_typescript_pro_desc": "The Python Pro agent ported to TypeScript (Node.js 22+, built-ins only): the same planner and LLM stages, decision-for-decision identical, about 6x less CPU.",
+    "example_typescript_pro_desc": "The TypeScript port of the readable rule-based Python Pro (Node.js 22+, built-ins only): greedy required-first scheduling, a conservative instrument-fault rule and an optional LLM reader for staff notes, with the same decisions.",
     "example_rust_desc": "The same strategy in Rust: planning, memory, two LLM-driven stages, protocol and action validation.",
-    "example_rust_pro_desc": "python-pro ported to Rust: the same planner, fault handling and LLM stages, at about 1/30 of the CPU time per decision.",
+    "example_rust_pro_desc": "The Rust port of the readable rule-based python-pro: the same greedy required-first planner, instrument-fault rule and optional LLM reader for staff notes, at a fraction of the CPU time.",
     "flow2": "Reference",
     "flow2_hint": "What you'll need for building and submitting your agent."
   },
@@ -2268,7 +2313,7 @@
       },
       {
         "q": "Can a Python agent use third-party libraries such as numpy?",
-        "a": "Yes. List them in requirements.txt at the project root and put the install command in the build field of observer.project.json; the platform runs it in the build step before the evaluation starts (the build has internet access, and its time does not count toward the 900 s per card). The container's system directories are read-only, so install into the project folder, for example \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"--target\", \".deps\", \"-r\", \"requirements.txt\"]], and set \"PYTHONPATH\": \"/workspace/.deps\" under \"environment\"; a plain pip install -r requirements.txt fails because the system directories are read-only. A requirements.txt without a build step is not installed automatically. While the agent runs it has no network access except the model API, so downloading or installing anything at run time will not work. The same applies to other languages, for example npm ci or cargo build. We recommend one Practice submission first to confirm that the build and run succeed."
+        "a": "Yes. List them in requirements.txt at the project root and put the install command in the build field of observer.project.json; the platform runs it in the build step before the evaluation starts (the build has internet access, and its time does not count toward the 900 s per card). For example \"build\": [[\"pip\", \"install\", \"--no-cache-dir\", \"-r\", \"requirements.txt\"]]. The container's system directories are read-only, but during the build HOME and the pip, npm and cargo caches point to writable folders inside the project, so pip install (including --user), npm ci and cargo build work as usual; installing into the project folder (--target .deps with \"PYTHONPATH\": \"/workspace/.deps\") also still works. A requirements.txt without a build step is not installed automatically. While the agent runs it has no network access except the model API, so downloading or installing anything at run time will not work. The same applies to other languages, for example npm ci or cargo build. We recommend one Practice submission first to confirm that the build and run succeed."
       },
       {
         "q": "Can my agent use several models or several providers at once?",
@@ -2794,7 +2839,7 @@
       "s3_intro": "Log in and open Participate: upload your code → confirm the version → start an evaluation.",
       "s3_points": [
         "50 evaluations per team per day; each runs your agent on the task cards A–D and A1–D1, 900 s per card; the Overall board shows the mean over A–D and the Super board the total over all 8 cards.",
-        "Choose your final version before the competition ends.",
+        "The final version can be changed until Oct 8 09:00 UTC+8; it cannot change after that.",
         "The final ranking uses only that version's score on the hidden cards E–H (3 evaluations per card, averaged, then the mean over E–H)."
       ],
       "s3_cta": "Go to Participate",

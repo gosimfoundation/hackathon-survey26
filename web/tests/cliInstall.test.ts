@@ -20,5 +20,5 @@ test('the guide (both languages) and the FAQ give the same skill install, and th
   assert.ok(read('../scripts/build-cli.mjs').includes(`'skills/survey26/SKILL.md'`) && SKILL_PATH === 'skills/survey26/SKILL.md')
   const skill = read('../../cli/skill/SKILL.md')
   assert.match(skill, /^---\nname: survey26\ndescription: .+\n---\n/)
-  assert.ok(skill.includes('SURVEY26_TOKEN') && !/sophon|easter|egg/i.test(skill))
+  assert.ok(skill.includes('SURVEY26_TOKEN') && skill.includes('SOPHON_RUN_TOKEN') && !/johnny|contact-johnny/i.test(skill))
 })

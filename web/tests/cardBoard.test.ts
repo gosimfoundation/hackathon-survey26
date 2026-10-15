@@ -104,7 +104,8 @@ test('averaged rows carry the range of their evaluations, overall and per card',
 test('the leaderboard page adds the final tab last; the home board keeps the three public boards', async () => {
   const { LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } = await import('../src/lib/leaderboardBoards.ts')
   assert.deepEqual([...LEADERBOARD_SLUGS], ['practice-projects', 'practice', 'online'])
-  assert.deepEqual([...LEADERBOARD_PAGE_SLUGS], ['practice-projects', 'practice', 'online', 'final-hidden'])
+  assert.deepEqual([...LEADERBOARD_PAGE_SLUGS], ['practice-projects', 'practice', 'online', 'after-party', 'final-hidden'])
+  assert.equal(LEADERBOARD_TAB_LABEL_KEYS['after-party'], 'leaderboard.tabs.fun')
   assert.equal(LEADERBOARD_TAB_LABEL_KEYS['final-hidden'], 'leaderboard.tabs.final')
 })
 

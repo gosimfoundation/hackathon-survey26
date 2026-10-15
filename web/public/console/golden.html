@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>/* cross-origin isolation via coi-sw.js (static hosting without headers) */(function(){var k='coi-reload-once';
+if(window.crossOriginIsolated){try{sessionStorage.removeItem(k)}catch(e){}return}
+if(!window.isSecureContext||!('serviceWorker' in navigator))return;
+function go(){try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){return}location.reload()}
+navigator.serviceWorker.register('coi-sw.js').then(function(reg){if(navigator.serviceWorker.controller||reg.active)go();else navigator.serviceWorker.addEventListener('controllerchange',go)}).catch(function(){})})();</script>
+
+  <meta charset="utf-8">
+  <title>GOLDEN RUNNING</title>
+</head>
+<body>
+  <h1>AOH console — golden replay test</h1>
+  <pre id="result">running…</pre>
+  <script src="./engine.js"></script>
+  <script>
+    // Deep-sort object keys so two reports compare by content, not key order.
+    function sortDeep(value) {
+      if (Array.isArray(value)) return value.map(sortDeep);
+      if (value && typeof value === 'object') {
+        const out = {};
+        for (const key of Object.keys(value).sort()) out[key] = sortDeep(value[key]);
+        return out;
+      }
+      return value;
+    }
+    const canon = (value) => JSON.stringify(sortDeep(value));
+
+    (async () => {
+      const el = document.getElementById('result');
+      const lines = [];
+      const manifest = await (await fetch('./manifest.json')).json();
+      const engine = new ConsoleEngine();
+      for (const card of manifest.golden_cards) {
+        try {
+          const [actionsText, goldenText] = await Promise.all([
+            fetch(`./golden/${card}/actions.jsonl`).then((r) => r.text()),
+            fetch(`./golden/${card}/score_report.json`).then((r) => r.text()),
+          ]);
+          const actions = '[' + actionsText.split('\n').filter((l) => l.trim()).join(',') + ']'; // raw text keeps key order
+          const golden = JSON.parse(goldenText);
+          const done = await engine.start(card, 'replay', { actions });
+          const report = JSON.parse(done.scoreReport);
+          const pass = canon(report) === canon(golden) && report.total === golden.total;
+          lines.push(`${card} ${pass ? 'PASS' : 'FAIL'} total=${report.total} (golden ${golden.total})`);
+        } catch (err) {
+          lines.push(`${card} FAIL ${(err && err.message) || err}`);
+        }
+        el.textContent = lines.join('\n');
+      }
+      engine.terminate();
+      document.title = 'GOLDEN DONE';
+    })();
+  </script>
+</body>
+</html>

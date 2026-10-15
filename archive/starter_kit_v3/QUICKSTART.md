@@ -58,8 +58,9 @@ model credit for cloud runs.
 - More weather to practise on: `python3 make_scenario.py --out scenarios/mine --seed 7 --days 30`, then
   `python3 local_runner.py --scenario scenarios/mine --agent agent/minimal_agent.py`.
 - Let a language model take part locally: copy `agent/.env.example` to `agent/.env`, set `MODEL_PROVIDER` and
-  your own API key, and run as usual. On the platform `.env` is not uploaded; the agent reads `OPENAI_BASE_URL` /
-  `OPENAI_API_KEY`, which the platform provides for your key set on the Participate page (see `README.md`,
+  your own API key, and run as usual. On the platform `.env` is not uploaded; save `OPENAI_API_KEY` /
+  `OPENAI_BASE_URL` / `OPENAI_MODEL` in Participate → Keys and network and the agent gets them as environment
+  variables, then calls your provider directly (see `README.md`,
   "Upload a complete project"). Teams that complete the practice get a sponsor code (such as Kimi Coding Plan)
   for their captain; codes are coming soon.
 - Data formats, the protocol and the scoring formula are on the website's Docs page; `README.md` is the

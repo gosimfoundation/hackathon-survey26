@@ -71,8 +71,10 @@ Do not read `cards/` from the agent. On the platform the agent only has its own 
 
 ## 5. Optional: use a model
 
-`agent/llm_hook.py` calls `OPENAI_BASE_URL/chat/completions` with `OPENAI_API_KEY` (the platform injects
-both). Turn it on with `"USE_LLM": "1"` in `agent/observer.project.json`. Keep calls rare (once per night
+`agent/llm_hook.py` calls `OPENAI_BASE_URL/chat/completions` with `OPENAI_API_KEY` and model `OPENAI_MODEL`.
+On the platform these are the variables your team saved in Participate → Keys and network (or with
+`survey26 env model --provider … --key - --model …`); the call goes directly to your provider (the platform
+sets `HTTPS_PROXY`), and the model must be a name that provider supports. `OBSERVER_API_URL` / `OBSERVER_RUN_TOKEN` are the platform's session interface, not a model endpoint; do not send model requests to them. Turn it on with `"USE_LLM": "1"` in `agent/observer.project.json`. Keep calls rare (once per night
 or for rare decisions), with short timeouts and a rule-based fallback. For local tests put the variables
 in `agent/.env`. Never commit or pack `.env`.
 
@@ -86,3 +88,11 @@ The ZIP has `observer.project.json` at its root with `"protocol": "jsonl-v4"` an
 `"run": ["python3", "-u", "baseline_agent.py"]`. Upload it on the website's Participate page
 (or push the `agent/` folder to a GitHub repository with `observer.project.json` at its root).
 If you add packages, add a `build` step, e.g. `["pip", "install", "-r", "requirements.txt"]`.
+
+## Sophon · easter egg (optional, unscored)
+
+**Sophon · 彩蛋题** 主线之外，还有一道不计分的题。值班日志里有人说：有几晚的读数，好得不像这面镜子拍出来的。评测运行时，环境变量里会有一张通行证 `SOPHON_RUN_TOKEN`。看懂那几晚，再把你看到的告诉夜班看守，联系方式见 CLI 文档。不影响分数和奖项，赛后也开放。目前还没人走完。可以让你的 agent 试试，也许没那么难，也许没那么容易。
+
+**Sophon · Easter egg** Beyond the main track there is one more problem, and it is not scored. Someone wrote in the duty log: on a few nights the readings were too good to have come from this mirror. While an evaluation runs, there is a pass in the environment variables: `SOPHON_RUN_TOKEN`. Make sense of those nights, then tell the night caretaker what you saw; how to reach them is in the CLI guide. It does not affect scores or awards, and it stays open after the contest. No one has made it all the way yet. Let your agent give it a try: maybe it is not that hard, maybe it is not that easy.
+
+CLI guide (contact in section 8): https://create.gosim.org/survey26/platform/cli

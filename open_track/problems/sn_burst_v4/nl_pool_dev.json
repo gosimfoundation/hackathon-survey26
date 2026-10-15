@@ -1,0 +1,2082 @@
+{
+ "problem": "sn_burst_v4",
+ "pool": "dev",
+ "generated_utc": "2026-10-12T02:28:49Z",
+ "model": "tokenflux Deepseek/deepseek-flash",
+ "kinds": {
+  "exercise_notice": [
+   {
+    "lang": "en",
+    "t": "heads up from coordination: exercise window is live. realistic supernova-neutrino bursts will be dropped into the running data stream with no warning. treat every candidate like the genuine article—full response, no shortcuts."
+   },
+   {
+    "lang": "en",
+    "t": "For the duration of the forthcoming coordinated exercise, the coordination team will inject simulated supernova-neutrino burst signals into the production data path; these injections are intentionally unannounced. Please execute the standard supernova response workflow exactly as written, including all verification, escalation, and alerting steps, as if the event were authentic."
+   },
+   {
+    "lang": "en",
+    "t": "- Coordination exercise is active.\n- Realistic burst signals will be injected into the live data stream without advance notice.\n- Respond using the same procedure as for a genuine supernova event."
+   },
+   {
+    "lang": "en",
+    "t": "This bulletin advises all participating operations personnel that a coordinated exercise period is in force. Throughout this interval, simulated supernova-neutrino burst signals will be introduced into the operational data stream without prior notification. Personnel are directed to follow the established response protocol precisely as though an actual supernova had been detected."
+   },
+   {
+    "lang": "en",
+    "t": "ugh, coordination just pinged—drill's on. they're slipping realistic burst events into the live feed whenever they want, no heads-up. do the full supernova response for every candidate, even if we're dragging."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED NOTICE from coordination: Exercise mode active. Simulated supernova-neutrino bursts will be inserted into live data without warning. Human comment: yeah, treat them like the real thing—same page, same alarms."
+   },
+   {
+    "lang": "en",
+    "t": "Coordination here: we're running an exercise period. Realistic supernova-neutrino burst signals are going into the live stream unannounced. When a candidate shows up, respond exactly like it's the real deal—same checks, same alerts, no guessing."
+   },
+   {
+    "lang": "zh",
+    "t": "为验证全网响应链路，协调组在本次演练窗口内会把仿真度很高的爆发事例盲注进在线数据流，事先不打招呼；各位请把它当成货真价实的超新星中微子警报，流程、上报和确认任何环节都别省。我这边会盯着各段的日志和时钟一致性，有异常也先按真警走。"
+   },
+   {
+    "lang": "zh",
+    "t": "各位老伙计，上头交代啦：这段演练日子里头，会有跟真事儿差不多的爆发信号不声不响地混进活数据里；咱们就照真超新星的老规矩来，别犹豫，别当假警放着。我泡好茶在边上守着，听见动静就喊人。"
+   },
+   {
+    "lang": "zh",
+    "t": "协调组通知：演练期间会往实时流里盲插逼真爆发，不提前说。收到就按真超新星告警跑，别等确认。我在现场，手机打字慢，先这样。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】調整班より：演習期間に入ります。生データへ本番同等のバースト信号を予告なしに注入。本物の超新星と全く同じ対応で。以上、担当者より。"
+   },
+   {
+    "lang": "ja",
+    "t": "眠くて頭回らない…調整チームから連絡。これからしばらく演習で、ライブのデータにリアルなバーストを抜き打ちで流すって。超新星が来たときと同じ動きで頼む、ってさ。コーヒー足りない。"
+   },
+   {
+    "lang": "es",
+    "t": "AVISO AUTOMÁTICO de coordinación: arranca una ventana de simulacro; se inyectarán ráfagas realistas sin aviso en los datos en vivo. — Comentario humano: responded como si fuera una supernova de verdad, sin marcar nada como prueba."
+   },
+   {
+    "lang": "es",
+    "t": "coordinación: periodo de ejercicio. meten ráfagas realistas en datos vivos sin avisar. reaccionad igual que ante una supernova real."
+   }
+  ],
+  "calib_plan": [
+   {
+    "lang": "en",
+    "t": "yo, {det} crew here, we're doing a source cal around {at} - expect trigger counts to spike for a bit. phone typing sorry"
+   },
+   {
+    "lang": "en",
+    "t": "Kind notice from the {det} shift: a calibration source deployment is planned for about {at}. Kindly anticipate a temporary increase in trigger counts at that time."
+   },
+   {
+    "lang": "en",
+    "t": "We at {det} will make calibration with source near {at}. Trigger counts maybe higher. Please not worry."
+   },
+   {
+    "lang": "en",
+    "t": "Tired operator here on {det}. We have a cal source run around {at}. Counts will go up; it's expected."
+   },
+   {
+    "lang": "en",
+    "t": "{det} cal source at {at}. triggers up then. normal."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all! {det} is about to start a calibration source run around {at}! So expect trigger counts to jump - that's us, not a burst."
+   },
+   {
+    "lang": "en",
+    "t": "Operations bulletin: {det} will conduct a calibration source run near {at}. Elevated trigger rates should be anticipated during the exercise."
+   },
+   {
+    "lang": "en",
+    "t": "fyi {det} doing source cal around {at}, so if trigger counts go brrr that's just us. kthx"
+   },
+   {
+    "lang": "en",
+    "t": "Coffee in hand, {det} tech here: source calibration planned around {at}. Trigger counts will be higher while it runs. Sorry in advance."
+   },
+   {
+    "lang": "en",
+    "t": "A calibration source will be deployed at {det} around {at}. Please expect trigger counts to run high for the duration."
+   },
+   {
+    "lang": "en",
+    "t": "At {det}, source calibration planned around {at}. We expect higher trigger counts then. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "{det}: cal source run around {at}. Expect elevated triggers. That is all."
+   },
+   {
+    "lang": "en",
+    "t": "Quick heads-up from {det}: we're running a source calibration at about {at}; the trigger rate will be elevated, so don't mistake it for anything cosmic!"
+   },
+   {
+    "lang": "en",
+    "t": "Hey ops, just a note that {det} has a calibration source run lined up near {at}. Counts may climb for a while; totally planned."
+   },
+   {
+    "lang": "zh",
+    "t": "哇，{det} 准备在 {at} 前后打刻度源啦，那阵子触发计数会明显往上冒，大家留意哦！"
+   },
+   {
+    "lang": "zh",
+    "t": "各位老伙计，听值班室讲，{det} 打算在 {at} 左右做趟校准源取数，届时触发器计数恐怕要偏高些。"
+   },
+   {
+    "lang": "zh",
+    "t": "【自动通知】{det} 计划于 {at} 前后执行校准源运行，预计期间触发计数升高。// 已确认，不是误报，别慌。"
+   },
+   {
+    "lang": "zh",
+    "t": "大家好，{det} 要在 {at} 附近做校准源运行。那时候触发计数会变多。请知道。"
+   },
+   {
+    "lang": "zh",
+    "t": "通报：{det} 拟定于 {at} 前后开展校准源投放作业，作业窗口内预期触发计数上升，请各岗位按规程关注。"
+   },
+   {
+    "lang": "zh",
+    "t": "fyi {det} {at} 前后跑校准源，触发计数会高，注意。"
+   },
+   {
+    "lang": "ja",
+    "t": "{det}の担当だけど、{at}くらいに線源使った校正をやる予定。トリガーレートがその前後で上がると思う、すみませんけどよろしく。"
+   },
+   {
+    "lang": "ja",
+    "t": "{det}で{at}ごろ、キャリブレーションのソースを流します。トリガーが多くなるとおもいます。"
+   },
+   {
+    "lang": "ja",
+    "t": "昔ながらの言い方で恐縮ですが、{det}にて{at}前後に校正用の放射源を入れる由。その折はトリガーが賑やかになる見込みです。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動通知: {det} 校正ソース展開 {at} 頃。担当より: トリガー数がいつもより増えるので注意。"
+   },
+   {
+    "lang": "es",
+    "t": "Aviso de la guardia: en {det} tenemos prevista una calibración con fuente alrededor de {at}; que nadie se alarme si los disparos suben por esos lares."
+   },
+   {
+    "lang": "es",
+    "t": "desde {det}: fuente de calibración en torno a {at}. cuenten con más triggers de lo normal en esa ventana."
+   },
+   {
+    "lang": "es",
+    "t": "Comunicado operativo: el detector {det} tiene programada una corrida de calibración con fuente en torno a {at}; se anticipa un aumento de los recuentos de disparo durante ese lapso."
+   },
+   {
+    "lang": "es",
+    "t": "ey, soy el técnico de {det}, vamos a meter una fuente de calibración cerca de {at}; no se extrañen si los conteos pegan un salto un rato."
+   }
+  ],
+  "calib_moved": [
+   {
+    "lang": "en",
+    "t": "- {ref}: calibration moved.\n- New slot: around {at}.\n- Please update ops board."
+   },
+   {
+    "lang": "en",
+    "t": "Kindly note that the calibration noted in {ref} has been put off; we now expect it to commence near {at}. Apologies for any inconvenience."
+   },
+   {
+    "lang": "en",
+    "t": "hey ops, the cal from {ref} got pushed - looks like it'll be about {at} now, sorry, too fried to chase details."
+   },
+   {
+    "lang": "en",
+    "t": "heads up, that calibration in {ref} is bumped to around {at}. sending from the field, thumbs cold."
+   },
+   {
+    "lang": "en",
+    "t": "cal from {ref} moved to ~{at}. that's it."
+   },
+   {
+    "lang": "en",
+    "t": "Following the earlier notice in {ref}, I have adjusted the calibration schedule; the calibration will now take place around {at}, assuming no further instrument issues."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: The calibration referenced in {ref} has been rescheduled. It is now expected around {at}."
+   },
+   {
+    "lang": "en",
+    "t": "Quick note: the calibration we heard about in {ref} is no longer when it was - it's been moved to around {at}. Coffee's on me later."
+   },
+   {
+    "lang": "en",
+    "t": "cal sked: the {ref} cal postponed, new eta ~{at}. ping if confused."
+   },
+   {
+    "lang": "en",
+    "t": "The timing for the cal flagged in {ref} has shifted; plan on it happening near {at}."
+   },
+   {
+    "lang": "en",
+    "t": "Per {ref}, the cal is no longer at its original slot; it's being reprogrammed to around {at}."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised: the calibration announced in {ref} must be deferred, and it is now set for approximately {at}."
+   },
+   {
+    "lang": "en",
+    "t": "Change control: {ref} calibration postponed. New window is around {at}. Update run plan and notify stakeholders."
+   },
+   {
+    "lang": "en",
+    "t": "The cal from {ref} was moved because the detector wanted a lie-in. New plan: around {at}. Bring snacks."
+   },
+   {
+    "lang": "zh",
+    "t": "劳驾各位，{ref} 里说的那回校准，眼下改期啦，大约 {at} 前后进行，还请周知。"
+   },
+   {
+    "lang": "zh",
+    "t": "喂，{ref} 通知的那个校准改时间了，挪到 {at} 左右，我手机快没电先冒个泡。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班备注：{ref} 提到的校准改期了，估摸 {at} 左右进行。眼皮打架。"
+   },
+   {
+    "lang": "zh",
+    "t": "各位！{ref} 说的那次校准调整啦，改到 {at} 附近，终于不用干等咯！"
+   },
+   {
+    "lang": "zh",
+    "t": "兹通知：{ref} 所载校准安排已作调整，现拟于 {at} 前后实施，请相关岗位知悉。"
+   },
+   {
+    "lang": "zh",
+    "t": "ok {ref} 那个校准改期 挪到 {at} 左右"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤から失礼。{ref} で告知の校正、ずらします。今度は {at} あたり。あー眠い。"
+   },
+   {
+    "lang": "ja",
+    "t": "・連絡: {ref} の件、校正枠を組み直し。・実施は {at} 前後で見込み。"
+   },
+   {
+    "lang": "ja",
+    "t": "ご案内の {ref} にあった校正、予定が変わりましてな。新しい目安は {at} ごろじゃ。"
+   },
+   {
+    "lang": "ja",
+    "t": "{ref} で流れてた校正、動きました！ 新しめの予定は {at} くらいです！"
+   },
+   {
+    "lang": "es",
+    "t": "Buenas, compañeros: la calibración que se anunció en {ref} queda pospuesta, y si Dios quiere se hará allá por {at}."
+   },
+   {
+    "lang": "es",
+    "t": "¡Aviso! La calibración anunciada en {ref} se movió; ahora será más o menos por {at}. ¡No se la pierdan!"
+   },
+   {
+    "lang": "es",
+    "t": "Se comunica que la calibración anunciada en {ref} ha sido reprogramada y se efectuará en torno a {at}."
+   },
+   {
+    "lang": "es",
+    "t": "Para que conste: la calibración mencionada en {ref} no ocurrirá en el horario previsto, pues queda reprogramada; la nueva estimación es aproximada, alrededor de {at}."
+   }
+  ],
+  "det_artifact": [
+   {
+    "lang": "en",
+    "t": "ok folks: {det} excess was not real, just {cause}. back to normal."
+   },
+   {
+    "lang": "en",
+    "t": "We check {det}. The extra signal came from {cause}, not from sky. So it is instrument problem."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, {det} lit up but it was only {cause}! False alarm, no neutrino burst, sorry for the buzz!"
+   },
+   {
+    "lang": "en",
+    "t": "ugh. {det} burst was just {cause}. i'm going back to coffee."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED: {det} excess alert. HUMAN: ignore it, traced to {cause}."
+   },
+   {
+    "lang": "en",
+    "t": "After reviewing the recent excess in {det}, I can confirm it was not an astrophysical signal; the culprit is {cause}, which is fully instrumental and understood."
+   },
+   {
+    "lang": "en",
+    "t": "{det}: recent excess attributed to {cause}. No further action."
+   },
+   {
+    "lang": "en",
+    "t": "yeah so {det} had a little bump, but turns out it's {cause}, nothing cosmic. carry on."
+   },
+   {
+    "lang": "en",
+    "t": "NOTICE from {det} monitoring: excess flagged. Comment from shift: {cause}, so disregard."
+   },
+   {
+    "lang": "en",
+    "t": "Our {det} saw extra events. Cause is {cause}. It is not real supernova. Sorry."
+   },
+   {
+    "lang": "en",
+    "t": "omg {det} went off but it was {cause}!! no supernova, just instrumental noise, false excitement!"
+   },
+   {
+    "lang": "en",
+    "t": "sleepy brain here: {det} excess equals {cause}. not aliens. sleep."
+   },
+   {
+    "lang": "en",
+    "t": "The apparent excess logged by {det} has been investigated and is consistent with {cause}; therefore we classify it as an instrumental artifact rather than a burst."
+   },
+   {
+    "lang": "en",
+    "t": "{det} thing? {cause}. chalk it up to hardware, not the sky."
+   },
+   {
+    "lang": "zh",
+    "t": "刚在值班室看到 {det} 的告警，我还以为撞上大发现了呢，结果复核完是仪器效应，{cause} 引起的，不是真的中微子暴！"
+   },
+   {
+    "lang": "zh",
+    "t": "按照 {det} 值班组提交的复核记录，近期超出本底的计数已逐项排查，最终判定为仪器性异常，触发因素是 {cause}；因此该超出不应进入天体物理候选列表。"
+   },
+   {
+    "lang": "zh",
+    "t": "老朽刚从值班电话里听说，{det} 前阵子那点异常增多，查来查去，原来是 {cause} 在作怪，并非天上来的讯号。"
+   },
+   {
+    "lang": "zh",
+    "t": "• {det} 值班组报告：近期超出为仪器性。\n• 原因：{cause}。\n• 结论：非天体信号。"
+   },
+   {
+    "lang": "zh",
+    "t": "snews log: {det} 那边最近那点 excess 是假的，instrumental，{cause} 搞的，不是中微子。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班太困了，刚把 {det} 报的情况记完：最近那个多出来的计数是仪器引起的，原因 {cause}，不是天上的信号。"
+   },
+   {
+    "lang": "ja",
+    "t": "連絡です。{det} の運用当直より、先般の超過事象は機器要因、すなわち {cause} によるものとの報告を受けました。"
+   },
+   {
+    "lang": "ja",
+    "t": "わしの聞き及んだところでは、{det} から、最近の多めの事象は計器の不調で {cause} が原因じゃと報告があったよ。心配いらん。"
+   },
+   {
+    "lang": "ja",
+    "t": "やばい、{det} から連絡来た！さっきの超過は装置側のせいで、{cause} だったって！"
+   },
+   {
+    "lang": "ja",
+    "t": "記録を確認しました。{det} の解析担当によれば、最近観測された統計超過は物理由来ではなく、検出器系の要因、具体的には {cause} に帰属されるとのことです。念のため、その旨を共有します。"
+   },
+   {
+    "lang": "es",
+    "t": "en {det} reportan: el exceso de hace un rato era instrumental, causa: {cause}. nada más."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático reenviado: {det} informa que el exceso reciente fue instrumental; causa: {cause}. — Comentario humano: era eso, no alarmen."
+   },
+   {
+    "lang": "es",
+    "t": "Mensaje de {det}: el exceso de ahora es instrumental, no señal. La causa es {cause}. Gracias."
+   },
+   {
+    "lang": "es",
+    "t": "Según me comunica {det}, el aumento reciente obedeció a motivos instrumentales, a saber: {cause}. Quedo a su disposición."
+   }
+  ],
+  "maintenance": [
+   {
+    "lang": "en",
+    "t": "Notice to all concerned: {det} will be taken out of service for scheduled maintenance commencing {start}, with the outage expected to last {dur}. Operations will advise when normal data taking resumes."
+   },
+   {
+    "lang": "en",
+    "t": "Beggin' yer pardon, but {det} is goin' down for a bit of upkeep, startin' {start} and stayin' quiet fer {dur}. Back when it's done."
+   },
+   {
+    "lang": "en",
+    "t": "To avoid any ambiguity: the {det} subsystem will intentionally transition to a non-data-taking state so that planned maintenance can be performed; this transition begins at {start} and the non-data-taking interval is specified as {dur}. This is expected and not an anomaly."
+   },
+   {
+    "lang": "en",
+    "t": "- Scope: planned maintenance on {det}\n- Start: {start}\n- Duration: {dur}\n- Status: detector unavailable during work."
+   },
+   {
+    "lang": "en",
+    "t": "Hey folks! Quick heads-up: {det} is going offline for maintenance, starting {start}, for {dur}. Don't panic — it's planned."
+   },
+   {
+    "lang": "en",
+    "t": "{det} down for maint from {start} for {dur}. Will ping when back."
+   },
+   {
+    "lang": "en",
+    "t": "Operational advisory: scheduled servicing will place {det} in an offline state from {start}; the planned maintenance period is {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Kindly note that {det} shall be withdrawn from service for maintenance beginning {start} and continuing for {dur}."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that due to planned maintenance, {det} will cease normal observations at {start}. The expected maintenance downtime is {dur}; no science data will be recorded during this interval."
+   },
+   {
+    "lang": "en",
+    "t": "Maintenance window for {det}: opens {start}, length {dur}. Detector is down until window closes."
+   },
+   {
+    "lang": "en",
+    "t": "Just got word — {det} is being taken offline for maintenance from {start}, and it should be back after {dur}. Coffee's still on, though!"
+   },
+   {
+    "lang": "en",
+    "t": "{det} offline for maint starting {start}, lasting {dur}. ttyl."
+   },
+   {
+    "lang": "en",
+    "t": "Word is {det} is gettin' a tune-up. She'll be off the air from {start} for {dur}. Nothin' to fret about."
+   },
+   {
+    "lang": "en",
+    "t": "All stations: {det} is scheduled to be down for maintenance from {start} for {dur}. Acknowledge receipt."
+   },
+   {
+    "lang": "zh",
+    "t": "• 维护安排：{det} 自 {start} 起下线，时长 {dur}。\n• 影响：暂停取数。\n• 请相关岗位留意。"
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计 {det} 要告假啦：打 {start} 起进厂保养，得停 {dur}，诸位多担待。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班日志：{det} 下线检修，{start} 开始，持续 {dur}，有事喊我。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：{det} 将于 {start} 转入维护状态，期间暂停观测，持续时间为 {dur}。特此周知。"
+   },
+   {
+    "lang": "zh",
+    "t": "哎各位！{det} 要从 {start} 起停机检修啦，持续 {dur}，这段时间它不干活，我正好去补个觉哈哈。"
+   },
+   {
+    "lang": "zh",
+    "t": "[自动转发] {det} 维护通知：自 {start} 起离线，时长 {dur}。\n（人评：终于排上了，值班的记得瞅瞅。）"
+   },
+   {
+    "lang": "ja",
+    "t": "{det}は{start}から{dur}の間、メンテで落ちます。あとよろしく。"
+   },
+   {
+    "lang": "ja",
+    "t": "眠い… {det}、{start}から{dur}の間は保守で停止。あとは任せた。"
+   },
+   {
+    "lang": "ja",
+    "t": "【保守連絡】{det}は{start}より{dur}にわたり、保守のため運用を停止します。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: {det} は {start} から {dur} の間、メンテナンスのためオフラインになります。以上、当直より。"
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que el detector {det} quedará fuera de servicio por mantenimiento desde {start} durante {dur}."
+   },
+   {
+    "lang": "es",
+    "t": "Buenas, desde la furgoneta: {det} lo dejamos fuera de línea por mantenimiento desde {start}, así que estará caído {dur}. Cualquier cosa avisad."
+   },
+   {
+    "lang": "es",
+    "t": "{det} fuera de servicio, mantenimiento desde {start}, {dur} caído."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático: {det} entra en mantenimiento desde {start} y queda fuera de línea durante {dur}. — De guardia: anotado, seguid con el café."
+   }
+  ],
+  "glitch_notice": [
+   {
+    "lang": "en",
+    "t": "Whoa, network ops here — looks like the clock distribution hiccuped around {at}, and that lined up with the fake coincident hits in {dets}; definitely not an astrophysical signal, just timing weirdness."
+   },
+   {
+    "lang": "en",
+    "t": "netops: clock jumped near {at}; {dets} all fired together. timing fault, not sky."
+   },
+   {
+    "lang": "en",
+    "t": "[AUTO] netops: timing-distribution alarm around {at} coincided with spurious triggers in {dets}. Human note: ignore, not astrophysical."
+   },
+   {
+    "lang": "en",
+    "t": "ugh, netops timing chain slipped around {at} and made {dets} throw simultaneous false triggers. no astro event, going back to coffee."
+   },
+   {
+    "lang": "en",
+    "t": "Network operations. Clock problem at {at}. Same time false signals in {dets}. This is not from sky."
+   },
+   {
+    "lang": "en",
+    "t": "netops: clock distro issue around {at} caused the coincident junk in {dets}. not astrophysical, pls close."
+   },
+   {
+    "lang": "en",
+    "t": "Network operations bulletin: a timing-distribution fault around {at} produced simultaneous spurious triggers in {dets}. This coincidence is not astrophysical in origin."
+   },
+   {
+    "lang": "en",
+    "t": "Ops: White Rabbit resync at {at} generated coincident false alerts across {dets}. Disregard as non-astrophysical."
+   },
+   {
+    "lang": "en",
+    "t": "netops — NTP fault near {at} triggered simultaneous junk in {dets}; not a real sky event."
+   },
+   {
+    "lang": "en",
+    "t": "Timing glitch at {at} made {dets} fire at once. Network ops confirms: not astrophysical, just clock distribution."
+   },
+   {
+    "lang": "en",
+    "t": "At {at} the timing bus glitched, and {dets} showed simultaneous spurious hits. Ops: no astrophysical source."
+   },
+   {
+    "lang": "en",
+    "t": "Clock distribution fault around {at}: {dets} gave coincident false triggers. Network ops: this is not an astrophysical coincidence."
+   },
+   {
+    "lang": "en",
+    "t": "Heads up from network ops: a clock/timing fault at {at} caused the simultaneous fake triggers in {dets}; not astro."
+   },
+   {
+    "lang": "en",
+    "t": "timing issue near {at} → {dets} all false-triggered together. netops says non-astro."
+   },
+   {
+    "lang": "zh",
+    "t": "现场刚瞄了一眼，{at}前后授时链路有点抽风，{dets}一起冒了假触发，别当成真的天上来信哈。"
+   },
+   {
+    "lang": "zh",
+    "t": "兹闻网运通报：约{at}，时钟分配失准，致{dets}同时虚警；此乃器械之扰，非天象也。"
+   },
+   {
+    "lang": "zh",
+    "t": "啊啊刚看到，{at}那会儿时钟同步炸了，{dets}瞬间集体误触发，不是超新星啦，大家稳住！"
+   },
+   {
+    "lang": "zh",
+    "t": "网络运行值班室通告：经核，{at}前后授时异常，引发{dets}同步伪触发；该事件不具天体物理性质。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班记一笔：{at}授时跳变，{dets}跟着一起假响；不是天体信号，先别叫醒大家。"
+   },
+   {
+    "lang": "zh",
+    "t": "网运：{at} 时钟故障，{dets} 同步假触发。非天文。"
+   },
+   {
+    "lang": "ja",
+    "t": "運用チームから、やばい！{at} あたりの時刻配信が跳ねたせいで、{dets} が同時に偽トリガーを出してます。これはニュートリノじゃなく、時計系の不具合です！"
+   },
+   {
+    "lang": "ja",
+    "t": "【ネットワーク運用】{at} 前後の時刻同期障害により、{dets} で同時に擬似トリガーが発生しました。本件の同時発生は天体物理起源ではありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "[ネット運用・自動通知] 時刻分配異常 {at} 付近を検出。影響: {dets} の同時誤トリガー。補足: これは空からの信号ではありません、時計の問題です。"
+   },
+   {
+    "lang": "ja",
+    "t": "・ネットワーク運用メモ\n・{at} 付近の時刻分配不具合\n・その結果、{dets} に同時偽トリガー\n・結論: 天体由来ではない"
+   },
+   {
+    "lang": "es",
+    "t": "Ops de red: • fallo de sincronización en torno a {at} causó disparos espurios simultáneos en {dets}; • la coincidencia no es astrofísica."
+   },
+   {
+    "lang": "es",
+    "t": "¡Ops! El reloj se volvió loco cerca de {at} y soltó triggers falsos a la vez en {dets}; esto no viene del cielo, es coincidencia no astrofísica."
+   },
+   {
+    "lang": "es",
+    "t": "red: fallo de timing por {at} causo disparos raros simultaneos en {dets}. no es astro. eso."
+   },
+   {
+    "lang": "es",
+    "t": "ops: clock jump cerca de {at} -> falsos simultaneos en {dets}. no astrofisico."
+   }
+  ],
+  "glitch_testbed": [
+   {
+    "lang": "en",
+    "t": "Whoa - our offline test bench emulating the {dets} readout just threw a clock/timing fault around {at}, but it's completely disconnected from the live detectors, so live data are totally fine!"
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that a timing anomaly near {at} was confined to the offline test bench used to emulate the {dets} readout. It has no connection to the live detectors, and therefore live data remain unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "clock/timing glitch around {at} on the offline bench emulating {dets} readout only. bench is not wired to live detectors. live data unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED NOTICE: timing fault detected near {at} on offline bench for {dets} readout. Human note: it's isolated from live detectors, so no impact to live data."
+   },
+   {
+    "lang": "en",
+    "t": "- Clock/timing fault around {at} occurred only on the offline test bench emulating the {dets} readout.\n- Bench is not connected to live detectors.\n- Live data unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "To be precise, the clock/timing fault observed around {at} was localized entirely to the offline test bench that emulates the {dets} readout; because that bench is physically isolated from the production detectors, there is no path by which live data could be affected."
+   },
+   {
+    "lang": "en",
+    "t": "Okay, so the timing hiccup around {at}? Only our offline rig for the {dets} readout. Not patched into anything live, so live data are clean."
+   },
+   {
+    "lang": "en",
+    "t": "This is a notification that the clock/timing fault near {at} is confined to the offline test bench for the {dets} readout. No live detector systems are involved; live data are unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "{at} clock/timing fault, offline bench only, emulates {dets} readout, not connected to live detectors, live data unaffected."
+   },
+   {
+    "lang": "en",
+    "t": "ALERT: timing fault near {at} on {dets} emulation bench. Comment from IT: offline only, no live link, live data okay."
+   },
+   {
+    "lang": "en",
+    "t": "Status: clock/timing fault around {at}\nScope: offline test bench emulating {dets} readout only\nLive detectors: not connected\nLive data: unaffected"
+   },
+   {
+    "lang": "en",
+    "t": "After checking the logs, the clock/timing fault near {at} belongs solely to the offline test bench that mimics the {dets} readout. That bench has no live connection to the detectors, so no live data can be affected."
+   },
+   {
+    "lang": "en",
+    "t": "just heard about the timing wobble around {at} on the bench that pretends to be {dets} readout - it's offline, not hooked to the real thing, so live data is fine."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: a clock/timing fault around {at} affected only the offline test bench emulating the {dets} readout. The bench is isolated from live detectors, and live data remain unaffected."
+   },
+   {
+    "lang": "zh",
+    "t": "老朽方才瞧见，约在{at}，唯独那台离线试验台上演了走时毛病，它仿的是{dets}读出；那玩意儿没跟在线探测器搭线，实时数据照旧无碍。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇大家快看！{at}左右时钟小故障只出现在那台离线测试台上，它专门复现{dets}的读出链路，完全没接在线探测器，所以在线数据安然无恙，虚惊而已！"
+   },
+   {
+    "lang": "zh",
+    "t": "手机快没电了，长话短说：{at}那阵子时钟犯病，只在离线台子，那台子仿{dets}读出，没连运行中的探测器，在线数据稳。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班日志：约 {at} 时钟异常，仅出现在模拟 {dets} 读出的离线测试台；未接入在线探测器，实时数据无影响。"
+   },
+   {
+    "lang": "zh",
+    "t": "我简单说：{at} 左右时钟问题只在离线测试台。这个台子模拟 {dets} 读出。它没有连接正在使用的探测器。所以在线数据没问题。"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：经核，{at} 前后所报时钟偏差，仅发生于模拟 {dets} 读出之离线测试平台；该平台与在用探测器无物理连接，在线数据未受影响。"
+   },
+   {
+    "lang": "ja",
+    "t": "{at} 頃、オフラインテストベンチ上でのみ時刻同期系の異常を確認しました。このベンチは {dets} の読み出しを模擬するためのもので、実運用検出器には接続されていません。したがってライブデータへの影響はありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "昔ながらの言い方で恐縮ですが、{at} 前後に {dets} の読み出しを真似たオフラインの試験台で時計の不具合が出ております。本番の検出器側では同じ不具合は出ておりませんし、試験台は本番系とは縁が切れておりますので、実際の観測データには何の障りもございません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{at} ごろ、{dets} の読み出しをまねるオフラインテスト台で、時計のトラブルがありました。これはライブ検出器には起きていませんし、つながっていません。だから、ライブデータに影響はありません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{at} 頃の clock 異常は {dets} リードアウト模擬のオフラインベンチだけ。ライブ系とは未接続、実データ影響なし。"
+   },
+   {
+    "lang": "es",
+    "t": "- Incidencia de reloj alrededor de {at}.\n- Solo en el banco offline que imita la lectura de {dets}.\n- Sin conexión a los detectores reales; datos en vivo intactos."
+   },
+   {
+    "lang": "es",
+    "t": "fallo de sincronía a eso de {at} solo en el banco de pruebas offline que emula el readout de {dets}; no toca detectores vivos, datos en vivo sin cambios."
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! Vi un desajuste de reloj cerca de {at} pero revisando bien solo apareció en el banco offline que reproduce la cadena de {dets}; no está enganchado a los detectores reales, así que los datos en vivo siguen perfectos. ¡Menos mal!"
+   },
+   {
+    "lang": "es",
+    "t": "Se informa que la anomalía de temporización detectada en torno a {at} se circunscribe al banco de ensayos desconectado que simula la electrónica de lectura de {dets}. Dicho banco no tiene enlace con los detectores en operación, por lo que los datos en vivo no sufren alteración alguna."
+   }
+  ],
+  "radon_notice": [
+   {
+    "lang": "en",
+    "t": "KamLAND: radon is going up. The pump/ventilation has a problem. Singles rate will be high for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND: radon climbing. Pump/ventilation trouble. Singles will be up for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "ugh. KamLAND radon rising again. pump/ventilation fault. singles elevated several hours."
+   },
+   {
+    "lang": "en",
+    "t": "- KamLAND\n- radon rising\n- pump/ventilation problem\n- singles rate elevated several hours"
+   },
+   {
+    "lang": "en",
+    "t": "Word from KamLAND: the radon is mounting, owing to a pump/ventilation fault; its singles rate shall remain high for several hours hence."
+   },
+   {
+    "lang": "en",
+    "t": "At KamLAND, the radon concentration is increasing due to a fault in the purification pump/ventilation, which will keep the singles rate elevated for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND shift: radon activity is trending upward because the pump/ventilation is not doing its job. Singles will be high for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "From KamLAND: radon is on the rise. Purification pump/ventilation issue. Singles rate stays up for hours."
+   },
+   {
+    "lang": "en",
+    "t": "Hi all, KamLAND here. We're seeing radon climb, looks like the pump/ventilation is struggling, so don't be surprised if singles are elevated for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "kamland radon up, pump/vent bad, singles high for several hrs"
+   },
+   {
+    "lang": "en",
+    "t": "Notice from KamLAND: radon levels are rising as a result of a pump/ventilation malfunction. The singles rate will be elevated for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND's radon is on the rise because the purge/vent path is compromised; expect singles to stay high for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND: purification pump/ventilation problem is letting radon build. Singles will be elevated for several hours."
+   },
+   {
+    "lang": "en",
+    "t": "At KamLAND, radon is climbing due to ventilation/pump trouble. This will leave the singles rate high for several hours."
+   },
+   {
+    "lang": "zh",
+    "t": "KamLAND 这里，氡升高。泵和通风有问题。单事例率会高好几个小时。"
+   },
+   {
+    "lang": "zh",
+    "t": "告个信儿：KamLAND 这边氡气涨上来了，净化泵和换气怕是不灵光，单发计数率要偏高好几个钟头。"
+   },
+   {
+    "lang": "zh",
+    "t": "KamLAND：\n• 氡浓度持续上升\n• 净化泵/通风存在问题\n• 单事例率接下来几小时会偏高"
+   },
+   {
+    "lang": "zh",
+    "t": "KamLAND 值班通报：监测显示氡浓度呈上升趋势，初步判断为净化泵与通风系统存在问题；预计单事例率将在未来数小时内持续偏高。"
+   },
+   {
+    "lang": "zh",
+    "t": "kamland 氡升，泵/通风出问题，单率会高几小时。"
+   },
+   {
+    "lang": "zh",
+    "t": "KamLAND这边氡有点上来了，估计净化泵或通风没弄好，单事例率接下来几小时会偏高，先报一下。"
+   },
+   {
+    "lang": "ja",
+    "t": "いまラドンが上がってきてます。純化ポンプか換気系が不調みたいで、シングルスレートは数時間高めが続く見込みです。現場から。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中ですが、ラドン濃度がじわじわ上昇。換気トラブルでポンプがうまく引けてないらしく、シングルスは数時間高いままになりそうです。"
+   },
+   {
+    "lang": "ja",
+    "t": "ラドンが急に上がってます！ベンチレーション不調でポンプがちゃんと回ってないっぽい。シングルレートは数時間上がりっぱなしになるかも！"
+   },
+   {
+    "lang": "ja",
+    "t": "らどん じょうしょう。ぽんぷ・かんき ふりょう。しんぐるす すうじかん たかめ。"
+   },
+   {
+    "lang": "es",
+    "t": "Aquí el radón está subiendo. Tenemos problema con la bomba y la ventilación. La tasa de eventos simples quedará alta por varias horas."
+   },
+   {
+    "lang": "es",
+    "t": "acá radon subiendo, falla en bomba/ventilacion. los singles van a estar altos varias horas."
+   },
+   {
+    "lang": "es",
+    "t": "- En esta estación: radón en aumento por problema de bomba/ventilación.\n- Tasa de cuentas individuales elevada durante varias horas."
+   },
+   {
+    "lang": "es",
+    "t": "acá radon sube, bomba/ventilacion con problema, tasa de singles alta por varias horas."
+   }
+  ],
+  "pre_sn_hint": [
+   {
+    "lang": "en",
+    "t": "kamland shift here — coffee in hand, IBD singles rate creeping up, reactors don't cover it, poking around now."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND sees slow increase of inverse beta singles rate. Reactor not cause. We investigate."
+   },
+   {
+    "lang": "en",
+    "t": "AUTOMATED: KamLAND IBD singles rate trend rising slowly. Human note: reactor backgrounds don't explain this, looking into it."
+   },
+   {
+    "lang": "en",
+    "t": "kamland ibd singles rate slow climb. not reactor. investigating."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa—KamLAND's inverse-beta singles rate is on a slow upward drift, and the reactor folks can't match it, so I'm checking!"
+   },
+   {
+    "lang": "en",
+    "t": "Kindly note that at KamLAND the inverse-beta singles rate is mounting gradually; our reactor accounting falls short, and we are looking into the matter."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: KamLAND observes a gradual increase in inverse-beta-decay singles rate. Reactor-based expectations do not account for it. Investigation underway."
+   },
+   {
+    "lang": "en",
+    "t": "Morning, all. KamLAND shift here: our IBD singles rate is creeping upward, no reactor story fits, and we're digging into it."
+   },
+   {
+    "lang": "en",
+    "t": "Something in KamLAND's IBD singles rate is slowly ramping, and it isn't following any reactor curve we know. We're on the case."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND monitor: IBD singles rate shows a slow rise. Reactor correlation absent. Operator comment: investigating."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND IBD singles rate drifting up slow; reactor not the reason; checking."
+   },
+   {
+    "lang": "en",
+    "t": "The KamLAND shift reports a gradual swelling of inverse-beta singles rate; reactor contributions leave this unexplained. We are inquiring."
+   },
+   {
+    "lang": "en",
+    "t": "At KamLAND inverse beta singles rate goes up slowly. Reactor not enough explanation. We check."
+   },
+   {
+    "lang": "en",
+    "t": "KamLAND: IBD singles rate slow rise. Reactors can't explain. Investigating."
+   },
+   {
+    "lang": "zh",
+    "t": "kamland ibd singles 慢慢爬，堆解释不了，查"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班中……KamLAND 的 IBD 单率在一点点往上走，反应堆那边怎么都对不上，我先去翻翻看。"
+   },
+   {
+    "lang": "zh",
+    "t": "KamLAND 的 inverse beta decay 单事例率呈现出缓慢上升的趋势；反应堆相关本底无法解释这一变化，我正按检查清单逐项排查。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：KamLAND IBD 单率缓升；反应堆模型未覆盖此行为。人工备注：在查。"
+   },
+   {
+    "lang": "zh",
+    "t": "现场手机打字：KamLAND 这边 IBD 单率慢慢在涨，反应堆算不进去，我们过去看看。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇！KamLAND 的 IBD 单率慢慢往上抬，反应堆那边完全说不通，我马上去追数据！"
+   },
+   {
+    "lang": "ja",
+    "t": "カムランドの逆ベータ崩壊シングルスレートについて、緩やかな増加傾向を確認しています。原子炉起源の見積もりだけでは、この増え方を説明できません。原因を切り分けるため、観測データとバックグラウンドを照合しながら調査を進めています。"
+   },
+   {
+    "lang": "ja",
+    "t": "カムランドで、逆ベータ崩壊のシングルスがゆっくり増えています。原子炉では説明できません。原因を調べています。"
+   },
+   {
+    "lang": "ja",
+    "t": "・カムランド：逆ベータ崩壊シングルスが緩やかに増加\n・原子炉由来では説明不可\n・原因調査中"
+   },
+   {
+    "lang": "ja",
+    "t": "kamland の ibd シングルス、ゆっくり増加。原子炉じゃ説明つかず。調査中。"
+   },
+   {
+    "lang": "es",
+    "t": "Distinguidos colegas, desde la guardia de KamLAND les hago saber que percibimos un ascenso pausado en la tasa de cuentas sueltas de decaimiento beta inverso, y las plantas nucleares no lo explican; estamos indagando el asunto."
+   },
+   {
+    "lang": "es",
+    "t": "eh, en KamLAND vemos subir lento los singles de ibd y los reactores no lo explican, ya lo estamos viendo"
+   },
+   {
+    "lang": "es",
+    "t": "Parte de novedad: KamLAND comunica un incremento gradual de la tasa de eventos individuales de decaimiento beta inverso que los reactores no explican; se ha dispuesto investigación."
+   },
+   {
+    "lang": "es",
+    "t": "kamland: singles ibd subiendo lento, reactores no explican. investigando."
+   }
+  ],
+  "astro_speculation": [
+   {
+    "lang": "en",
+    "t": "Automated photometry notice: {star} has dimmed and reddened noticeably; no neutrino alert, but the duty astronomer says this red supergiant could be nearing collapse."
+   },
+   {
+    "lang": "en",
+    "t": "By Jove, the old red supergiant {star} looks different in brightness tonight; an astronomer chum wonders if she is about to blow, though no neutrino whisper has reached us."
+   },
+   {
+    "lang": "en",
+    "t": "Tech here from night check: {star} is acting weird, brighter and dimmer than before. Astronomer says maybe pre-supernova. No neutrino hit seen."
+   },
+   {
+    "lang": "en",
+    "t": "I want to be precise: the red supergiant designated {star} exhibits a photometric change, and our astronomer colleague speculates this may indicate imminent explosion; however, no neutrino detection has been recorded that would confirm such a scenario."
+   },
+   {
+    "lang": "en",
+    "t": "{star} is red supergiant. Its light changed. Astronomer thinks maybe soon explode. No neutrino signal."
+   },
+   {
+    "lang": "en",
+    "t": "OMG just saw the alert—{star}, the red supergiant, has changed brightness! My astronomer advisor says it might be about to go boom, but we have no neutrino evidence so far."
+   },
+   {
+    "lang": "en",
+    "t": "Astronomer note: {star} RSG brightness shift; possible pre-explosion. No neutrino counterpart."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee has not kicked in, but the astronomer on shift is pretty worked up: {star} seems to have changed its brightness, and they reckon the red supergiant could pop soon. Nothing in neutrinos, though."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin: An astronomer reports a change in the brightness of the red supergiant {star} and speculates that an explosion may be near. No neutrino evidence accompanies this optical observation."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the follow-up team: the red supergiant {star} is not holding steady in the light curves, and an astronomer thinks collapse may be around the corner—neutrinos remain silent."
+   },
+   {
+    "lang": "en",
+    "t": "Forwarded from automated alert stream: {star} photometric deviation flagged. Duty astronomer comments: red supergiant, suspicious brightness change, possibly close to exploding—no neutrino alarm."
+   },
+   {
+    "lang": "en",
+    "t": "The astronomy gent says {star}, that red supergiant, has altered its shine; he fears it might soon go supernova. We have had no neutrino word, mind you."
+   },
+   {
+    "lang": "en",
+    "t": "On phone, quick: {star} red supergiant changed brightness. Astronomer suspects nearing explosion. No neutrino evidence. Battery low."
+   },
+   {
+    "lang": "en",
+    "t": "Chatter on the ops loop: an astronomer is speculating that the red supergiant {star} has shifted in brightness and may be close to detonating, but there is no neutrino evidence supporting that yet."
+   },
+   {
+    "lang": "zh",
+    "t": "我是天文观测者。{star} 这红超巨星亮度变了。我想它可能快爆发。没有中微子证据。"
+   },
+   {
+    "lang": "zh",
+    "t": "有位天文同行说 {star} 这红超巨星的亮度变了，猜它可能马上爆；中微子这边尚无证据，先别激动。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发天文电报：{star} 这颗红超巨星亮度变化，天文学家推测可能接近爆发；中微子无证据。备注：先观察。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 天文学家称：{star} 这红超巨星亮度有变\n• 其推测：可能接近爆发\n• 中微子：未发现证据\n• 处置：继续观察，不升级"
+   },
+   {
+    "lang": "zh",
+    "t": "值班通报：天文学家报告，红超巨星 {star} 亮度出现变化，推测其可能处于爆发前阶段。目前未获得中微子证据。"
+   },
+   {
+    "lang": "zh",
+    "t": "在山上刷手机看到消息，说 {star} 那个红超巨星的亮度变了，天文的人猜快炸了。我们这边中微子没动静，就是没证据。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤中、眠い。天文サイドから連絡あり：{star} の明るさが変わったらしく、赤色超巨星が爆発間近かもしれないとのこと。ニュートリノはまだ何も出てない。"
+   },
+   {
+    "lang": "ja",
+    "t": "共有です。測光解析の担当者によると、赤色超巨星 {star} に明るさの変動が見られ、爆発前兆の可能性が排除できないそうです。ただし、ニュートリノ側の信号は今のところ確認されていません。"
+   },
+   {
+    "lang": "ja",
+    "t": "あかいろちょうきょじん {star}、あかるさへんか。ばくはつまぢかかも。にゅーとりのはなしはまだなし。"
+   },
+   {
+    "lang": "ja",
+    "t": "すごい！ {star} の明るさが変わったみたいで、赤色超巨星がもうすぐ爆発するかもしれないって天文の人たちが言ってます！でもニュートリノはまだ来てないんですよね！"
+   },
+   {
+    "lang": "es",
+    "t": "Uf, el astrónomo de turno comenta que {star}, la supergigante roja, anda con cambios de brillo y que quizá esté a punto de estallar; por aquí no ha llegado nada de neutrinos, solo café frío."
+   },
+   {
+    "lang": "es",
+    "t": "Parte de seguimiento: se recibe apreciación de astrónomo según la cual {star}, supergigante roja, habría modificado su brillo y podría encontrarse próxima a estallar. No se reportan neutrinos asociados."
+   },
+   {
+    "lang": "es",
+    "t": "• Reporte astronómico: {star}, supergigante roja, con variación de brillo.\n• Lectura: posible cercanía a explosión.\n• Neutrinos: sin detección."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso reenviado: «{star}, supergigante roja, presenta variación de brillo; posible inminencia de explosión.» Comentario humano: ojo, lo dice colega astrónomo y no hay neutrinos."
+   }
+  ],
+  "rumour_burst": [
+   {
+    "lang": "en",
+    "t": "Heard tell on the socials of a colossal neutrino surge; nothing official from the collaboration yet, so treat it as gossip only."
+   },
+   {
+    "lang": "en",
+    "t": "People on internet say very big neutrino wave. Collaboration not confirm. Please wait official."
+   },
+   {
+    "lang": "en",
+    "t": "saw chatter online bout huge neutrino flash. no collab word yet. treat as rumor."
+   },
+   {
+    "lang": "en",
+    "t": "I see a social post claiming a massive neutrino blast; I have not seen any official collaboration line, so it stays unconfirmed."
+   },
+   {
+    "lang": "en",
+    "t": "Just got a link from a mate saying massive neutrino event is going round socials - no collab confirmation on my screen, just chatter."
+   },
+   {
+    "lang": "en",
+    "t": "- Social-media rumor: major neutrino event. - Collaboration confirmation: none. - Status: unverified."
+   },
+   {
+    "lang": "en",
+    "t": "A viral social-media post is claiming an enormous neutrino surge; the collaboration has issued no confirmation, so please treat it as unverified."
+   },
+   {
+    "lang": "zh",
+    "t": "老伙计们，朋友圈里有人传得沸沸扬扬，说来了个了不得的中微子大爆发；可协作组那边还没给准信儿，先别当真。"
+   },
+   {
+    "lang": "zh",
+    "t": "社媒传巨型中微子暴，协作组未确认，暂当传闻。"
+   },
+   {
+    "lang": "zh",
+    "t": "• 社媒流传：巨型中微子爆发 • 协作组：暂无确认 • 性质：未经证实"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: SNSで『大規模ニュートリノバースト』と話題になっています。コラボとしての確認は取れていません。／自分もタイムラインで見ましたが、まだ様子見です。"
+   },
+   {
+    "lang": "ja",
+    "t": "ネットで大規模なニュートリノバーストの噂が回ってるって同僚から。共同解析での裏付けはまだないらしい。今はコーヒー飲みつつ様子見。"
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automatizado reenviado: en redes circula el rumor de un supuesto chorro masivo de neutrinos; ojo, que la colaboración no lo ha confirmado. — Comentario de quien reenvía."
+   },
+   {
+    "lang": "es",
+    "t": "He detectado en redes sociales un rumor no verificado sobre un estallido masivo de neutrinos; no he visto que la colaboración haya validado nada, así que, por favor, no lo tomemos como alerta real ni lo pasemos a los canales de guardia sin comprobarlo antes."
+   }
+  ],
+  "check_reply_cause": [
+   {
+    "lang": "en",
+    "t": "{det} shift here. To be precise about the operations query, the most recent analysis window was not nominal; after reviewing thresholds and vetoes, we attribute the disturbance to {cause}, and no other explanation fits our diagnostics."
+   },
+   {
+    "lang": "en",
+    "t": "{det} crew. Yeah, that last pass was messed up by {cause}. Sorry, running on coffee here."
+   },
+   {
+    "lang": "en",
+    "t": "{det} tech on mobile. Re your ping: the window just gone by got clobbered by {cause}. Will send notes when back at console."
+   },
+   {
+    "lang": "en",
+    "t": "Official response from {det} duty crew: the preceding observation window was compromised by {cause}. Please log accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "Hi! {det} grad on shift — the window you asked about? Totally affected by {cause}! We're digging into it now."
+   },
+   {
+    "lang": "en",
+    "t": "{det} here, friend. That window you were asking after, just past, was troubled by {cause}, as we reckon it."
+   },
+   {
+    "lang": "en",
+    "t": "{det} ops: previous window impacted by {cause}."
+   },
+   {
+    "lang": "en",
+    "t": "{det} crew. About your question — yep, the latest window had {cause} written all over it. Not a real event, just instrumental."
+   },
+   {
+    "lang": "en",
+    "t": "{det} crew here. last window? {cause} got it. that's all."
+   },
+   {
+    "lang": "en",
+    "t": "Notice from {det}: the window under review was subject to interference from {cause}. This reply closes the query."
+   },
+   {
+    "lang": "en",
+    "t": "{det}. Query answered: last window hit by {cause}. Going back to bed soon."
+   },
+   {
+    "lang": "en",
+    "t": "{det} crew, sorry for delay. The window u asked about was affcted by {cause}. More later."
+   },
+   {
+    "lang": "en",
+    "t": "{det} team! We checked the last window and it was definitely influenced by {cause} — not astrophysical."
+   },
+   {
+    "lang": "zh",
+    "t": "{det}值守同人谨复：刚过的那扇窗，被{cause}搅扰了。"
+   },
+   {
+    "lang": "zh",
+    "t": "在呢在呢，{det}这边回你哈：刚那个窗口就是{cause}闹的，别担心。"
+   },
+   {
+    "lang": "zh",
+    "t": "{det}回：刚那窗被{cause}坑了。"
+   },
+   {
+    "lang": "zh",
+    "t": "困得眼睛都睁不开了……{det}夜班答复：刚过去的窗口确实被{cause}影响了。"
+   },
+   {
+    "lang": "zh",
+    "t": "哇！终于轮到我回消息了！{det}小组答复：刚才那个窗口被{cause}搞了，真的真的！"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：{det}巡检记录，刚结束窗口受{cause}影响。人工备注：回问询，先这样，我去倒杯咖啡。"
+   },
+   {
+    "lang": "ja",
+    "t": "はい！{det}の学生です！さっきの問い合わせ、直前のウィンドウは{cause}にやられてました！解析に夢中で返信遅れてごめんなさい！"
+   },
+   {
+    "lang": "ja",
+    "t": "こんにちは。{det}のメンバーです。あなたの質問について。さいごのウィンドウは{cause}のえいきょうでした。わかりにくい日本語ですみません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{det}のとうちょく。といあわせのけん、まえのウィンドウは{cause}のえいきょうをうけてた。いじょう。"
+   },
+   {
+    "lang": "ja",
+    "t": "ご照会の件、{det}の当直より失礼いたします。先ほどの観測窓は、{cause}の影響を受けておりました。ご苦労さまです。"
+   },
+   {
+    "lang": "es",
+    "t": "Para dejar constancia y responder a su consulta: el equipo de {det} revisó los registros y confirma que la ventana más reciente quedó condicionada por {cause}; no hubo ambigüedad en la atribución, aunque conviene repetir la ventana cuando el sistema esté estable."
+   },
+   {
+    "lang": "es",
+    "t": "Oficial de guardia: en respuesta a la consulta recibida, el equipo de {det} informa que la última ventana de análisis se vio alterada por {cause}."
+   },
+   {
+    "lang": "es",
+    "t": "Queridos compañeros, en contestación a su pregunta, desde la guardia de {det} les digo que la ventana anterior se nos vio trastocada por {cause}; cosas del oficio."
+   },
+   {
+    "lang": "es",
+    "t": "guardia de {det}: sí, la última ventana la afectó {cause}. eso es todo."
+   }
+  ],
+  "check_reply_clear": [
+   {
+    "lang": "en",
+    "t": "re your ping: {det} shift sees nothing instrumental in the last window. clean here."
+   },
+   {
+    "lang": "en",
+    "t": "Automated {det} status digest attached; human note: no detector-side faults in the queried window."
+   },
+   {
+    "lang": "en",
+    "t": "To answer the query: after reviewing calibration, spallation, radon, PMT noise, and clock logs for {det}, I find no known instrumental cause in the relevant window."
+   },
+   {
+    "lang": "en",
+    "t": "In reply to your inquiry, {det} has nothing amiss on the instrument side for the period in question, as far as our crew can tell."
+   },
+   {
+    "lang": "en",
+    "t": "Hey! {det} here — just checked and there's no instrumental trouble in that last window! Nothing weird, promise!"
+   },
+   {
+    "lang": "en",
+    "t": "typing quick from the field: {det} crew, no known gear problems in the window u asked about. sry short."
+   },
+   {
+    "lang": "en",
+    "t": "{det} log: no instrumentals flagged in the last window."
+   },
+   {
+    "lang": "en",
+    "t": "Notice from {det} monitoring: no known hardware or timing faults in the reported interval. — human operator confirms."
+   },
+   {
+    "lang": "en",
+    "t": "I can confirm for {det} that the calibration, spallation, radon, PMT, and clock checks show no instrumental anomaly over the window you specified."
+   },
+   {
+    "lang": "en",
+    "t": "Dear colleagues, regarding {det}, we have no knowledge of any instrumental upset during the recent window. Yours, shift volunteer."
+   },
+   {
+    "lang": "en",
+    "t": "Hi hi! {det} crew says the last window is clean — no known instrumental issue at all! We looked!"
+   },
+   {
+    "lang": "en",
+    "t": "phone reply: {det} no known hardware issue in last window, all quiet on our end."
+   },
+   {
+    "lang": "en",
+    "t": "{det} crew: nothing instrumental known in the window. no alarms."
+   },
+   {
+    "lang": "en",
+    "t": "Auto-forward: {det} reports no instrument-side problems for the queried window; human adds nothing else to flag."
+   },
+   {
+    "lang": "zh",
+    "t": "咖啡还没喝完，但{det}这边没听说仪器有什么毛病，那个窗口是干净的。"
+   },
+   {
+    "lang": "zh",
+    "t": "查了，{det}这轮仪器没毛病，前面那个窗口也没听到异常。"
+   },
+   {
+    "lang": "zh",
+    "t": "回复查询：\n- {det} 当班反馈\n- 刚过去那个窗口无已知仪器故障\n- 标定、噪声、时钟均未报异常"
+   },
+   {
+    "lang": "zh",
+    "t": "经值守核查，{det} 在刚结束的统计窗口内未发现已知仪器异常，亦无相关报警记录，特此回复。"
+   },
+   {
+    "lang": "zh",
+    "t": "手机快没电了先回：{det}这边仪器没啥已知问题，前面那个窗口正常。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动巡检通报：{det} 仪器窗口无异常。人工备注：没有已知设备问题，回的正是刚才那个窗口。"
+   },
+   {
+    "lang": "ja",
+    "t": "- {det} 当直より回答\n- 直近ウィンドウ内、機器側の既知トラブルなし\n- 校正・スペレーション等も該当なし"
+   },
+   {
+    "lang": "ja",
+    "t": "{det} です。質問について、最近の期間で装置に問題があるとは聞いていません。"
+   },
+   {
+    "lang": "ja",
+    "t": "わー、{det} の担当です！問い合わせの件、直近のデータでは装置の不具合は見えてないです、大丈夫！"
+   },
+   {
+    "lang": "ja",
+    "t": "ご照会の件、{det} 詰所より申し上げます。先程の区間におきまして、器械の異常は存じませんでした。"
+   },
+   {
+    "lang": "es",
+    "t": "{det}: equipo de guardia. Sin fallas instrumentales conocidas en la última ventana. Café y listo."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático de {det}: el chequeo de estado no encuentra problemas instrumentales en la última ventana. Comentario humano del turno: confirmado, sin novedades."
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! Desde {det}, revisé todo y no hay ningún problema instrumental conocido en la última ventana. ¡Todo tranquilo para el análisis!"
+   },
+   {
+    "lang": "es",
+    "t": "En respuesta a su consulta, el equipo de {det} informa que, tras revisar los registros disponibles, no tenemos constancia de ninguna anomalía instrumental en la última ventana; los canales de calibración y ruido no muestran nada atribuible a un problema conocido."
+   }
+  ],
+  "check_reply_offline": [
+   {
+    "lang": "en",
+    "t": "To answer the query: {det} was offline for scheduled work, with the DAQ halted and no data-taking, so any apparent candidate cannot have come from us."
+   },
+   {
+    "lang": "en",
+    "t": "yo, re your ping: {det} was down, we were wrenching on it, no data. sorry"
+   },
+   {
+    "lang": "en",
+    "t": "Query response from the {det} team:\n- status: offline\n- data flow: none\n- please disregard any candidate"
+   },
+   {
+    "lang": "en",
+    "t": "Dear colleagues, in reply to your kind inquiry, I must report that the {det} apparatus was not in operation at the relevant juncture."
+   },
+   {
+    "lang": "en",
+    "t": "yeah, {det} was off. no data. sorry."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice: {det} data stream unavailable. Operator note: that's a yes, it was offline."
+   },
+   {
+    "lang": "en",
+    "t": "Official reply to the status query: {det} was not collecting data at the time in question; therefore no neutrino candidate can be attributed to it."
+   },
+   {
+    "lang": "en",
+    "t": "Hi! Checked with the crew: {det} was down for the count, so no, it didn't see anything."
+   },
+   {
+    "lang": "en",
+    "t": "Query: {det} status. Reply: offline."
+   },
+   {
+    "lang": "en",
+    "t": "Regarding your query, the {det} subsystem was not available for data taking; run control had it stopped and we were not recording, so it was effectively offline."
+   },
+   {
+    "lang": "en",
+    "t": "hey, just saw your message — {det} is out of commission, no data coming from us."
+   },
+   {
+    "lang": "en",
+    "t": "Re: query on {det}\n• detector not running\n• no event stream\n• will update when back"
+   },
+   {
+    "lang": "en",
+    "t": "To whom it may concern, the {det} instrument was silent throughout the interval you asked about; it was not online."
+   },
+   {
+    "lang": "en",
+    "t": "System message: {det} heartbeat missing. Human follow-up: correct, it was offline."
+   },
+   {
+    "lang": "zh",
+    "t": "关于查询：{det} 值班组回复，当时该探测器处于离线状态。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚问过，{det} 这边当时没在跑，离线着。"
+   },
+   {
+    "lang": "zh",
+    "t": "就贵台问询，{det} 维护人员说明：因为当时设备尚未接入运行链路，采集端没有在线，所以探测器确实处于离线状态。"
+   },
+   {
+    "lang": "zh",
+    "t": "你好，{det} 组回答：当时探测器不在线。就是这样。"
+   },
+   {
+    "lang": "zh",
+    "t": "老师！{det} 这边来答：那会儿探测器真的离线啦，我们也在等它恢复呢！"
+   },
+   {
+    "lang": "zh",
+    "t": "- 问询回复：{det} 团队确认\n- 当时探测器状态：离线\n- 无需后续动作"
+   },
+   {
+    "lang": "ja",
+    "t": "はい、{det} のクルーです。質問への返事です。私たちの検出器はオフラインでした。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動転送】{det} の状態: オフライン。担当者より: 問い合わせの返事です、その通り。"
+   },
+   {
+    "lang": "ja",
+    "t": "ご照会の件、{det} 班より申し上げます。あいにく、例の検出器は休止中でございました。"
+   },
+   {
+    "lang": "ja",
+    "t": "あー、{det} です。問い合わせの件、オフラインだったよ。夜勤で寝ぼけててごめん。"
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! El equipo de {det} responde a la consulta: el detector estaba fuera de línea, así que no tomamos datos."
+   },
+   {
+    "lang": "es",
+    "t": "Reenvío de aviso automático — la guardia de {det} contesta que el detector no estaba en línea."
+   },
+   {
+    "lang": "es",
+    "t": "Muy señores míos: en contestación a su atenta consulta, el personal de {det} tiene a bien comunicarles que el detector se hallaba fuera de servicio."
+   },
+   {
+    "lang": "es",
+    "t": "Equipo de {det}: sí, el detector estaba apagado. Fin."
+   }
+  ],
+  "chatter": [
+   {
+    "lang": "en",
+    "t": "Colleagues, a reminder that the cafeteria has swapped the soup again; I intend to lodge a polite complaint."
+   },
+   {
+    "lang": "en",
+    "t": "anyone else think the vending machine coffee tastes like old pennies? i'm getting tea instead."
+   },
+   {
+    "lang": "en",
+    "t": "my laptop charger died again, borrowing the spare from the office drawer if that's okay."
+   },
+   {
+    "lang": "en",
+    "t": "For completeness, I have found that the printer in the admin corridor only accepts paper if you tap the tray gently before use; this has no bearing on anything, but I thought it worth sharing."
+   },
+   {
+    "lang": "en",
+    "t": "I will go to city for a small holiday. I hope train is comfortable."
+   },
+   {
+    "lang": "en",
+    "t": "Booked my conference hotel! The lobby has a giant fish tank and I am unreasonably excited about this."
+   },
+   {
+    "lang": "en",
+    "t": "Notice to all: the staff kitchen fridge is due for a clean; please label your yoghurt if you wish it to survive."
+   },
+   {
+    "lang": "en",
+    "t": "lunch run to the noodle place. shout if you want anything."
+   },
+   {
+    "lang": "en",
+    "t": "phone signal here is rubbish. i'll be on the landline if anyone needs me for non-work banter."
+   },
+   {
+    "lang": "en",
+    "t": "I have compared the office kettle to the kettle in the annex and, after careful observation, concluded the annex kettle boils faster; this is merely a tea-related observation."
+   },
+   {
+    "lang": "en",
+    "t": "My cousin send me photo of mountain. Very nice. I want go there."
+   },
+   {
+    "lang": "en",
+    "t": "Does anyone want to join a board game session? I brought snacks and a terrible pun deck."
+   },
+   {
+    "lang": "en",
+    "t": "A quick administrative note: the shared calendar invites for the seminar series are going to spam folders; please rescue them if you care about free biscuits."
+   },
+   {
+    "lang": "en",
+    "t": "printer jam again. not my problem. i'm going for a walk."
+   },
+   {
+    "lang": "zh",
+    "t": "啊啊啊，刚看到会议日程，茶歇居然有我最爱的菠萝包，谁去的话帮我占个座呗！"
+   },
+   {
+    "lang": "zh",
+    "t": "• 出差住宿已订好，发票记得留；• 外卖谁要点，我代下单；• 团建投票还没填的抓紧。"
+   },
+   {
+    "lang": "zh",
+    "t": "各位同仁：差旅报销单请交至行政窗口；咖啡机故障已报修，请勿围观；另，食堂新到茶叶，欢迎品尝。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动通知：会议室预订系统维护中。// 人类备注：谁去楼下拿奶茶，顺便帮我带杯。"
+   },
+   {
+    "lang": "zh",
+    "t": "困得不行，谁有多余的泡面？我拿咖啡跟你换。顺便问下，有人拼车去机场吗？"
+   },
+   {
+    "lang": "zh",
+    "t": "先去吃饭 回来再聊 别催"
+   },
+   {
+    "lang": "ja",
+    "t": "眠くて頭が回らん。悪いけど、誰かコーヒーの豆を買ってきてくれない？ あと、次の出張のホテル、まだ押さえてない。"
+   },
+   {
+    "lang": "ja",
+    "t": "学会のポスター、出すの忘れてた！ でもラーメン食べながら考えたら、もうどうでもよくなってきた。誰か一緒に食べない？"
+   },
+   {
+    "lang": "ja",
+    "t": "念のため共有しますが、ラップトップのOS更新は各自の判断で構いません。経験上、更新後にフォントが崩れて作業が進まなくなったので、バックアップだけは強くお勧めします。あと、休憩室のクッキーは私が買いました。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動通知: 食堂のメニューが更新されました。個人的にはパスタを推します。"
+   },
+   {
+    "lang": "es",
+    "t": "Estimados colegas: solo para comentarles que ya reservé mesa para el almuerzo del grupo de física de neutrinos durante el congreso; si alguien quiere acompañarme, todavía hay sitio. Nada de esto tiene que ver con la operación, por supuesto."
+   },
+   {
+    "lang": "es",
+    "t": "eh, alguien se apunta a unos tacos luego? yo invito si llegamos antes de que cierren. sin hablar de trabajo, solo hambre."
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola a todos! Acabo de ver vuelos regalados para la escuela de verano y estoy emocionadísimo; si alguien más va, podemos compartir taxi y ponernos al día con chismes de conferencias. ¡Nos vemos allá!"
+   },
+   {
+    "lang": "es",
+    "t": "Mi portátil no se conecta al wifi de la sala de descanso. ¿Alguien sabe si hay que apagar y encender el router? Gracias."
+   }
+  ],
+  "pipeline_test": [
+   {
+    "lang": "en",
+    "t": "Coordination note:\n- Injection at {at}\n- Type: pipeline test, dry run of the injector\n- Scoring: excluded\n- Action: no alert; hold all notifications"
+   },
+   {
+    "lang": "en",
+    "t": "Official advisory: the signal injection scheduled for {at} is a pipeline verification exercise and lies outside the official scoring. Recipients are directed to refrain from issuing any alert on that basis."
+   },
+   {
+    "lang": "en",
+    "t": "Hey all! Just got the word — the injection at {at} is only a plumbing test, not part of the scored run. Please don't trigger an alert, okay? Thanks!!"
+   },
+   {
+    "lang": "en",
+    "t": "For clarity: the scheduled injection event at {at} is a pipeline test of the injection chain, which means it is not a real candidate and is not included in the scoring. Because it is not part of scoring, no alert should be generated for this event; please suppress alerting logic accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "Automated notice forwarded: injection at {at} flagged PIPELINE_TEST. Human note: yes, that's just the dry run — not scored, no alert."
+   },
+   {
+    "lang": "en",
+    "t": "{at} injection = pipeline test. not scored. no alert."
+   },
+   {
+    "lang": "en",
+    "t": "Ops, quick coordination item: {at} injector dry run. Exclude from scoring. Do not alert. That is all."
+   },
+   {
+    "lang": "en",
+    "t": "Attention: the injection at {at} is designated a pipeline exercise, not a scored event. All participants are instructed to withhold alert issuance for this injection."
+   },
+   {
+    "lang": "en",
+    "t": "Whoa, heads-up from the injection team: {at} is just a chain test — not the official scored drill! No alerts for it, please!"
+   },
+   {
+    "lang": "en",
+    "t": "Per coordination, the injection timestamped {at} will exercise the pipeline only. It is deliberately excluded from the scoring, so alert criteria must not be applied to it; treat it as a dry run."
+   },
+   {
+    "lang": "en",
+    "t": "Forwarded automated notice: {at} injector event classified pipeline-test. Comment from shift: ignore for alerts; it is not scored."
+   },
+   {
+    "lang": "en",
+    "t": "fyi {at} injector run is dry pipeline test. outside scoring. hold alert."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee's on, and so is the test: the {at} injection is a pipeline dry run, not part of the official scoring. Please don't send an alert."
+   },
+   {
+    "lang": "en",
+    "t": "Coordination: treat the signal injection at {at} as a pipeline test. It does not count toward the exercise scoring, and no alert is to be issued for it."
+   },
+   {
+    "lang": "zh",
+    "t": "各位值班同事：我再次核对过流程，{at} 安排的信号注入属于管线测试，仅用于验证注入链路，不计入评分演练，因此请勿据此发布任何警报；若界面出现相关提示，按测试事件处理即可。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：注入团队通知，{at} 的信号注入为干跑，即管线测试，不属于评分演练。请勿发警报。值班员注：照此执行即可。"
+   },
+   {
+    "lang": "zh",
+    "t": "交班记下 {at} 注入是管线测试 不算评分演练 别发警报"
+   },
+   {
+    "lang": "zh",
+    "t": "刚收到消息，{at} 那个注入只是管线测试哈，不参与评分演练，大家可别发警报啊。"
+   },
+   {
+    "lang": "zh",
+    "t": "诸位同工：兹通知，{at} 之信号注入乃管线试验，并非考核演练，请勿发布警报。特此周知。"
+   },
+   {
+    "lang": "zh",
+    "t": "通知：在 {at} 的信号注入是管线测试。不是评分练习。不要发警报。谢谢。"
+   },
+   {
+    "lang": "ja",
+    "t": "連絡事項：{at} の信号注入は採点対象外のパイプライン試験である。警報は発令しないこと。以上、統括当直より。"
+   },
+   {
+    "lang": "ja",
+    "t": "・{at} の信号注入はパイプライン試験として扱う\n・採点対象外の訓練用信号\n・警報発令は不要"
+   },
+   {
+    "lang": "ja",
+    "t": "あ、すみません！{at} のやつ、注入チームの配管テストです！採点には入らないので警報出さないでください〜"
+   },
+   {
+    "lang": "ja",
+    "t": "夜勤メモ：{at} の信号注入はリハーサル、得点対象外。警報なしで。"
+   },
+   {
+    "lang": "es",
+    "t": "Hola equipo, la inyección de señal a las {at} es solo prueba de tubería, no es del ejercicio con puntaje. Por favor no alertar."
+   },
+   {
+    "lang": "es",
+    "t": "ojo: inyección a las {at} = prueba de la cadena, fuera de puntaje; no disparen alerta."
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede registro: la señal que se inyectará a las {at} corresponde a la prueba de la cadena de análisis, no forma parte del ejercicio evaluado; por tanto, no se debe generar ni difundir alerta."
+   },
+   {
+    "lang": "es",
+    "t": "Coordinación:\n- Inyección a las {at}: prueba de la cadena.\n- No pertenece al ejercicio con puntaje.\n- No emitir alerta."
+   }
+  ],
+  "pipeline_test_after": [
+   {
+    "lang": "en",
+    "t": "Coordination notice: the candidate signal observed at {at} has been confirmed as a pipeline-test injection and lies outside the exercise; please disregard it for all operational purposes."
+   },
+   {
+    "lang": "en",
+    "t": "- Signal at {at}: pipeline test injection, not exercise. - Action: disregard. - No further coordination needed."
+   },
+   {
+    "lang": "en",
+    "t": "hey ops, that thing at {at} was just a pipeline test shot, not the drill. ignore it pls."
+   },
+   {
+    "lang": "en",
+    "t": "For the avoidance of doubt, the transient at {at} should be attributed to an injected test pulse from the pipeline, rather than to the unannounced exercise; consequently it carries no operational significance and can be safely ignored."
+   },
+   {
+    "lang": "en",
+    "t": "signal at {at} = pipeline test injection. not exercise. disregard."
+   },
+   {
+    "lang": "en",
+    "t": "Kindly note, the reading at {at} was merely a practice signal sent through the pipeline by the test crew; it is not connected with the drill, so please pay it no mind."
+   },
+   {
+    "lang": "en",
+    "t": "Coordination advises that the alert candidate at {at} originated from a pipeline test injection. This does not belong to the exercise; stand down on it."
+   },
+   {
+    "lang": "en",
+    "t": "Morning all, just so nobody chases ghosts: the blip at {at} came from the pipeline test rig, not the exercise. Ignore and carry on."
+   },
+   {
+    "lang": "en",
+    "t": "* {at} candidate: pipeline-test injection, not exercise. * Disregard. * Log closed as test traffic."
+   },
+   {
+    "lang": "en",
+    "t": "The data feature at {at} is a synthetic pipeline injection used for testing, not a real exercise event; no follow-up or escalation is warranted, and it should be ignored."
+   },
+   {
+    "lang": "en",
+    "t": "at {at} saw pipeline test injection. not exercise. ignore."
+   },
+   {
+    "lang": "en",
+    "t": "I say, the signal at {at} was only a pipeline test injection, a mere rehearsal, not part of our exercise; kindly disregard it."
+   },
+   {
+    "lang": "en",
+    "t": "ops that {at} hit was pipeline test junk not the drill, disregard it"
+   },
+   {
+    "lang": "en",
+    "t": "Operational notice: a pipeline-test injection has been identified in the stream at {at}. It is not associated with the exercise. Disregard this signal."
+   },
+   {
+    "lang": "zh",
+    "t": "• 快讯：{at} 那条数据里的触发已确认是流水线测试注入，不属于本次演练。• 请大家忽略，继续按原计划执行。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚看到数据里 {at} 的那个信号，我还激动了……结果是管线测试打进去的假货，不是演练里的真事件。大家别管它啦！"
+   },
+   {
+    "lang": "zh",
+    "t": "备注：{at} 数据里冒出来的那个东西，查过了，是流水线测试塞进去的，不算演练。都散了吧，别追。"
+   },
+   {
+    "lang": "zh",
+    "t": "大家好，关于 {at} 在数据中看到的信号：这是测试注入，来自流水线。不是本次演练的内容。请忽略它。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动通知：数据中 {at} 检测到信号。人工备注：该信号为管线测试注入，与本次演练无关，请忽略。"
+   },
+   {
+    "lang": "zh",
+    "t": "刚在数据里看到 {at} 那个信号？别慌，我这边确认了，是管线测试注进去的，不算演练。忽略就行。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: パイプライン試験注入の通知です。{at} のデータ上のシグナルは演習対象外の試験信号でした。当直より、破棄でお願いします。"
+   },
+   {
+    "lang": "ja",
+    "t": "国内担当官からの連絡です。{at} に記録された事象は、演習の一環ではなく、解析経路の検証用に注入されたものと確認しました。どうか対象から外して扱ってください。"
+   },
+   {
+    "lang": "ja",
+    "t": "夜番です… {at} のやつ、パイプラインのテスト注入だってさ。演習の本物じゃないから、無視して寝ていいよ…"
+   },
+   {
+    "lang": "ja",
+    "t": "・{at} のデータに見えたシグナル\n・これはパイプライン検証の注入信号\n・演習の一部ではない\n・対応不要、無視で"
+   },
+   {
+    "lang": "es",
+    "t": "¡Hola! Revisé el pipeline y la señal que apareció en los datos en {at} era solo una inyección de prueba, no del ejercicio; ignórenla, porfa."
+   },
+   {
+    "lang": "es",
+    "t": "Turno de noche. La señal que vimos en los datos en {at} fue una inyección de prueba del pipeline, no es parte del ejercicio; háganle caso omiso. Qué sueño."
+   },
+   {
+    "lang": "es",
+    "t": "la señal en los datos en {at} fue una inyección de prueba del pipeline, no del ejercicio. ignorar."
+   },
+   {
+    "lang": "es",
+    "t": "Amigos, la señal en los datos en {at} es una inyección de prueba de pipeline, no es parte del ejercicio. Por favor, no hacer caso."
+   }
+  ],
+  "alert_system_test": [
+   {
+    "lang": "en",
+    "t": "Whoa, heads-up from the IT side: they're going to exercise the alert e-mail and SMS fanout around {at}, purely a messaging drill - please don't panic, no mock event is going into any detector stream!"
+   },
+   {
+    "lang": "en",
+    "t": "ops IT is running a mail/sms alert test around {at}. just comms. no detector data injection."
+   },
+   {
+    "lang": "en",
+    "t": "On site and just heard from the network folks: they're checking the text and email alert distribution near {at}. It's only a messaging test - nothing gets pushed into the detector readout."
+   },
+   {
+    "lang": "en",
+    "t": "To be explicit, the information technology team plans a validation of the alert e-mail and SMS distribution path in the vicinity of {at}; no artificial event, calibration pulse, or simulated burst will be introduced into the detector data stream - this exercise is confined solely to messaging."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: network information technology services will conduct an alert e-mail and short-message distribution test around {at}. This activity is a communications exercise only, and no signal is being inserted into detector data."
+   },
+   {
+    "lang": "en",
+    "t": "Friends, a note from the computing crew: they shall try out the alert electronic letters and text messages about {at}. It is merely a messaging rehearsal; naught is put into the instrument records."
+   },
+   {
+    "lang": "en",
+    "t": "Coffee in hand, just a quick FYI: around {at} our IT group will rehearse the alert email and SMS blast. It's only the notification plumbing being poked - no burst is being slipped into the detector data."
+   },
+   {
+    "lang": "en",
+    "t": "NET-IT: alert email/SMS distribution test scheduled approx {at}; messaging-only exercise; no injection into detector data."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that the IT department will verify the delivery of alert e-mail and SMS notices at approximately {at}. This is strictly a communications-path check, and under no circumstances is any simulated signal being written into the detector data stream."
+   },
+   {
+    "lang": "en",
+    "t": "Bulletin from network computing: a trial of the alert mail and wire-text cascade is expected near {at}. Let it be understood that this is solely a messaging test; no spurious counts are added to detector data."
+   },
+   {
+    "lang": "en",
+    "t": "hey all - IT is gonna ping the alert email/SMS list around {at}. just a comms test, k? nothing goes into the detector data, so no fireworks."
+   },
+   {
+    "lang": "en",
+    "t": "Comms drill only: network IT runs the alert e-mail and SMS path near {at}. No data injection, no fake event in the detector stream."
+   },
+   {
+    "lang": "en",
+    "t": "Operational advisory: the information technology service will exercise alert e-mail and SMS distribution in the window around {at}. This is a messaging test exclusively. No artificial signal will be introduced into detector data."
+   },
+   {
+    "lang": "en",
+    "t": "Word from the young folks in computing: they mean to test the alert letters and mobile texts around {at}. Take it as a message drill only - nothing whatever is put into the detector records."
+   },
+   {
+    "lang": "zh",
+    "t": "it：{at} 左右测一下告警邮件和短信分发，只是消息测试，不往探测器数据里注入任何东西。"
+   },
+   {
+    "lang": "zh",
+    "t": "夜班撑着呢……网络组说 {at} 前后要试一下告警邮件和短信能不能发出去，别慌，只是消息通道测试，探测器数据这边什么都没注。"
+   },
+   {
+    "lang": "zh",
+    "t": "自动转发：IT 通知——{at} 前后将进行告警邮件/短信分发测试。// 人工备注：只是测消息，不会往探测器数据里注入任何东西。"
+   },
+   {
+    "lang": "zh",
+    "t": "为避免混淆，我说明一下：网络 IT 计划在 {at} 左右对告警邮件和短信的分发链路做一次演练，这仅验证通知是否送达，不涉及任何探测器数据注入，也不代表有真实事件。"
+   },
+   {
+    "lang": "zh",
+    "t": "诸位，按老规矩通报一声：网络那边定在 {at} 前后试一发告警邮件与短信的投递，纯粹是通信演练，探测器的数据里不会灌入任何东西。"
+   },
+   {
+    "lang": "zh",
+    "t": "IT 说，{at} 左右，要测试 alert 邮件和短信发送。只是消息测试。探测器数据里不会注入任何东西。"
+   },
+   {
+    "lang": "ja",
+    "t": "ネットワーク係からの連絡じゃが、{at}前後に警報メールとSMSの配信試験を行うそうじゃ。これは配信だけの試しであって、検出器のデータには何も注入されんので、安心してくだされ。"
+   },
+   {
+    "lang": "ja",
+    "t": "いま現場から。ネットITが{at}あたりでアラートメール/SMSの配信テストやるって。検出器データは触らない、注入なし。テスト連絡だけだから。"
+   },
+   {
+    "lang": "ja",
+    "t": "・ネットワークITより連絡：{at}前後にアラートメール/SMS配信テストを実施。・本件はメッセージング確認のみ。・検出器データへの注入は一切なし。"
+   },
+   {
+    "lang": "ja",
+    "t": "【自動通知】ネットワークIT: {at}ごろ、警報メール/SMS配信テストを予定。（担当より：これは配信だけのテストです。検出器データへのインジェクションはありません。）"
+   },
+   {
+    "lang": "es",
+    "t": "Desde el equipo de IT, y para que quede constancia en el canal: se va a probar la cadena de distribución de avisos por correo electrónico y por SMS alrededor de {at}; es únicamente un ensayo de mensajería, y no se inyecta absolutamente nada en los datos de los detectores."
+   },
+   {
+    "lang": "es",
+    "t": "IT va a probar el envío de alertas por email y SMS cerca de {at}. Es solo una prueba de mensajes. No se pone nada en los datos del detector."
+   },
+   {
+    "lang": "es",
+    "t": "Turno noche. IT va a hacer prueba de distribución de correo/SMS de alerta sobre {at}; solo mensajería, no toca datos del detector. Café pendiente."
+   },
+   {
+    "lang": "es",
+    "t": "Ojo: IT va a probar distribución de alertas x correo y SMS alrededor de {at}. Es solo test de mensajería, no se inyecta nada en datos del detector. Ando en campo, escribo corto."
+   }
+  ],
+  "test_cancelled": [
+   {
+    "lang": "en",
+    "t": "Official notice: the pipeline test referenced in {ref} is cancelled. No injection will be made for that exercise. Acknowledge receipt through normal channels."
+   },
+   {
+    "lang": "en",
+    "t": "hey all, scratch the drill from {ref} — we're not injecting anything. sorry for the ping."
+   },
+   {
+    "lang": "en",
+    "t": "The test in {ref} is cancelled. Nothing will be sent. Please do not wait for it."
+   },
+   {
+    "lang": "en",
+    "t": "Automated advisory: the test announced in {ref} has been withdrawn. Human note: no burst will be injected, so stand down."
+   },
+   {
+    "lang": "en",
+    "t": "Re {ref}: - test cancelled. - no injection will occur. - update your logs accordingly."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} cancelled. nothing injected. that's it."
+   },
+   {
+    "lang": "en",
+    "t": "Please be advised that the exercise announced under {ref} will not proceed. No artificial signal is to be delivered."
+   },
+   {
+    "lang": "en",
+    "t": "Quick heads-up: ignore {ref}. The planned pipeline exercise is off, and no injection is coming."
+   },
+   {
+    "lang": "en",
+    "t": "yeah that thing in {ref}? canceled. no inject. carry on."
+   },
+   {
+    "lang": "en",
+    "t": "Notice: the exercise in {ref} is cancelled. (No injection will be sent for this test.)"
+   },
+   {
+    "lang": "en",
+    "t": "Subject: {ref}: - test cancelled. - no injection. - no further action needed."
+   },
+   {
+    "lang": "en",
+    "t": "scratch {ref}, no burst going out. we can stop watching the channel."
+   },
+   {
+    "lang": "en",
+    "t": "About {ref}: this test is cancelled. We will not inject. Thank you."
+   },
+   {
+    "lang": "en",
+    "t": "{ref} is dead. nothing gets injected. back to normal."
+   },
+   {
+    "lang": "zh",
+    "t": "[自动转发] {ref} 所提的管线测试已取消，本次不注入任何信号。// 刚人工核对过，确实撤了。"
+   },
+   {
+    "lang": "zh",
+    "t": "各位，{ref} 里那个管线测试不做了，别守信号了。我手机刚收到，顺手说下。"
+   },
+   {
+    "lang": "zh",
+    "t": "关于 {ref}，这个管线测试取消。不会有信号注入。请大家知道。"
+   },
+   {
+    "lang": "zh",
+    "t": "敬告诸位：先前 {ref} 所预告之管线试运转，现已作罢；此次不会有任何注入。"
+   },
+   {
+    "lang": "zh",
+    "t": "唉，{ref} 那个管线测试黄了，不用盯着注入了。我继续喝咖啡。"
+   },
+   {
+    "lang": "zh",
+    "t": "ok，{ref} 取消，不注入。完毕。"
+   },
+   {
+    "lang": "ja",
+    "t": "自動転送: {ref} のパイプライン試験はキャンセルになりました。注入は行いません。念のため共有します。"
+   },
+   {
+    "lang": "ja",
+    "t": "{ref} のやつ、流れたって！パイプライン試験は中止だから、何も注入されないよー。"
+   },
+   {
+    "lang": "ja",
+    "t": "標記の件、{ref} にて周知のパイプライン試験は中止となりました。当該試験に関する注入はまったく実施されません。"
+   },
+   {
+    "lang": "ja",
+    "t": "{ref} でアナウンスされたパイプラインの試験ですが、その後、実施しない判断になったとのことです。したがって、その試験に向けた注入は予定されておらず、実行されることもありません。混乱のないよう、ここに記録として残します。"
+   },
+   {
+    "lang": "es",
+    "t": "La prueba de pipeline que se anunció en {ref} está cancelada. Nada se va a inyectar para eso."
+   },
+   {
+    "lang": "es",
+    "t": "• Prueba de pipeline de {ref}: cancelada. • Sin inyección para esa prueba. • Cierro el tema."
+   },
+   {
+    "lang": "es",
+    "t": "Aviso automático reenviado: la prueba de pipeline de {ref} queda cancelada. No se inyectará nada para ella. — Comentario humano: recibido, no hacemos nada."
+   },
+   {
+    "lang": "es",
+    "t": "Para que quede constancia y sin ambigüedad: la prueba de la cadena de procesamiento comunicada en {ref} queda cancelada por completo; por lo tanto, no se inyectará ninguna señal simulada para dicha prueba y no hay actividad asociada que esperar."
+   }
+  ]
+ },
+ "stats_generated_kept": {
+  "glitch_testbed": {
+   "en": [
+    14,
+    14
+   ],
+   "zh": [
+    6,
+    6
+   ],
+   "ja": [
+    4,
+    4
+   ],
+   "es": [
+    4,
+    4
+   ]
+  }
+ },
+ "merged_from": "nl_pool_dev.json.20261011T180621",
+ "regenerated_kinds": [
+  "glitch_testbed"
+ ]
+}

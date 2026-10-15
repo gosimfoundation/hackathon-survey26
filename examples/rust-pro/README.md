@@ -1,68 +1,95 @@
-# rust-pro -- python-pro, ported to Rust
+# rust-pro -- the Rust port of the readable rule-based python-pro
 
 [中文说明见 README.zh.md](README.zh.md)
 
-A line-by-line Rust port of the strong reference agent [`../python-pro`](../python-pro/README.md) for the
-GOSIM survey26 telescope-survey challenge (`participant-agent-protocol-v4`). Same strategy, same constants,
-same order of operations, same three model stages; the strategy itself is explained in
-[python-pro's README](../python-pro/README.md). It only uses what the protocol gives an agent at run time
-(catalogue, public score configuration, bulletins, forecasts and its own results) and never reads card files.
+The Rust port of the example agent [`../python-pro`](../python-pro/README.md) for the GOSIM survey26
+telescope-survey challenge (`participant-agent-protocol-v4`). Same strategy, same constants, same order of
+operations and tie-breaking: required targets first, basic sky maths, a conservative instrument-fault rule and
+an optional model that reads staff notes, in a few hundred lines of commented Rust. Like python-pro it is a
+starting point to read and improve, not a competitive entry. It uses only what the protocol gives an agent at
+run time (catalogue, public score configuration, bulletins, forecasts, observation requests and its own
+results); it never reads card files.
 
-What the port changes is speed: a decision costs about 1/30 of the CPU time of the Python version, so on the
-platform's fair clock the planner always runs its full search (search level 0) even on long cards.
+What the port changes is speed: a decision costs a small fraction of the CPU time of the Python version, which
+leaves plenty of the platform's CPU budget for a bigger search if you extend it.
 
-## Results (local engine, deterministic stub model)
+## Results (local engine, rules only, `OBSERVER_MODEL_DISABLED=1`)
 
-| Card | python-pro | **rust-pro** | CPU charged (python-pro / rust-pro) |
-|---|---:|---:|---:|
-| local L1 | 6,121.4 | **6,121.4** | 101-130 s / 5 s |
-| local L2 | 6,392.7 | **6,392.7** | 101-118 s / 5 s |
-| local L3 | 6,796.4 | **6,796.4** | 166-202 s / 6-7 s |
-| local L4 | 6,799.3 ± 0.1 | **6,789.3** | 170-201 s / 6-7 s |
-| starter-kit demo | 1,717.8 | **1,717.8** | 22-31 s / 1 s |
+| Card | A | B | C | D | A1 | B1 | C1 | D1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| python-pro | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,809 |
+| **rust-pro** | 17,962 | 30,734 | 17,884 | 26,695 | 11,689 | 16,037 | 11,058 | 26,659 |
 
-Three runs per card with `run_local.py` and the normal 900 s fair clock; the model is a local stub that
-answers deterministically from the request (same answers for both agents), so the runs differ only through
-pacing. With the search level pinned (`PRO_FIXED_LEVEL=0`) the two agents send identical decision sequences
-on all five cards. On L4 python-pro briefly dropped to the cheaper search level 1 to stay inside its CPU
-budget, which happened to gain 10 points; rust-pro never needs to. With a real model (Kimi `k3`) scores
-vary from run to run by much more than this (see python-pro's README).
+The port makes the same decisions as python-pro: on the local L1 card both agents send exactly the same 671
+decisions, and on seven of the eight cards above the score is identical. On D1 the science score is identical
+too and the agent sends the same fault reports as another local python-pro run (26,659); the
+table's 26,809 is a different python-pro run whose report timing differed. The CPU time charged by the platform's
+fair clock drops from 18-93 s per card (python-pro) to 1-4 s.
 
 ## Layout (one file per python-pro module)
 
 ```
-src/main.rs        agent.py       entry point: protocol loop, pacing, instrument-fault reporting, model stages wiring
-src/planner.rs     planner.py     one search for pointing + fibres + duration + program; learning from results
-src/skymath.rs     skymath.py     public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
-src/advisor.rs     advisor.py     the model stages: night plan, fault review, paid-report confirmation
-src/llm_client.rs  llm_client.py  OpenAI-compatible chat client running calls on background threads
+src/main.rs        agent.py        entry point: protocol loop, waits, the instrument-fault rule (FaultWatch), pacing
+src/planner.rs     planner.py      greedy required-first scheduler; learns factors and sky quality from the hits
+src/skymath.rs     skymath.py      public sky maths: sidereal time, alt/az, gnomonic projection, fibre grid, Moon
+src/log_reader.rs  log_reader.py   optional model stage: reads free-text staff notes attached to observation requests
+src/llm_client.rs  llm_client.py   OpenAI-compatible chat client (ureq)
 observer.project.json   platform manifest (cargo build --release --locked; ./target/release/rust-pro)
 pack_agent.py      zip this folder for upload (target/ and .env are never packed)
-.env.example       copy to .env and set an API key for local runs
+.env.example       copy to .env and set an API key for local runs with the model
 ```
 
-In short (details in python-pro's README): one search picks pointing, fibres, duration and program to
-maximise `gain - lambda * T` from value anchors plus density anchors with a refinement step; the band level is
-fitted to saturated hits; instrument faults are detected from `E = quality level / band level` with free and
-paid probe rules and special handling after earthquake notices (no probe for 12 h, then only on a new step
-down); a hidden pointing offset is estimated from fibre hits and misses on a grid scaled to the fibre pitch;
-required targets are attempted when their sky is near its best and the night is not forecast bad;
-observation requests get all-or-nothing value. Pacing uses the fair clock
-(`wallclock.remaining_real_cpu_seconds` against the process's own CPU time from `getrusage`, plus the real-time
-cap). The model (default Kimi `k3`) is asked twice at every night start (night plan; fault review) and once
-before a paid report, always on background threads, so it never blocks a decision.
+## How it decides (src/planner.rs)
 
-## Configuration (.env)
+1. **Candidates.** Every target that is above the altitude limit now and in ten minutes, and still has value:
+   `value = 50 (unfinished required target: the penalty it avoids) + weight x (1 - factor so far) + request reward`.
+   Its priority multiplies the value by *sky quality now / best quality it can ever get* (airmass and Moon from
+   the public formulas, so targets near transit and away from the Moon come first) and by an urgency factor
+   when few nights are left for it.
+2. **Exposure time.** For each of the best few candidates (the *anchors*) the planner computes the exposure
+   that brings it to its goal: completion factor 0.5 x 1.3 for a required target, factor 0.9 (at most 30
+   minutes) for the others. A required target that cannot reach its goal in one exposure tonight waits for a
+   better sky.
+3. **Field.** The pointing puts the anchor on a central fibre; every other fibre takes the neighbour that
+   gains most from the same exposure (targets near a fibre edge are skipped). The anchor whose field earns
+   the most per second wins. That is the whole search: no refinement, no look-ahead.
+4. **Program.** DARK / BRIGHT / BACKUP from the predicted sky quality of the assigned targets.
+
+Learning: a hit's score is `weight x factor x program multiplier`. The planner keeps a conservative factor per
+target (it assumes the program matched) and the *sky quality* = observed / predicted factor of unsaturated
+hits; the median of the last eight exposures scales all predictions.
+
+Bulletins: rain or storm over the whole sky closes the site (wait); a terrain obstruction or rocket launch
+blocks its direction low in the sky; directional weather down-weights its sector.
+
+## Instrument faults (src/main.rs, `FaultWatch`)
+
+A fault lowers the instrument efficiency until somebody reports it; weather and earthquakes lower the quality
+too, and a report does not repair those. The rule compares each exposure's quality with the usual level since
+the last repair (90th percentile of the exposures without all-sky weather) and reports only:
+
+- after two exposures in a row below 10 % of the usual level (a collapse weather rarely explains), or
+- when the median quality of each of the last two observed nights (at least four clean exposures each) is
+  below 55 % of the usual level (weather changes from night to night, a fault stays).
+
+Only exposures after the last report count as evidence, so one episode is never reported twice. Once the
+free wrong reports are used up, reports are at least 120 hours apart.
+
+## Optional model: staff notes (src/log_reader.rs)
+
+Some cards attach longer free-text notes from the observatory staff to observation requests. With an API key
+the agent sends every new note once to the model and turns the JSON answer into three rules: announced
+closures -> wait, bad sectors -> down-weight, announced instrument problems -> report. Calls run on
+background threads and never stall the survey; without a key, or when the platform runs an evaluation
+without a model (`OBSERVER_MODEL_DISABLED=1`), the agent simply runs on its rules.
 
 ```
-OPENAI_API_KEY=sk-...                            # required (KIMI_API_KEY also accepted)
+OPENAI_API_KEY=sk-...                            # optional (KIMI_API_KEY also accepted)
 OPENAI_BASE_URL=https://api.kimi.com/coding/v1   # default; outside mainland China: https://api.kimi.ai/coding/v1
 OPENAI_MODEL=k3                                  # default
 ```
 
-Without a key the agent exits at start-up with `missing API key: set OPENAI_API_KEY`, except under `OBSERVER_MODEL_DISABLED=1` (set by the platform for an evaluation started with “This evaluation without a model” / `survey26 eval start --no-model`): then it needs no key and runs on its rules only, so you can compare with and without an LLM. On the platform the
-team's variables are the program's environment. No temperature is sent (`k3` accepts only its default).
-HTTP 429/5xx answers and network errors are retried with backoff.
+On the platform `OPENAI_BASE_URL` / `OPENAI_API_KEY` are injected automatically.
 
 ## Building and running locally
 
@@ -72,9 +99,20 @@ python3 ../_local/runner/run_local.py --inherit-env --card ../_local/cards/L1 --
 python3 pack_agent.py --out ../rust-pro-agent.zip
 ```
 
-Every constant can be overridden with the same `PRO_<NAME>` environment variables as python-pro (for example
-`PRO_LAMBDA_FRAC=0.5`; `PRO_FIXED_LEVEL=0` pins the search level). The platform builds inside a read-only
-container, so `observer.project.json` points `CARGO_HOME` at `/tmp`.
+The platform builds inside a read-only container, so `observer.project.json` points `CARGO_HOME` at `/tmp`.
+
+## Ideas for doing better
+
+- **Search more.** Try more pointings per decision (several fibres for the anchor, dense patches of remaining
+  science, small shifts) and more exposure times, and price telescope time instead of maximising gain per
+  second. Rust leaves a lot of CPU budget for this.
+- **Plan the season.** Faint required targets need the best nights; decide which nights to spend on which
+  part of the sky instead of acting greedily.
+- **Read the program band from the hits.** A saturated hit shows the program multiplier exactly, so it tells
+  whether the declared program matched.
+- **Better fault detection.** Weather and an instrument fault look alike in one exposure; compare quality
+  with the sky band, across directions and across nights, and use the free reports wisely.
+- **Use the model more**, e.g. for the forecast or to judge a suspected fault.
 
 ## License
 
