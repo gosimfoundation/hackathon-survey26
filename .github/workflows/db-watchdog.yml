@@ -77,6 +77,21 @@ jobs:
             gh workflow run open-worker.yml --repo "$GITHUB_REPOSITORY" --ref main
             echo "dispatched open-worker"
           fi
+      - name: Kick the site patrol (fallback for its unreliable schedule)
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow site-patrol.yml --limit 10 \
+            --json createdAt,event --jq '[.[] | select(.event != "pull_request")][0].createdAt // ""')
+          age=999999
+          if [ -n "$last" ]; then age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) )); fi
+          echo "site-patrol: last_start_age=${age}s"
+          if [ "$age" -ge 10800 ]; then
+            gh workflow run site-patrol.yml --repo "$GITHUB_REPOSITORY" --ref main
+            echo "dispatched site-patrol"
+          fi
       - name: Self-redispatch (fallback for an unreliable schedule trigger)
         if: always()
         env:

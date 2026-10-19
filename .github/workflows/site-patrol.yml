@@ -1,0 +1,163 @@
+name: Site patrol
+
+# Every 3 hours: the health check (ops/site-patrol/site-health.mjs) inspects the live site, then a
+# read-only Claude Code agent (Kimi k3) reads the reports and writes a verdict. A problem opens or
+# updates one issue labelled `site-patrol` that mentions the owner; recovery comments on it and closes it.
+#
+# The agent never gets write access: its job token can only read code and Actions runs, it holds no
+# database secret, and it may only read files, run `gh run list/view`, and fetch pages through
+# ops/site-patrol/get.sh (GET only). Only the last job, which runs no model, can write issues.
+#
+# GitHub's cron fires sporadically for this repo, so db-watchdog.yml also dispatches this workflow
+# when its last run started 3+ hours ago.
+on:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ops/site-patrol/**
+      - .github/workflows/site-patrol.yml
+
+concurrency:
+  group: site-patrol
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the health check (twice if the first run finds something)
+        env:
+          CI: "true"
+          SITE_REPO: ${{ github.workspace }}
+          SITE_HEALTH_PERM: ${{ github.workspace }}/ops/site-patrol/perm
+          CHROME_BIN: /usr/bin/google-chrome
+          GH_TOKEN: ${{ github.token }}
+          SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          PATROL_EMAIL: ${{ secrets.PATROL_EMAIL }}
+          PATROL_PASSWORD: ${{ secrets.PATROL_PASSWORD }}
+        run: |
+          mkdir -p reports
+          run() {
+            set +e
+            SITE_HEALTH_HOME="$RUNNER_TEMP/health-$1" node ops/site-patrol/site-health.mjs
+            code=$?
+            set -e
+            cp "$RUNNER_TEMP/health-$1/last-report.json" "reports/report-$1.json"
+            return $code
+          }
+          if run 1; then rc=0; else rc=$?; fi
+          # exit 2 = everything fine, exit 0 = problems found (see the script header)
+          if [ "$rc" != "2" ]; then
+            sleep 60
+            run 2 || true
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+
+  agent:
+    needs: check
+    if: always() && needs.check.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: reports
+          path: .
+        continue-on-error: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code@2.1.303
+      - name: Read-only patrol agent (Kimi k3, max effort)
+        env:
+          ANTHROPIC_BASE_URL: https://api.kimi.com/coding
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.PATROL_KIMI_KEY }}
+          ANTHROPIC_MODEL: k3
+          ANTHROPIC_DEFAULT_OPUS_MODEL: k3
+          ANTHROPIC_DEFAULT_SONNET_MODEL: k3
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: k3
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls report-*.json 2>/dev/null || echo '{"ok":false,"problems":[{"area":"checker","msg":"the check job produced no report"}]}' > report-1.json
+          set +e
+          claude -p "$(cat ops/site-patrol/prompt.md)" \
+            --model k3 --effort max \
+            --permission-mode default \
+            --allowedTools "Read" "Grep" "Glob" "Bash(ops/site-patrol/get.sh:*)" "Bash(gh run list:*)" "Bash(gh run view:*)" "Bash(gh release list:*)" \
+            --disallowedTools "Edit" "Write" "NotebookEdit" "WebFetch" "WebSearch" "Agent" \
+            > verdict.md 2> agent.log
+          code=$?
+          set -e
+          if [ "$code" != "0" ] || ! grep -qE '^VERDICT: (OK|PROBLEM)' verdict.md; then
+            { echo "VERDICT: PROBLEM"; echo "## 问题"; echo "巡检 agent 本身没有正常结束（退出码 $code），网站状况未知。"; echo; echo '```'; tail -40 agent.log; echo '```'; } > verdict.md
+          fi
+          cat verdict.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verdict
+          path: verdict.md
+
+  notify:
+    needs: agent
+    if: always() && needs.agent.result != 'cancelled' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verdict
+          path: .
+        continue-on-error: true
+      - name: Open, update or close the patrol issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -f verdict.md ] || printf 'VERDICT: PROBLEM\n巡检没有产出结论，请看运行记录。\n' > verdict.md
+          gh label create site-patrol --color B60205 --description "官网巡检发现的问题" 2>/dev/null || true
+          open=$(gh issue list --label site-patrol --state open --limit 1 --json number --jq '.[0].number // empty')
+          body="$(cat verdict.md)
+
+          运行记录：$RUN_URL"
+          if grep -q '^VERDICT: PROBLEM' verdict.md; then
+            if [ -n "$open" ]; then
+              gh issue comment "$open" --body "$body"
+            else
+              gh issue create --label site-patrol --title "官网巡检发现问题 $(date -u +%F)" --body "@BH3GEI
+          $body"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body "已恢复正常。$RUN_URL"
+            gh issue close "$open"
+          fi
