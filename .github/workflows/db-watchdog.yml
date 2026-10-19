@@ -96,4 +96,10 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run db-watchdog.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+        # One 502 from the dispatch API broke the chain for 4 h on 2026-10-19, so retry before giving up.
+        run: |
+          for i in 1 2 3 4 5; do
+            gh workflow run db-watchdog.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" && exit 0
+            sleep $((i * 10))
+          done
+          exit 1
