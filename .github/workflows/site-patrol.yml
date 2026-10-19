@@ -111,7 +111,7 @@ jobs:
           claude -p "$(cat ops/site-patrol/prompt.md)" \
             --model k3 --effort max \
             --permission-mode default \
-            --allowedTools "Read" "Grep" "Glob" "Bash(ops/site-patrol/get.sh:*)" "Bash(gh run list:*)" "Bash(gh run view:*)" "Bash(gh release list:*)" \
+            --allowedTools "Read" "Grep" "Glob" "Bash(ops/site-patrol/get.sh:*)" "Bash(./ops/site-patrol/get.sh:*)" "Bash(bash ops/site-patrol/get.sh:*)" "Bash(gh run list:*)" "Bash(gh run view:*)" "Bash(gh release list:*)" \
             --disallowedTools "Edit" "Write" "NotebookEdit" "WebFetch" "WebSearch" "Agent" \
             > verdict.md 2> agent.log
           code=$?
@@ -123,7 +123,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: verdict
-          path: verdict.md
+          path: |
+            verdict.md
+            agent.log
 
   notify:
     needs: agent
