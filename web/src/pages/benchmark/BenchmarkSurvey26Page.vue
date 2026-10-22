@@ -4,7 +4,6 @@ import PageHead from '../../components/layout/PageHead.vue'
 import BenchNote from './BenchNote.vue'
 
 const { pick } = useI18n()
-const analysisHref = 'https://s26-agents-8ebd56.vercel.app/analysis/'
 </script>
 
 <template>
@@ -20,8 +19,7 @@ const analysisHref = 'https://s26-agents-8ebd56.vercel.app/analysis/'
         <li>{{ pick('The top ranks are reliable; in the middle of the table many neighbouring ranks are within run-to-run noise and are better read as tiers.', '前面的名次可靠；中段很多相邻名次的差距在运行间的随机波动之内，更适合按档次理解。') }}</li>
         <li>{{ pick('A scoring loophole (free false alarms) was widely used, and only four test cards were available: both are lessons for the next task versions.', '一条计分漏洞（误报的免罚次数）被广泛利用，而且测试卡只有四张：这两点都是下一版任务要改进的地方。') }}</li>
       </ul>
-      <p class="bs26-small">{{ pick('Details: the independent analysis of all participating agents.', '详细内容见：全部参赛智能体的独立分析报告。') }}
-        <a :href="analysisHref" target="_blank" rel="noopener" class="bs26-link">{{ pick('Analysis', '分析报告') }} ↗</a></p>
+      <p class="bs26-small">{{ pick('The independent analysis of all participating agents is being finalized and will be linked here.', '全部参赛智能体的独立分析报告正在整理，稍后会在这里放链接。') }}</p>
 
       <h2 class="bs26-h2">{{ pick('The competition, unchanged', '比赛原样保留') }}</h2>
       <div class="bs26-grid">
