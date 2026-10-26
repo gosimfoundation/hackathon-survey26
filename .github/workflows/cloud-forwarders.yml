@@ -1,0 +1,39 @@
+name: Deploy cloud forwarders
+
+# Serves ops/cloud-forwarder/index.ts on the retired Supabase cloud project under the
+# function names that published clients still call (see ops/cloud-forwarder/README.md).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-forwarders
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy forwarders
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          mkdir -p fw/supabase/functions
+          for name in survey26-cli kimi-relay sophon; do
+            mkdir -p "fw/supabase/functions/$name"
+            cp ops/cloud-forwarder/index.ts "fw/supabase/functions/$name/index.ts"
+          done
+          cd fw
+          for name in survey26-cli kimi-relay sophon; do
+            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+          done
