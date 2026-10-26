@@ -28,7 +28,8 @@ if (config.slug !== 'agenticapp26') {
   const key = process.env.VITE_SUPABASE_ANON_KEY || ''
   let role
   try { role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString()).role } catch {}
-  if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(url) || !(role === 'anon' || key.startsWith('sb_publishable_'))) {
+  // Supabase cloud, or the self-hosted backend
+  if (!/^https:\/\/([a-z0-9]+\.supabase\.co|survey26-api\.liyao\.space)$/.test(url) || !(role === 'anon' || key.startsWith('sb_publishable_'))) {
     throw new Error('A public Supabase URL and anon/publishable key are required; administrative keys are never accepted')
   }
 }
