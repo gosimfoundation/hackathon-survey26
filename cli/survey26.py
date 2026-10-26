@@ -36,7 +36,7 @@ from pathlib import Path
 
 __version__ = "1.9.1"
 
-DEFAULT_API = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli"
+DEFAULT_API = "https://survey26-api.liyao.space/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
 TOKEN_RE = re.compile(r"^s26_[0-9a-f]{64}$")
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -2027,7 +2027,7 @@ def with_baselines(table: list, baselines: list, tab, out: Out) -> tuple:
     return rows, len(refs)
 
 
-RELAY_BASE = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1"
+RELAY_BASE = "https://survey26-api.liyao.space/functions/v1/kimi-relay/v1"
 RELAY_MODEL = "kimi-for-coding"
 
 

@@ -19,7 +19,7 @@ const MESSAGES: &str = include_str!("../../cli/messages.json");
 /// Presets of the website's "Add a model service" form, shared with it.
 const MODEL_PROVIDERS: &str = include_str!("../../web/src/lib/modelProviders.json");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-const DEFAULT_API: &str = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/survey26-cli";
+const DEFAULT_API: &str = "https://survey26-api.liyao.space/functions/v1/survey26-cli";
 const SITE: &str = "https://create.gosim.org/survey26/platform";
 const ACTIVE: [&str; 2] = ["queued", "running"];
 const FINISHED_RUN: [&str; 3] = ["scored", "failed", "cancelled"];
@@ -2560,7 +2560,7 @@ fn with_baselines(table: &mut Vec<Value>, baselines: &[Value], tab: &Value, out:
     refs.len()
 }
 
-const RELAY_BASE: &str = "https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1";
+const RELAY_BASE: &str = "https://survey26-api.liyao.space/functions/v1/kimi-relay/v1";
 const RELAY_MODEL: &str = "kimi-for-coding";
 
 fn relay_left(limit: &Value, used: &Value) -> Value {

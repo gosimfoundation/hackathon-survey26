@@ -11,7 +11,7 @@ type Relay = {
   daily_requests: number; daily_tokens: number; max_concurrent: number; max_tokens: number
   used_requests: number; used_tokens: number
 }
-const BASE = 'https://vdiemcofukuxglqsmlyz.supabase.co/functions/v1/kimi-relay/v1'
+const BASE = 'https://survey26-api.liyao.space/functions/v1/kimi-relay/v1'
 const MODEL = 'kimi-for-coding'
 const { pick } = useI18n()
 const relay = ref<Relay | null>(null)
