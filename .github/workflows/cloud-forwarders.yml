@@ -33,7 +33,8 @@ jobs:
             mkdir -p "fw/supabase/functions/$name"
             cp ops/cloud-forwarder/index.ts "fw/supabase/functions/$name/index.ts"
           done
-          cd fw
+          # own workdir: otherwise the CLI picks up the repository's supabase/ and deploys the originals
+          echo 'project_id = "cloud-forwarder"' > fw/supabase/config.toml
           for name in survey26-cli kimi-relay sophon; do
-            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+            supabase --workdir fw functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
           done
