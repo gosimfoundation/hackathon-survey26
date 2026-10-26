@@ -24,7 +24,7 @@ daily limits and quotas. Full guide: https://create.gosim.org/survey26/platform/
 
 ```bash
 command -v survey26 || curl -fsSLO https://create.gosim.org/survey26/platform/survey26.py
-survey26 --version            # or: python3 survey26.py --version   (1.9.1 or later)
+survey26 --version            # or: python3 survey26.py --version   (1.9.2 or later)
 test -n "$SURVEY26_TOKEN" && survey26 --json whoami
 ```
 

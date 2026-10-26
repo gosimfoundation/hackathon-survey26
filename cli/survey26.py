@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-__version__ = "1.9.1"
+__version__ = "1.9.2"
 
 DEFAULT_API = "https://survey26-api.liyao.space/functions/v1/survey26-cli"
 SITE = "https://create.gosim.org/survey26/platform"
