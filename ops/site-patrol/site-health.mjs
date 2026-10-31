@@ -107,12 +107,17 @@ async function checkPipeline(liveRev) {
   } else ok('deploy', 'site deploy pipeline is succeeding')
 }
 
+// SQL for the checks: the self-hosted backend answers at <SUPABASE_URL>/pg/query for the service role key,
+// Supabase cloud at its management API for an access token (perm/sandbox.py picks the same way).
+const queryUrl = sec => sec.SUPABASE_SERVICE_ROLE_KEY ? `${sec.SUPABASE_URL.replace(/\/$/, '')}/pg/query`
+  : `https://api.supabase.com/v1/projects/${sec.SUPABASE_PROJECT_REF}/database/query`
+const queryHeaders = sec => sec.SUPABASE_SERVICE_ROLE_KEY
+  ? { apikey: sec.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${sec.SUPABASE_SERVICE_ROLE_KEY}` }
+  : { Authorization: `Bearer ${sec.SUPABASE_ACCESS_TOKEN}` }
+
 async function checkQueue(sec) {
   const q = async sql => {
-    const r = await get(`https://api.supabase.com/v1/projects/${sec.SUPABASE_PROJECT_REF}/database/query`, {
-      method: 'POST', headers: { Authorization: `Bearer ${sec.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: sql }),
-    })
+    const r = await get(queryUrl(sec), { method: 'POST', headers: { ...queryHeaders(sec), 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sql }) })
     if (!r.ok) throw new Error(`database query answered ${r.status}`)
     return r.json()
   }
@@ -374,7 +379,8 @@ async function checkAuthUi(cdp, monitor) {
 // family: a column the pages save but the role may not write, a setting a page reads but may not see,
 // and the reverse — data one participant must not reach, such as another team's invite code.
 async function checkPermissions(sec) {
-  const env = { ...process.env, PATH, SUPABASE_PROJECT_REF: sec.SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN: sec.SUPABASE_ACCESS_TOKEN }
+  const keys = ['SUPABASE_URL', 'SUPABASE_PROJECT_REF', 'SUPABASE_ACCESS_TOKEN', 'SUPABASE_SERVICE_ROLE_KEY']
+  const env = { ...process.env, PATH, ...Object.fromEntries(keys.filter(k => sec[k]).map(k => [k, sec[k]])) }
   const { stdout } = await pexec('python3', ['suite.py'], { cwd: PERM_DIR, env, timeout: 240_000, maxBuffer: 8 << 20 })
   const total = stdout.match(/==== (\d+) problem/)
   if (!total) return bad('permissions', 'the permission suite did not finish')

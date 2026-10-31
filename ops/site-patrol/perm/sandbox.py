@@ -5,11 +5,19 @@ does survives — but the message carries what the test saw. A genuine error ins
 comes back as that error instead.
 """
 import json, os, urllib.request
-REF = os.environ["SUPABASE_PROJECT_REF"]; TOKEN = os.environ["SUPABASE_ACCESS_TOKEN"]
+# The self-hosted backend answers SQL at <SUPABASE_URL>/pg/query for the service role key; Supabase cloud at
+# its management API for an access token. Both take {"query": ...} and return the rows as JSON.
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if SERVICE_KEY:
+    QUERY_URL = os.environ["SUPABASE_URL"].rstrip("/") + "/pg/query"
+    HEADERS = {"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}"}
+else:
+    QUERY_URL = f"https://api.supabase.com/v1/projects/{os.environ['SUPABASE_PROJECT_REF']}/database/query"
+    HEADERS = {"Authorization": f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}"}
 
 def raw(sql):
-    req = urllib.request.Request(f"https://api.supabase.com/v1/projects/{REF}/database/query",
-        data=json.dumps({"query": sql}).encode(), headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}, method="POST")
+    req = urllib.request.Request(QUERY_URL, data=json.dumps({"query": sql}).encode(),
+        headers={**HEADERS, "Content-Type": "application/json", "User-Agent": "survey26-site-patrol"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=60) as r: return r.status, json.loads(r.read().decode() or "null")
     except urllib.error.HTTPError as e:
