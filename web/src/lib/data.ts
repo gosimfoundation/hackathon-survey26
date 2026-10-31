@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { normalizeKimiPlanStatus, type KimiPlanStatus } from './kimiPlan'
 import { normalizeQuotaResetNotice, type QuotaResetNotice } from './quotaReset'
 import { parseBaselineRows, parseCardBoard, parseRows, pickCardTab, SUPER_OLD_TAB, SUPER_TAB, toLeaderboardEntry, type BaselineRow, type CardBoard } from './cardBoard'
+import type { SnapshotPhase } from './boardSnapshot'
 import { cached, invalidatePrefix } from './requestCache'
 import { scenarioOrder } from './scenarioLabels'
 
@@ -300,6 +301,22 @@ export async function loadCardBoard(phaseId: string, wanted: string | null = nul
   if (tab === SUPER_TAB || tab === SUPER_OLD_TAB) return { ...board, scenario: tab, rows: await fetchSuperRows(phaseId, limit, tab === SUPER_OLD_TAB) }
   return board.layout !== 'overall' && tab !== (fetched ?? null) ? fetchCardBoard(phaseId, tab, limit) : board
 }
+
+/** loadCardBoard on a phase of a frozen snapshot (see boardSnapshot.ts), tab for tab. */
+export function snapshotCardBoard(phase: SnapshotPhase, wanted: string | null = null): CardBoard {
+  const stored = (slug: string | null) => parseCardBoard(phase.card_board[slug ?? ''] ?? phase.card_board[''])
+  const fetched = wanted === SUPER_TAB || wanted === SUPER_OLD_TAB ? null : wanted
+  const board = stored(fetched)
+  const tab = pickCardTab(board, wanted)
+  if (tab === SUPER_TAB || tab === SUPER_OLD_TAB) {
+    return { ...board, scenario: tab, rows: parseRows(((tab === SUPER_OLD_TAB ? phase.super_old : phase.super) as any)?.rows) }
+  }
+  return board.layout !== 'overall' && tab !== (fetched ?? null) ? stored(tab) : board
+}
+
+/** The baseline rows of a snapshot phase: the super board's set or the A-D one, as loadSuperBaselineRows/loadBaselineRows. */
+export const snapshotBaselineRows = (phase: SnapshotPhase, superBoard: boolean): BaselineRow[] =>
+  parseBaselineRows(superBoard ? phase.super_baseline : phase.baseline)
 
 /** Whether a phase ranks complete projects (the observer boards) rather than CSV submissions. */
 export const isProjectBoard = (phase: Pick<Phase, 'observer_settings'> | null) =>

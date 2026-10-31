@@ -5,10 +5,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../composables/useI18n'
 import { usePhases } from '../composables/usePhases'
-import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadSuperBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, superCards, SUPER_OLD_TAB, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
+import { boardScenarios, isFinalBoard, isProjectBoard, isPublicFormalBoard, isSuperTab, loadBaselineRows, loadSuperBaselineRows, loadCardBoard, loadLeaderboard, phaseCopy, snapshotBaselineRows, snapshotCardBoard, superCards, SUPER_OLD_TAB, SUPER_TAB, type BaselineRow, type CardBoard, type LeaderboardEntry, type Phase } from '../lib/data'
 import { FUN_SLUG, LEADERBOARD_PAGE_SLUGS, LEADERBOARD_SLUGS, LEADERBOARD_TAB_LABEL_KEYS } from '../lib/leaderboardBoards'
 import { scenarioLabel, scenarioOrder } from '../lib/scenarioLabels'
 import { useAuth } from '../stores/auth'
+import { BOARD_SNAPSHOTS, loadBoardSnapshot } from '../lib/boardSnapshot'
 import { competition, loadCompetition } from '../stores/competition'
 import { fmtUtc, num } from '../lib/format'
 import PageHead from '../components/layout/PageHead.vue'
@@ -118,11 +119,30 @@ function pickCard(slug: string | null) {
 }
 // The coverage term only exists where the scenario's score_config sets a weight, so keep the column out of practice phases.
 const showCoverage = computed(() => entries.value.some(e => (e.coverage_bonus ?? 0) !== 0))
+// ?snapshot=<id>: the board as frozen at that moment (static data, no polling); only phases the snapshot holds.
+const snapshotInfo = computed(() => BOARD_SNAPSHOTS.find(s => s.id === route.query.snapshot && !!phase.value && s.phases.includes(phase.value.slug)) ?? null)
+// The newest snapshot holding this board, for the toggle next to the board tabs.
+const offeredSnapshot = computed(() => [...BOARD_SNAPSHOTS].reverse().find(s => !!phase.value && s.phases.includes(phase.value.slug)) ?? null)
+const snapshotQuery = computed(() => typeof route.query.snapshot === 'string' ? { snapshot: route.query.snapshot } : {})
+function toggleSnapshot() {
+  const { snapshot: _drop, ...rest } = route.query
+  void router.replace({ query: snapshotInfo.value ? rest : { ...rest, snapshot: offeredSnapshot.value!.id } })
+}
 
 async function loadBoard() {
   if (!phase.value || !visible.value) { entries.value = []; return }
   boardLoading.value = true
   try {
+    const frozen = snapshotInfo.value && isProjectBoard(phase.value) ? (await loadBoardSnapshot(snapshotInfo.value.id))?.phases[phase.value.id] : null
+    if (frozen) {
+      const query = typeof route.query.scenario === 'string' ? route.query.scenario : null
+      const board = snapshotCardBoard(frozen, query === OVERALL_QUERY ? null : query ?? SUPER_TAB)
+      cardBoard.value = board
+      baselines.value = board.scenario === SUPER_TAB ? snapshotBaselineRows(frozen, true) : phase.value.slug === 'online' ? snapshotBaselineRows(frozen, false) : []
+      entries.value = board.rows
+      updatedAt.value = new Date(snapshotInfo.value!.takenAt)
+      return
+    }
     if (isProjectBoard(phase.value)) {
       // No card chosen: open the super board where the phase has one (else the first tab); ?scenario=overall picks 总榜.
       const query = typeof route.query.scenario === 'string' ? route.query.scenario : null
@@ -145,8 +165,8 @@ async function loadBoard() {
   finally { boardLoading.value = false }
 }
 
-watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario, visible.value], () => { void loadBoard() })
-function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && document.visibilityState === 'visible') { void loadBoard() } }
+watch(() => [phase.value?.slug, scenarioSlug.value, route.query.scenario, route.query.snapshot, visible.value], () => { void loadBoard() })
+function pollBoard() { if (phase.value?.leaderboard_mode === 'live' && !snapshotInfo.value && document.visibilityState === 'visible') { void loadBoard() } }
 onMounted(async () => {
   await Promise.all([reload(), loadCompetition()])
   await loadBoard()
@@ -163,11 +183,14 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
       <div v-if="visiblePhases.length" class="tabs">
         <template v-for="p in visiblePhases" :key="p.id">
           <router-link v-if="p.slug === 'practice' && finalPlaceholderTab" to="/leaderboard/final-hidden" :class="{ active: finalPlaceholder }" data-testid="board-tab-final-hidden">{{ t('leaderboard.tabs.final') }}</router-link>
-          <router-link :to="`/leaderboard/${p.slug}`" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
+          <router-link :to="{ path: `/leaderboard/${p.slug}`, query: snapshotQuery }" :class="{ active: phase && p.id === phase.id, 'tab-debug': p.slug === 'practice' }" :data-testid="`board-tab-${p.slug}`">{{ tabLabel(p) }}</router-link>
         </template>
         <router-link v-if="finalPlaceholderTab && !visiblePhases.some(p => p.slug === 'practice')" to="/leaderboard/final-hidden" :class="{ active: finalPlaceholder }" data-testid="board-tab-final-hidden">{{ t('leaderboard.tabs.final') }}</router-link>
       </div>
       <p v-if="statusLine" class="text3 mt-2 text-sm">{{ statusLine }}</p>
+      <p v-if="offeredSnapshot && visible && !localFinalBoard" class="mt-3 text-sm">
+        <button type="button" class="btn sm" :class="{ primary: snapshotInfo }" :aria-pressed="!!snapshotInfo" data-testid="board-snapshot-toggle" @click="toggleSnapshot">{{ snapshotInfo ? pick('Back to the live board', '回到实时榜单') : pick(`Snapshot · ${offeredSnapshot.label.en}`, `快照 · ${offeredSnapshot.label.zh}`) }}</button>
+      </p>
 
       <FinalResultsPage v-if="localFinalBoard" :embedded="true" />
       <p v-else-if="phasesLoading" class="text3 mt-8 text-sm">{{ t('common.loading') }}</p>
@@ -206,6 +229,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer); document.removeEvent
             <p class="notice mb-6" data-testid="board-extra-note">{{ pick('Scores on this board are for reference only and do not count toward any ranking or award. Sophon is about discovering the easter egg hidden within.', '本榜分数仅供参考，不计入任何排名或奖项。Sophon 的重点在于发现其中隐藏的彩蛋。') }}</p>
             <SophonBoards class="mb-8" />
           </template>
+          <p v-if="snapshotInfo" class="notice mb-6" data-testid="board-snapshot-note">{{ pick(`Snapshot: this board as it stood at ${snapshotInfo.label.en}. It no longer updates.`, `快照：这是 ${snapshotInfo.label.zh}的榜单，不再更新。`) }}</p>
           <p v-if="preview" class="notice mb-6" data-testid="board-preview-note">{{ t('leaderboard.organizer_preview') }}</p>
           <p v-if="isPublicFormalBoard(phase)" class="notice mb-6" data-testid="board-public-note">{{ t('leaderboard.public_board') }}</p>
           <p v-else-if="isFinalBoard(phase)" class="notice mb-6" data-testid="board-final-note">{{ t('leaderboard.final_board') }}</p>
