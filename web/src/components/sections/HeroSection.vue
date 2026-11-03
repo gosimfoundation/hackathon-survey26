@@ -261,7 +261,7 @@ const stages = computed(() => t('hero.pipeline') as Stage[])
 
 .hero-timeline-note { display: block; margin-top: .3rem; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .62rem; letter-spacing: .05em; color: rgba(214,226,255,.8); }
 .hero-timeline {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0; padding: 0; list-style: none;
   border-top: 1px solid rgba(255,255,255,.25);
 }
