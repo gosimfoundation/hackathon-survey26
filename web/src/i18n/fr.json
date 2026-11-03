@@ -320,6 +320,11 @@
         "label": "Remise des prix",
         "date": "17 oct.",
         "note": "Équipes 1er et 2e prix invitées à GOSIM Shenzhen"
+      },
+      {
+        "label": "Article publié",
+        "date": "3 nov.",
+        "note": "Article de référence sur arXiv:2611.01988"
       }
     ],
     "cta_register": "S'inscrire",
