@@ -3015,5 +3015,12 @@
     "reason_requested": "You already asked; waiting for the captain.",
     "reason_locked": "team locked",
     "reason_full": "team full"
+  },
+  "paper": {
+    "heading": "Reference paper",
+    "hint": "The paper describing the simulator, the evaluation and the results of 102 teams. Please cite it when you use the simulator, task cards or results.",
+    "open_arxiv": "Read on arXiv",
+    "copy_bibtex": "Copy BibTeX",
+    "copied": "Copied"
   }
 }

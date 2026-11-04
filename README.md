@@ -1,5 +1,7 @@
 > **Website repository:** `gosimfoundation/hackathon-survey26` · [Maintenance and publishing](MAINTAINING.md) · [Live site](https://create.gosim.org/survey26/)
 
+> **Reference paper:** Wang et al. 2026, *The Agentic Observer Hackathon: Autonomous Decision-making in Simulated Astronomical Surveys*, [arXiv:2611.01988](https://arxiv.org/abs/2611.01988). Please cite it when you use the simulator, task cards or results ([BibTeX](#citation)).
+
 # Agent Observer · 巡天智能体 — competition platform (challenge v3)
 
 Event website and evaluation backend for the GOSIM "Agent Observer" hackathon. The site is a static Vue 3
@@ -101,3 +103,19 @@ export DYLD_LIBRARY_PATH=$PWD/.venv/lib/python3.12/site-packages/pgserver/pginst
   root-parameterised `project_paths.py`.
 - `challenge/scenario_builder.py` clamps `time_limited_window_days` and the forecast horizon for short scenarios.
 - `challenge/replay.py` regenerates the delivered `decision_replay.html` (its generator was not in the package).
+
+## Citation
+
+```bibtex
+@misc{wang2026aoh,
+  title         = {The Agentic Observer Hackathon: Autonomous Decision-making in Simulated Astronomical Surveys},
+  author        = {Wang, Haosong and Tan, Ting and Li, Yao and Shan, Huanyuan and Liu, Dezi and Liu, Xiangkun and Luo, Yifei and Wang, Wei and Wu, Zonghuan and Zhai, Zhongxu},
+  year          = {2026},
+  eprint        = {2611.01988},
+  archivePrefix = {arXiv},
+  primaryClass  = {astro-ph.IM},
+  url           = {https://arxiv.org/abs/2611.01988}
+}
+```
+
+GitHub's "Cite this repository" button reads [CITATION.cff](CITATION.cff).

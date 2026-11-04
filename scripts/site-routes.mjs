@@ -2,7 +2,7 @@
 // static route gets its own copy of the finished app shell at <route>/index.html
 // and answers 200 instead of the 404 fallback. Dynamic or unknown paths
 // (/submissions/:id, typos) keep the 404 fallback plus restore-route.js.
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -155,6 +155,31 @@ export function writeRouteIndexes(directory, shell, messages, routes = STATIC_RO
     mkdirSync(join(directory, path), { recursive: true })
     const html = withPageMeta(shell, { title: `${page.title} · ${brand}`, description: page.description })
     writeFileSync(join(directory, file), html.replace(/<head>/, () => `<head>\n${CANONICAL_PATH_SCRIPT}`))
+    written.push(file)
+  }
+  return written
+}
+
+/**
+ * Short links under the event root (`/survey26/rules`, cited in the paper as footnote 14)
+ * point at the platform page of the same path. Without a file there, GitHub Pages serves the
+ * hub's 404 page, whose script drops the path and lands on the platform home. Each static route
+ * therefore gets a small redirect page at <eventRoot>/<route>/index.html (answers 200), unless a
+ * file already exists there. Query string and hash are kept.
+ */
+export function writeEventRootRedirects(directory, appBase, routes = STATIC_ROUTES) {
+  const written = []
+  for (const path of Object.keys(routes)) {
+    const file = join(path, 'index.html')
+    if (existsSync(join(directory, file))) continue
+    const target = `${appBase}${path}`
+    mkdirSync(join(directory, path), { recursive: true })
+    writeFileSync(join(directory, file), `<!doctype html>
+<html><head><meta charset="UTF-8"><meta name="robots" content="noindex">
+<link rel="canonical" href="${target}">
+<script>window.location.replace('${target}' + window.location.search + window.location.hash)</script>
+<meta http-equiv="refresh" content="0; url=${target}"></head><body><a href="${target}">${target}</a></body></html>
+`)
     written.push(file)
   }
   return written

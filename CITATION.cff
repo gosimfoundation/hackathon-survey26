@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use the AOH simulator, task cards or results, please cite the reference paper below."
+title: "Agentic Observer Hackathon (AOH) simulator, scoring code and reference strategies"
+repository-code: "https://github.com/gosimfoundation/hackathon-survey26"
+url: "https://create.gosim.org/survey26/"
+authors:
+  - name: "GOSIM Agentic Observer Hackathon organizers"
+preferred-citation:
+  type: article
+  title: "The Agentic Observer Hackathon: Autonomous Decision-making in Simulated Astronomical Surveys"
+  authors:
+    - family-names: Wang
+      given-names: Haosong
+    - family-names: Tan
+      given-names: Ting
+    - family-names: Li
+      given-names: Yao
+    - family-names: Shan
+      given-names: Huanyuan
+    - family-names: Liu
+      given-names: Dezi
+    - family-names: Liu
+      given-names: Xiangkun
+    - family-names: Luo
+      given-names: Yifei
+    - family-names: Wang
+      given-names: Wei
+    - family-names: Wu
+      given-names: Zonghuan
+    - family-names: Zhai
+      given-names: Zhongxu
+  year: 2026
+  journal: "arXiv preprint"
+  identifiers:
+    - type: other
+      value: "arXiv:2611.01988"
+  url: "https://arxiv.org/abs/2611.01988"

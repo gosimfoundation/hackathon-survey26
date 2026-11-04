@@ -12,6 +12,7 @@ import { hasRunReplay, loadRunReplay, resetToDemoReplay } from '../composables/u
 import { portal } from '../lib/observerPortal'
 import { useAuth } from '../stores/auth'
 import results from '../content/final/results.json'
+import { PAPER } from '../content/paper/citation'
 
 interface RunRow {
   run_id: string; card: string; status: string; score: number | null
@@ -154,6 +155,9 @@ onUnmounted(() => { void resetToDemoReplay() })
         <p class="board-note">说明：个别评测因平台原因成绩异常，已按规则重跑，榜单采用重跑后的成绩；点队名可查看每次评测明细。</p>
         <!-- 10-11 owner: the two official baselines run like a team, are listed for reference and hold no rank -->
         <p class="board-note">标「基线」的两行是主办方官方示例程序（基础版、进阶版 Python）在同样四张卡上各跑 3 次的成绩，只作参照，不占名次；同样可以点开看评测明细和回放。</p>
+
+        <!-- 11-03 owner: link the reference paper (arXiv 2611.01988) from the final board -->
+        <p class="board-note">参考论文：<a :href="PAPER.absUrl" target="_blank" rel="noopener">arXiv:{{ PAPER.arxivId }}</a>，分析了本榜单的成绩、名次稳定性和各队策略。</p>
 
         <div class="table-wrap">
           <table class="data-table">

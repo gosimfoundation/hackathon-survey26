@@ -3,6 +3,7 @@ import { useI18n } from '../../composables/useI18n'
 import PageHead from '../../components/layout/PageHead.vue'
 import BenchNote from './BenchNote.vue'
 import { benchTasks } from '../../lib/benchmarkTasks'
+import { PAPER } from '../../content/paper/citation'
 
 const { pick } = useI18n()
 const consoleHref = `${import.meta.env.BASE_URL}console/index.html`
@@ -34,6 +35,7 @@ const protocol = [
     <section class="section !pt-0"><div class="wrap">
       <BenchNote />
       <p class="bench-p">{{ pick('The Survey26 hackathon (2026) was the means, not the goal: more than a hundred teams built systems for the same tasks, which made it the first large stress test of the benchmark. Its results are kept unchanged on the', 'Survey26 黑客松（2026 年）是手段而不是目的：一百多支队伍为同样的任务写系统，它成了这个基准的第一次大规模压力测试。比赛结果原样保留在') }} <router-link to="/benchmark/survey26">{{ pick('Survey26 page', 'Survey26 检验页') }}</router-link>.</p>
+      <p class="bench-p">{{ pick('The simulator, the evaluation protocol and the Survey26 results are described in the reference paper', '模拟器、评测流程和 Survey26 的结果见参考论文') }} <a :href="PAPER.absUrl" target="_blank" rel="noopener">arXiv:{{ PAPER.arxivId }}</a>{{ pick('; the citation is on the', '；引用格式见') }} <router-link to="/resources">{{ pick('Resources page', '资源页') }}</router-link>.</p>
 
       <h2 class="bench-h2">{{ pick('What the benchmark measures', '基准测什么') }}</h2>
       <div class="bench-grid3">

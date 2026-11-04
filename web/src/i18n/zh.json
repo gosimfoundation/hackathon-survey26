@@ -3015,5 +3015,12 @@
     "reason_requested": "你已经申请过了，等队长回应。",
     "reason_locked": "队伍已锁定",
     "reason_full": "队伍已满"
+  },
+  "paper": {
+    "heading": "参考论文",
+    "hint": "介绍模拟器、评测方法和 102 支队伍结果的论文。使用模拟器、任务卡或比赛结果时，请引用这篇论文。",
+    "open_arxiv": "在 arXiv 阅读",
+    "copy_bibtex": "复制 BibTeX",
+    "copied": "已复制"
   }
 }

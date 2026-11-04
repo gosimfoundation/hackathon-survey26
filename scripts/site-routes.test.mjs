@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import vm from 'node:vm'
-import { CANONICAL_PATH_SCRIPT, STATIC_ROUTES, routeCoverageProblems, routerStaticPaths, withPageMeta, writeRouteIndexes } from './site-routes.mjs'
+import { CANONICAL_PATH_SCRIPT, STATIC_ROUTES, routeCoverageProblems, routerStaticPaths, withPageMeta, writeEventRootRedirects, writeRouteIndexes } from './site-routes.mjs'
 
 const router = readFileSync(new URL('../web/src/router.ts', import.meta.url), 'utf8')
 const zh = JSON.parse(readFileSync(new URL('../web/src/i18n/zh.json', import.meta.url), 'utf8'))
@@ -75,4 +75,19 @@ test('the Pages trailing-slash redirect is undone before the app reads the addre
   assert.equal(visit('/survey26/platform/leaderboard/online/'), '/survey26/platform/leaderboard/online')
   assert.equal(visit('/survey26/platform/rules'), null)
   assert.equal(visit('/'), null)
+})
+
+test('event-root short links redirect to the platform page and keep existing files', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'event-root-'))
+  try {
+    mkdirSync(join(directory, 'brief'), { recursive: true })
+    writeFileSync(join(directory, 'brief/index.html'), 'legacy')
+    const written = writeEventRootRedirects(directory, '/survey26/platform/')
+    assert.ok(written.includes('rules/index.html') && written.includes('leaderboard/final-hidden/index.html'))
+    assert.ok(!written.includes('brief/index.html'))
+    assert.equal(readFileSync(join(directory, 'brief/index.html'), 'utf8'), 'legacy')
+    const rules = readFileSync(join(directory, 'rules/index.html'), 'utf8')
+    assert.match(rules, /window\.location\.replace\('\/survey26\/platform\/rules' \+ window\.location\.search \+ window\.location\.hash\)/)
+    assert.match(rules, /<meta http-equiv="refresh" content="0; url=\/survey26\/platform\/rules">/)
+  } finally { rmSync(directory, { recursive: true, force: true }) }
 })
