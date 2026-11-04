@@ -8,6 +8,7 @@ import { FORMAL_CARDS, type CardLanguage, type TaskCard } from '../lib/taskCards
 import { bundledCardTitle, downloadCardZip, practiceCards, releasedCardFiles } from '../lib/taskCardSource'
 import { useFlash } from '../stores/flash'
 import PageHead from '../components/layout/PageHead.vue'
+import PaperCitation from '../components/content/PaperCitation.vue'
 import { assetUrl } from '../composables/api'
 
 const { t, tf, locale } = useI18n()
@@ -76,6 +77,11 @@ onMounted(async () => {
     <PageHead :kicker="t('resources.kicker')" :title="t('resources.title')" :lede="t('resources.lede')" />
     <section class="section"><div class="wrap">
       <div class="flow-band reveal">
+        <div class="flow-head"><div><h2>{{ t('paper.heading') }}</h2><p>{{ t('paper.hint') }}</p></div></div>
+        <PaperCitation />
+      </div>
+
+      <div class="flow-band reveal mt-16">
         <div class="flow-head"><div><h2>{{ t('resources.flow_cards') }}</h2><p>{{ t('resources.flow_cards_hint') }}</p></div></div>
         <div class="task-card-grid">
           <article v-for="c in taskCards" :key="c.id" class="task-card-item" :data-testid="`resources-card-${c.id}`">

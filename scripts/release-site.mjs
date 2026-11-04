@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { STATIC_ROUTES, routeCoverageProblems, writeRouteIndexes } from './site-routes.mjs'
+import { STATIC_ROUTES, routeCoverageProblems, writeEventRootRedirects, writeRouteIndexes } from './site-routes.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const config = JSON.parse(readFileSync(join(root, 'site.config.json'), 'utf8'))
@@ -52,6 +52,8 @@ if (config.platform) {
   // Deep links such as /rules answer 200 from <route>/index.html (asset URLs are absolute);
   // dynamic and unknown paths keep the 404 fallback and restore-route.js.
   routePages = writeRouteIndexes(destination, readFileSync(index, 'utf8'), pageMessages).map(file => `platform/${file}`)
+  // Event-root short links (/survey26/rules → /survey26/platform/rules); routePages are checked below.
+  routePages.push(...writeEventRootRedirects(output, appBase))
   writeFileSync(join(destination, 'deployment.json'), JSON.stringify({ repository: `https://github.com/${config.repository}.git`, revision }))
   writeFileSync(join(output, 'index.html'), `<!doctype html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
